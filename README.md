@@ -10,11 +10,11 @@ This repository stores the code used to create a machine image for use in [Taskc
 
 ### Todo
 
-- [ ] Software Bill of Materials
+- [ ] Software Bill of Materials [(RELOPS-311)](https://mozilla-hub.atlassian.net/browse/RELOPS-311)
 - [ ] Github Actions
-  - [ ] [OIDC Azure](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-azure)
+  - [ ] [(RELOPS-309)](https://mozilla-hub.atlassian.net/browse/RELOPS-309) - [OIDC Azure](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-azure)
   - [ ] [OIDC Google Cloud Platform](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-google-cloud-platform)
-  - [ ] Parallel support for packer in GHA
+  - [ ] Parallel support for packer in GHA [(RELOPS-312)](https://mozilla-hub.atlassian.net/browse/RELOPS-312)
 
 ### In Progress
 
