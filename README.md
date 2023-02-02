@@ -18,8 +18,6 @@ This repository stores the code used to create a machine image for use in [Taskc
 
 ### In Progress
 
-- [ ] 
 
 ### Done ✓
 
-- [x] 
