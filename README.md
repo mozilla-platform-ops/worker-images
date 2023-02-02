@@ -1,5 +1,5 @@
 # Worker Images
-This repository stores the code used to create a machine image for use in [Taskcluster](https://github.com/taskcluster). This repository calls a [Powershell Packer Provisioner](https://developer.hashicorp.com/packer/docs/provisioners/powershell) to configure the machine image using [Puppet](https://www.puppet.com/docs/puppet/7/puppet_index.html).
+This repository stores the code used to create a machine image for use in [Taskcluster](https://github.com/taskcluster). This repository uses Packer to provision the machine image, and the windows packer machine images use [Powershell Packer Provisioner](https://developer.hashicorp.com/packer/docs/provisioners/powershell) to call a custom script which bootstrap the OS using [Puppet](https://www.puppet.com/docs/puppet/7/puppet_index.html).
 
 ## Acronyms
 
