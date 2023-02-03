@@ -1,0 +1,45 @@
+name: Packer
+
+on: [workflow_dispatch]
+
+#on:
+#  push:
+#    branches:
+#      - main
+#  schedule:
+#    - cron: 0 0 * * *
+
+env:
+  IMAGE_PUBLISHER: ""
+  IMAGE_OFFER: ""
+  IMAGE_SKU: ""
+
+jobs:
+  packer:
+    name: Run Packer
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Validate Packer Template
+        uses: hashicorp/packer-github-actions@master
+        with:
+          command: validate
+          arguments: -syntax-only
+
+      - name: Build Packer Image
+        uses: hashicorp/packer-github-actions@master
+        with:
+          command: build
+          arguments: -color=false -on-error=abort
+        env:
+          PKR_VAR_client_id: ${{ secrets.PACKER_CLIENT_ID }}
+          PKR_VAR_client_secret: ${{ secrets.PACKER_CLIENT_SECRET }}
+          PKR_VAR_subscription_id: ${{ secrets.PACKER_SUBSCRIPTION_ID }}
+          PKR_VAR_tenant_id: ${{ secrets.PACKER_TENANT_ID }}
+          PKR_VAR_artifacts_resource_group: ${{ secrets.PACKER_ARTIFACTS_RESOURCE_GROUP }}
+          PKR_VAR_build_resource_group: ${{ secrets.PACKER_BUILD_RESOURCE_GROUP }}
+          PKR_VAR_source_image_publisher: ${{ env.IMAGE_PUBLISHER }}
+          PKR_VAR_source_image_offer: ${{ env.IMAGE_OFFER }}
+          PKR_VAR_source_image_sku: ${{ env.IMAGE_SKU }}
