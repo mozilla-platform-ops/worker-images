@@ -28,4 +28,4 @@ jobs:
       - name: Run Command
         shell: pwsh
         run: |
-          Write-Host "Running location '${{ matrix }}'"
+          Write-Host "Running location '${{ matrix.locations }}'"
