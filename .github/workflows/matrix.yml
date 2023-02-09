@@ -5,14 +5,14 @@ on: [workflow_dispatch]
 jobs:
   job1:
     runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - uses: actions/checkout@v3
       - id: set-matrix
         shell: pwsh
         # Use a small PowerShell script to generate the test matrix
         run: "& .github/workflows/locations.ps1"
+    outputs:
+      LOCATIONS: ${{ steps.set-matrix.outputs.LOCATIONS }}
   job2:
     needs: job1
     runs-on: ubuntu-latest
@@ -24,4 +24,4 @@ jobs:
       - name: Run Command
         shell: pwsh
         run: |
-          Write-Host "Running location '${{ matrix.locations }}'"
+          Write-Host "Running location '${{ matrix.LOCATIONS }}'"
