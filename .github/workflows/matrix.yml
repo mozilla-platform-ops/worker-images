@@ -8,7 +8,7 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - id: set-matrix
         shell: pwsh
         # Use a small PowerShell script to generate the test matrix
@@ -20,7 +20,7 @@ jobs:
       matrix:
         locations: ${{fromJson(needs.job1.outputs.matrix)}}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Run Command
         shell: pwsh
         run: |
