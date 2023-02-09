@@ -17,10 +17,11 @@ jobs:
     needs: job1
     runs-on: ubuntu-latest
     strategy:
-      matrix: ${{fromJson(needs.job1.outputs.matrix)}}
+      matrix:
+        locations: ${{fromJson(needs.job1.outputs.matrix)}}
     steps:
       - uses: actions/checkout@v2
       - name: Run Command
         shell: pwsh
         run: |
-          Write-Host "Running location '${{ matrix.location }}'"
+          Write-Host "Running location '${{ matrix.locations }}'"
