@@ -4,23 +4,20 @@ on: [workflow_dispatch]
 
 jobs:
   job1:
-    name: Generate test matrix
     runs-on: ubuntu-latest
     outputs:
-      matrix-json: ${{ steps.set-matrix.outputs.matrix }}
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - uses: actions/checkout@v2
       - id: set-matrix
         shell: pwsh
         # Use a small PowerShell script to generate the test matrix
         run: "& .github/workflows/locations.ps1"
-
   job2:
-    needs: [job1]
+    needs: job1
+    runs-on: ubuntu-latest
     strategy:
       matrix: ${{fromJson(needs.job1.outputs.matrix)}}
-    name: "Azure ${{ matrix.locations }}"
-    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - name: Run Command
