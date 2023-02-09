@@ -7,4 +7,8 @@ $win11642009.azure.locations | ForEach-Object {
         location = $_
     }
 }
-Write-Host "::set-output name=matrix::$($locations | ConvertTo-JSON -Compress))"
+
+$v = $locations | ConvertTo-JSON -Compress
+$esc = [regex]::escape($v)
+
+Write-Host "::set-output name=matrix::$($esc))"
