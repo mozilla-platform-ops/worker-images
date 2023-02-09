@@ -10,7 +10,12 @@ jobs:
       - id: set-matrix
         shell: pwsh
         # Use a small PowerShell script to generate the test matrix
-        run: "& .github/workflows/locations.ps1"
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module powershell-yaml -ErrorAction Stop
+          $win11642009 = Convertfrom-Yaml (Get-Content "config/win11-64-2009.yaml" -raw)
+          $locations = ($win11642009.azure.locations | ConvertTo-Json -Compress)
+          Write-Output "LOCATIONS=$locations" >> $ENV:GITHUB_OUTPUT
     outputs:
       LOCATIONS: ${{ steps.set-matrix.outputs.LOCATIONS }}
   job2:
@@ -18,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        locations: ${{fromJson(needs.job1.outputs.matrix)}}
+        locations: ${{fromJson(needs.job1.outputs.LOCATIONS)}}
     steps:
       - uses: actions/checkout@v3
       - name: Run Command
