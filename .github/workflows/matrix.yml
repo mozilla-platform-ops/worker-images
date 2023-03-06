@@ -4,7 +4,7 @@ on: [workflow_dispatch, push]
 
 jobs:
   job1:
-    name: "Create Maintenance and Image Build Tasks"
+    name: "Create Image Tasks"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -24,7 +24,6 @@ jobs:
     strategy:
       matrix:
         locations: ${{fromJson(needs.job1.outputs.LOCATIONS)}}
-        key: ${{fromJson(needs.job1.outputs.KEY)}}
     steps:
       - uses: actions/checkout@v3
       - name: Run Command
