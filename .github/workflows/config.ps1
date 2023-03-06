@@ -1,5 +1,12 @@
+[CmdletBinding()]
+param (
+    [Parameter()]
+    [psobject]
+    $CommitMessage
+)
 Set-PSRepository PSGallery -InstallationPolicy Trusted
 Install-Module powershell-yaml -ErrorAction Stop
+$Commit = (ConvertFrom-Json $CommitMessage) -split " "
 $Commit = (ConvertFrom-Json '${{toJSON(github.event.head_commit.message)}}') -Split " "
 $Key = $Commit | Foreach-object {
     if ($_ -match "-") {

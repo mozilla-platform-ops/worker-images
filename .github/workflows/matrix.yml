@@ -11,7 +11,7 @@ jobs:
         shell: pwsh
         # Use a small PowerShell script to generate the test matrix
         run: |
-          & .github/workflows/config.ps1
+          & .github/workflows/config.ps1 -CommitMessage ${{toJSON(github.event.head_commit.message)}}
     outputs:
       LOCATIONS: ${{ steps.set-matrix.outputs.LOCATIONS }}
   job2:
