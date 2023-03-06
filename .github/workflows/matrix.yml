@@ -12,7 +12,7 @@ jobs:
         # Use a small PowerShell script to generate the test matrix
         run: |
           . .github/workflows/tools.ps1
-          Set-WorkerImageOutput -CommitMessage ${{toJSON(github.event.head_commit.message)}}
+          Set-WorkerImageOutput -CommitMessage '${{toJSON(github.event.head_commit.message)}}'
     outputs:
       LOCATIONS: ${{ steps.set-matrix.outputs.LOCATIONS }}
   job2:
