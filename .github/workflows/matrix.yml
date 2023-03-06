@@ -24,6 +24,7 @@ jobs:
     strategy:
       matrix:
         locations: ${{fromJson(needs.job1.outputs.LOCATIONS)}}
+        key: ${{fromJson(needs.job1.outputs.KEY)}}
     steps:
       - uses: actions/checkout@v3
       - name: Run Command
