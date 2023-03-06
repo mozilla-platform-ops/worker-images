@@ -15,6 +15,7 @@ jobs:
           Install-Module powershell-yaml -ErrorAction Stop
           $Commit = (ConvertFrom-Json '${{toJSON(github.event.head_commit.message)}}') -Split " "
           $YAML = Convertfrom-Yaml (Get-Content "config/$($Commit[1]).yaml" -raw)
+          ($YAML.azure.locations | ConvertTo-Json -Compress)
           $locations = ($YAML.azure.locations | ConvertTo-Json -Compress)
           Write-Output "LOCATIONS=$locations" >> $ENV:GITHUB_OUTPUT
           Write-Output "SHA=$PushEvent.after" >> $ENV:GITHUB_OUTPUT
