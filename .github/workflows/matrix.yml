@@ -15,12 +15,15 @@ jobs:
           Set-WorkerImageOutput -CommitMessage '${{toJSON(github.event.head_commit.message)}}'
     outputs:
       LOCATIONS: ${{ steps.set-matrix.outputs.LOCATIONS }}
+      KEY: ${{ steps.set-matrix.outputs.KEY }}
   job2:
     needs: job1
+    name: '${{ steps.set-matrix.outputs.KEY }} - ${{ matrix.LOCATIONS }}'
     runs-on: ubuntu-latest
     strategy:
       matrix:
         locations: ${{fromJson(needs.job1.outputs.LOCATIONS)}}
+        key: ${{fromJson(needs.job1.outputs.KEY)}}
     steps:
       - uses: actions/checkout@v3
       - name: Run Command

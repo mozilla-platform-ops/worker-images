@@ -18,4 +18,5 @@ function Set-WorkerImageOutput {
     $YAML = Convertfrom-Yaml (Get-Content "config/$key.yaml" -raw)
     $locations = ($YAML.azure.locations | ConvertTo-Json -Compress)
     Write-Output "LOCATIONS=$locations" >> $ENV:GITHUB_OUTPUT
+    Write-Output "KEY=$Key" >> $ENV:GITHUB_OUTPUT
 }
