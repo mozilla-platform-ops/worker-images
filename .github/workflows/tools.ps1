@@ -19,5 +19,3 @@ function Set-WorkerImageOutput {
     $locations = ($YAML.azure.locations | ConvertTo-Json -Compress)
     Write-Output "LOCATIONS=$locations" >> $ENV:GITHUB_OUTPUT
 }
-
-Export-ModuleMember -Function *
