@@ -4,6 +4,7 @@ on: [workflow_dispatch, push]
 
 jobs:
   job1:
+    name: "Create Maintenance and Image Build Tasks"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -18,7 +19,7 @@ jobs:
       KEY: ${{ steps.set-matrix.outputs.KEY }}
   job2:
     needs: job1
-    name: '${{ steps.set-matrix.outputs.KEY }} - ${{ matrix.LOCATIONS }}'
+    name: '${{ matrix.KEY }} - ${{ matrix.LOCATIONS }}'
     runs-on: ubuntu-latest
     strategy:
       matrix:
