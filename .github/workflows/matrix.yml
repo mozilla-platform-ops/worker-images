@@ -14,7 +14,6 @@ jobs:
           Set-PSRepository PSGallery -InstallationPolicy Trusted
           Install-Module powershell-yaml -ErrorAction Stop
           $Commit = (ConvertFrom-Json '${{toJSON(github.event.head_commit.message)}}') -Split " "
-          [string]$SHA = ConvertFrom-Json '${{toJSON(github.event.after)}}'
           $Key = $Commit | Foreach-object {
             if ($_ -match "-") {
               $_
@@ -23,20 +22,18 @@ jobs:
           $YAML = Convertfrom-Yaml (Get-Content "config/$key.yaml" -raw)
           $locations = ($YAML.azure.locations | ConvertTo-Json -Compress)
           Write-Output "LOCATIONS=$locations" >> $ENV:GITHUB_OUTPUT
-          Write-Output "SHA=$SHA" >> $ENV:GITHUB_OUTPUT
     outputs:
       LOCATIONS: ${{ steps.set-matrix.outputs.LOCATIONS }}
-      SHA: ${{ steps.set-matrix.outputs.SHA }}
   job2:
     needs: job1
     runs-on: ubuntu-latest
     strategy:
       matrix:
         locations: ${{fromJson(needs.job1.outputs.LOCATIONS)}}
-        sha: ${{fromJson(needs.job1.outputs.SHA)}}
     steps:
       - uses: actions/checkout@v3
       - name: Run Command
         shell: pwsh
         run: |
-          Write-Host "Running location '${{ matrix.LOCATIONS }}' from ref '${{ matrix.SHA }}'"
+          $SHA = ConvertFrom-Json '${{toJSON(github.event.after)}}'
+          Write-Host "Running location '${{ matrix.LOCATIONS }}' from $SHA"
