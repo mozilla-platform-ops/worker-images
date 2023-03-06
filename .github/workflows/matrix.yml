@@ -13,21 +13,32 @@ jobs:
         run: |
           Set-PSRepository PSGallery -InstallationPolicy Trusted
           Install-Module powershell-yaml -ErrorAction Stop
-          ConvertFrom-Json '${{toJSON(github.event.head_commit.message)}}'
-          $win11642009 = Convertfrom-Yaml (Get-Content "config/win11-64-2009.yaml" -raw)
-          $locations = ($win11642009.azure.locations | ConvertTo-Json -Compress)
+          #$Commit = ConvertFrom-Json '${{toJSON(github.event.head_commit.message)}}'
+          $PushEvent = ConvertFrom-Json '${{toJSON(github.event)}}'
+          $Commit = ConvertFrom-Json '${{toJSON(github.event.head_commit.message)}}'
+          $keys = $Commit -split ' ' | Foreach-object {
+            {if ($_ -match "-") {
+              $_}
+            }
+          }
+          $YAML = Convertfrom-Yaml (Get-Content "config/$keys.yaml" -raw)
+          $locations = ($YAML.azure.locations | ConvertTo-Json -Compress)
           Write-Output "LOCATIONS=$locations" >> $ENV:GITHUB_OUTPUT
+          Write-Output "SHA=$PushEvent.after" >> $ENV:GITHUB_OUTPUT
     outputs:
       LOCATIONS: ${{ steps.set-matrix.outputs.LOCATIONS }}
+      SHA: ${{ steps.set-matrix.outputs.SHA }}
+
   job2:
     needs: job1
     runs-on: ubuntu-latest
     strategy:
       matrix:
         locations: ${{fromJson(needs.job1.outputs.LOCATIONS)}}
+        sha: ${{fromJson(needs.job1.outputs.SHA)}}
     steps:
       - uses: actions/checkout@v3
       - name: Run Command
         shell: pwsh
         run: |
-          Write-Host "Running location '${{ matrix.LOCATIONS }}'"
+          Write-Host "Running location '${{ matrix.LOCATIONS }}' from ref '${{ matrix.SHA }}'"
