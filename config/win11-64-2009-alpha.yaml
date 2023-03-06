@@ -1,0 +1,30 @@
+---
+image:
+  publisher: MicrosoftWindowsDesktop
+  offer: Windows-11
+  sku: win11-22h2-avd
+azure:
+  managed_image_resource_group_name: rg-packer-through-cib
+  managed_image_storage_account_type: Standard_LRS
+  build_location: eastus
+  locations:
+    - centralindia
+    - eastus
+    - eastus2
+    - northcentralus
+    - northeurope
+    - southindia
+    - southcentralus
+    - westus
+    - westus2
+    - westus3
+vm:
+  size: Standard_F8s_v2
+  tags:
+    base_image: win11642009azure
+    worker_pool_id: win11-64-2009
+    sourceOrganisation: mozilla-platform-ops
+    sourceRepository: ronin_puppet
+    sourceBranch: cloud_windows
+    deploymentId: 72e7832
+    managed_by: packer
