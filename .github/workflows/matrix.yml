@@ -14,7 +14,7 @@ jobs:
           Set-PSRepository PSGallery -InstallationPolicy Trusted
           Install-Module powershell-yaml -ErrorAction Stop
           $Commit = (ConvertFrom-Json '${{toJSON(github.event.head_commit.message)}}') -Split " "
-          $SHA = ConvertFrom-Json '${{toJSON(github.event.after)}}'
+          [string]$SHA = ConvertFrom-Json '${{toJSON(github.event.after)}}'
           $Key = $Commit | Foreach-object {
             if ($_ -match "-") {
               $_
