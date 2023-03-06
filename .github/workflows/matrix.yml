@@ -13,7 +13,8 @@ jobs:
         run: |
           Set-PSRepository PSGallery -InstallationPolicy Trusted
           Install-Module powershell-yaml -ErrorAction Stop
-          (ConvertFrom-Json '${{toJSON(github.event.head_commit.message)}}')
+          $Commit = (ConvertFrom-Json '${{toJSON(github.event.head_commit.message)}}') -Split " "
+          $Commit[1]
           $YAML = Convertfrom-Yaml (Get-Content "config/$keys.yaml" -raw)
           $locations = ($YAML.azure.locations | ConvertTo-Json -Compress)
           Write-Output "LOCATIONS=$locations" >> $ENV:GITHUB_OUTPUT
