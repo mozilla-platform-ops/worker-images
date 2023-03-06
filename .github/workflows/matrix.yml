@@ -30,4 +30,4 @@ jobs:
         shell: pwsh
         run: |
           $SHA = ConvertFrom-Json '${{toJSON(github.event.after)}}'
-          Write-Host "Running location '${{ matrix.LOCATIONS }}' from $SHA"
+          Write-Host "Building '${{ needs.job1.outputs.KEY }}' in '${{ matrix.LOCATIONS }}' from $SHA"
