@@ -19,7 +19,7 @@ jobs:
       KEY: ${{ steps.set-matrix.outputs.KEY }}
   job2:
     needs: job1
-    name: '${{ needs.job1.outputs.KEY } - ${{ matrix.LOCATIONS }}'
+    name: '${{ needs.job1.outputs.KEY }} - ${{ matrix.LOCATIONS }}'
     runs-on: ubuntu-latest
     strategy:
       matrix:
