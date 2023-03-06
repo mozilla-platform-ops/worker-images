@@ -13,11 +13,11 @@ jobs:
         run: |
           Set-PSRepository PSGallery -InstallationPolicy Trusted
           Install-Module powershell-yaml -ErrorAction Stop
-          #$Commit = ConvertFrom-Json '${{toJSON(github.event.head_commit.message)}}'
-          $PushEvent = Get-Content '${{toJSON(github.event)}}' | ConvertFrom-Json
-          $keys = $PushEvent.head_commit.message -split ' ' | Foreach-object {
-            {if ($_ -match "-") {
-              $_}
+          $Commit = ConvertFrom-Json '${{toJSON(github.event.head_commit.message)}}'
+          $keys = $Commit -split ' ' | Foreach-object {
+            { if ($_ -match "-") {
+                $_
+              }
             }
           }
           $YAML = Convertfrom-Yaml (Get-Content "config/$keys.yaml" -raw)
