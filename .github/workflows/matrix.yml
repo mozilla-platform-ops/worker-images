@@ -15,8 +15,7 @@ jobs:
           Install-Module powershell-yaml -ErrorAction Stop
           #$Commit = ConvertFrom-Json '${{toJSON(github.event.head_commit.message)}}'
           $PushEvent = ConvertFrom-Json '${{toJSON(github.event)}}'
-          $Commit = ConvertFrom-Json '${{toJSON(github.event.head_commit.message)}}'
-          $keys = $Commit -split ' ' | Foreach-object {
+          $keys = $PushEvent.head_commit.message -split ' ' | Foreach-object {
             {if ($_ -match "-") {
               $_}
             }
