@@ -13,9 +13,9 @@ This repository stores the code used to create a machine image for use in [Taskc
 - [ ] Software Bill of Materials [(RELOPS-311)](https://mozilla-hub.atlassian.net/browse/RELOPS-311)
 - [ ] Schedule automated "builds" with beta pools [(RELOPS-413)](https://mozilla-hub.atlassian.net/browse/RELOPS-413)
 - [ ] Create "release" artifact with changelog, software list, etc (similar to [runner-images release method](https://github.com/actions/runner-images/releases))
-- [ ] Create audit task script in-tree (Mark)
+- [ ] Create audit task script in-tree (Mark).
 - [ ] For "source" pools, figure out an automated way to provision a template with source code baked in and regularly built via github actions
-- [ ] After image is created/released, trigger try/push with sample tasks (mochitest chrome, etc) and run audit task
+- [ ] After image is created/released, trigger try/push with sample tasks (mochitest chrome, etc) and run audit task.
 - [ ] Github Actions
   - [ ] [OIDC Azure](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-azure) | [(RELOPS-309)](https://mozilla-hub.atlassian.net/browse/RELOPS-309)
   - [ ] [OIDC Google Cloud Platform](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-google-cloud-platform) | [(RELOPS-399)](https://mozilla-hub.atlassian.net/browse/RELOPS-399)
