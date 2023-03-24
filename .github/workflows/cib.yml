@@ -4,9 +4,11 @@ on: [workflow_dispatch, push]
 
 jobs:
   commit:
+    name: Handle Commit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: commit
         shell: pwsh
         # Use a small PowerShell script to generate the test matrix
         run: |
