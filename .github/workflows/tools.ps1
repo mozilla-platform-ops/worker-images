@@ -26,7 +26,86 @@ function Set-WorkerImageOutput {
     Foreach ($key in $keys) {
         $YAML = Convertfrom-Yaml (Get-Content "config/$key.yaml" -raw)
         $locations = ($YAML.azure.locations | ConvertTo-Json -Compress)
+        $publisher = $YAML.image["publisher"]
+        $offer = $YAML.image["offer"]
+        $sku = $YAML.image["sku"]
+        $VMSize = $YAML.vm["size"]
+        $BootStrapScript = $YAML.azure["bootstrapscript"]
+        Write-Output "BOOTSTRAPSCRIPT=$BootStrapScript" >> $ENV:GITHUB_OUTPUT
+        Write-Output "VMSIZE=$VMSize" >> $ENV:GITHUB_OUTPUT
+        Write-Output "SKU=$sku" >> $ENV:GITHUB_OUTPUT
+        Write-Output "OFFER=$offer" >> $ENV:GITHUB_OUTPUT
+        Write-Output "PUBLISHER=$publisher" >> $ENV:GITHUB_OUTPUT
         Write-Output "LOCATIONS=$locations" >> $ENV:GITHUB_OUTPUT
         Write-Output "KEY=$Key" >> $ENV:GITHUB_OUTPUT
+    }
+}
+
+function New-WorkerImage {
+    [CmdletBinding()]
+    param (
+        [String]
+        $Location,
+
+        [String]
+        $BootStrapScript,
+
+        [String]
+        $ImageSku,
+
+        [String]
+        $BaseImage,
+
+        [String]
+        $DeploymentId,
+
+        [String]
+        $SourceBranch,
+
+        [String]
+        $SourceOrganization,
+
+        [String]
+        $SourceRepository,
+
+        [String]
+        $WorkerPoolId,
+
+        [String]
+        $VMSize,
+
+        [String]
+        $ResourceGroup,
+
+        [String]
+        $SHA,
+
+        [String]
+        $ImageVersion
+    )
+    
+    $ENV:PKR_VAR_location = $Location
+    $ENV:PKR_VAR_bootstrap_script = $BootStrapScript
+    $ENV:PKR_VAR_image_sku = $ImageSku
+    $ENV:PKR_VAR_base_image = $BaseImage
+    $ENV:PKR_VAR_deployment_id = $DeploymentID
+    $ENV:PKR_VAR_source_branch = $SourceBranch
+    $ENV:PKR_VAR_source_organization = $SourceOrganization
+    $ENV:PKR_VAR_source_repository = $SourceRepository
+    $ENV:PKR_VAR_worker_pool_id = $WorkerPoolId
+    $ENV:PKR_VAR_vm_size = $VMSize
+    $ENV:PKR_VAR_resource_group = $ResourceGroup
+    $ENV:PKR_VAR_client_id = $ENV:client_id
+    $ENV:PKR_VAR_tenant_id = $ENV:tenant_id
+    $ENV:PKR_VAR_subscription_id = $ENV:subscription_id
+    $ENV:PKR_VAR_client_secret = $ENV:client_secret
+    $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-alpha' -f $ENV:PKR_VAR_worker_pool_id, $ENV:PKR_VAR_image_sku)
+    $ENV:PKR_VAR_image_version = $ImageVersion  
+    if (Test-Path "windows.pkr.hcl") {
+        packer build -force windows.pkr.hcl
+    }
+    else {
+        Write-Error "Cannot find windows.pkr.hcl"
+        Exit 1
     }
 }
