@@ -26,8 +26,49 @@ jobs:
         locations: ${{fromJson(needs.job1.outputs.LOCATIONS)}}
     steps:
       - uses: actions/checkout@v3
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_CLIENT_ID_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID_DEV }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
       - name: Run Command
         shell: pwsh
+        env:
+          subscription_id = ${{ secrets.AZURE_SUBSCRIPTION_ID_DEV }}
+          client_id = ${{ secrets.AZURE_CLIENT_ID }}
+          client_secret = ${{ secrets.AZURE_CLIENT_ID_SECRET }}
+          tenant_id = ${{ secrets.AZURE_TENANT_ID }}
         run: |
+          Set-Location .\windows
           $SHA = ConvertFrom-Json '${{toJSON(github.event.after)}}'
           Write-Host "Building '${{ needs.job1.outputs.KEY }}' in '${{ matrix.LOCATIONS }}' from $SHA"
+      #- name: Run Command
+      #  shell: pwsh
+      #  env:
+      #    subscription_id = ${{ secrets.AZURE_SUBSCRIPTION_ID_DEV }}
+      #    client_id = ${{ secrets.AZURE_CLIENT_ID }}
+      #    client_secret = ${{ secrets.AZURE_CLIENT_ID_SECRET }}
+      #    tenant_id = ${{ secrets.AZURE_TENANT_ID }}
+      #  run: |
+      #    Set-Location .\windows
+      #    $SHA = ConvertFrom-Json '${{toJSON(github.event.after)}}'
+      #    Write-Host "Building '${{ needs.job1.outputs.KEY }}' in '${{ matrix.LOCATIONS }}' from $SHA"
+      #    $date = Get-Date -Format "MM.dd.yy"
+      #    $ENV:PKR_VAR_location = ${{ matrix.LOCATIONS }}
+      #    $ENV:PKR_VAR_bootstrap_script = "https://raw.githubusercontent.com/jwmoss/ronin_puppet/cloud_windows/provisioners/windows/azure/azure-bootstrap.ps1"
+      #    $ENV:PKR_VAR_image_sku = "win11-22h2-avd"
+      #    $ENV:PKR_VAR_base_image = "win11642009azure"
+      #    $ENV:PKR_VAR_deployment_id = "190b324"
+      #    $ENV:PKR_VAR_source_branch = "cloud_windows"
+      #    $ENV:PKR_VAR_source_organization = "jwmoss"
+      #    $ENV:PKR_VAR_source_repository = "ronin_puppet"
+      #    $ENV:PKR_VAR_worker_pool_id = "win11-64-2009"
+      #    $ENV:PKR_VAR_vm_size = "Standard_F8s_v2"
+      #    $ENV:PKR_VAR_resource_group = "rg-packer-worker-images"
+      #    $ENV:PKR_VAR_client_id = $ENV:client_id
+      #    $ENV:PKR_VAR_tenant_id = $ENV:tenant_id
+      #    $ENV:PKR_VAR_subscription_id = $ENV:subscription_id
+      #    $ENV:PKR_VAR_client_secret = $ENV:client_secret
+      #    $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-alpha' -f $ENV:PKR_VAR_worker_pool_id, $ENV:PKR_VAR_image_sku)
+      #    $ENV:PKR_VAR_image_version = $date
+          
+          #packer build -force .\windows.pkr.hcl

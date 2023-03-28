@@ -123,11 +123,10 @@ source "azure-arm" "this" {
   winrm_username = "packer"
 
   # Authentication
-  #client_id                             = "${var.client_id}"
-  #client_secret                         = "${var.client_secret}"
-  use_interactive_auth = "true"
-  subscription_id      = "0a420ff9-bc77-4475-befc-a05071fc92ec"
-  tenant_id            = "c0dc8bb0-b616-427e-8217-9513964a145b"
+  client_id       = "${var.client_id}"
+  client_secret   = "${var.client_secret}"
+  subscription_id = "0a420ff9-bc77-4475-befc-a05071fc92ec"
+  tenant_id       = "c0dc8bb0-b616-427e-8217-9513964a145b"
 
   # Source 
   os_type         = "Windows"
@@ -142,27 +141,6 @@ source "azure-arm" "this" {
   managed_image_name                 = "${var.managed_image_name}"
   managed_image_resource_group_name  = "rg-packer-worker-images"
 
-  shared_image_gallery_destination {
-    subscription   = "0a420ff9-bc77-4475-befc-a05071fc92ec"
-    resource_group = "rg-packer-worker-images"
-    gallery_name   = "workerimages"
-    image_name     = "win11"
-    image_version  = "03.22.23"
-    replication_regions = [
-      "centralindia",
-      "eastus",
-      "eastus2",
-      "northcentralus",
-      "northeurope",
-      "southindia",
-      "southcentralus",
-      "westus",
-      "westus2",
-      "westus3"
-    ]
-    #  storage_account_type = "Standard_LRS"
-  }
-
   # Tags
   azure_tags = {
     base_image         = "${var.base_image}"
@@ -172,14 +150,6 @@ source "azure-arm" "this" {
     sourceRepository   = "${var.source_repository}"
     worker_pool_id     = "${var.worker_pool_id}"
   }
-
-  #shared_image_gallery {
-  #  subscription = "0a420ff9-bc77-4475-befc-a05071fc92ec"
-  #  resource_group = "rg-packer-worker-images"
-  #  gallery_name = "workerimages"
-  #  image_name = "${var.managed_image_name}"
-  #  image_version = "${var.image_version}"
-  #}
 
 }
 
