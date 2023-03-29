@@ -1,4 +1,4 @@
-name: matrix
+name: cib
 
 on: [workflow_dispatch]
 
