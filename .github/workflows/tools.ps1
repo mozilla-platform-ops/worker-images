@@ -75,11 +75,11 @@ function New-WorkerImage {
         $ENV:PKR_VAR_deployment_id = $YAML.vm.tags["deploymentId"]
         $ENV:PKR_VAR_bootstrap_script = $YAML.azure["bootstrapscript"]
         $ENV:PKR_VAR_client_id = $ENV:client_id
-        $ENV:PKR_VAR_temp_resource_group_name = ('{0}-{1}-{2}-{3}-pkrtmp' -f $YAML.azure["worker_pool_id"], $ENV:PKR_VAR_location, $YAML.vm.tags["deploymentId"], (Get-Random -Maximum 999))
+        $ENV:PKR_VAR_temp_resource_group_name = ('{0}-{1}-{2}-{3}-pkrtmp' -f $YAML.vm.tags["worker_pool_id"], $ENV:PKR_VAR_location, $YAML.vm.tags["deploymentId"], (Get-Random -Maximum 999))
         $ENV:PKR_VAR_tenant_id = $ENV:tenant_id
         $ENV:PKR_VAR_subscription_id = $ENV:subscription_id
         $ENV:PKR_VAR_client_secret = $ENV:client_secret
-        $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-alpha' -f $YAML.azure["worker_pool_id"], $ENV:PKR_VAR_image_sku)
+        $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-alpha' -f $YAML.vm.tags["worker_pool_id"], $ENV:PKR_VAR_image_sku)
         Write-Host "Building $($ENV:PKR_VAR_managed_image_name)"
         $ENV:PKR_VAR_image_version = $ImageVersion
         if (Test-Path "./windows/windows.pkr.hcl") {
