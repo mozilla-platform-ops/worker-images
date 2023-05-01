@@ -15,21 +15,8 @@ jobs:
           . .github/workflows/tools.ps1
           Set-WorkerImageOutput -CommitMessage '${{toJSON(github.event.head_commit.message)}}'
     outputs:
-      SOURCEREPOSITORY: ${{ steps.set-matrix.outputs.SOURCEREPOSITORY }}
-      SOURCEORGANIZATION: ${{ steps.set-matrix.outputs.SOURCEORGANIZATION }}
-      SOURCEBRANCH: ${{ steps.set-matrix.outputs.SOURCEBRANCH }}
-      DEPLOYMENTID: ${{ steps.set-matrix.outputs.DEPLOYMENTID }}
-      BASEIMAGE: ${{ steps.set-matrix.outputs.BASEIMAGE }}
-      OFFER: ${{ steps.set-matrix.outputs.OFFER }}
-
-
-      WORKERPOOLID: ${{ steps.set-matrix.outputs.WORKERPOOLID }}
-      BOOTSTRAPSCRIPT: ${{ steps.set-matrix.outputs.BOOTSTRAPSCRIPT }}
-      VMSIZE: ${{ steps.set-matrix.outputs.VMSIZE }}
       LOCATIONS: ${{ steps.set-matrix.outputs.LOCATIONS }}
-      PUBLISHER: ${{ steps.set-matrix.outputs.PUBLISHER }}
       KEY: ${{ steps.set-matrix.outputs.KEY }}
-      SKU: ${{ steps.set-matrix.outputs.SKU }}
   job2:
     needs: job1
     name: "${{ needs.job1.outputs.KEY }} - ${{ matrix.LOCATIONS }}"
@@ -39,42 +26,22 @@ jobs:
         locations: ${{fromJson(needs.job1.outputs.LOCATIONS)}}
     steps:
       - uses: actions/checkout@v3
-      - name: Azure Login
-        uses: Azure/login@v1
-        with:
-          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID_DEV }}","clientSecret":"${{ secrets.AZURE_CLIENT_ID_DEV_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID_DEV }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
-          enable-AzPSSession: true
-      - name: "List packer stuff"
-        uses: azure/powershell@v1
-        with:
-          inlinescript: |
-            Get-AzResourceGroup -Name "rg-packer-worker-images"
-          azPSVersion: "latest"
+#      - name: Azure Login
+#        uses: Azure/login@v1
+#        with:
+#          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID_DEV }}","clientSecret":"${{ secrets.AZURE_CLIENT_ID_DEV_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID_DEV }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
+#          enable-AzPSSession: true
+#      - name: "List packer stuff"
+#        uses: azure/powershell@v1
+#        with:
+#          inlinescript: |
+#            Get-AzResourceGroup -Name "rg-packer-worker-images"
+#          azPSVersion: "latest"
       - name: 'Run Packer'
         shell: pwsh
         run: |
           . .github/workflows/tools.ps1
           Set-Location .\windows
-          $SHA = ConvertFrom-Json '${{toJSON(github.event.after)}}'
-          $Vars = @{
-            Location = "${{ matrix.LOCATIONS }}"
-            BootStrapScript = "${{ matrix.BOOTSTRAPSCRIPT }}"
-            ImageSku = "${{ matrix.BOOTSTRAPSCRIPT }}"
-            BaseImage = "${{ matrix.BASEIMAGE }}"
-            DeploymentId = "${{ matrix.DEPLOYMENTID }}"
-            SourceBranch = "${{ matrix.SOURCEBRANCH }}"
-            SourceOrganization = "${{ matrix.SOURCEORGANIZATION }}"
-            SourceRepository = "${{ matrix.SOURCEREPOSITORY }}"
-            WorkerPoolId = "${{ matrix.WORKERPOOLID }}"
-            VMSize = "${{ matrix.VMSIZE }}"
-            ResourceGroup = "rg-packer-through-cib"
-            SHA = $SHA
-            ImageVersion = $sha.SubString(0,7)
-            Offer = "${{ matrix.OFFER }}"
-          }
-          $ENV:client_id = "${{ secrets.AZURE_CLIENT_ID_DEV }}"
-          $ENV:tenant_id = "${{ secrets.AZURE_TENANT_ID }}"
-          $ENV:subscription_id = "${{ secrets.AZURE_SUBSCRIPTION_ID_DEV }}"
-          $ENV:client_secret = "${{ secrets.AZURE_CLIENT_ID_DEV_SECRET }}"
+          $SHA = "${{toJSON(github.event.after)}}" -replace "''"
           Write-Host "Building '${{ needs.job1.outputs.KEY }}' in '${{ matrix.LOCATIONS }}' from $SHA"
-          New-WorkerImage @Vars
+          New-WorkerImage -Location "${{ matrix.LOCATIONS }}" -CommitMessage '${{toJSON(github.event.head_commit.message)}}'
