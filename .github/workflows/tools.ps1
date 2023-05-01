@@ -80,8 +80,8 @@ function New-WorkerImage {
         $ENV:PKR_VAR_client_secret = $ENV:client_secret
         $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-alpha' -f $YAML.azure["worker_pool_id"], $ENV:PKR_VAR_image_sku)
         $ENV:PKR_VAR_image_version = $ImageVersion
-        if (Test-Path "windows.pkr.hcl") {
-            packer build -force ./windows.pkr.hcl
+        if (Test-Path "./windows/windows.pkr.hcl") {
+            packer build -force ./windows/windows.pkr.hcl
         }
         else {
             Write-Error "Cannot find windows.pkr.hcl"
