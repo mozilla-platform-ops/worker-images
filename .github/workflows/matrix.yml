@@ -42,6 +42,6 @@ jobs:
         run: |
           . .github/workflows/tools.ps1
           Set-Location .\windows
-          $SHA = "${{toJSON(github.event.after)}}" -replace "''"
+          $SHA = '(github.event.after)'
           Write-Host "Building '${{ needs.job1.outputs.KEY }}' in '${{ matrix.LOCATIONS }}' from $SHA"
           New-WorkerImage -Location "${{ matrix.LOCATIONS }}" -CommitMessage '${{toJSON(github.event.head_commit.message)}}'
