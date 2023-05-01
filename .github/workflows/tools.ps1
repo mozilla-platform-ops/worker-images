@@ -60,11 +60,11 @@ function New-WorkerImage {
     }
 
     $ENV:PKR_VAR_location = $Location
-    $ENV:PKR_VAR_resource_group = $ResourceGroup
 
     Foreach ($key in $keys) {
         $YAML = Convertfrom-Yaml (Get-Content "config/$key.yaml" -raw)
         $ENV:PKR_VAR_image_publisher = $YAML.image["publisher"]
+        $ENV:PKR_VAR_resource_group = $yaml.azure["managed_image_resource_group_name"]
         $ENV:PKR_VAR_offer = $YAML.image["offer"]
         $ENV:PKR_VAR_image_sku = $YAML.image["sku"]
         $ENV:PKR_VAR_vm_size = $YAML.vm["size"]
