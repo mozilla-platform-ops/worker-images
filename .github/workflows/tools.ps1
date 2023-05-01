@@ -93,9 +93,13 @@ function New-WorkerImage {
         $SHA,
 
         [String]
-        $ImageVersion
+        $ImageVersion,
+
+        [String]
+        $Offer
     )
     
+    $ENV:PKR_VAR_offer = $Offer 
     $ENV:PKR_VAR_location = $Location
     $ENV:PKR_VAR_bootstrap_script = $BootStrapScript
     $ENV:PKR_VAR_image_sku = $ImageSku

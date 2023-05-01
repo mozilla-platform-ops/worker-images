@@ -15,6 +15,15 @@ jobs:
           . .github/workflows/tools.ps1
           Set-WorkerImageOutput -CommitMessage '${{toJSON(github.event.head_commit.message)}}'
     outputs:
+      SOURCEREPOSITORY: ${{ steps.set-matrix.outputs.SOURCEREPOSITORY }}
+      SOURCEORGANIZATION: ${{ steps.set-matrix.outputs.SOURCEORGANIZATION }}
+      SOURCEBRANCH: ${{ steps.set-matrix.outputs.SOURCEBRANCH }}
+      DEPLOYMENTID: ${{ steps.set-matrix.outputs.DEPLOYMENTID }}
+      BASEIMAGE: ${{ steps.set-matrix.outputs.BASEIMAGE }}
+      OFFER: ${{ steps.set-matrix.outputs.OFFER }}
+
+
+      WORKERPOOLID: ${{ steps.set-matrix.outputs.WORKERPOOLID }}
       BOOTSTRAPSCRIPT: ${{ steps.set-matrix.outputs.BOOTSTRAPSCRIPT }}
       VMSIZE: ${{ steps.set-matrix.outputs.VMSIZE }}
       LOCATIONS: ${{ steps.set-matrix.outputs.LOCATIONS }}
@@ -43,11 +52,11 @@ jobs:
           azPSVersion: "latest"
       - name: 'Run Packer'
         shell: pwsh
-        #env:
-        #  subscription_id = ${{ secrets.AZURE_SUBSCRIPTION_ID_DEV }}
-        #  client_id = ${{ secrets.AZURE_CLIENT_ID }}
-        #  client_secret = ${{ secrets.AZURE_CLIENT_ID_SECRET }}
-        #  tenant_id = ${{ secrets.AZURE_TENANT_ID }}
+        env:
+          subscription_id = "${{ secrets.AZURE_SUBSCRIPTION_ID_DEV }}"
+          client_id = "${{ secrets.AZURE_CLIENT_ID }}"
+          client_secret = "${{ secrets.AZURE_CLIENT_ID_SECRET }}"
+          tenant_id = "${{ secrets.AZURE_TENANT_ID }}"
         run: |
           . .github/workflows/tools.ps1
           Set-Location .\windows
@@ -66,6 +75,7 @@ jobs:
             ResourceGroup = "rg-packer-through-cib"
             SHA = $SHA
             ImageVersion = $sha.SubString(0,7)
+            Offer = "${{ matrix.OFFER }}"
           }
           Write-Host "Building '${{ needs.job1.outputs.KEY }}' in '${{ matrix.LOCATIONS }}' from $SHA"
           #New-WorkerImage @Vars
