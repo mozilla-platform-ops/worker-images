@@ -35,11 +35,11 @@ jobs:
           Get-AzResourceGroup -Name "rg-packer-worker-images"
       - name: Run Command
         shell: pwsh
-        env:
-          subscription_id = ${{ secrets.AZURE_SUBSCRIPTION_ID_DEV }}
-          client_id = ${{ secrets.AZURE_CLIENT_ID }}
-          client_secret = ${{ secrets.AZURE_CLIENT_ID_SECRET }}
-          tenant_id = ${{ secrets.AZURE_TENANT_ID }}
+        #env:
+        #  subscription_id = ${{ secrets.AZURE_SUBSCRIPTION_ID_DEV }}
+        #  client_id = ${{ secrets.AZURE_CLIENT_ID }}
+        #  client_secret = ${{ secrets.AZURE_CLIENT_ID_SECRET }}
+        #  tenant_id = ${{ secrets.AZURE_TENANT_ID }}
         run: |
           Set-Location .\windows
           $SHA = ConvertFrom-Json '${{toJSON(github.event.after)}}'
