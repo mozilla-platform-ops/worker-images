@@ -123,22 +123,45 @@ source "azure-arm" "this" {
   winrm_username = "packer"
 
   # Authentication
-  client_id       = "${var.client_id}"
-  client_secret   = "${var.client_secret}"
-  subscription_id = "${var.subscription_id}"
-  tenant_id       = "${var.tenant_id}"
+  #client_id                             = "${var.client_id}"
+  #client_secret                         = "${var.client_secret}"
+  use_interactive_auth = "true"
+  subscription_id      = "0a420ff9-bc77-4475-befc-a05071fc92ec"
+  tenant_id            = "c0dc8bb0-b616-427e-8217-9513964a145b"
 
   # Source 
   os_type         = "Windows"
-  image_publisher = "${var.image_publisher}"
-  image_offer     = "${var.image_offer}"
-  image_sku       = "${var.image_sku}"
+  image_publisher = "MicrosoftWindowsDesktop"
+  image_offer     = "Windows-11"
+  image_sku       = "win11-22h2-avd"
 
   # Destination
+  build_resource_group_name          = "rg-packer-worker-images"
   managed_image_storage_account_type = "Standard_LRS"
   vm_size                            = "${var.vm_size}"
   managed_image_name                 = "${var.managed_image_name}"
-  managed_image_resource_group_name  = "${var.resource_group}"
+  managed_image_resource_group_name  = "rg-packer-worker-images"
+
+  # Shared image gallery https://github.com/mozilla-platform-ops/relops_infra_as_code/blob/master/terraform/azure_fx_nonci/worker-images.tf 
+  shared_image_gallery_destination {
+    subscription   = "0a420ff9-bc77-4475-befc-a05071fc92ec"
+    resource_group = "rg-packer-worker-images"
+    gallery_name   = "workerimages"
+    image_name     = "win11"
+    image_version  = "03.22.23"
+    replication_regions = [
+      "centralindia",
+      "eastus",
+      "eastus2",
+      "northcentralus",
+      "northeurope",
+      "southindia",
+      "southcentralus",
+      "westus",
+      "westus2",
+      "westus3"
+    ]
+  }
 
   # Tags
   azure_tags = {
@@ -149,7 +172,6 @@ source "azure-arm" "this" {
     sourceRepository   = "${var.source_repository}"
     worker_pool_id     = "${var.worker_pool_id}"
   }
-
 }
 
 

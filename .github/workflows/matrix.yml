@@ -15,8 +15,12 @@ jobs:
           . .github/workflows/tools.ps1
           Set-WorkerImageOutput -CommitMessage '${{toJSON(github.event.head_commit.message)}}'
     outputs:
+      BOOTSTRAPSCRIPT: ${{ steps.set-matrix.outputs.BOOTSTRAPSCRIPT }}
+      VMSIZE: ${{ steps.set-matrix.outputs.VMSIZE }}
       LOCATIONS: ${{ steps.set-matrix.outputs.LOCATIONS }}
+      PUBLISHER: ${{ steps.set-matrix.outputs.PUBLISHER }}
       KEY: ${{ steps.set-matrix.outputs.KEY }}
+      SKU: ${{ steps.set-matrix.outputs.SKU }}
   job2:
     needs: job1
     name: "${{ needs.job1.outputs.KEY }} - ${{ matrix.LOCATIONS }}"
@@ -37,7 +41,7 @@ jobs:
           inlinescript: |
             Get-AzResourceGroup -Name "rg-packer-worker-images"
           azPSVersion: "latest"
-      - name: Run Command
+      - name: 'Run Packer'
         shell: pwsh
         #env:
         #  subscription_id = ${{ secrets.AZURE_SUBSCRIPTION_ID_DEV }}
@@ -45,6 +49,23 @@ jobs:
         #  client_secret = ${{ secrets.AZURE_CLIENT_ID_SECRET }}
         #  tenant_id = ${{ secrets.AZURE_TENANT_ID }}
         run: |
+          . .github/workflows/tools.ps1
           Set-Location .\windows
           $SHA = ConvertFrom-Json '${{toJSON(github.event.after)}}'
+          $Vars = @{
+            Location = "${{ matrix.LOCATIONS }}"
+            BootStrapScript = "${{ matrix.BOOTSTRAPSCRIPT }}"
+            ImageSku = "${{ matrix.BOOTSTRAPSCRIPT }}"
+            BaseImage = "${{ matrix.BASEIMAGE }}"
+            DeploymentId = "${{ matrix.DEPLOYMENTID }}"
+            SourceBranch = "${{ matrix.SOURCEBRANCH }}"
+            SourceOrganization = "${{ matrix.SOURCEORGANIZATION }}"
+            SourceRepository = "${{ matrix.SOURCEREPOSITORY }}"
+            WorkerPoolId = "${{ matrix.WORKERPOOLID }}"
+            VMSize = "${{ matrix.VMSIZE }}"
+            ResourceGroup = "rg-packer-through-cib"
+            SHA = $SHA
+            ImageVersion = $sha.SubString(0,7)
+          }
           Write-Host "Building '${{ needs.job1.outputs.KEY }}' in '${{ matrix.LOCATIONS }}' from $SHA"
+          #New-WorkerImage @Vars
