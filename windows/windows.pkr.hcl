@@ -114,6 +114,11 @@ variable "resource_group" {
   default = "${env("resource_group")}"
 }
 
+variable "temp_resource_group_name" {
+  type    = string
+  default = "${env("temp_resource_group_name")}"
+}
+
 source "azure-arm" "this" {
   # WinRM
   communicator   = "winrm"
@@ -135,6 +140,7 @@ source "azure-arm" "this" {
   image_sku       = "${var.image_sku}"
 
   # Destination
+  temp_resource_group_name           = "${var.temp_resource_group_name}"
   managed_image_storage_account_type = "Standard_LRS"
   vm_size                            = "${var.vm_size}"
   managed_image_name                 = "${var.managed_image_name}"
