@@ -157,7 +157,7 @@ source "azure-arm" "this" {
     subscription   = "${var.subscription_id}"
     resource_group = "${var.resource_group}"
     gallery_name   = "workerimages"
-    image_name     = "${var.image_key_name}"
+    image_name     = "${var.managed_image_name}"
     image_version  = "${var.deployment_id}"
     replication_regions = [
       "centralindia",
