@@ -1,0 +1,37 @@
+name: matrix
+
+on: [workflow_dispatch, push]
+
+jobs:
+  job1:
+    name: "Create Image Tasks"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - id: set-matrix
+        shell: pwsh
+        run: |
+          . .github/workflows/tools.ps1
+          Set-WorkerImageOutput -CommitMessage '${{toJSON(github.event.head_commit.message)}}'
+    outputs:
+      KEY: ${{ steps.set-matrix.outputs.KEY }}
+  job2:
+    needs: job1
+    name: "${{ needs.job1.outputs.KEY }} - Shared Image"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: 'Run Packer'
+        shell: pwsh
+        run: |
+          . .github/workflows/tools.ps1
+          $SHA = "${{ github.event.after }}"
+          Write-Host "Building '${{ needs.job1.outputs.KEY }}' from $SHA"
+          $Vars = @{
+            CommitMessage = '${{toJSON(github.event.head_commit.message)}}'
+            Client_ID = "${{ secrets.AZURE_CLIENT_ID_DEV }}"
+            Client_Secret = "${{ secrets.AZURE_CLIENT_ID_DEV_SECRET }}"
+            Subscription_ID = "${{ secrets.AZURE_SUBSCRIPTION_ID_DEV }}"
+            Tenant_ID = "${{ secrets.AZURE_TENANT_ID }}"
+          }
+          New-WorkerImage @Vars
