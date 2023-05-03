@@ -74,7 +74,7 @@ function New-WorkerImage {
     Foreach ($key in $keys) {
         $YAML = Convertfrom-Yaml (Get-Content "config/$key.yaml" -raw)
         $ENV:PKR_VAR_image_key_name = $key
-        $ENV:PKR_VAR_location = "Central US"
+        $ENV:PKR_VAR_location = "central-us"
         $ENV:PKR_VAR_image_publisher = $YAML.image["publisher"]
         $ENV:PKR_VAR_resource_group = $yaml.azure["managed_image_resource_group_name"]
         $ENV:PKR_VAR_image_offer = $YAML.image["offer"]
@@ -88,6 +88,7 @@ function New-WorkerImage {
         $ENV:PKR_VAR_bootstrap_script = $YAML.azure["bootstrapscript"]
         $ENV:PKR_VAR_client_id = $Client_ID
         $ENV:PKR_VAR_temp_resource_group_name = ('{0}-{1}-{2}-{3}-pkrtmp' -f $YAML.vm.tags["worker_pool_id"], $ENV:PKR_VAR_location, $YAML.vm.tags["deploymentId"], (Get-Random -Maximum 999))
+        Write-host "Building $($ENV:PKR_VAR_temp_resource_group_name)"
         $ENV:PKR_VAR_tenant_id = $Tenant_ID
         $ENV:PKR_VAR_subscription_id = $Subscription_ID
         $ENV:PKR_VAR_client_secret = $Client_Secret
