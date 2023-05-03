@@ -114,6 +114,16 @@ variable "resource_group" {
   default = "${env("resource_group")}"
 }
 
+variable "temp_resource_group_name" {
+  type    = string
+  default = "${env("temp_resource_group_name")}"
+}
+
+variable "image_key_name" {
+  type    = string
+  default = "${env("image_key_name")}"
+}
+
 source "azure-arm" "this" {
   # WinRM
   communicator   = "winrm"
@@ -123,32 +133,32 @@ source "azure-arm" "this" {
   winrm_username = "packer"
 
   # Authentication
-  #client_id                             = "${var.client_id}"
-  #client_secret                         = "${var.client_secret}"
-  use_interactive_auth = "true"
-  subscription_id      = "0a420ff9-bc77-4475-befc-a05071fc92ec"
-  tenant_id            = "c0dc8bb0-b616-427e-8217-9513964a145b"
+  client_id       = "${var.client_id}"
+  client_secret   = "${var.client_secret}"
+  subscription_id = "${var.subscription_id}"
+  tenant_id       = "${var.tenant_id}"
 
   # Source 
   os_type         = "Windows"
-  image_publisher = "MicrosoftWindowsDesktop"
-  image_offer     = "Windows-11"
-  image_sku       = "win11-22h2-avd"
+  image_publisher = "${var.image_publisher}"
+  image_offer     = "${var.image_offer}"
+  image_sku       = "${var.image_sku}"
 
   # Destination
-  build_resource_group_name          = "rg-packer-worker-images"
+  temp_resource_group_name           = "${var.temp_resource_group_name}"
+  location                           = "${var.location}"
   managed_image_storage_account_type = "Standard_LRS"
   vm_size                            = "${var.vm_size}"
   managed_image_name                 = "${var.managed_image_name}"
-  managed_image_resource_group_name  = "rg-packer-worker-images"
+  managed_image_resource_group_name  = "${var.resource_group}"
 
   # Shared image gallery https://github.com/mozilla-platform-ops/relops_infra_as_code/blob/master/terraform/azure_fx_nonci/worker-images.tf 
   shared_image_gallery_destination {
-    subscription   = "0a420ff9-bc77-4475-befc-a05071fc92ec"
-    resource_group = "rg-packer-worker-images"
+    subscription   = "${var.subscription_id}"
+    resource_group = "${var.resource_group}"
     gallery_name   = "workerimages"
-    image_name     = "win11"
-    image_version  = "03.22.23"
+    image_name     = "${var.image_key_name}"
+    image_version  = "${var.deployment_id}"
     replication_regions = [
       "centralindia",
       "eastus",

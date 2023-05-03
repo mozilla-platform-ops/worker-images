@@ -73,6 +73,7 @@ function New-WorkerImage {
 
     Foreach ($key in $keys) {
         $YAML = Convertfrom-Yaml (Get-Content "config/$key.yaml" -raw)
+        $ENV:PKR_VAR_image_key_name = $key
         $ENV:PKR_VAR_location = $Location
         $ENV:PKR_VAR_image_publisher = $YAML.image["publisher"]
         $ENV:PKR_VAR_resource_group = $yaml.azure["managed_image_resource_group_name"]
@@ -93,11 +94,12 @@ function New-WorkerImage {
         $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-alpha' -f $YAML.vm.tags["worker_pool_id"], $ENV:PKR_VAR_image_sku)
         Write-Host "Building $($ENV:PKR_VAR_managed_image_name)"
         $ENV:PKR_VAR_image_version = $ImageVersion
-        if (Test-Path "./windows/windows.pkr.hcl") {
-            packer build -force ./windows/windows.pkr.hcl
+        if (Test-Path "./windows_sharedgallery/windows.pkr.hcl") {
+            
+            packer build -force ./windows_sharedgallery/windows.pkr.hcl
         }
         else {
-            Write-Error "Cannot find ./windows/windows.pkr.hcl"
+            Write-Error "Cannot find ./windows_sharedgallery/windows.pkr.hcl"
             Exit 1
         }
     }
