@@ -152,14 +152,6 @@ source "azure-arm" "this" {
   managed_image_name                 = "${var.managed_image_name}"
   managed_image_resource_group_name  = "${var.resource_group}"
 
-  shared_image_gallery {
-    subscription   = "${var.subscription_id}"
-    resource_group = "${var.resource_group}"
-    gallery_name   = "workerimages"
-    image_name     = "${var.managed_image_name}"
-    image_version  = "${var.deployment_id}"
-  }
-
   # Shared image gallery https://github.com/mozilla-platform-ops/relops_infra_as_code/blob/master/terraform/azure_fx_nonci/worker-images.tf 
   shared_image_gallery_destination {
     subscription   = "${var.subscription_id}"
