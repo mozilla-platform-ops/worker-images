@@ -158,7 +158,7 @@ source "azure-arm" "this" {
     resource_group = "${var.resource_group}"
     gallery_name   = "workerimages"
     image_name     = "win11-64-2009"
-    image_version  = "${var.deployment_id}"
+    image_version  = "1.0.0"
     replication_regions = [
       "centralindia",
       "eastus",
