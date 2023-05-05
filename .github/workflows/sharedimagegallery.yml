@@ -4,7 +4,7 @@ on: [workflow_dispatch, push]
 
 jobs:
   job1:
-    name: "Create Image Tasks"
+    name: "Identify pool to build"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -17,7 +17,7 @@ jobs:
       KEY: ${{ steps.set-matrix.outputs.KEY }}
   job2:
     needs: job1
-    name: "${{ needs.job1.outputs.KEY }} - Shared Image"
+    name: "${{ needs.job1.outputs.KEY }}"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
