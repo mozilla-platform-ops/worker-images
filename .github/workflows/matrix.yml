@@ -26,17 +26,18 @@ jobs:
         locations: ${{fromJson(needs.job1.outputs.LOCATIONS)}}
     steps:
       - uses: actions/checkout@v3
-#      - name: Azure Login
-#        uses: Azure/login@v1
-#        with:
-#          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID_DEV }}","clientSecret":"${{ secrets.AZURE_CLIENT_ID_DEV_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID_DEV }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
-#          enable-AzPSSession: true
-#      - name: "List packer stuff"
-#        uses: azure/powershell@v1
-#        with:
-#          inlinescript: |
-#            Get-AzResourceGroup -Name "rg-packer-worker-images"
-#          azPSVersion: "latest"
+      - name: Azure Login
+        uses: Azure/login@v1
+        with:
+          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID_DEV }}","clientSecret":"${{ secrets.AZURE_CLIENT_ID_DEV_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID_DEV }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
+          enable-AzPSSession: true
+      - name: "Remove current images"
+        uses: azure/powershell@v1
+        with:
+          inlinescript: |
+            . .github/workflows/tools.ps1
+            Remove-WorkerImage -Key "${{ needs.job1.outputs.KEY }}" -Location "${{ matrix.LOCATIONS }}"
+          azPSVersion: "latest"
       - name: 'Run Packer'
         shell: pwsh
         run: |

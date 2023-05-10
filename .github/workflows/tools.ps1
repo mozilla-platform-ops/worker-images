@@ -91,6 +91,9 @@ function New-WorkerImage {
         $Key,
 
         [String]
+        $Location,
+
+        [String]
         $Client_ID,
 
         [String]
@@ -106,6 +109,7 @@ function New-WorkerImage {
     Set-PSRepository PSGallery -InstallationPolicy Trusted
     Install-Module powershell-yaml -ErrorAction Stop
     $YAML = Convertfrom-Yaml (Get-Content "config/$key.yaml" -raw)
+    $ENV:PKR_VAR_location = $Location
     $ENV:PKR_VAR_image_key_name = $key
     $ENV:PKR_VAR_image_publisher = $YAML.image["publisher"]
     $ENV:PKR_VAR_resource_group = $yaml.azure["managed_image_resource_group_name"]
@@ -120,19 +124,74 @@ function New-WorkerImage {
     $ENV:PKR_VAR_bootstrap_script = $YAML.azure["bootstrapscript"]
     $ENV:PKR_VAR_client_id = $Client_ID
     $ENV:PKR_VAR_temp_resource_group_name = ('{0}-{1}-{2}-pkrtmp' -f $YAML.vm.tags["worker_pool_id"], $YAML.vm.tags["deploymentId"], (Get-Random -Maximum 999))
-    #Write-host "Building $($ENV:PKR_VAR_temp_resource_group_name)"
     $ENV:PKR_VAR_tenant_id = $Tenant_ID
     $ENV:PKR_VAR_subscription_id = $Subscription_ID
     $ENV:PKR_VAR_client_secret = $Client_Secret
-    $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-alpha' -f $YAML.vm.tags["worker_pool_id"], $ENV:PKR_VAR_image_sku)
-    #Write-Host "Building $($ENV:PKR_VAR_managed_image_name)"
+    ## build managed image name 
+    switch -Wildcard ($key) {
+        "*alpha2*" {
+            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}-alpha2' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:PKR_VAR_image_sku)
+        }
+        "*alpha*" {
+            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}-alpha' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:PKR_VAR_image_sku)
+        }
+        "*beta*" {
+            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}-beta' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:PKR_VAR_image_sku)
+        }
+        "*next*" {
+            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}-next' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:PKR_VAR_image_sku)
+        } 
+        Default {
+            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}-{3}' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:PKR_VAR_image_sku, $YAML.vm.tags["deploymentId"])
+        }
+    }
+    Write-Host "Building $($ENV:PKR_VAR_managed_image_name)"
     $ENV:PKR_VAR_image_version = $ImageVersion
-    if (Test-Path "./windows_sharedgallery/windows.pkr.hcl") {
-        packer build -force ./windows_sharedgallery/windows.pkr.hcl
+    if (Test-Path "./windows/windows.pkr.hcl") {
+        packer build -force ./windows/windows.pkr.hcl
     }
     else {
-        Write-Error "Cannot find ./windows_sharedgallery/windows.pkr.hcl"
+        Write-Error "Cannot find ./windows/windows.pkr.hcl"
         Exit 1
     }
     
+}
+
+function Remove-WorkerImage {
+    [CmdletBinding()]
+    param (
+        [String]
+        $Key,
+
+        [String]
+        $Location
+    )
+
+    Set-PSRepository PSGallery -InstallationPolicy Trusted
+    Install-Module powershell-yaml -ErrorAction Stop
+    $YAML = Convertfrom-Yaml (Get-Content "config/$key.yaml" -raw)
+    ## build managed image name 
+    switch -Wildcard ($key) {
+        "*alpha2*" {
+            $ENV:managed_image_name = ('{0}-{1}-{2}-alpha2' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:image_sku)
+        }
+        "*alpha*" {
+            $ENV:managed_image_name = ('{0}-{1}-{2}-alpha' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:image_sku)
+        }
+        "*beta*" {
+            $ENV:managed_image_name = ('{0}-{1}-{2}-beta' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:image_sku)
+        }
+        "*next*" {
+            $ENV:managed_image_name = ('{0}-{1}-{2}-next' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:image_sku)
+        } 
+        Default {
+            $ENV:managed_image_name = ('{0}-{1}-{2}-{3}' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:image_sku, $YAML.vm.tags["deploymentId"])
+        }
+    }
+    ## Check if the image is even there
+    $Image = Get-AzImage -Name $ENV:managed_image_name 
+    if ($null -ne $image) {
+        Write-Host "Removing $($ENV:managed_image_name)"
+        Get-AzImage -Name $ENV:managed_image_name | Remove-AzImage -Force
+    }
 }
