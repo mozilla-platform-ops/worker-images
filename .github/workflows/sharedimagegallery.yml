@@ -1,4 +1,4 @@
-name: matrix
+name: sharedimagegallery
 
 on: [workflow_dispatch]
 
