@@ -173,28 +173,28 @@ function Remove-WorkerImage {
     ## build managed image name 
     switch -Wildcard ($key) {
         "*alpha2*" {
-            $ENV:managed_image_name = ('{0}-{1}-{2}-alpha2' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:image_sku)
+            $managed_image_name = ('{0}-{1}-{2}-alpha2' -f $YAML.vm.tags["worker_pool_id"], $Location, $YAML.image["sku"])
         }
         "*alpha*" {
-            $ENV:managed_image_name = ('{0}-{1}-{2}-alpha' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:image_sku)
+            $managed_image_name = ('{0}-{1}-{2}-alpha' -f $YAML.vm.tags["worker_pool_id"], $Location, $YAML.image["sku"])
         }
         "*beta*" {
-            $ENV:managed_image_name = ('{0}-{1}-{2}-beta' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:image_sku)
+            $managed_image_name = ('{0}-{1}-{2}-beta' -f $YAML.vm.tags["worker_pool_id"], $Location, $YAML.image["sku"])
         }
         "*next*" {
-            $ENV:managed_image_name = ('{0}-{1}-{2}-next' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:image_sku)
+            $managed_image_name = ('{0}-{1}-{2}-next' -f $YAML.vm.tags["worker_pool_id"], $Location, $YAML.image["sku"])
         } 
         Default {
-            $ENV:managed_image_name = ('{0}-{1}-{2}-{3}' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:image_sku, $YAML.vm.tags["deploymentId"])
+            $managed_image_name = ('{0}-{1}-{2}-{3}' -f $YAML.vm.tags["worker_pool_id"], $Location, $YAML.image["sku"], $YAML.vm.tags["deploymentId"])
         }
     }
     ## Check if the image is even there
-    $Image = Get-AzImage -Name $ENV:managed_image_name 
+    $Image = Get-AzImage -Name $managed_image_name
     if ($null -ne $image) {
-        Write-Host "Removing $($ENV:managed_image_name)"
-        Get-AzImage -Name $ENV:managed_image_name | Remove-AzImage -Force
+        Write-Host "Removing $($managed_image_name)"
+        Get-AzImage -Name $managed_image_name | Remove-AzImage -Force
     }
     else {
-        Write-Host "Image $($ENV:managed_image_name) not found, continuing"
+        Write-Host "Image $($managed_image_name) not found, continuing"
     }
 }
