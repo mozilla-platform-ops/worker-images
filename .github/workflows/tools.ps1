@@ -194,4 +194,7 @@ function Remove-WorkerImage {
         Write-Host "Removing $($ENV:managed_image_name)"
         Get-AzImage -Name $ENV:managed_image_name | Remove-AzImage -Force
     }
+    else {
+        Write-Host "Image $($ENV:managed_image_name) not found, continuing"
+    }
 }
