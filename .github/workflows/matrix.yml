@@ -41,11 +41,11 @@ jobs:
         shell: pwsh
         run: |
           . .github/workflows/tools.ps1
-          $SHA = '(github.event.after)'
+          $SHA = "${{ github.event.after }}"
           Write-Host "Building '${{ needs.job1.outputs.KEY }}' in '${{ matrix.LOCATIONS }}' from $SHA"
           $Vars = @{
             Location = "${{ matrix.LOCATIONS }}"
-            CommitMessage = '${{toJSON(github.event.head_commit.message)}}'
+            Key = '${{ needs.job1.outputs.KEY }}'
             Client_ID = "${{ secrets.AZURE_CLIENT_ID_DEV }}"
             Client_Secret = "${{ secrets.AZURE_CLIENT_ID_DEV_SECRET }}"
             Subscription_ID = "${{ secrets.AZURE_SUBSCRIPTION_ID_DEV }}"

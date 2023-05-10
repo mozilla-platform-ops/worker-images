@@ -1,6 +1,6 @@
 name: matrix
 
-on: [workflow_dispatch, push]
+on: [workflow_dispatch]
 
 jobs:
   job1:
@@ -34,4 +34,4 @@ jobs:
             Subscription_ID = "${{ secrets.AZURE_SUBSCRIPTION_ID_DEV }}"
             Tenant_ID = "${{ secrets.AZURE_TENANT_ID }}"
           }
-          New-WorkerImage @Vars
+          New-SharedWorkerImage @Vars
