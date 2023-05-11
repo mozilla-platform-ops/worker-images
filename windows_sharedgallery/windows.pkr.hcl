@@ -124,6 +124,21 @@ variable "image_key_name" {
   default = "${env("image_key_name")}"
 }
 
+variable "gallery_name" {
+  type    = string
+  default = "${env("gallery_name")}"
+}
+
+variable "image_name" {
+  type    = string
+  default = "${env("image_name")}"
+}
+
+variable "image_version" {
+  type    = string
+  default = "${env("image_name")}"
+}
+
 source "azure-arm" "this" {
   # WinRM
   communicator   = "winrm"
@@ -157,9 +172,9 @@ source "azure-arm" "this" {
   shared_image_gallery_destination {
     subscription   = "${var.subscription_id}"
     resource_group = "${var.resource_group}"
-    gallery_name   = "workerimages"
-    image_name     = "win11-64-2009"
-    image_version  = "1.0.0"
+    gallery_name   = "${var.gallery_name}"
+    image_name     = "${var.image_name}"
+    image_version  = "${var.image_version}"
     replication_regions = [
       "centralindia",
       "eastus",

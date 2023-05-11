@@ -3,6 +3,10 @@ image:
   publisher: MicrosoftWindowsDesktop
   offer: Windows-11
   sku: win11-22h2-avd
+sharedimage:
+  gallery_name: "ronin_t_windows11_64_2009_alpha"
+  imagen_ame: "win11-64-2009-alpha"
+  version: 1.0.0
 azure:
   managed_image_resource_group_name: rg-packer-worker-images
   managed_image_storage_account_type: Standard_LRS
