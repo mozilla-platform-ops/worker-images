@@ -76,7 +76,6 @@ function New-SharedWorkerImage {
     $ENV:PKR_VAR_client_secret = $Client_Secret
     $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-alpha' -f $YAML.vm.tags["worker_pool_id"], $ENV:PKR_VAR_image_sku)
     #Write-Host "Building $($ENV:PKR_VAR_managed_image_name)"
-    $ENV:PKR_VAR_image_version = $ImageVersion
     if (Test-Path "./windows_sharedgallery/windows.pkr.hcl") {
         packer build -force ./windows_sharedgallery/windows.pkr.hcl
     }
@@ -149,7 +148,6 @@ function New-WorkerImage {
         }
     }
     Write-Host "Building $($ENV:PKR_VAR_managed_image_name)"
-    $ENV:PKR_VAR_image_version = $ImageVersion
     if (Test-Path "./windows/windows.pkr.hcl") {
         packer build -force ./windows/windows.pkr.hcl
     }
