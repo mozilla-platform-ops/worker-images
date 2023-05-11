@@ -131,7 +131,7 @@ variable "image_name" {
 
 variable "image_version" {
   type    = string
-  default = "${env("image_name")}"
+  default = "${env("image_version")}"
 }
 
 source "azure-arm" "this" {
