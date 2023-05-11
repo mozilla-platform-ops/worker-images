@@ -1,4 +1,4 @@
-name: matrix
+name: win11-64-2009-alpha
 
 on: [workflow_dispatch]
 
