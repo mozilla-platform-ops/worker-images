@@ -49,11 +49,6 @@ variable "image_sku" {
   default = "${env("image_sku")}"
 }
 
-variable "image_version" {
-  type    = string
-  default = "${env("image_version")}"
-}
-
 variable "location" {
   type    = string
   default = "${env("location")}"
