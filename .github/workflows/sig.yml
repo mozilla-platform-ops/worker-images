@@ -1,6 +1,23 @@
 name: sharedimagegallery
 
-on: [workflow_dispatch]
+on:
+  workflow_dispatch:
+    inputs:
+      config:
+        type: choice
+        description: Choose which pool to build
+        options:
+        - win10-64-2009-alpha
+        - win10-64-2009
+        - win11-64-2009-alpha
+        - win11-64-2009
+      env:
+        type: choice
+        description: Choose which environment to deploy to
+        options:
+        - trusted
+        - nontrusted
+        - dev
 
 jobs:
   job1:
@@ -26,9 +43,9 @@ jobs:
         run: |
           . .github/workflows/tools.ps1
           $SHA = "${{ github.event.after }}"
-          Write-Host "Building '${{ needs.job1.outputs.KEY }}' from $SHA"
+          Write-Host "Building '${{ github.event.inputs.config }}' from $SHA"
           $Vars = @{
-            Key = '${{ needs.job1.outputs.KEY }}'
+            Key = '${{ github.event.inputs.config }}'
             Client_ID = "${{ secrets.AZURE_CLIENT_ID_DEV }}"
             Client_Secret = "${{ secrets.AZURE_CLIENT_ID_DEV_SECRET }}"
             Subscription_ID = "${{ secrets.AZURE_SUBSCRIPTION_ID_DEV }}"
