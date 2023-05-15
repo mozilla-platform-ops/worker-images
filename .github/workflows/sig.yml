@@ -20,21 +20,8 @@ on:
         - dev
 
 jobs:
-  job1:
-    name: "Identify pool to build"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - id: set-matrix
-        shell: pwsh
-        run: |
-          . .github/workflows/tools.ps1
-          Set-WorkerImageOutput -CommitMessage '${{toJSON(github.event.head_commit.message)}}'
-    outputs:
-      KEY: ${{ steps.set-matrix.outputs.KEY }}
-  job2:
-    needs: job1
-    name: "${{ needs.job1.outputs.KEY }}"
+  packer:
+    name: "Build ${{ github.event.inputs.config }}"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
