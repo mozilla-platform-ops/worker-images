@@ -1,4 +1,4 @@
-name: Shared Image Gallery Deployment
+name: Shared Image Gallery Deployment - Test
 
 on:
   workflow_dispatch:
