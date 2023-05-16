@@ -18,9 +18,6 @@ on:
         - trusted
         - nontrusted
         - dev
-      sha:
-        type: string
-        description: the first 7 characters of ronin_puppet commit hash
 
 jobs:
   packer:
@@ -32,8 +29,6 @@ jobs:
         shell: pwsh
         run: |
           . .github/workflows/tools.ps1
-          $SHA = "${{ github.event.inputs.sha }}"
-          Write-Host "Building '${{ github.event.inputs.config }}' from $SHA"
           $Vars = @{
             Key = '${{ github.event.inputs.config }}'
             Client_ID = "${{ secrets.AZURE_CLIENT_ID_DEV }}"
