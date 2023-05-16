@@ -1,0 +1,74 @@
+name: Legacy Worker Image Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      config:
+        type: choice
+        description: Choose which pool to build
+        options:
+        - win10-64-2009-alpha
+        - win10-64-2009
+        - win11-64-2009-alpha
+        - win11-64-2009
+      env:
+        type: choice
+        description: Choose which environment to deploy to
+        options:
+        - trusted
+        - nontrusted
+        - dev
+      sha:
+        type: string
+        description: the first 7 characters of ronin_puppet commit hash
+
+jobs:
+  job1:
+    name: "Create Image Tasks"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - id: set-matrix
+        shell: pwsh
+        # Use a small PowerShell script to generate the test matrix
+        run: |
+          . .github/workflows/tools.ps1
+          Set-WorkerImageLocation -Key '${{ github.event.inputs.config }}'
+    outputs:
+      LOCATIONS: ${{ steps.set-matrix.outputs.LOCATIONS }}
+  job2:
+    needs: job1
+    name: "${{ github.event.inputs.config }} - ${{ matrix.LOCATIONS }}"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        locations: ${{fromJson(needs.job1.outputs.LOCATIONS)}}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Azure Login
+        uses: Azure/login@v1
+        with:
+          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID_DEV }}","clientSecret":"${{ secrets.AZURE_CLIENT_ID_DEV_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID_DEV }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
+          enable-AzPSSession: true
+      - name: "Remove current images"
+        uses: azure/powershell@v1
+        with:
+          inlinescript: |
+            . .github/workflows/tools.ps1
+            Remove-WorkerImage -Key "${{ needs.job1.outputs.KEY }}" -Location "${{ matrix.LOCATIONS }}"
+          azPSVersion: "latest"
+      - name: 'Run Packer'
+        shell: pwsh
+        run: |
+          . .github/workflows/tools.ps1
+          $SHA = "${{ github.event.inputs.sha }}"
+          Write-Host "Building '${{ github.event.inputs.config }}' from $SHA"
+          $Vars = @{
+            Location = "${{ matrix.LOCATIONS }}"
+            Key = '${{ github.event.inputs.config }}'
+            Client_ID = "${{ secrets.AZURE_CLIENT_ID_DEV }}"
+            Client_Secret = "${{ secrets.AZURE_CLIENT_ID_DEV_SECRET }}"
+            Subscription_ID = "${{ secrets.AZURE_SUBSCRIPTION_ID_DEV }}"
+            Tenant_ID = "${{ secrets.AZURE_TENANT_ID }}"
+          }
+          New-WorkerImage @Vars

@@ -31,6 +31,22 @@ function Set-WorkerImageOutput {
     }
 }
 
+function Set-WorkerImageLocation {
+    [CmdletBinding()]
+    param (
+        [Parameter()]
+        [String]
+        $Key
+    )
+    
+    Set-PSRepository PSGallery -InstallationPolicy Trusted
+    Install-Module powershell-yaml -ErrorAction Stop
+    $YAML = Convertfrom-Yaml (Get-Content "config/$key.yaml" -raw)
+    $locations = ($YAML.azure.locations | ConvertTo-Json -Compress)
+    Write-Output "LOCATIONS=$locations" >> $ENV:GITHUB_OUTPUT
+    
+}
+
 function New-SharedWorkerImage {
     [CmdletBinding()]
     param (
@@ -70,12 +86,26 @@ function New-SharedWorkerImage {
     $ENV:PKR_VAR_image_version = $YAML.sharedimage["image_version"]
     $ENV:PKR_VAR_client_id = $Client_ID
     $ENV:PKR_VAR_temp_resource_group_name = ('{0}-{1}-{2}-pkrtmp' -f $YAML.vm.tags["worker_pool_id"], $YAML.vm.tags["deploymentId"], (Get-Random -Maximum 999))
-    #Write-host "Building $($ENV:PKR_VAR_temp_resource_group_name)"
     $ENV:PKR_VAR_tenant_id = $Tenant_ID
     $ENV:PKR_VAR_subscription_id = $Subscription_ID
     $ENV:PKR_VAR_client_secret = $Client_Secret
-    $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-alpha' -f $YAML.vm.tags["worker_pool_id"], $ENV:PKR_VAR_image_sku)
-    #Write-Host "Building $($ENV:PKR_VAR_managed_image_name)"
+    switch -Wildcard ($key) {
+        "*alpha2*" {
+            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}-alpha2' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:PKR_VAR_image_sku)
+        }
+        "*alpha*" {
+            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}-alpha' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:PKR_VAR_image_sku)
+        }
+        "*beta*" {
+            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}-beta' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:PKR_VAR_image_sku)
+        }
+        "*next*" {
+            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}-next' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:PKR_VAR_image_sku)
+        } 
+        Default {
+            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}-{3}' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:PKR_VAR_image_sku, $YAML.vm.tags["deploymentId"])
+        }
+    }
     if (Test-Path "./windows_sharedgallery/windows.pkr.hcl") {
         packer build -force ./windows_sharedgallery/windows.pkr.hcl
     }
@@ -129,7 +159,6 @@ function New-WorkerImage {
     $ENV:PKR_VAR_tenant_id = $Tenant_ID
     $ENV:PKR_VAR_subscription_id = $Subscription_ID
     $ENV:PKR_VAR_client_secret = $Client_Secret
-    ## build managed image name 
     switch -Wildcard ($key) {
         "*alpha2*" {
             $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}-alpha2' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:PKR_VAR_image_sku)
