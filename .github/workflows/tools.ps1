@@ -106,14 +106,7 @@ function New-SharedWorkerImage {
             $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}-{3}' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:PKR_VAR_image_sku, $YAML.vm.tags["deploymentId"])
         }
     }
-    if (Test-Path "./windows_sharedgallery/windows.pkr.hcl") {
-        packer build -var-file="vars/azure.pkr.hcl" -force ./windows_sharedgallery/windows.pkr.hcl
-    }
-    else {
-        Write-Error "Cannot find ./windows_sharedgallery/windows.pkr.hcl"
-        Exit 1
-    }
-    
+    packer build --only azure-arm.sig -force azure.pkr.hcl
 }
 
 function New-WorkerImage {
@@ -176,15 +169,7 @@ function New-WorkerImage {
             $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}-{3}' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:PKR_VAR_image_sku, $YAML.vm.tags["deploymentId"])
         }
     }
-    Write-Host "Building $($ENV:PKR_VAR_managed_image_name)"
-    if (Test-Path "./windows/windows.pkr.hcl") {
-        packer build -var-file="vars/azure.pkr.hcl" -force ./windows/windows.pkr.hcl
-    }
-    else {
-        Write-Error "Cannot find ./windows/windows.pkr.hcl"
-        Exit 1
-    }
-    
+    packer build --only azure-arm.nonsig -force azure.pkr.hcl
 }
 
 function Remove-WorkerImage {

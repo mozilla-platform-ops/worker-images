@@ -1,8 +1,3 @@
-variable "Project" {
-  type    = string
-  default = "${env("Project")}"
-}
-
 variable "base_image" {
   type    = string
   default = "${env("base_image")}"
