@@ -107,7 +107,7 @@ function New-SharedWorkerImage {
         }
     }
     if (Test-Path "./windows_sharedgallery/windows.pkr.hcl") {
-        packer build -force ./windows_sharedgallery/windows.pkr.hcl
+        packer build -var-file="vars/azure.pkr.hcl" -force ./windows_sharedgallery/windows.pkr.hcl
     }
     else {
         Write-Error "Cannot find ./windows_sharedgallery/windows.pkr.hcl"
@@ -178,7 +178,7 @@ function New-WorkerImage {
     }
     Write-Host "Building $($ENV:PKR_VAR_managed_image_name)"
     if (Test-Path "./windows/windows.pkr.hcl") {
-        packer build -force ./windows/windows.pkr.hcl
+        packer build -var-file="vars/azure.pkr.hcl" -force ./windows/windows.pkr.hcl
     }
     else {
         Write-Error "Cannot find ./windows/windows.pkr.hcl"
