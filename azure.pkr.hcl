@@ -114,6 +114,16 @@ variable "temp_resource_group_name" {
   default = "${env("temp_resource_group_name")}"
 }
 
+variable "gallery_name" {
+  type    = string
+  default = "${env("gallery_name")}"
+}
+
+variable "image_name" {
+  type    = string
+  default = "${env("image_name")}"
+}
+
 source "azure-arm" "sig" {
   # WinRM
   communicator   = "winrm"
