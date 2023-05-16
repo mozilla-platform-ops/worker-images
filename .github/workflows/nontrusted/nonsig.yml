@@ -1,4 +1,4 @@
-name: Legacy Worker Image Deployment - Dev
+name: Legacy Worker Image Deployment - FXCI
 
 on:
   workflow_dispatch:
@@ -37,7 +37,7 @@ jobs:
       - name: Azure Login
         uses: Azure/login@v1
         with:
-          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID_DEV }}","clientSecret":"${{ secrets.AZURE_CLIENT_ID_DEV_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID_DEV }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
+          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID_FXCI }}","clientSecret":"${{ secrets.AZURE_CLIENT_ID_FXCI_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID_TRUSTED }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
           enable-AzPSSession: true
       - name: "Remove current images"
         uses: azure/powershell@v1
@@ -53,9 +53,9 @@ jobs:
           $Vars = @{
             Location = "${{ matrix.LOCATIONS }}"
             Key = '${{ github.event.inputs.config }}'
-            Client_ID = "${{ secrets.AZURE_CLIENT_ID_DEV }}"
-            Client_Secret = "${{ secrets.AZURE_CLIENT_ID_DEV_SECRET }}"
-            Subscription_ID = "${{ secrets.AZURE_SUBSCRIPTION_ID_DEV }}"
+            Client_ID = "${{ secrets.AZURE_CLIENT_ID_FXCI }}"
+            Client_Secret = "${{ secrets.AZURE_CLIENT_ID_FXCI_SECRET }}"
+            Subscription_ID = "${{ secrets.AZURE_SUBSCRIPTION_ID_TRUSTED }}"
             Tenant_ID = "${{ secrets.AZURE_TENANT_ID }}"
           }
           New-WorkerImage @Vars

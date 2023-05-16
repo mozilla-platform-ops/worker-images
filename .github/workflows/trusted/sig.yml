@@ -1,4 +1,4 @@
-name: Shared Image Gallery Deployment - Dev
+name: Shared Image Gallery Deployment - FXCI Trusted
 
 on:
   workflow_dispatch:
