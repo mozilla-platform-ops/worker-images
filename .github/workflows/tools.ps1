@@ -224,8 +224,6 @@ function Remove-VMImageVersion {
     Set-PSRepository PSGallery -InstallationPolicy Trusted
     Install-Module powershell-yaml -ErrorAction Stop
     $YAML = Convertfrom-Yaml (Get-Content "config/$key.yaml" -raw)
-    ## Get the version
-    $YAML.sharedimage["image_version"]
     ## Check if the image version is there
     $splat = @{
         ResourceGroupName = "rg-packer-worker-images"
