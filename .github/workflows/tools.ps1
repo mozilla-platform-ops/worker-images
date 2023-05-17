@@ -91,19 +91,19 @@ function New-SharedWorkerImage {
     $ENV:PKR_VAR_client_secret = $Client_Secret
     switch -Wildcard ($key) {
         "*alpha2*" {
-            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}-alpha2' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:PKR_VAR_image_sku)
+            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-alpha2' -f $YAML.vm.tags["worker_pool_id"], $ENV:PKR_VAR_image_sku)
         }
         "*alpha*" {
-            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}-alpha' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:PKR_VAR_image_sku)
+            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-alpha' -f $YAML.vm.tags["worker_pool_id"], $ENV:PKR_VAR_image_sku)
         }
         "*beta*" {
-            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}-beta' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:PKR_VAR_image_sku)
+            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-beta' -f $YAML.vm.tags["worker_pool_id"], $ENV:PKR_VAR_image_sku)
         }
         "*next*" {
-            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}-next' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:PKR_VAR_image_sku)
+            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-next' -f $YAML.vm.tags["worker_pool_id"],  $ENV:PKR_VAR_image_sku)
         } 
         Default {
-            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}-{3}' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:PKR_VAR_image_sku, $YAML.vm.tags["deploymentId"])
+            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}' -f $YAML.vm.tags["worker_pool_id"], $ENV:PKR_VAR_image_sku, $YAML.vm.tags["deploymentId"])
         }
     }
     packer build --only azure-arm.sig -force azure.pkr.hcl
