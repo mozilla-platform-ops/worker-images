@@ -213,3 +213,32 @@ function Remove-WorkerImage {
         Write-Host "Image $($managed_image_name) not found, continuing"
     }
 }
+
+function Remove-VMImageVersion {
+    [CmdletBinding()]
+    param (
+        [String]
+        $Key
+    )
+
+    Set-PSRepository PSGallery -InstallationPolicy Trusted
+    Install-Module powershell-yaml -ErrorAction Stop
+    $YAML = Convertfrom-Yaml (Get-Content "config/$key.yaml" -raw)
+    ## Get the version
+    $YAML.sharedimage["image_version"]
+    ## Check if the image version is there
+    $splat = @{
+        ResourceGroupName = "rg-packer-worker-images"
+        GalleryName = $YAML.sharedimage["gallery_name"]
+        GalleryImageDefinitionName = $YAML.sharedimage["image_name"]
+        GalleryImageVersionName = $YAML.sharedimage["image_version"]
+    }
+    $ImageVersion = Get-AzGalleryImageVersion @splat
+    if ($null -ne $ImageVersion) {
+        Write-Host "Removing $($splat.GalleryImageVersionName)"
+        Remove-AzGalleryImageVersion @splat -Force
+    }
+    else {
+        Write-Host "ImageVersion $($splat.GalleryImageVersionName) not found, continuing"
+    }
+}

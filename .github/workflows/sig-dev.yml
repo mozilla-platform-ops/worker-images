@@ -22,6 +22,7 @@ jobs:
         shell: pwsh
         run: |
           . .github/workflows/tools.ps1
+          Remove-VMImageVersion -Key '${{ github.event.inputs.config }}'
           $Vars = @{
             Key = '${{ github.event.inputs.config }}'
             Client_ID = "${{ secrets.AZURE_CLIENT_ID_DEV }}"
