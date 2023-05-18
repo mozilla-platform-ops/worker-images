@@ -231,12 +231,12 @@ function Remove-VMImageVersion {
         GalleryImageDefinitionName = $YAML.sharedimage["image_name"]
         GalleryImageVersionName = $YAML.sharedimage["image_version"]
     }
-    $ImageVersion = Get-AzGalleryImageVersion @splat -ErrorAction "SilentlyContinue"
-    if ($null -ne $ImageVersion) {
+    try {
+        Get-AzGalleryImageVersion @splat -ErrorAction "Stop"
         Write-Host "Removing $($splat.GalleryImageVersionName)"
         Remove-AzGalleryImageVersion @splat -Force
     }
-    else {
+    catch {
         Write-Host "ImageVersion $($splat.GalleryImageVersionName) not found, continuing"
     }
 }
