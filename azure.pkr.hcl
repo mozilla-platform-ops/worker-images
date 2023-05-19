@@ -239,43 +239,31 @@ build {
    provisioner "powershell" {
     elevated_password = ""
     elevated_user     = "SYSTEM"
-    inline            = ["Invoke-Expression ((New-Object -TypeName net.webclient).DownloadString('${var.bootstrap_script}'))"]
+    inline = ["New-Item -Name worker-images-scripts -Path C:/ -Type Directory -Force"]
    }
 
-   provisioner "windows-restart" {
+  provisioner "file" {
+    source = "./scripts/"
+    destination = "C:/worker-images-scripts"
+  }
+
+  provisioner "powershell" {
+    elevated_password = ""
+    elevated_user     = "SYSTEM"
+    inline            = ["if (-not (Test-Path C:/worker-images-scripts)) {exit 1}"]
    }
 
    provisioner "powershell" {
     elevated_password = ""
     elevated_user     = "SYSTEM"
-    inline            = ["Invoke-Expression ((New-Object -TypeName net.webclient).DownloadString('${var.bootstrap_script}'))"]
-   }
-
-   provisioner "windows-restart" {
-   }
-
-   provisioner "powershell" {
-    elevated_password = ""
-    elevated_user     = "SYSTEM"
-    inline            = ["Invoke-Expression ((New-Object -TypeName net.webclient).DownloadString('${var.bootstrap_script}'))"]
-   }
-
-   provisioner "windows-restart" {
-   }
-
-   provisioner "powershell" {
-    elevated_password = ""
-    elevated_user     = "SYSTEM"
-    inline            = ["Invoke-Expression ((New-Object -TypeName net.webclient).DownloadString('${var.bootstrap_script}'))"]
-   }
-
-   provisioner "windows-restart" {
-   }
-
-   provisioner "powershell" {
-    elevated_password = ""
-    elevated_user     = "SYSTEM"
-    inline            = ["Invoke-Expression ((New-Object -TypeName net.webclient).DownloadString('${var.bootstrap_script}'))"]
+    environment_vars = [
+        "worker_pool_id=${var.worker_pool_id}",
+        "base_image=${var.base_image}",
+        "src_organisation=${var.source_organization}",
+        "src_Repository=${var.source_repository}",
+        "src_Branch=${var.source_branch}"
+    ]
+    inline            = ["C:/worker-images-scripts/bootrap_win.ps1"]
    }
 
    provisioner "powershell" {
