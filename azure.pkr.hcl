@@ -263,7 +263,59 @@ build {
         "src_Repository=${var.source_repository}",
         "src_Branch=${var.source_branch}"
     ]
-    script            = ["scripts/bootrap_win.ps1"]
+    scripts            = ["scripts/bootrap_win.ps1"]
+   }
+
+   provisioner "powershell" {
+    elevated_password = ""
+    elevated_user     = "SYSTEM"
+    environment_vars = [
+        "worker_pool_id=${var.worker_pool_id}",
+        "base_image=${var.base_image}",
+        "src_organisation=${var.source_organization}",
+        "src_Repository=${var.source_repository}",
+        "src_Branch=${var.source_branch}"
+    ]
+    scripts            = ["scripts/bootrap_win.ps1"]
+   }
+
+   provisioner "powershell" {
+    elevated_password = ""
+    elevated_user     = "SYSTEM"
+    environment_vars = [
+        "worker_pool_id=${var.worker_pool_id}",
+        "base_image=${var.base_image}",
+        "src_organisation=${var.source_organization}",
+        "src_Repository=${var.source_repository}",
+        "src_Branch=${var.source_branch}"
+    ]
+    scripts            = ["scripts/bootrap_win.ps1"]
+   }
+
+   provisioner "powershell" {
+    elevated_password = ""
+    elevated_user     = "SYSTEM"
+    environment_vars = [
+        "worker_pool_id=${var.worker_pool_id}",
+        "base_image=${var.base_image}",
+        "src_organisation=${var.source_organization}",
+        "src_Repository=${var.source_repository}",
+        "src_Branch=${var.source_branch}"
+    ]
+    scripts            = ["scripts/bootrap_win.ps1"]
+   }
+
+   provisioner "powershell" {
+    elevated_password = ""
+    elevated_user     = "SYSTEM"
+    environment_vars = [
+        "worker_pool_id=${var.worker_pool_id}",
+        "base_image=${var.base_image}",
+        "src_organisation=${var.source_organization}",
+        "src_Repository=${var.source_repository}",
+        "src_Branch=${var.source_branch}"
+    ]
+    scripts            = ["scripts/bootrap_win.ps1"]
    }
 
    provisioner "powershell" {
