@@ -263,7 +263,7 @@ build {
         "src_Repository=${var.source_repository}",
         "src_Branch=${var.source_branch}"
     ]
-    scripts            = ["scripts/bootrap_win.ps1"]
+    scripts            = ["${path.root}/scripts/bootrap_win.ps1"]
    }
 
    provisioner "powershell" {
