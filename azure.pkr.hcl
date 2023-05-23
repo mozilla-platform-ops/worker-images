@@ -153,11 +153,6 @@ source "azure-arm" "sig" {
   managed_image_resource_group_name  = "${var.resource_group}"
   async_resourcegroup_delete         = true
 
-  # Misc
-  spot {
-    eviction_policy = "Delete"
-  }
-
   # Shared image gallery https:github.com/mozilla-platform-ops/relops_infra_as_code/blob/master/terraform/azure_fx_nonci/worker-images.tf 
   shared_image_gallery_destination {
     subscription   = "${var.subscription_id}"
@@ -218,11 +213,6 @@ source "azure-arm" "nonsig" {
   managed_image_name                 = "${var.managed_image_name}"
   managed_image_resource_group_name  = "${var.resource_group}"
   async_resourcegroup_delete         = true
-
-  # Misc
-  spot {
-    eviction_policy = "Delete"
-  }
 
   # Tags
   azure_tags = {
