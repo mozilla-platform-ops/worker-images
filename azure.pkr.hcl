@@ -154,7 +154,9 @@ source "azure-arm" "sig" {
   async_resourcegroup_delete         = true
 
   # Misc
-  spot                               = true
+  spot {
+    eviction_policy = "Delete"
+  }
 
   # Shared image gallery https:github.com/mozilla-platform-ops/relops_infra_as_code/blob/master/terraform/azure_fx_nonci/worker-images.tf 
   shared_image_gallery_destination {
@@ -218,7 +220,9 @@ source "azure-arm" "nonsig" {
   async_resourcegroup_delete         = true
 
   # Misc
-  spot                               = true
+  spot {
+    eviction_policy = "Delete"
+  }
 
   # Tags
   azure_tags = {
