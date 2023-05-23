@@ -263,7 +263,7 @@ build {
         "src_Repository=${var.source_repository}",
         "src_Branch=${var.source_branch}"
     ]
-    scripts            = ["${path.root}/scripts/bootrap_win.ps1"]
+    inline             = ["C:/worker-images-scripts/scripts/bootstrap_win.ps1"]
    }
 
    provisioner "powershell" {
