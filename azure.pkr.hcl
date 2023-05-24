@@ -269,7 +269,9 @@ build {
       "src_Repository=${var.source_repository}",
       "src_Branch=${var.source_branch}"
     ]
-    scripts = ["${path.cwd}/scripts/bootstrap_win.ps1"]
+    scripts = [
+      "${path.cwd}/scripts/bootstrap_win.ps1"
+      ]
   }
 
   provisioner "powershell" {

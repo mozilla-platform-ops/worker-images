@@ -16,7 +16,7 @@ param (
     $Src_Branch = $ENV:src_Branch
 )
 
-. ./BootStrapFunctions.ps1
+. $PSScriptRoot/BootStrapFunctions.ps1
 
 Write-Output ("Processing {0}" -f [System.Net.Dns]::GetHostByName($env:computerName).hostname)
 
