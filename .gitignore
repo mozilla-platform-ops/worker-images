@@ -8,4 +8,4 @@ crash.log
 *.box
 
 # local build script
-scripts/build.ps1
+local.ps1
