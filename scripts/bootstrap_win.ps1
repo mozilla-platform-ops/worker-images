@@ -16,8 +16,6 @@ param (
     $Src_Branch = $ENV:src_Branch
 )
 
-. $PSScriptRoot/BootStrapFunctions.ps1
-
 Write-Output ("Processing {0}" -f [System.Net.Dns]::GetHostByName($env:computerName).hostname)
 
 If (test-path 'HKLM:\SOFTWARE\Mozilla\ronin_puppet') {

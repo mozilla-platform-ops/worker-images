@@ -243,8 +243,8 @@ build {
   }
 
   provisioner "file" {
-    source      = "./scripts/"
-    destination = "C:/worker-images-scripts"
+    source      = "${path.cwd}/scripts/windows"
+    destination = "C:/Program Files/WindowsPowerShell/Modules/"
   }
 
   provisioner "powershell" {
