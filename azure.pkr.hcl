@@ -233,13 +233,10 @@ build {
   ]
 
   provisioner "powershell" {
-    inline = ["$ErrorActionPreference='SilentlyContinue'", "Set-ExecutionPolicy unrestricted -force"]
-  }
-
-  provisioner "powershell" {
-    elevated_password = ""
-    elevated_user     = "SYSTEM"
-    inline            = ["New-Item -Name worker-images-scripts -Path C:/ -Type Directory -Force"]
+    inline = [
+      "$ErrorActionPreference='SilentlyContinue'", 
+      "Set-ExecutionPolicy unrestricted -force"
+      ]
   }
 
   provisioner "file" {
@@ -250,13 +247,7 @@ build {
   provisioner "powershell" {
     elevated_password = ""
     elevated_user     = "SYSTEM"
-    inline            = ["if (-not (Test-Path C:/worker-images-scripts)) {exit 1}"]
-  }
-
-  provisioner "powershell" {
-    elevated_password = ""
-    elevated_user     = "SYSTEM"
-    inline            = ["Write-Host ${path.cwd}; Write-host ${path.root}"]
+    inline            = ["Import-Module C:/Program Files/WindowsPowerShell/Modules/windows/Functions.psm1 -ErrorAction 'Stop'"]
   }
 
   provisioner "powershell" {
@@ -271,7 +262,7 @@ build {
     ]
     scripts = [
       "${path.cwd}/scripts/bootstrap_win.ps1"
-      ]
+    ]
   }
 
   provisioner "powershell" {
