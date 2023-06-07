@@ -16,14 +16,14 @@ param (
     $Src_Branch = $ENV:src_Branch
 )
 
-Write-Output ("Processing {0}" -f [System.Net.Dns]::GetHostByName($env:computerName).hostname)
+Write-Host ("Processing {0}" -f [System.Net.Dns]::GetHostByName($env:computerName).hostname)
 
 If (test-path 'HKLM:\SOFTWARE\Mozilla\ronin_puppet') {
     $stage = (Get-ItemProperty -path "HKLM:\SOFTWARE\Mozilla\ronin_puppet").bootstrap_stage
 }
 If (-Not (test-path 'HKLM:\SOFTWARE\Mozilla\ronin_puppet')) {
     Set-Logging
-    Install-AzPrerequ -DisableNameChecking
+    Install-AzPreReq -DisableNameChecking
     $RoninRegSplat = @{
         worker_pool_id = $Worker_Pool_ID
         base_image = $Base_Image
@@ -36,7 +36,7 @@ If (-Not (test-path 'HKLM:\SOFTWARE\Mozilla\ronin_puppet')) {
 }
 If (($stage -eq 'setup') -or ($stage -eq 'inprogress')) {
     Set-AzRoninRepo -DisableNameChecking
-    Apply-AzRoninPuppet -DisableNameChecking
+    Start-AzRoninPuppet
     exit 0
 }
 If ($stage -eq 'complete') {
