@@ -74,6 +74,7 @@ function New-SharedWorkerImage {
     $ENV:PKR_VAR_resource_group = $yaml.azure["managed_image_resource_group_name"]
     $ENV:PKR_VAR_image_offer = $YAML.image["offer"]
     $ENV:PKR_VAR_image_sku = $YAML.image["sku"]
+    $ENV:PKR_VAR_image_version = $YAML.image["version"]
     $ENV:PKR_VAR_vm_size = $YAML.vm["size"]
     $ENV:PKR_VAR_base_image = $YAML.vm.tags["base_image"]
     $ENV:PKR_VAR_source_branch = $YAML.vm.tags["sourceBranch"]
@@ -83,7 +84,7 @@ function New-SharedWorkerImage {
     $ENV:PKR_VAR_bootstrap_script = $YAML.azure["bootstrapscript"]
     $ENV:PKR_VAR_gallery_name = $YAML.sharedimage["gallery_name"]
     $ENV:PKR_VAR_image_name = $YAML.sharedimage["image_name"]
-    $ENV:PKR_VAR_image_version = $YAML.sharedimage["image_version"]
+    $ENV:PKR_VAR_sharedimage_version = $YAML.sharedimage["image_version"]
     $ENV:PKR_VAR_client_id = $Client_ID
     $ENV:PKR_VAR_temp_resource_group_name = ('{0}-{1}-{2}-pkrtmp' -f $YAML.vm.tags["worker_pool_id"], $YAML.vm.tags["deploymentId"], (Get-Random -Maximum 999))
     $ENV:PKR_VAR_tenant_id = $Tenant_ID
@@ -140,6 +141,7 @@ function New-WorkerImage {
     $ENV:PKR_VAR_resource_group = $yaml.azure["managed_image_resource_group_name"]
     $ENV:PKR_VAR_image_offer = $YAML.image["offer"]
     $ENV:PKR_VAR_image_sku = $YAML.image["sku"]
+    $ENV:PKR_VAR_image_version = $YAML.image["version"]
     $ENV:PKR_VAR_vm_size = $YAML.vm["size"]
     $ENV:PKR_VAR_base_image = $YAML.vm.tags["base_image"]
     $ENV:PKR_VAR_source_branch = $YAML.vm.tags["sourceBranch"]
