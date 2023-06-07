@@ -49,6 +49,11 @@ variable "image_version" {
   default = "${env("image_version")}"
 }
 
+variable "sharedimage_version" {
+  type    = string
+  default = "${env("sharedimage_version")}"
+}
+
 variable "location" {
   type    = string
   default = "${env("location")}"
@@ -143,6 +148,7 @@ source "azure-arm" "sig" {
   image_publisher = "${var.image_publisher}"
   image_offer     = "${var.image_offer}"
   image_sku       = "${var.image_sku}"
+  image_version   = "${var.image_version}"
 
   # Destination
   temp_resource_group_name           = "${var.temp_resource_group_name}"
@@ -159,7 +165,7 @@ source "azure-arm" "sig" {
     resource_group = "${var.resource_group}"
     gallery_name   = "${var.gallery_name}"
     image_name     = "${var.image_name}"
-    image_version  = "${var.image_version}"
+    image_version  = "${var.sharedimage_version}"
     replication_regions = [
       "centralindia",
       "eastus",
@@ -204,6 +210,7 @@ source "azure-arm" "nonsig" {
   image_publisher = "${var.image_publisher}"
   image_offer     = "${var.image_offer}"
   image_sku       = "${var.image_sku}"
+  image_version   = "${var.image_version}"
 
   # Destination
   temp_resource_group_name           = "${var.temp_resource_group_name}"
@@ -240,14 +247,19 @@ build {
   }
 
   provisioner "file" {
-    source      = "${path.cwd}/scripts/windows"
-    destination = "C:/Program Files/WindowsPowerShell/Modules/"
+    source      = "${path.cwd}/scripts/windows/CustomFunctions/Bootstrap"
+    destination = "C:/Windows/System32/WindowsPowerShell/v1.0/Modules/"
   }
 
   provisioner "powershell" {
     elevated_password = ""
     elevated_user     = "SYSTEM"
-    inline            = ["Import-Module C:/Program Files/WindowsPowerShell/Modules/windows/Functions.psm1 -ErrorAction 'Stop'"]
+    inline = ["New-Item -Name 'Tests' -Path C:/ -Type Directory -Force"]
+  }
+
+  provisioner "file" {
+    source      = "${path.cwd}/tests/win/"
+    destination = "C:/Tests"
   }
 
   provisioner "powershell" {
@@ -258,15 +270,72 @@ build {
       "base_image=${var.base_image}",
       "src_organisation=${var.source_organization}",
       "src_Repository=${var.source_repository}",
-      "src_Branch=${var.source_branch}"
+      "src_Branch=${var.source_branch}",
+      "deploymentId=${var.deployment_id}"
     ]
-    scripts = [
-      "${path.cwd}/scripts/bootstrap_win.ps1"
+    inline = [
+      "Import-Module BootStrap -Force",
+      "Disable-AntiVirus",
+      "Set-Logging",
+      "Install-AzPreReq",
+      "Set-RoninRegOptions"
+    ]
+  }
+
+  provisioner "windows-restart" {
+  }
+
+  provisioner "powershell" {
+    elevated_password = ""
+    elevated_user     = "SYSTEM"
+    environment_vars = [
+      "worker_pool_id=${var.worker_pool_id}",
+      "base_image=${var.base_image}",
+      "src_organisation=${var.source_organization}",
+      "src_Repository=${var.source_repository}",
+      "src_Branch=${var.source_branch}",
+      "deploymentId=${var.deployment_id}"
+    ]
+    inline = [
+      "Import-Module BootStrap -Force",
+      "Set-AzRoninRepo"
+    ]
+  }
+
+  provisioner "powershell" {
+    elevated_password = ""
+    elevated_user     = "SYSTEM"
+    environment_vars = [
+      "worker_pool_id=${var.worker_pool_id}",
+      "base_image=${var.base_image}",
+      "src_organisation=${var.source_organization}",
+      "src_Repository=${var.source_repository}",
+      "src_Branch=${var.source_branch}",
+      "deploymentId=${var.deployment_id}"
+    ]
+    inline = [
+      "Import-Module BootStrap -Force",
+      "Start-AzRoninPuppet"
+    ]
+    valid_exit_codes = [
+      0,
+      2
+    ]
+  }
+
+    provisioner "powershell" {
+    elevated_password = ""
+    elevated_user     = "SYSTEM"
+    inline = [
+      "Import-Module BootStrap -Force",
+      "Set-PesterVersion",
+      "Get-ChildItem C:/Tests/* | Foreach-Object {Invoke-RoninTest -Test $PSItem.FullName}"
     ]
   }
 
   provisioner "powershell" {
     inline = ["$stage =  ((Get-ItemProperty -path HKLM:\\SOFTWARE\\Mozilla\\ronin_puppet).bootstrap_stage)", "If ($stage -ne 'complete') { exit 2}", "Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Mozilla\\ronin_puppet' -name hand_off_ready -type  string -value yes", "Write-Output ' -> Waiting for GA Service (RdAgent) to start ...'", "while ((Get-Service RdAgent).Status -ne 'Running') { Start-Sleep -s 5 }", "Write-Output ' -> Waiting for GA Service (WindowsAzureTelemetryService) to start ...'", "while ((Get-Service WindowsAzureTelemetryService) -and ((Get-Service WindowsAzureTelemetryService).Status -ne 'Running')) { Start-Sleep -s 5 }", "Write-Output ' -> Waiting for GA Service (WindowsAzureGuestAgent) to start ...'", "while ((Get-Service WindowsAzureGuestAgent).Status -ne 'Running') { Start-Sleep -s 5 }", "Write-Output ' -> Sysprepping VM ...'", "if ( Test-Path $Env:SystemRoot\\system32\\Sysprep\\unattend.xml ) {Remove-Item $Env:SystemRoot\\system32\\Sysprep\\unattend.xml -Force}", "& $env:SystemRoot\\System32\\Sysprep\\Sysprep.exe /oobe /generalize /quiet /quit", "while ($true) {start-sleep -s 10 ;$imageState = (Get-ItemProperty HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Setup\\State).ImageState; Write-Output $imageState; if ($imageState -eq 'IMAGE_STATE_GENERALIZE_RESEAL_TO_OOBE') { break }}", "Write-Output ' -> Sysprep complete ...'"]
+    inline = ["Write-Output ' -> Waiting for GA Service (RdAgent) to start ...'", "while ((Get-Service RdAgent).Status -ne 'Running') { Start-Sleep -s 5 }", "Write-Output ' -> Waiting for GA Service (WindowsAzureTelemetryService) to start ...'", "while ((Get-Service WindowsAzureTelemetryService) -and ((Get-Service WindowsAzureTelemetryService).Status -ne 'Running')) { Start-Sleep -s 5 }", "Write-Output ' -> Waiting for GA Service (WindowsAzureGuestAgent) to start ...'", "while ((Get-Service WindowsAzureGuestAgent).Status -ne 'Running') { Start-Sleep -s 5 }", "Write-Output ' -> Sysprepping VM ...'", "if ( Test-Path $Env:SystemRoot\\system32\\Sysprep\\unattend.xml ) {Remove-Item $Env:SystemRoot\\system32\\Sysprep\\unattend.xml -Force}", "& $env:SystemRoot\\System32\\Sysprep\\Sysprep.exe /oobe /generalize /quiet /quit", "while ($true) {start-sleep -s 10 ;$imageState = (Get-ItemProperty HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Setup\\State).ImageState; Write-Output $imageState; if ($imageState -eq 'IMAGE_STATE_GENERALIZE_RESEAL_TO_OOBE') { break }}", "Write-Output ' -> Sysprep complete ...'"]
   }
 
 }
