@@ -228,7 +228,7 @@ function Remove-VMImageVersion {
     $YAML = Convertfrom-Yaml (Get-Content "config/$key.yaml" -raw)
     ## Check if the image version is there
     $splat = @{
-        ResourceGroupName = "rg-packer-worker-images"
+        ResourceGroupName = $YAML.azure["managed_image_resource_group_name"]
         GalleryName = $YAML.sharedimage["gallery_name"]
         GalleryImageDefinitionName = $YAML.sharedimage["image_name"]
         GalleryImageVersionName = $YAML.sharedimage["image_version"]
