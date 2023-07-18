@@ -247,7 +247,7 @@ build {
   }
 
   provisioner "file" {
-    source      = "${path.cwd}/scripts/windows/CustomFunctions/Bootstrap"
+    source      = "${path.root}/scripts/windows/CustomFunctions/Bootstrap"
     destination = "C:/Windows/System32/WindowsPowerShell/v1.0/Modules/"
   }
 
