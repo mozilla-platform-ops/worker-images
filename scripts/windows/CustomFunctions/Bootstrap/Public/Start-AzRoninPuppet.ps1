@@ -79,7 +79,12 @@ function Start-AzRoninPuppet {
                 Write-Log -message ('{0} :: Puppet apply failed :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit) -severity 'DEBUG'
                 Write-Host ('{0} :: Puppet apply failed :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit)
                 Set-ItemProperty -Path $ronnin_key -name "last_run_exit" -value $puppet_exit
-                #Move-StrapPuppetLogs
+                Add-Content "$logdir\$datetime-bootstrap-puppet.json" "`n]" | ConvertFrom-Json | Where-Object {
+                    $psitem.Level -match "warning|err" 
+                } | ForEach-Object {
+                    Write-Output $psitem
+                }
+                Move-StrapPuppetLogs
                 exit 1
             }
             2 {
@@ -94,14 +99,26 @@ function Start-AzRoninPuppet {
                 Write-Log -message ('{0} :: Puppet apply succeeded, but some resources failed :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit) -severity 'DEBUG'
                 Write-Host ('{0} :: Puppet apply succeeded, but some resources failed :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit)
                 Set-ItemProperty -Path $ronnin_key -name last_run_exit -value $puppet_exit
-                #Move-StrapPuppetLogs
+                ## The JSON file isn't formatted correctly, so add a ] to complete the json formatting and then output warnings or errors
+                Add-Content "$logdir\$datetime-bootstrap-puppet.json" "`n]" | ConvertFrom-Json | Where-Object {
+                    $psitem.Level -match "warning|err" 
+                } | ForEach-Object {
+                    Write-Output $psitem
+                }
+                Move-StrapPuppetLogs
                 exit 4
             }
             6 {
                 Write-Log -message ('{0} :: Puppet apply succeeded, but included changes and failures :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit) -severity 'DEBUG'
                 Write-Host ('{0} :: Puppet apply succeeded, but included changes and failures :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit)
                 Set-ItemProperty -Path $ronnin_key -name last_run_exit -value $puppet_exit
-                #Move-StrapPuppetLogs
+                ## The JSON file isn't formatted correctly, so add a ] to complete the json formatting and then output warnings or errors
+                Add-Content "$logdir\$datetime-bootstrap-puppet.json" "`n]" | ConvertFrom-Json | Where-Object {
+                    $psitem.Level -match "warning|err" 
+                } | ForEach-Object {
+                    Write-Output $psitem
+                }
+                Move-StrapPuppetLogs
                 exit 6
             }
             Default {
