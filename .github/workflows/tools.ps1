@@ -42,7 +42,11 @@ function Set-WorkerImageLocation {
     Set-PSRepository PSGallery -InstallationPolicy Trusted
     Install-Module powershell-yaml -ErrorAction Stop
     $YAML = Convertfrom-Yaml (Get-Content "config/$key.yaml" -raw)
-    $locations = ($YAML.azure.locations | ConvertTo-Json -Compress)
+    if ($YAML.azure.locations.count -eq 1) {
+        $locations = '["' + $yaml.azure.locations + '"]'
+    } else {
+        $locations = ($YAML.azure.locations | ConvertTo-Json -Compress)
+    }
     Write-Output "LOCATIONS=$locations" >> $ENV:GITHUB_OUTPUT
     
 }
