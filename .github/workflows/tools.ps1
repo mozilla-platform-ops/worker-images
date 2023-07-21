@@ -111,10 +111,8 @@ function New-SharedWorkerImage {
             $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}' -f $YAML.vm.tags["worker_pool_id"], $ENV:PKR_VAR_image_sku, $YAML.vm.tags["deploymentId"])
         }
     }
+    Write-Host "Building $($ENV:PKR_VAR_managed_image_name) in $($ENV:PKR_VAR_temp_resource_group_name)"
     packer build --only azure-arm.sig -force azure.pkr.hcl
-
-    ## Remove temporary resource group that doesn't seem to get deleted
-    Get-AzResourceGroup -Name $ENV:PKR_VAR_temp_resource_group_name | Remove-AzResourceGroup -Force
 }
 
 function New-WorkerImage {
@@ -178,10 +176,8 @@ function New-WorkerImage {
             $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}-{3}' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:PKR_VAR_image_sku, $YAML.vm.tags["deploymentId"])
         }
     }
+    Write-Host "Building $($ENV:PKR_VAR_managed_image_name) in $($ENV:PKR_VAR_temp_resource_group_name)"
     packer build --only azure-arm.nonsig -force azure.pkr.hcl
-
-    ## Remove temporary resource group that doesn't seem to get deleted
-    Get-AzResourceGroup -Name $ENV:PKR_VAR_temp_resource_group_name | Remove-AzResourceGroup -Force
 }
 
 function Remove-WorkerImage {
