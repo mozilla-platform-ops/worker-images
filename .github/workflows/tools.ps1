@@ -112,6 +112,9 @@ function New-SharedWorkerImage {
         }
     }
     packer build --only azure-arm.sig -force azure.pkr.hcl
+
+    ## Remove temporary resource group that doesn't seem to get deleted
+    Get-AzResourceGroup -Name $ENV:PKR_VAR_temp_resource_group_name | Remove-AzResourceGroup -Force
 }
 
 function New-WorkerImage {
@@ -176,6 +179,9 @@ function New-WorkerImage {
         }
     }
     packer build --only azure-arm.nonsig -force azure.pkr.hcl
+
+    ## Remove temporary resource group that doesn't seem to get deleted
+    Get-AzResourceGroup -Name $ENV:PKR_VAR_temp_resource_group_name | Remove-AzResourceGroup -Force
 }
 
 function Remove-WorkerImage {
