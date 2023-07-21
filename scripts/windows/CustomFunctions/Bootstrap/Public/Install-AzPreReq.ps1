@@ -21,10 +21,13 @@ function Install-AzPreReq {
         Write-Host ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime())
     }
     process {
-
+        Write-host "Downloading $ext_src/$puppet to $env:systemdrive\$puppet"
         Invoke-WebRequest -Uri $ext_src/$puppet -UseBasicParsing -OutFile "$env:systemdrive\$puppet"
+        Write-host "Downloaded $puppet to $env:systemdrive\$puppet"
         Invoke-WebRequest -Uri $ext_src/$git -UseBasicParsing -OutFile "$env:systemdrive\$git"
+        Write-host "Downloaded $git to $env:systemdrive\$git"
         Invoke-WebRequest -Uri $ext_src/$manifest -UseBasicParsing -OutFile "$local_dir\$manifest"
+        Write-host "Downloaded $manifest to $local_dir\$manifest"
 
         Start-Process "$env:systemdrive\$git" /verysilent -wait
         Write-Log -message  ('{0} :: Git installed " {1}' -f $($MyInvocation.MyCommand.Name), $git) -severity 'DEBUG'

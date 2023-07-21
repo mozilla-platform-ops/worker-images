@@ -14,16 +14,16 @@ azure:
   build_location: eastus
   locations:
     - uksouth
-    - centralindia
-    - eastus
-    - eastus2
-    - northcentralus
-    - northeurope
-    - southindia
-    - southcentralus
-    - westus
-    - westus2
-    - westus3
+    # - centralindia
+    # - eastus
+    # - eastus2
+    # - northcentralus
+    # - northeurope
+    # - southindia
+    # - southcentralus
+    # - westus
+    # - westus2
+    # - westus3
   bootstrapscript: "https://raw.githubusercontent.com/mozilla-platform-ops/ronin_puppet/cloud_windows/provisioners/windows/azure/azure-bootstrap.ps1"
 vm:
   size: Standard_F8s_v2
