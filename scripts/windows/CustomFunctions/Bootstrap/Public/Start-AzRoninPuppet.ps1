@@ -103,7 +103,7 @@ function Start-AzRoninPuppet {
                 Add-Content "$logdir\$datetime-bootstrap-puppet.json" "`n]" | ConvertFrom-Json | Where-Object {
                     $psitem.Level -match "warning|err" 
                 } | ForEach-Object {
-                    Write-Output $psitem
+                    Write-Host $psitem
                 }
                 Move-StrapPuppetLogs
                 exit 4
@@ -116,7 +116,7 @@ function Start-AzRoninPuppet {
                 Add-Content "$logdir\$datetime-bootstrap-puppet.json" "`n]" | ConvertFrom-Json | Where-Object {
                     $psitem.Level -match "warning|err" 
                 } | ForEach-Object {
-                    Write-Output $psitem
+                    Write-Host $psitem
                 }
                 Move-StrapPuppetLogs
                 exit 6
