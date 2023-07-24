@@ -30,8 +30,8 @@ vm:
   tags:
     base_image: win11642009azure
     worker_pool_id: win11-64-2009
-    sourceOrganization: mozilla-platform-ops
+    sourceOrganization: jwmoss
     sourceRepository: ronin_puppet
     sourceBranch: cloud_windows
-    deploymentId: 69a7ecf
+    deploymentId: b6c8935
     managed_by: packer
