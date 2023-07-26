@@ -1,3 +1,12 @@
+packer {
+  required_plugins {
+    azure = {
+      version = ">= 1.4.5"
+      source  = "github.com/hashicorp/azure"
+    }
+  }
+}
+
 variable "base_image" {
   type    = string
   default = "${env("base_image")}"

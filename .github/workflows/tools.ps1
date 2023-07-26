@@ -112,6 +112,7 @@ function New-SharedWorkerImage {
         }
     }
     Write-Host "Building $($ENV:PKR_VAR_managed_image_name) in $($ENV:PKR_VAR_temp_resource_group_name)"
+    packer init
     packer build --only azure-arm.sig -force azure.pkr.hcl
 }
 
@@ -177,6 +178,7 @@ function New-WorkerImage {
         }
     }
     Write-Host "Building $($ENV:PKR_VAR_managed_image_name) in $($ENV:PKR_VAR_temp_resource_group_name)"
+    packer init
     packer build --only azure-arm.nonsig -force azure.pkr.hcl
 }
 
