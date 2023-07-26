@@ -335,6 +335,7 @@ build {
 
   provisioner "powershell" {
     inline = [ 
+      "Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Mozilla\\ronin_puppet' -Name hand_off_ready -Type string -Value yes",
       "Write-host '=== Azure image build completed successfully ==='",
       "Write-host '=== Generalising the image ... ==='",    
       "& $env:SystemRoot\\System32\\Sysprep\\Sysprep.exe /generalize /oobe /quit", 
