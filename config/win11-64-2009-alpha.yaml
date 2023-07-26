@@ -9,7 +9,7 @@ sharedimage:
   image_name: "win11-64-2009-alpha"
   image_version: 1.0.0
 azure:
-  managed_image_resource_group_name: rg-packer-worker-images
+  managed_image_resource_group_name: rg-packer-through-cib
   managed_image_storage_account_type: Standard_LRS
   build_location: eastus
   locations:
@@ -33,5 +33,5 @@ vm:
     sourceOrganization: jwmoss
     sourceRepository: ronin_puppet
     sourceBranch: cloud_windows
-    deploymentId: b6c8935
+    deploymentId: d31aeb3
     managed_by: packer
