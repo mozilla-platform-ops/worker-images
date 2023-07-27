@@ -5,8 +5,19 @@ Describe "Mozilla Maintenance Service" {
             "EA66A61D6C382C8D1CA8C345EEB7D4DF4AFBEF18",
             "A13DC11A11F27619734BD4B73F2649FFDA3E6230"
         )
+        $Software = Get-InstalledSoftware | Where-Object {
+            $PSItem.DisplayName -eq "Mozilla Maintenance Service"
+        }
     }
-    Context "Mozilla Maintenance Service" -Foreach @(
+    Context "Mozilla Maintenance Program" {
+        It "Mozilla Maintenance Service is installed" {
+            $Software.DisplayName | Should -Not -Be $Null
+        }
+        It "Mozilla Maintenance Service Windows Service exists" {
+            Get-Service "MozillaMaintenance" | Should -Not -Be $null
+        }
+    }
+    Context "Mozilla Maintenance Service Certificates" -Foreach @(
         "FA056CEBEFF3B1D0500A1FB37C2BD2F9CE4FB5D8",
         "EA66A61D6C382C8D1CA8C345EEB7D4DF4AFBEF18",
         "A13DC11A11F27619734BD4B73F2649FFDA3E6230"
