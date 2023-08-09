@@ -5,6 +5,9 @@ Describe "File System Management" {
     It "Disable Last Acccess" {
         Get-ItemPropertyValue "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "NtfsDisableLastAccessUpdate" | Should -Be 2147483649
     }
+    It "Long paths enabled" {
+        Get-ItemPropertyValue "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" | Should -Be 1
+    }
     It "PageFile is set to Y" -Skip {
             (Get-CimInstance Win32_PageFileSetting).Name | Should -Be "y:\pagefile.sys"
     }
