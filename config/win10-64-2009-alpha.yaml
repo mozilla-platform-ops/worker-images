@@ -1,12 +1,12 @@
 ---
 image:
   publisher: MicrosoftWindowsDesktop
-  offer: Windows-11
+  offer: Windows-10
   sku: win11-22h2-avd
-  version: 22621.1555.230329
+  version: 19045.3324.230728 ## https://support.microsoft.com/en-us/topic/windows-10-and-windows-11-client-images-for-august-2023-40485b69-f481-4353-aa61-d92c238c7a1d
 sharedimage:
-  gallery_name: "ronin_t_windows11_64_2009_alpha"
-  image_name: "win11-64-2009-alpha"
+  gallery_name: "ronin_t_windows10_64_2009_alpha"
+  image_name: "win10-64-2009-alpha"
   image_version: 1.0.0
 azure:
   managed_image_resource_group_name: rg-packer-through-cib
@@ -28,8 +28,8 @@ azure:
 vm:
   size: Standard_F8s_v2
   tags:
-    base_image: win11642009azure
-    worker_pool_id: win11-64-2009
+    base_image: win10642009azure
+    worker_pool_id: win10-64-2009
     sourceOrganization: jwmoss
     sourceRepository: ronin_puppet
     sourceBranch: cloud_windows
