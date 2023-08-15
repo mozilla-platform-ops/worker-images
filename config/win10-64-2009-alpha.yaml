@@ -2,7 +2,7 @@
 image:
   publisher: MicrosoftWindowsDesktop
   offer: Windows-10
-  sku: win11-22h2-avd
+  sku: win10-22h2-avd
   version: 19045.3324.230728 ## https://support.microsoft.com/en-us/topic/windows-10-and-windows-11-client-images-for-august-2023-40485b69-f481-4353-aa61-d92c238c7a1d
 sharedimage:
   gallery_name: "ronin_t_windows10_64_2009_alpha"
