@@ -33,5 +33,5 @@ vm:
     sourceOrganization: jwmoss
     sourceRepository: ronin_puppet
     sourceBranch: cloud_windows
-    deploymentId: 70e4614
+    deploymentId: c64d459
     managed_by: packer
