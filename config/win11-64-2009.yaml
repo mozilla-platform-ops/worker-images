@@ -3,7 +3,7 @@ image:
   publisher: MicrosoftWindowsDesktop
   offer: Windows-11
   sku: win11-22h2-avd
-  version: latest
+  version: 22621.1555.230329
 sharedimage:
   gallery_name: "ronin_t_windows11_64_2009_prod"
   image_name: "win11-64-2009"
@@ -32,5 +32,5 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: cloud_windows
-    deploymentId: 669c5d9
+    deploymentId: 9d1a0e2
     managed_by: packer
