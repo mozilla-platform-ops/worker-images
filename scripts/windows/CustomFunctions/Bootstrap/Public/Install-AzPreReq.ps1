@@ -21,13 +21,46 @@ function Install-AzPreReq {
         Write-Host ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime())
     }
     process {
-        Write-host "Downloading $ext_src/$puppet to $env:systemdrive\$puppet"
-        Invoke-WebRequest -Uri $ext_src/$puppet -UseBasicParsing -OutFile "$env:systemdrive\$puppet"
-        Write-host "Downloaded $puppet to $env:systemdrive\$puppet"
-        Invoke-WebRequest -Uri $ext_src/$git -UseBasicParsing -OutFile "$env:systemdrive\$git"
-        Write-host "Downloaded $git to $env:systemdrive\$git"
-        Invoke-WebRequest -Uri $ext_src/$manifest -UseBasicParsing -OutFile "$local_dir\$manifest"
-        Write-host "Downloaded $manifest to $local_dir\$manifest"
+        ## Setup azcopy
+        Write-host "Downloading azcopy to $ENV:systemdrive\"
+        Invoke-WebRequest "https://aka.ms/downloadazcopy-v10-windows" -OutFile "$env:systemdrive\azcopy.zip"
+        Write-host "Downloaded azcopy to $ENV:systemdrive\azcopy.zip"
+        Expand-Archive -Path "$ENV:systemdrive\azcopy.zip" -DestinationPath "$ENV:systemdrive\azcopy"
+        $azcopy_path = Get-ChildItem "$ENV:systemdrive\azcopy" -Recurse | Where-Object {$PSItem.name -eq "azcopy.exe"}
+        Copy-Item $azcopy_path.FullName -Destination "$ENV:systemdrive\"
+        Remove-Item "$ENV:systemdrive\azcopy.zip"
+
+        ## Set azcopy vars
+        $ENV:AZCOPY_AUTO_LOGIN_TYPE = "SPN"
+        $ENV:AZCOPY_SPA_APPLICATION_ID = $ENV:application_id
+        $ENV:AZCOPY_SPA_CLIENT_SECRET = $ENV:client_secret
+        $ENV:AZCOPY_TENANT_ID = $ENV:tenant_id
+
+        ## Authenticate
+        Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
+            "login",
+            "--service-principal",
+            "--application-id $ENV:AZCOPY_SPA_APPLICATION_ID",
+            "--tenant-id=$ENV:tenant_id"
+        ) -Wait -NoNewWindow
+
+        Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
+            "copy",
+            "$ext_src/$puppet",
+            "$env:systemdrive\$puppet"
+        )
+
+        Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
+            "copy",
+            "$ext_src/$git",
+            "$env:systemdrive\$git"
+        )
+
+        Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
+            "copy",
+            "$ext_src/$manifest ",
+            "$local_dir\$manifest"
+        )
 
         Start-Process "$env:systemdrive\$git" /verysilent -wait
         Write-Log -message  ('{0} :: Git installed " {1}' -f $($MyInvocation.MyCommand.Name), $git) -severity 'DEBUG'

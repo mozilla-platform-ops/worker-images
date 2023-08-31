@@ -138,6 +138,11 @@ variable "image_name" {
   default = "${env("image_name")}"
 }
 
+variable "application_id" {
+  type    = string
+  default = "${env("application_id")}"
+}
+
 source "azure-arm" "sig" {
   # WinRM
   communicator   = "winrm"
@@ -280,7 +285,11 @@ build {
       "src_organisation=${var.source_organization}",
       "src_Repository=${var.source_repository}",
       "src_Branch=${var.source_branch}",
-      "deploymentId=${var.deployment_id}"
+      "deploymentId=${var.deployment_id}",
+      "client_id=${var.client_id}",
+      "client_secret=${var.client_secret}",
+      "tenant_id=${var.tenant_id}",
+      "application_id=${var.application_id}"
     ]
     inline = [
       "Import-Module BootStrap -Force",

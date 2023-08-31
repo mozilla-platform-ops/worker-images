@@ -57,5 +57,6 @@ jobs:
             Client_Secret = "${{ secrets.AZURE_CLIENT_ID_DEV_SECRET }}"
             Subscription_ID = "${{ secrets.AZURE_SUBSCRIPTION_ID_DEV }}"
             Tenant_ID = "${{ secrets.AZURE_TENANT_ID }}"
+            Application_ID = "${{ secrets.AZURE_APPLICATION_ID_DEV }}"
           }
           New-WorkerImage @Vars

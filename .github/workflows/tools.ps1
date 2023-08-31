@@ -135,7 +135,10 @@ function New-WorkerImage {
         $Subscription_ID,
 
         [String]
-        $Tenant_ID
+        $Tenant_ID,
+
+        [String]
+        $Application_ID
     )
 
     Set-PSRepository PSGallery -InstallationPolicy Trusted
@@ -160,6 +163,7 @@ function New-WorkerImage {
     $ENV:PKR_VAR_tenant_id = $Tenant_ID
     $ENV:PKR_VAR_subscription_id = $Subscription_ID
     $ENV:PKR_VAR_client_secret = $Client_Secret
+    $ENV:PKR_VAR_application_id = $Application_ID
     switch -Wildcard ($key) {
         "*alpha2*" {
             $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}-alpha2' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:PKR_VAR_image_sku)
