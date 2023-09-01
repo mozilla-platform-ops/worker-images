@@ -13,14 +13,14 @@ azure:
   managed_image_storage_account_type: Standard_LRS
   build_location: eastus
   locations:
-    - uksouth
+    - canadacentral
     - centralindia
     - eastus
     - eastus2
     - northcentralus
     - northeurope
     - southindia
-    - southcentralus
+    - uksouth
     - westus
     - westus2
     - westus3
