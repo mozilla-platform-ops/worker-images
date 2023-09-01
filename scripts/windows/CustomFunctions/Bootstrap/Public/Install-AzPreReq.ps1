@@ -48,19 +48,19 @@ function Install-AzPreReq {
             "copy",
             "$ext_src/$puppet",
             "$env:systemdrive\$puppet"
-        )
+        ) -Wait -NoNewWindow
 
         Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
             "copy",
             "$ext_src/$git",
             "$env:systemdrive\$git"
-        )
+        ) -Wait -NoNewWindow
 
         Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
             "copy",
             "$ext_src/$manifest ",
             "$local_dir\$manifest"
-        )
+        ) -Wait -NoNewWindow
 
         Start-Process "$env:systemdrive\$git" /verysilent -wait
         Write-Log -message  ('{0} :: Git installed " {1}' -f $($MyInvocation.MyCommand.Name), $git) -severity 'DEBUG'
