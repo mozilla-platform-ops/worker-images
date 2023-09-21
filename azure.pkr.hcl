@@ -355,7 +355,7 @@ build {
     inline = [
       "Import-Module BootStrap -Force",
       "Set-PesterVersion",
-      "Get-RoninTest -Key $ENV:base_image | Foreach-Object {Invoke-RoninTest -Test $PSItem.FullName -Key $ENV:base_image}"
+      "Invoke-RoninTest -Key $ENV:base_image"
     ]
   }
 
