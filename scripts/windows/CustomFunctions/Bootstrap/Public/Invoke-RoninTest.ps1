@@ -11,10 +11,15 @@ Function Invoke-RoninTest {
         [String[]]
         $ExcludeTag,
 
+        [String]
+        $Key = $ENV:base_image,
+
         [Switch]
         $PassThru
     )
-    $Container = New-PesterContainer -Path $test
+    $Container = New-PesterContainer -Path $test -Data @{
+        File = "C:\ronin\data\roles\$Key.yaml"
+    }
     $config = New-PesterConfiguration
     $config.Run.Container = $Container
     $config.Filter.Tag = $Tags
