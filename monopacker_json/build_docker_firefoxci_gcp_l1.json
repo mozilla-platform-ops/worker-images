@@ -1,0 +1,100 @@
+{
+    "builders": [
+        {
+            "name": "docker_firefoxci_gcp_l1",
+            "type": "googlecompute",
+            "image_name": "docker-firefoxci-gcp-l1-{{build_type}}-{{isotime | clean_resource_name}}",
+            "source_image_family": "ubuntu-1804-lts",
+            "ssh_username": "ubuntu",
+            "project_id": "taskcluster-imaging",
+            "zone": "us-west1-a",
+            "disk_size": null,
+            "machine_type": null,
+            "image_licenses": [
+                "projects/vm-options/global/licenses/enable-vmx"
+            ]
+        }
+    ],
+    "provisioners": [
+        {
+            "type": "file",
+            "source": "./files.tar",
+            "destination": "/tmp/"
+        },
+        {
+            "type": "shell",
+            "inline": [
+                "sudo tar xvf /tmp/files.tar -C / --strip-components=1",
+                "rm /tmp/files.tar"
+            ]
+        },
+        {
+            "type": "file",
+            "source": "./secrets.tar",
+            "destination": "/tmp/"
+        },
+        {
+            "type": "shell",
+            "inline": [
+                "sudo mkdir -p /etc/taskcluster/secrets",
+                "sudo tar xvf /tmp/secrets.tar -C /",
+                "sudo chown root:root -R /etc/taskcluster",
+                "sudo chmod 0400 -R /etc/taskcluster/secrets",
+                "rm /tmp/secrets.tar"
+            ],
+            "only": [
+                "docker_firefoxci_gcp_l1"
+            ]
+        },
+        {
+            "type": "shell",
+            "inline": [
+                "/usr/bin/cloud-init status --wait"
+            ],
+            "only": [
+                "docker_firefoxci_gcp_l1"
+            ]
+        },
+        {
+            "type": "shell",
+            "scripts": [
+                "scripts/ubuntu-bionic/00-setup.sh",
+                "scripts/ubuntu-bionic/01-kernel.sh",
+                "scripts/ubuntu-bionic/02-grub.sh",
+                "scripts/ubuntu-bionic/03-dkms.sh",
+                "scripts/ubuntu-bionic/10-v4l2loopback.sh",
+                "scripts/ubuntu-bionic/11-snd-aloop.sh",
+                "scripts/ubuntu-bionic/19-post-kernel.sh",
+                "scripts/ubuntu-bionic/30-packages.sh",
+                "scripts/ubuntu-bionic/50-statsd.sh",
+                "scripts/ubuntu-bionic/60-networking.sh",
+                "scripts/ubuntu-bionic/99-clean.sh",
+                "scripts/worker-runner-linux/01-install-worker-runner.sh",
+                "scripts/worker-runner-linux/20-set-up-papertrail.sh",
+                "scripts/docker-worker-linux/60-install-docker-worker.sh",
+                "scripts/docker-worker-linux/80-docker.sh",
+                "scripts/docker-worker-linux/90-set-up-ephemeral-disks.sh"
+            ],
+            "environment_vars": [
+                "TASKCLUSTER_VERSION=38.0.5",
+                "BUILD_V4L2LOOPBACK=True",
+                "CLOUD=google",
+                "NUM_LOOPBACK_AUDIO_DEVICES=32",
+                "NUM_LOOPBACK_VIDEO_DEVICES=32"
+            ],
+            "execute_command": "sudo -S sh -c \'{{ .Vars }} {{ .Path }}\'",
+            "expect_disconnect": true,
+            "start_retry_timeout": "30m",
+            "only": [
+                "docker_firefoxci_gcp_l1"
+            ]
+        }
+    ],
+    "post-processors": [
+        {
+            "type": "manifest",
+            "output": "packer-artifacts.json",
+            "strip_path": true
+        }
+    ]
+}

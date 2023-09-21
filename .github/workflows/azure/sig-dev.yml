@@ -27,7 +27,7 @@ jobs:
         uses: azure/powershell@v1
         with:
           inlinescript: |
-            . .github/workflows/tools.ps1
+            Import-Module .\bin\WorkerImages\WorkerImages.psm1
             Remove-VMImageVersion -Key '${{ github.event.inputs.config }}'
           azPSVersion: "latest"
   packer:
@@ -38,7 +38,7 @@ jobs:
       - name: 'Run Packer'
         shell: pwsh
         run: |
-          . .github/workflows/tools.ps1
+          Import-Module .\bin\WorkerImages\WorkerImages.psm1
           $Vars = @{
             Key = '${{ github.event.inputs.config }}'
             Client_ID = "${{ secrets.AZURE_CLIENT_ID_DEV }}"

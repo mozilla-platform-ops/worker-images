@@ -1,4 +1,4 @@
-name: Shared Image Gallery Deployment - FXCI Trusted
+name: Shared Image Gallery Deployment - Test
 
 on:
   workflow_dispatch:
@@ -11,6 +11,16 @@ on:
         - win10-64-2009
         - win11-64-2009-alpha
         - win11-64-2009
+      env:
+        type: choice
+        description: Choose which environment to deploy to
+        options:
+        - trusted
+        - nontrusted
+        - dev
+      sha:
+        type: string
+        description: the first 7 characters of ronin_puppet commit hash
 
 jobs:
   packer:
@@ -21,7 +31,9 @@ jobs:
       - name: 'Run Packer'
         shell: pwsh
         run: |
-          . .github/workflows/tools.ps1
+          Import-Module .\bin\WorkerImages\WorkerImages.psm1
+          $SHA = "${{ github.event.inputs.sha }}"
+          Write-Host "Building '${{ github.event.inputs.config }}' from $SHA"
           $Vars = @{
             Key = '${{ github.event.inputs.config }}'
             Client_ID = "${{ secrets.AZURE_CLIENT_ID_DEV }}"
