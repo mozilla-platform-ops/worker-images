@@ -357,6 +357,10 @@ build {
       "Set-PesterVersion",
       "Invoke-RoninTest -Key $ENV:base_image"
     ]
+    valid_exit_codes = [
+      0,
+      2
+    ]
   }
 
   provisioner "powershell" {

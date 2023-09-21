@@ -9,6 +9,10 @@ Function Invoke-RoninTest {
     )
     ## Grab the tests from hiera
     $Hiera = Convertfrom-Yaml (Get-Content -Path "C:\ronin\data\roles\$key.yaml" -Raw)
+    if ($null -eq $Hiera) {
+        Write-host "Unable to find hiera key lookup $key"
+        exit 1
+    }
     ## Select the tests and pass through to pester
     $tests = @($Hiera.Tests) | ForEach-Object {
         $name = $psitem
