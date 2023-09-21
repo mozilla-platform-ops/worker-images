@@ -26,4 +26,4 @@ vm:
     deploymentId: a6b127d
     managed_by: packer
 tests:
-  - git
+  - git.tests.ps1
