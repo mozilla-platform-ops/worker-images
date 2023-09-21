@@ -20,7 +20,10 @@ function New-AzWorkerImage {
         $Tenant_ID,
 
         [String]
-        $Application_ID
+        $Application_ID,
+
+        [Switch]
+        $PackerDebug
     )
 
     Set-PSRepository PSGallery -InstallationPolicy Trusted
@@ -65,5 +68,10 @@ function New-AzWorkerImage {
     }
     Write-Host "Building $($ENV:PKR_VAR_managed_image_name) in $($ENV:PKR_VAR_temp_resource_group_name)"
     packer init azure.pkr.hcl
-    packer build --only azure-arm.nonsig -force azure.pkr.hcl
+    if ($PackerDebug) {
+        packer build -debug --only azure-arm.nonsig -force azure.pkr.hcl
+    }
+    else {
+        packer build --only azure-arm.nonsig -force azure.pkr.hcl
+    } 
 }
