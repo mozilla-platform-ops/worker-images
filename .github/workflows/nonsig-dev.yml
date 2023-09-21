@@ -22,7 +22,7 @@ jobs:
         shell: pwsh
         run: |
           Import-Module .\bin\WorkerImages\WorkerImages.psm1
-          Set-WorkerImageLocation -Key '${{ github.event.inputs.config }}'
+          Set-AzWorkerImageLocation -Key '${{ github.event.inputs.config }}'
     outputs:
       LOCATIONS: ${{ steps.set-matrix.outputs.LOCATIONS }}
   job2:
@@ -44,7 +44,7 @@ jobs:
         with:
           inlinescript: |
             Import-Module .\bin\WorkerImages\WorkerImages.psm1
-            Remove-WorkerImage -Key "${{ github.event.inputs.config }}" -Location "${{ matrix.LOCATIONS }}"
+            Remove-AzWorkerImage -Key "${{ github.event.inputs.config }}" -Location "${{ matrix.LOCATIONS }}"
           azPSVersion: "latest"
       - name: 'Run Packer'
         shell: pwsh
@@ -59,4 +59,4 @@ jobs:
             Tenant_ID = "${{ secrets.AZURE_TENANT_ID }}"
             Application_ID = "${{ secrets.AZURE_APPLICATION_ID_DEV }}"
           }
-          New-WorkerImage @Vars
+          New-AzWorkerImage @Vars

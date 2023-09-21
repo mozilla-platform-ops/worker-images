@@ -1,4 +1,4 @@
-function Remove-WorkerImage {
+function Remove-AzWorkerImage {
     [CmdletBinding()]
     param (
         [String]

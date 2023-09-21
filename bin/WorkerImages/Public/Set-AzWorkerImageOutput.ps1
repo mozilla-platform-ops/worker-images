@@ -1,4 +1,4 @@
-function Set-WorkerImageOutput {
+function Set-AzWorkerImageOutput {
     [CmdletBinding()]
     param (
         [Parameter()]

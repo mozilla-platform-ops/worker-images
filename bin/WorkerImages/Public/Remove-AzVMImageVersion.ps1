@@ -1,4 +1,4 @@
-function Remove-VMImageVersion {
+function Remove-AzVMImageVersion {
     [CmdletBinding()]
     param (
         [String]

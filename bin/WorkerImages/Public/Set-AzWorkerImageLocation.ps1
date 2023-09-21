@@ -1,4 +1,4 @@
-function Set-WorkerImageLocation {
+function Set-AzWorkerImageLocation {
     [CmdletBinding()]
     param (
         [Parameter()]

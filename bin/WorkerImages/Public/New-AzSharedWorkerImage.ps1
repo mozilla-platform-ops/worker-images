@@ -1,4 +1,4 @@
-function New-SharedWorkerImage {
+function New-AzSharedWorkerImage {
     [CmdletBinding()]
     param (
         [String]

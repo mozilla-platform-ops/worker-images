@@ -33,7 +33,7 @@ jobs:
         # Use a small PowerShell script to generate the test matrix
         run: |
           Import-Module .\bin\WorkerImages\WorkerImages.psm1
-          Set-WorkerImageLocation -Key '${{ github.event.inputs.config }}'
+          Set-AzWorkerImageLocation -Key '${{ github.event.inputs.config }}'
     outputs:
       LOCATIONS: ${{ steps.set-matrix.outputs.LOCATIONS }}
   job2:
@@ -55,7 +55,7 @@ jobs:
         with:
           inlinescript: |
             Import-Module .\bin\WorkerImages\WorkerImages.psm1
-            Remove-WorkerImage -Key "${{ needs.job1.outputs.KEY }}" -Location "${{ matrix.LOCATIONS }}"
+            Remove-AzWorkerImage -Key "${{ needs.job1.outputs.KEY }}" -Location "${{ matrix.LOCATIONS }}"
           azPSVersion: "latest"
       - name: 'Run Packer'
         shell: pwsh
@@ -71,4 +71,4 @@ jobs:
             Subscription_ID = "${{ secrets.AZURE_SUBSCRIPTION_ID_DEV }}"
             Tenant_ID = "${{ secrets.AZURE_TENANT_ID }}"
           }
-          New-WorkerImage @Vars
+          New-AzWorkerImage @Vars
