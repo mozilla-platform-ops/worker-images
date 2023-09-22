@@ -17,6 +17,17 @@ Function Invoke-RoninTest {
     $tests = foreach ($t in $Hiera.tests) {
         Get-ChildItem -Path "C:/Tests/$name"
     }
+
+    ## Check the output of $tests to make sure the contents are there
+    if ($null -eq $tests) {
+        Write-host "Unable to select tests based on hiera lookup"
+        exit 1
+    }
+    else {
+        foreach ($thing in $tests) {
+            Write-host "Processing $($thing.fullname)"
+        }
+    }
     ## Build the container and pass in the hiera key
     $Container = New-PesterContainer -Path $tests.FullName -Data @{
         File = "C:\ronin\data\roles\$Key.yaml"
