@@ -2,35 +2,37 @@ Function Invoke-RoninTest {
     [CmdletBinding()]
     param (
         [String]
-        $Key = $ENV:base_image,
+        $Role,
+
+        [String]
+        $Config,
 
         [Switch]
         $PassThru
     )
     ## Grab the tests from hiera
-    $Hiera = Convertfrom-Yaml (Get-Content -Path "C:\ronin\data\roles\$key.yaml" -Raw)
+    $Hiera = Convertfrom-Yaml (Get-Content -Path "C:\ronin\data\roles\$Role.yaml" -Raw)
+    $Config_tests = Convertfrom-Yaml (Get-Content -Path "C:\Config\$Config.yaml" -Raw)
     if ($null -eq $Hiera) {
-        Write-host "Unable to find hiera key lookup $key"
+        Write-host "Unable to find hiera key lookup $Role"
+        exit 1
+    }
+    if ($null -eq $Config_tests) {
+        Write-host "Unable to find hiera key lookup $Config"
         exit 1
     }
     ## Select the tests and pass through to pester
-    $tests = foreach ($t in $Hiera.tests) {
-        Get-ChildItem -Path "C:/Tests/$name"
+    $tests = foreach ($t in $Config_tests.tests) {
+        Get-ChildItem -Path "C:/Tests/$t"
     }
-
     ## Check the output of $tests to make sure the contents are there
     if ($null -eq $tests) {
-        Write-host "Unable to select tests based on hiera lookup"
+        Write-host "Unable to select tests based on $config lookup"
         exit 1
-    }
-    else {
-        foreach ($thing in $tests) {
-            Write-host "Processing $($thing.fullname)"
-        }
     }
     ## Build the container and pass in the hiera key
     $Container = New-PesterContainer -Path $tests.FullName -Data @{
-        File = "C:\ronin\data\roles\$Key.yaml"
+        File = "C:\ronin\data\roles\$Role.yaml"
     }
     $config = New-PesterConfiguration
     $config.Run.Container = $Container

@@ -358,10 +358,15 @@ build {
       "Set-YAMLModule",
       "Invoke-RoninTest -Key $ENV:base_image"
     ]
-    valid_exit_codes = [
-      0,
-      2
-    ]
+    #valid_exit_codes = [
+    #  0,
+    #  2
+    #]
+  }
+
+  provisioner "breakpoint" {
+    disable = false
+    note    = "breakpoint to check pester test setup"
   }
 
   provisioner "powershell" {
