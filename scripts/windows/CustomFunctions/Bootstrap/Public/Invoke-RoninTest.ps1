@@ -14,12 +14,11 @@ Function Invoke-RoninTest {
         exit 1
     }
     ## Select the tests and pass through to pester
-    $tests = @($Hiera.Tests) | ForEach-Object {
-        $name = $psitem
+    $tests = foreach ($t in $Hiera.tests) {
         Get-ChildItem -Path "C:/Tests/$name"
     }
     ## Build the container and pass in the hiera key
-    $Container = New-PesterContainer -Path $tests -Data @{
+    $Container = New-PesterContainer -Path $tests.FullName -Data @{
         File = "C:\ronin\data\roles\$Key.yaml"
     }
     $config = New-PesterConfiguration
