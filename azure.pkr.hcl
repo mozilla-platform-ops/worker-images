@@ -344,29 +344,11 @@ build {
     provisioner "powershell" {
     elevated_password = ""
     elevated_user     = "SYSTEM"
-    environment_vars = [
-      "worker_pool_id=${var.worker_pool_id}",
-      "base_image=${var.base_image}",
-      "src_organisation=${var.source_organization}",
-      "src_Repository=${var.source_repository}",
-      "src_Branch=${var.source_branch}",
-      "deploymentId=${var.deployment_id}"
-    ]
     inline = [
       "Import-Module BootStrap -Force",
       "Set-PesterVersion",
-      "Set-YAMLModule",
-      "Invoke-RoninTest -Key $ENV:base_image"
+      "Get-ChildItem C:/Tests/* | Foreach-Object {Invoke-RoninTest -Test $PSItem.FullName}"
     ]
-    #valid_exit_codes = [
-    #  0,
-    #  2
-    #]
-  }
-
-  provisioner "breakpoint" {
-    disable = false
-    note    = "breakpoint to check pester test setup"
   }
 
   provisioner "powershell" {

@@ -22,8 +22,6 @@ vm:
     worker_pool_id: win11-64-2009
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: cacert
-    deploymentId: a6b127d
+    sourceBranch: bug1481291
+    deploymentId: 9aed3ce
     managed_by: packer
-tests:
-  - git.tests.ps1
