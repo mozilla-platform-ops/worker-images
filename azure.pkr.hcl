@@ -143,6 +143,11 @@ variable "application_id" {
   default = "${env("application_id")}"
 }
 
+variable "config" {
+  type    = string
+  default = "${env("config")}"
+}
+
 source "azure-arm" "sig" {
   # WinRM
   communicator   = "winrm"
@@ -268,12 +273,20 @@ build {
   provisioner "powershell" {
     elevated_password = ""
     elevated_user     = "SYSTEM"
-    inline = ["New-Item -Name 'Tests' -Path C:/ -Type Directory -Force"]
+    inline = [
+      "New-Item -Name 'Tests' -Path C:/ -Type Directory -Force",
+      "New-Item -Name 'Config' -Path C:/ -Type Directory -Force"
+      ]
   }
 
   provisioner "file" {
     source      = "${path.cwd}/tests/win/"
     destination = "C:/Tests"
+  }
+
+  provisioner "file" {
+    source      = "${path.cwd}/config/"
+    destination = "C:/Config"
   }
 
   provisioner "powershell" {
@@ -296,7 +309,8 @@ build {
       "Disable-AntiVirus",
       "Set-Logging",
       "Install-AzPreReq",
-      "Set-RoninRegOptions"
+      "Set-RoninRegOptions",
+      "Install-Pwsh"
     ]
   }
 
@@ -323,7 +337,7 @@ build {
   provisioner "powershell" {
     elevated_password = ""
     elevated_user     = "SYSTEM"
-    environment_vars = [
+    environment_vars  = [
       "worker_pool_id=${var.worker_pool_id}",
       "base_image=${var.base_image}",
       "src_organisation=${var.source_organization}",
@@ -343,6 +357,7 @@ build {
 
     provisioner "powershell" {
     elevated_password = ""
+    use_pwsh = true
     elevated_user     = "SYSTEM"
     environment_vars = [
       "worker_pool_id=${var.worker_pool_id}",
@@ -350,23 +365,19 @@ build {
       "src_organisation=${var.source_organization}",
       "src_Repository=${var.source_repository}",
       "src_Branch=${var.source_branch}",
-      "deploymentId=${var.deployment_id}"
+      "deploymentId=${var.deployment_id}",
+      "config=${var.config}"
     ]
     inline = [
       "Import-Module BootStrap -Force",
       "Set-PesterVersion",
       "Set-YAMLModule",
-      "Invoke-RoninTest -Key $ENV:base_image"
+      "Invoke-RoninTest -Role $ENV:base_image -Config $ENV:config"
     ]
-    #valid_exit_codes = [
-    #  0,
-    #  2
-    #]
-  }
-
-  provisioner "breakpoint" {
-    disable = false
-    note    = "breakpoint to check pester test setup"
+    valid_exit_codes = [
+      0,
+      2
+    ]
   }
 
   provisioner "powershell" {
