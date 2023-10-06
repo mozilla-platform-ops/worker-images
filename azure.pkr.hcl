@@ -260,9 +260,9 @@ build {
 
   provisioner "powershell" {
     inline = [
-      "$ErrorActionPreference='SilentlyContinue'", 
+      "$ErrorActionPreference='SilentlyContinue'",
       "Set-ExecutionPolicy unrestricted -force"
-      ]
+    ]
   }
 
   provisioner "file" {
@@ -276,7 +276,7 @@ build {
     inline = [
       "New-Item -Name 'Tests' -Path C:/ -Type Directory -Force",
       "New-Item -Name 'Config' -Path C:/ -Type Directory -Force"
-      ]
+    ]
   }
 
   provisioner "file" {
@@ -309,8 +309,7 @@ build {
       "Disable-AntiVirus",
       "Set-Logging",
       "Install-AzPreReq",
-      "Set-RoninRegOptions",
-      "Install-Pwsh"
+      "Set-RoninRegOptions"
     ]
   }
 
@@ -337,7 +336,7 @@ build {
   provisioner "powershell" {
     elevated_password = ""
     elevated_user     = "SYSTEM"
-    environment_vars  = [
+    environment_vars = [
       "worker_pool_id=${var.worker_pool_id}",
       "base_image=${var.base_image}",
       "src_organisation=${var.source_organization}",
@@ -355,9 +354,8 @@ build {
     ]
   }
 
-    provisioner "powershell" {
+  provisioner "powershell" {
     elevated_password = ""
-    use_pwsh = true
     elevated_user     = "SYSTEM"
     environment_vars = [
       "worker_pool_id=${var.worker_pool_id}",
@@ -381,11 +379,11 @@ build {
   }
 
   provisioner "powershell" {
-    inline = [ 
+    inline = [
       "Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Mozilla\\ronin_puppet' -Name hand_off_ready -Type string -Value yes",
       "Write-host '=== Azure image build completed successfully ==='",
-      "Write-host '=== Generalising the image ... ==='",    
-      "& $env:SystemRoot\\System32\\Sysprep\\Sysprep.exe /generalize /oobe /quit", 
+      "Write-host '=== Generalising the image ... ==='",
+      "& $env:SystemRoot\\System32\\Sysprep\\Sysprep.exe /generalize /oobe /quit",
       "while ($true) { $imageState = Get-ItemProperty HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Setup\\State | Select ImageState; if($imageState.ImageState -ne 'IMAGE_STATE_GENERALIZE_RESEAL_TO_OOBE') { Write-Output $imageState.ImageState; Start-Sleep -s 10  } else { break } }"
     ]
   }
