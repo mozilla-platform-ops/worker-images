@@ -1,3 +1,12 @@
+Param(
+    [String]
+    $File
+)
+
+BeforeDiscovery {
+    $Hiera = Get-HieraRoleData -Path $File
+}
+
 Describe "Microsoft Tools" {
     It "<_.DisplayName> is installed" -ForEach @(
         Show-Win10SDK

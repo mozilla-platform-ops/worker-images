@@ -1,3 +1,12 @@
+Param(
+    [String]
+    $File
+)
+
+BeforeDiscovery {
+    $Hiera = Get-HieraRoleData -Path $File
+}
+
 Describe "Common Tools" {
     BeforeAll {
         $gpg4win = Get-InstalledSoftware | Where-Object {

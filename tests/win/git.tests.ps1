@@ -1,5 +1,4 @@
 Param(
-    [Parameter()]
     [String]
     $File
 )
@@ -19,7 +18,7 @@ Describe "Git" {
         $Git.DisplayName | Should -Not -Be $null
     }
 
-    It "Git Version is $ExpectedSoftwareVersion" {
+    It "Git Version is the same" {
         $Git.DisplayVersion | Should -Be $ExpectedSoftwareVersion
     }
 }
