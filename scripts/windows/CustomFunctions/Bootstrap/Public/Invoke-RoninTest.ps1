@@ -16,9 +16,9 @@ Function Invoke-RoninTest {
 
     [PesterConfiguration].Assembly #>
 
-    Get-Module Pester -ListAvailable
+    #Get-Module Pester -ListAvailable
 
-    Import-Module -Name Pester -Force -PassThru
+    #Import-Module -Name Pester -Force -PassThru
 
     ## Set path to role yaml
     $RolePath = "C:\ronin\data\roles\$Role.yaml"
@@ -58,34 +58,24 @@ Function Invoke-RoninTest {
         exit 1
     }
     ## Output the Fullname paths
-    Write-host ("Processing tests: {0}" -f $tests.fullname)
-    Write-Log -message ('{0} :: Processing tests: {1}' -f $($MyInvocation.MyCommand.Name), $tests.fullname) -severity 'DEBUG'
-    ## Try changing into the directory and running tests there
-    Set-Location "C:/Tests"
+    Foreach ($thing in $tests.fullname) {
+        Write-host ("Processing tests: {0}" -f $thing)
+        Write-Log -message ('{0} :: Processing tests: {1}' -f $($MyInvocation.MyCommand.Name), $thing) -severity 'DEBUG'
+    }
     ## Build the container and pass in the hiera key, and pass in just the test names, not the full path(s)
-    $Container = New-PesterContainer -Path $tests.Name -Data @{
+    $Container = New-PesterContainer -Path $tests.FullName -Data @{
         File = $RolePath
     }
-    $config = New-PesterConfiguration -Hashtable @{
-        Run = @{
-            Container = $Container
-        }
-        TestResult = {
-            Enabled = $true
-        }
-        Output = {
-            Verbosity = "Detailed"
-        }
-    }
-    #$config.Run.Container = $Container
+    $Configuration = New-PesterConfiguration
+    $Configuration.Run.Container = $Container
     #$config.Filter.Tag = $Tags
-    #$config.TestResult.Enabled = $true
-    #$config.Output.Verbosity = "Detailed"
+    $Configuration.TestResult.Enabled = $true
+    $Configuration.Output.Verbosity = "Detailed"
     #if ($ExcludeTag) {
     #    $config.Filter.ExcludeTag = $ExcludeTag
     #}
     #if ($PassThru) {
     #    $config.Run.Passthru = $true
     #}
-    Invoke-Pester -Configuration $config
+    Invoke-Pester -Configuration $Configuration
 }
