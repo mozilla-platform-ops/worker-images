@@ -13,7 +13,7 @@ azure:
   managed_image_storage_account_type: Standard_LRS
   build_location: eastus
   locations:
-    - uksouth
+    - ukwest
   bootstrapscript: "https://raw.githubusercontent.com/mozilla-platform-ops/ronin_puppet/cloud_windows/provisioners/windows/azure/azure-bootstrap.ps1"
 vm:
   size: Standard_F8s_v2
