@@ -22,6 +22,6 @@ vm:
     worker_pool_id: win10-64-2009
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: relops-691
-    deploymentId: a8903c1
+    sourceBranch: cloud_windows
+    deploymentId: f38a3d4
     managed_by: packer
