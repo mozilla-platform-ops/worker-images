@@ -143,6 +143,11 @@ variable "application_id" {
   default = "${env("application_id")}"
 }
 
+variable "config" {
+  type    = string
+  default = "${env("config")}"
+}
+
 source "azure-arm" "sig" {
   # WinRM
   communicator   = "winrm"
@@ -255,9 +260,9 @@ build {
 
   provisioner "powershell" {
     inline = [
-      "$ErrorActionPreference='SilentlyContinue'", 
+      "$ErrorActionPreference='SilentlyContinue'",
       "Set-ExecutionPolicy unrestricted -force"
-      ]
+    ]
   }
 
   provisioner "file" {
@@ -268,12 +273,20 @@ build {
   provisioner "powershell" {
     elevated_password = ""
     elevated_user     = "SYSTEM"
-    inline = ["New-Item -Name 'Tests' -Path C:/ -Type Directory -Force"]
+    inline = [
+      "New-Item -Name 'Tests' -Path C:/ -Type Directory -Force",
+      "New-Item -Name 'Config' -Path C:/ -Type Directory -Force"
+    ]
   }
 
   provisioner "file" {
     source      = "${path.cwd}/tests/win/"
     destination = "C:/Tests"
+  }
+
+  provisioner "file" {
+    source      = "${path.cwd}/config/"
+    destination = "C:/Config"
   }
 
   provisioner "powershell" {
@@ -341,22 +354,36 @@ build {
     ]
   }
 
-    provisioner "powershell" {
+  provisioner "powershell" {
     elevated_password = ""
     elevated_user     = "SYSTEM"
+    environment_vars = [
+      "worker_pool_id=${var.worker_pool_id}",
+      "base_image=${var.base_image}",
+      "src_organisation=${var.source_organization}",
+      "src_Repository=${var.source_repository}",
+      "src_Branch=${var.source_branch}",
+      "deploymentId=${var.deployment_id}",
+      "config=${var.config}"
+    ]
     inline = [
       "Import-Module BootStrap -Force",
       "Set-PesterVersion",
-      "Get-ChildItem C:/Tests/* | Foreach-Object {Invoke-RoninTest -Test $PSItem.FullName}"
+      "Set-YAMLModule",
+      "Invoke-RoninTest -Role $ENV:base_image -Config $ENV:config"
+    ]
+    valid_exit_codes = [
+      0,
+      2
     ]
   }
 
   provisioner "powershell" {
-    inline = [ 
+    inline = [
       "Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Mozilla\\ronin_puppet' -Name hand_off_ready -Type string -Value yes",
       "Write-host '=== Azure image build completed successfully ==='",
-      "Write-host '=== Generalising the image ... ==='",    
-      "& $env:SystemRoot\\System32\\Sysprep\\Sysprep.exe /generalize /oobe /quit", 
+      "Write-host '=== Generalising the image ... ==='",
+      "& $env:SystemRoot\\System32\\Sysprep\\Sysprep.exe /generalize /oobe /quit",
       "while ($true) { $imageState = Get-ItemProperty HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Setup\\State | Select ImageState; if($imageState.ImageState -ne 'IMAGE_STATE_GENERALIZE_RESEAL_TO_OOBE') { Write-Output $imageState.ImageState; Start-Sleep -s 10  } else { break } }"
     ]
   }
