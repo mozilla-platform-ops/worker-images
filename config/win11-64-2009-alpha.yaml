@@ -25,3 +25,5 @@ vm:
     sourceBranch: cloud_windows
     deploymentId: 1c1a301
     managed_by: packer
+tests:
+  - git.tests.ps1
