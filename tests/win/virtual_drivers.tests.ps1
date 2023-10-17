@@ -1,3 +1,12 @@
+Param(
+    [String]
+    $File
+)
+
+BeforeDiscovery {
+    $Hiera = Get-HieraRoleData -Path $File
+}
+
 Describe "Virtual Audio Cable" {
     BeforeAll {
         $Software = Get-InstalledSoftware | Where-Object {

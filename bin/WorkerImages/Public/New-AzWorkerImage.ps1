@@ -29,7 +29,7 @@ function New-AzWorkerImage {
     Set-PSRepository PSGallery -InstallationPolicy Trusted
     Install-Module powershell-yaml -ErrorAction Stop
     $YAML = Convertfrom-Yaml (Get-Content "config/$key.yaml" -raw)
-    $ENV:PKR_VAR_key = $key
+    $ENV:PKR_VAR_config = $key
     $ENV:PKR_VAR_location = $Location
     $ENV:PKR_VAR_image_key_name = $key
     $ENV:PKR_VAR_image_publisher = $YAML.image["publisher"]
