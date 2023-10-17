@@ -3,7 +3,7 @@ image:
   publisher: MicrosoftWindowsServer
   offer: WindowsServer
   sku: 2022-datacenter-azure-edition
-  version: latest ## June 2023 Updates
+  version: 20348.2031.231006 ## October 2023 https://support.microsoft.com/en-au/topic/windows-server-images-for-october-2023-cb930aa9-4609-48f4-90b2-13767a0f9dcd
 sharedimage:
   gallery_name: ""
   image_name: ""
@@ -15,7 +15,6 @@ azure:
   locations:
     - centralus
     - northcentralus
-  bootstrapscript: "https://raw.githubusercontent.com/mozilla-platform-ops/ronin_puppet/cloud_windows/provisioners/windows/azure/azure-bootstrap.ps1"
 vm:
   size: Standard_F32s_v2
   tags:
@@ -23,6 +22,6 @@ vm:
     worker_pool_id: win2022-64-2009
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: bug1845790
-    deploymentId: d69ffd6
+    sourceBranch: cloud_windows
+    deploymentId: 1c1a301
     managed_by: packer
