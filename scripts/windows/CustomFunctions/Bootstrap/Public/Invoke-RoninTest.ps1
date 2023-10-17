@@ -11,15 +11,6 @@ Function Invoke-RoninTest {
         $PassThru
     )
 
-<#     ## Import Pester module explicitly
-    Import-Module -Name Pester -Force -PassThru
-
-    [PesterConfiguration].Assembly #>
-
-    #Get-Module Pester -ListAvailable
-
-    #Import-Module -Name Pester -Force -PassThru
-
     ## Set path to role yaml
     $RolePath = "C:\ronin\data\roles\$Role.yaml"
 
@@ -30,7 +21,6 @@ Function Invoke-RoninTest {
 
     ## Output what we're working with
     Write-host "Processing Role: $Role"
-    Write-host "Processing Config: $Config"
     Write-host "Processing Config: $Config"
 
     Write-Log -message ('{0} :: Processing Role: {1}' -f $($MyInvocation.MyCommand.Name), $Role) -severity 'DEBUG'
@@ -68,14 +58,7 @@ Function Invoke-RoninTest {
     }
     $Configuration = New-PesterConfiguration
     $Configuration.Run.Container = $Container
-    #$config.Filter.Tag = $Tags
     $Configuration.TestResult.Enabled = $true
     $Configuration.Output.Verbosity = "Detailed"
-    #if ($ExcludeTag) {
-    #    $config.Filter.ExcludeTag = $ExcludeTag
-    #}
-    #if ($PassThru) {
-    #    $config.Run.Passthru = $true
-    #}
     Invoke-Pester -Configuration $Configuration
 }
