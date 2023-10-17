@@ -3,7 +3,7 @@ image:
   publisher: MicrosoftWindowsDesktop
   offer: Windows-11
   sku: win11-22h2-avd
-  version: 22621.1848.230609 ## June 2023 Updates
+  version: 22621.2428.231001 ## October 2023 https://support.microsoft.com/en-au/topic/windows-10-and-windows-11-client-images-for-october-2023-cca47fce-a048-4239-9e54-a6f346ba6480
 sharedimage:
   gallery_name: "ronin_t_windows11_64_2009_alpha"
   image_name: "win11-64-2009-alpha"
@@ -22,6 +22,6 @@ vm:
     worker_pool_id: win11-64-2009
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: relops-691
-    deploymentId: a8903c1
+    sourceBranch: cloud_windows
+    deploymentId: 1c1a301
     managed_by: packer
