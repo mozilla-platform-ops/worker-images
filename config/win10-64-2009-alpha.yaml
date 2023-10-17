@@ -13,7 +13,6 @@ azure:
   build_location: eastus
   locations:
     - ukwest
-  bootstrapscript: "https://raw.githubusercontent.com/mozilla-platform-ops/ronin_puppet/cloud_windows/provisioners/windows/azure/azure-bootstrap.ps1"
 vm:
   size: Standard_F8s_v2
   tags:
