@@ -1,4 +1,10 @@
+Param(
+    [String]
+    $File
+)
+
 BeforeDiscovery {
+    $Hiera = Get-HieraRoleData -Path $File
     C:\mozilla-build\python3\python.exe -m pip freeze --all > C:\requirements.txt
 }
 
@@ -13,13 +19,17 @@ Describe "Mozilla Build" {
         }
         $pip_packages = Get-Content C:\requirements.txt
         $Install_Path = "C:\mozilla-build"
+        $hg_ExpectedSoftwareVersion = [Version]$Hiera.'win-worker'.hg.version
+        $mozillabuild_ExpectedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.version
+        $psutil_ExpectedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.psutil_version
+        $zstandard_ExepctedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.zstandard_version
     }
     Context "Installation" {
         It "Mozilla-Build Folder exists" {
             Test-Path "C:\mozilla-build" | Should -Be $true
         }
         It "Mozilla-Build Version" {
-            Get-Content "C:\mozilla-build\VERSION" | Should -Be "4.0.2"
+            Get-Content "C:\mozilla-build\VERSION" | Should -Be $mozillabuild_ExpectedSoftwareVersion
         }
         It "msys2\bin\sh.exe exists" {
             Test-Path "C:\mozilla-build\msys2\usr\bin\sh.exe" | Should -Be $true
@@ -42,7 +52,7 @@ Describe "Mozilla Build" {
         }
         It "PSUtil version 5.9.4" {
             $PSUtil = ($pip_packages | Where-Object {$psitem -Match "PSUtil"}) -split "==" 
-            $PSUtil[1] | Should -Not -Be $null
+            $PSUtil[1] | Should -Be $psutil_ExpectedSoftwareVersion
         }
         It "ZStandard is installed" {
             $ZStandard = ($pip_packages | Where-Object {$psitem -Match "zstandard"}) -split "==" 
@@ -50,15 +60,21 @@ Describe "Mozilla Build" {
         }
         It "ZStandard version 0.15.2" {
             $ZStandard = ($pip_packages | Where-Object {$psitem -Match "zstandard"}) -split "==" 
-            $ZStandard[1] | Should -Be "0.15.2"
+            $ZStandard[1] | Should -Be $zstandard_ExepctedSoftwareVersion
         }
     }
     Context "Mercurial" {
         It "Mercurial gets installed" {
             $mercurial.DisplayName | Should -Not -Be $Null
         }
-        It "Mercurial is 6.2.1" {
-            $mercurial.DisplayVersion | Should -Be "6.2.1"
+        It "Mercurial major version is the same" {
+            ([Version]$mercurial.DisplayVersion ).Major | Should -Be $hg_ExpectedSoftwareVersion.Major
+        }
+        It "Mercurial minor version is the same" {
+            ([Version]$mercurial.DisplayVersion ).Minor | Should -Be $hg_ExpectedSoftwareVersion.Minor
+        }
+        It "Mercurial build version is the same" {
+            ([Version]$mercurial.DisplayVersion ).Build | Should -Be $hg_ExpectedSoftwareVersion.Build
         }
     }
     Context "HG Files" {

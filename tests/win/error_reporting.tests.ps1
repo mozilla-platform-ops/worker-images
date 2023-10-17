@@ -1,3 +1,12 @@
+Param(
+    [String]
+    $File
+)
+
+BeforeDiscovery {
+    $Hiera = Get-HieraRoleData -Path $File
+}
+
 Describe "Erorr reporting" {
     It "Error dump folder exists" {
         Test-Path "C:\error-dumps" | Should -Be $True

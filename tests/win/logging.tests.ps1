@@ -1,3 +1,12 @@
+Param(
+    [String]
+    $File
+)
+
+BeforeDiscovery {
+    $Hiera = Get-HieraRoleData -Path $File
+}
+
 Describe "Logging" {
     BeforeAll {
         $Software = Get-InstalledSoftware | Where-Object {

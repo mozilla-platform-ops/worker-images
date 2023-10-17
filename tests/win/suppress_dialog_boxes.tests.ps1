@@ -1,3 +1,12 @@
+Param(
+    [String]
+    $File
+)
+
+BeforeDiscovery {
+    $Hiera = Get-HieraRoleData -Path $File
+}
+
 Describe "Suppress Dialog Boxes" {
     It "NoNewAppAlert exists" {
         Get-ItemPropertyValue "HKLM:\SOFTWARE\Policies\Microsoft\Windows\Explorer" -Name "NoNewAppAlert" -ErrorAction "SilentlyContinue" | Should -Be 1
