@@ -30,7 +30,7 @@ Describe "Microsoft Tools - Builder" {
     }
     It "DirectX Environment Variable is set to correct path" {
         $sdkpath = $system_env | Where-Object {$PSItem.name -eq "DXSDK_DIR"} 
-        $sdkpath.value | Should -Be "$(Directories.custom_win_programfilesx86)\Microsoft DirectX SDK (June 2010)"
+        $sdkpath.value | Should -Be "$($Directories.custom_win_programfilesx86)\Microsoft DirectX SDK (June 2010)"
     }
     It "Microsoft BinScope 2014 gets installed" {
         $binscope.DisplayName | Should -Not -Be $Null
