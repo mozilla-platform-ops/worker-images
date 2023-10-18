@@ -1,5 +1,5 @@
 run-name: ${{ github.event.inputs.config }} - FXCI Trusted
-name: FXCI Trusted
+name: FXCI - Trusted
 
 on:
   workflow_dispatch:
