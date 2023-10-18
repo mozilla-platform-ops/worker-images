@@ -9,7 +9,7 @@ BeforeDiscovery {
 }
 
 ## Skip if this is run on a builder
-Describe "Microsoft Tools - Tester" -Skip:@(Assert-IsBuilder) {
+Describe "Microsoft Tools - Tester" -Skip:Assert-IsBuilder {
     BeforeAll {
         $Directories = Get-WinFactsDirectories
     }
@@ -56,7 +56,7 @@ Describe "Microsoft Tools - Tester" -Skip:@(Assert-IsBuilder) {
 }
 
 ## Skip if this is run on a tester
-Describe "Microsoft Tools - Builder" -Skip:@(Assert-IsTester) {
+Describe "Microsoft Tools - Builder" -Skip:Assert-IsTester {
     BeforeAll {
         $Directories = Get-WinFactsDirectories
         $software = Get-InstalledSoftware
