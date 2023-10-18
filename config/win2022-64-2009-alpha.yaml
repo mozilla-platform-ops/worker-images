@@ -28,3 +28,4 @@ vm:
 tests:
   - git.tests.ps1
   - google_auth.tests.ps1
+  - microsoft_tools.tests.ps1
