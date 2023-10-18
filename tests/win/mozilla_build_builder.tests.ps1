@@ -23,7 +23,7 @@ Describe "Mozilla Build - Builder" {
         $hg_ExpectedSoftwareVersion = [Version]$Hiera.'win-worker'.mozilla_build.hg_version
         $mozillabuild_ExpectedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.version
         $psutil_ExpectedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.psutil_version
-        $zstandard_ExepctedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.zstandard_version
+        $zstandard_ExepctedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.py3_zstandard_version
     }
     Context "Installation" {
         It "Mozilla-Build Folder exists" {
