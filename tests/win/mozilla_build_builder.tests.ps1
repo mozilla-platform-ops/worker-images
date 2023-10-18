@@ -36,12 +36,6 @@ Describe "Mozilla Build - Builder" {
         It "msys2\bin\sh.exe exists" {
             Test-Path "C:\mozilla-build\msys2\usr\bin\sh.exe" | Should -Be $true
         }
-        It "Mozilla Maintenance Service gets installed" -Skip {
-            $mms.DisplayName | Should -Not -Be $Null
-        }
-        It "Mozilla Maintenance Service is 27.0a1" -Skip {
-            $mms.DisplayVersion | Should -Be "27.0a1"
-        }
     }
     Context "Pip" {
         It "Certifi is installed" {
