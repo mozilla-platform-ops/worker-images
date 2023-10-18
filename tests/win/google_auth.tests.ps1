@@ -5,10 +5,13 @@ Param(
 
 BeforeDiscovery {
     $Hiera = Get-HieraRoleData -Path $File
-    $Directories = Get-WinFactsDirectories
+    #$Directories = Get-WinFactsDirectories
 }
 
 Describe "Google Auth" {
+    BeforeAll {
+        $Directories = Get-WinFactsDirectories
+    }
     It "Google Folder Exists" {
         Test-Path "$($Directories.custom_win_programdata)\Google" | Should -Be $True
     }
