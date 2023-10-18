@@ -26,7 +26,7 @@ Describe "Microsoft Tools - Builder" {
         $directxsdk.DisplayVersion | Should -Be "9.29.1962.0"
     }
     It "DirectX Environment Variable is set" {
-        $sdkenv | Where-Object {$PSItem.name -eq "DXSDK_DIR"} | Should -Not -Be $Null
+        $system_env | Where-Object {$PSItem.name -eq "DXSDK_DIR"} | Should -Not -Be $Null
     }
     It "DirectX Environment Variable is set to correct path" {
         $sdkpath = $system_env | Where-Object {$PSItem.name -eq "DXSDK_DIR"} 
