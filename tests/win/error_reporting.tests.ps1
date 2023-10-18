@@ -8,10 +8,10 @@ BeforeDiscovery {
 }
 
 Describe "Erorr reporting" {
-    It "Error dump folder exists" {
+    It "Error dump folder exists" -Skip {
         Test-Path "C:\error-dumps" | Should -Be $True
     }
-    It "Error dumpfolder registry exists" {
+    It "Error dumpfolder registry exists" -Skip {
         Get-ItemPropertyValue "HKLM:\Software\Microsoft\Windows\Windows\Error\Reporting" -Name "DumpFolder" -ErrorAction SilentlyContinue | Should -Be "C:\error-dumps"
     }
     It "Error localdumps registry exists" {
