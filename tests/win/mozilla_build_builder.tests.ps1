@@ -70,7 +70,7 @@ Describe "Mozilla Build - Builder" {
         }
         It "Python3 Pip version" {
             $py3pip = ($pip_packages | Where-Object {$psitem -Match "pip"}) -split "==" 
-            $py3pip[1] | Should -Be py3pip_ExpectedSoftwareVersion
+            $py3pip[1] | Should -Be $py3pip_ExpectedSoftwareVersion
         }
     }
     Context "Mercurial" {
