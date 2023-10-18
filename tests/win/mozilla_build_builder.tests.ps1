@@ -24,6 +24,7 @@ Describe "Mozilla Build - Builder" {
         $mozillabuild_ExpectedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.version
         $psutil_ExpectedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.psutil_version
         $zstandard_ExepctedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.py3_zstandard_version
+        $py3pip_ExpectedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.py3_pip_version
     }
     Context "Installation" {
         It "Mozilla-Build Folder exists" {
@@ -51,7 +52,7 @@ Describe "Mozilla Build - Builder" {
             $PSUtil = ($pip_packages | Where-Object {$psitem -Match "PSUtil"}) -split "==" 
             $PSUtil | Should -Not -Be $null
         }
-        It "PSUtil version 5.9.4" {
+        It "PSUtil version" {
             $PSUtil = ($pip_packages | Where-Object {$psitem -Match "PSUtil"}) -split "==" 
             $PSUtil[1] | Should -Be $psutil_ExpectedSoftwareVersion
         }
@@ -59,9 +60,17 @@ Describe "Mozilla Build - Builder" {
             $ZStandard = ($pip_packages | Where-Object {$psitem -Match "zstandard"}) -split "==" 
             $ZStandard | Should -Not -Be $null
         }
-        It "ZStandard version 0.15.2" {
+        It "ZStandard version" {
             $ZStandard = ($pip_packages | Where-Object {$psitem -Match "zstandard"}) -split "==" 
             $ZStandard[1] | Should -Be $zstandard_ExepctedSoftwareVersion
+        }
+        It "Python3 Pip is installed" {
+            $py3pip = ($pip_packages | Where-Object {$psitem -Match "pip"}) -split "==" 
+            $py3pip | Should -Not -Be $null
+        }
+        It "Python3 Pip version" {
+            $py3pip = ($pip_packages | Where-Object {$psitem -Match "pip"}) -split "==" 
+            $py3pip[1] | Should -Be py3pip_ExpectedSoftwareVersion
         }
     }
     Context "Mercurial" {
