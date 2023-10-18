@@ -1,4 +1,4 @@
-name: Legacy Worker Image Deployment - Dev
+run-name: ${{ github.event.inputs.config }} - Dev
 
 on:
   workflow_dispatch:

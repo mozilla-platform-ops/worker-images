@@ -1,4 +1,4 @@
-name: Legacy Worker Image Deployment - FXCI Trusted
+run-name: ${{ github.event.inputs.config }} - FXCI Trusted
 
 on:
   workflow_dispatch:
