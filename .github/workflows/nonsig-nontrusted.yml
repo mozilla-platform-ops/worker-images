@@ -1,4 +1,5 @@
 run-name: ${{ github.event.inputs.config }} - FXCI
+name: Legacy - FXCI
 
 on:
   workflow_dispatch:
