@@ -5,11 +5,14 @@ Param(
 
 BeforeDiscovery {
     $Hiera = Get-HieraRoleData -Path $File
-    $Directories = Get-WinFactsDirectories
+    
 }
 
 ## Skip if this is run on a builder
 Describe "Microsoft Tools - Tester" -Skip:@(Assert-IsBuilder) {
+    BeforeAll {
+        $Directories = Get-WinFactsDirectories
+    }
     It "<_.DisplayName> is installed" -ForEach @(
         Show-Win10SDK
     ) {
@@ -55,6 +58,7 @@ Describe "Microsoft Tools - Tester" -Skip:@(Assert-IsBuilder) {
 ## Skip if this is run on a tester
 Describe "Microsoft Tools - Builder" -Skip:@(Assert-IsTester) {
     BeforeAll {
+        $Directories = Get-WinFactsDirectories
         $software = Get-InstalledSoftware
         $directxsdk = $software | Where-Object {
             $PSItem.DisplayName -like "Directx*"
