@@ -3,7 +3,7 @@ Describe "Microsoft Tools - Builder" {
         $Directories = Get-WinFactsDirectories
         $software = Get-InstalledSoftware
         $directxsdk = $software | Where-Object {
-            $PSItem.DisplayName -like "Directx*"
+            $PSItem.DisplayName -eq "Microsoft DirectX SDK (June 2010)"
         }
         $binscope = $software | Where-Object {
             $PSItem.DisplayName -eq "Microsoft BinScope 2014"
