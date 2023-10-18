@@ -27,3 +27,4 @@ vm:
     managed_by: packer
 tests:
   - git.tests.ps1
+  - google_auth.tests.ps1
