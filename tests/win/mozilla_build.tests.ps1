@@ -63,7 +63,7 @@ Describe "Mozilla Build" {
             $ZStandard[1] | Should -Be $zstandard_ExepctedSoftwareVersion
         }
     }
-    Context "Mercurial" -Skip:@(Assert-IsBuilder) {
+    Context "Mercurial" {
         It "Mercurial gets installed" {
             $mercurial.DisplayName | Should -Not -Be $Null
         }
