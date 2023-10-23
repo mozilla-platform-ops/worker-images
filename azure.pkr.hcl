@@ -248,6 +248,7 @@ source "azure-arm" "nonsig" {
     sourceOrganisation = "${var.source_organization}"
     sourceRepository   = "${var.source_repository}"
     worker_pool_id     = "${var.worker_pool_id}"
+    image_version      = "${var.image_version}"
   }
 
 }
