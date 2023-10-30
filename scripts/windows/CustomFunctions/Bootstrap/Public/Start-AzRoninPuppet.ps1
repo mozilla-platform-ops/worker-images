@@ -63,7 +63,7 @@ function Start-AzRoninPuppet {
                 #Move-StrapPuppetLogs
                 if ($worker_pool -like "trusted*") {
                     if (Test-Path -Path $ed_key) {
-                        Remove-Item  $ed_key -force
+                        Remove-Item $ed_key -force
                     }
                     while (!(Test-Path $ed_key)) {
                         Write-Log -message  ('{0} :: Trusted image. Waiting on CoT key. Human intervention needed.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
@@ -102,6 +102,19 @@ function Start-AzRoninPuppet {
                 Set-ItemProperty -Path $ronnin_key -name last_run_exit -value $puppet_exit
                 Set-ItemProperty -Path $ronnin_key -Name 'bootstrap_stage' -Value 'complete'
                 #Move-StrapPuppetLogs
+                if ($worker_pool -like "trusted*") {
+                    if (Test-Path -Path $ed_key) {
+                        Remove-Item $ed_key -force
+                    }
+                    while (!(Test-Path $ed_key)) {
+                        Write-Log -message  ('{0} :: Trusted image. Waiting on CoT key. Human intervention needed.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
+                        Start-Sleep -seconds 15
+                    }
+                    # Provide a window for the file to be writen
+                    Start-Sleep -seconds 30
+                    Write-Log -message  ('{0} :: Trusted image. Blocking livelog outbound access.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
+                    New-NetFirewallRule -DisplayName "Block LiveLog" -Direction Outbound -Program "c:\generic-worker\livelog.exe" -Action block
+                }
                 exit 2
             }
             4 {
