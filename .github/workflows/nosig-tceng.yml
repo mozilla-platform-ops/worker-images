@@ -1,5 +1,5 @@
-run-name: ${{ github.event.inputs.config }} - FXCI
-name: FXCI
+run-name: ${{ github.event.inputs.config }} - TCEng
+name: TCEng
 
 on:
   workflow_dispatch:
