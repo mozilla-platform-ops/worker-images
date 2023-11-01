@@ -45,8 +45,8 @@ Describe "Disable Services" {
         }
     }
     Context "Disable User Account Control" {
-        It "UAC is enabled" {
-            Get-ItemPropertyValue HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -Name "EnableLUA" | Should -Be 1
+        It "UAC is disabled" {
+            Get-ItemPropertyValue HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -Name "EnableLUA" | Should -Be 0
         }
     }
     Context "Disable Local Clipboard" -Tags "Azure" -Skip {
