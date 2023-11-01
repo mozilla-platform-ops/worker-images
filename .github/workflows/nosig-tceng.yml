@@ -1,0 +1,61 @@
+run-name: ${{ github.event.inputs.config }} - TCEng
+name: TCEng
+
+on:
+  workflow_dispatch:
+    inputs:
+      config:
+        type: choice
+        description: Choose which pool to build
+        options:
+        - win2022-64-2009-alpha
+        - win2022-64-2009
+
+jobs:
+  job1:
+    name: "Create Image Tasks"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - id: set-matrix
+        shell: pwsh
+        run: |
+          Import-Module .\bin\WorkerImages\WorkerImages.psm1
+          Set-AzWorkerImageLocation -Key '${{ github.event.inputs.config }}'
+    outputs:
+      LOCATIONS: ${{ steps.set-matrix.outputs.LOCATIONS }}
+  job2:
+    needs: job1
+    name: "${{ github.event.inputs.config }} - ${{ matrix.LOCATIONS }}"
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        locations: ${{fromJson(needs.job1.outputs.LOCATIONS)}}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Azure Login
+        uses: Azure/login@v1
+        with:
+          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID_TCENG }}","clientSecret":"${{ secrets.AZURE_CLIENT_ID_TCENG_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID_TCENG }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
+          enable-AzPSSession: true
+      - name: "Remove current images"
+        uses: azure/powershell@v1
+        with:
+          inlinescript: |
+            Import-Module .\bin\WorkerImages\WorkerImages.psm1
+            Remove-AzWorkerImage -Key "${{ github.event.inputs.config }}" -Location "${{ matrix.LOCATIONS }}"
+          azPSVersion: "latest"
+      - name: 'Run Packer'
+        shell: pwsh
+        run: |
+          Import-Module .\bin\WorkerImages\WorkerImages.psm1
+          $Vars = @{
+            Location = "${{ matrix.LOCATIONS }}"
+            Key = '${{ github.event.inputs.config }}'
+            Client_ID = "${{ secrets.AZURE_CLIENT_ID_TCENG }}"
+            Client_Secret = "${{ secrets.AZURE_CLIENT_ID_FXCI_TCENG }}"
+            Subscription_ID = "${{ secrets.AZURE_SUBSCRIPTION_ID_TCENG }}"
+            Tenant_ID = "${{ secrets.AZURE_TENANT_ID }}"
+            Application_ID = "${{ secrets.AZURE_APPLICATION_ID_TCENG }}"
+          }
+          New-AzWorkerImage @Vars
