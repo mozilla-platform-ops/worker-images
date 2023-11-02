@@ -53,7 +53,7 @@ jobs:
             Location = "${{ matrix.LOCATIONS }}"
             Key = '${{ github.event.inputs.config }}'
             Client_ID = "${{ secrets.AZURE_CLIENT_ID_TCENG }}"
-            Client_Secret = "${{ secrets.AZURE_CLIENT_ID_FXCI_TCENG }}"
+            Client_Secret = "${{ secrets.AZURE_CLIENT_ID_TCENG_SECRET }}"
             Subscription_ID = "${{ secrets.AZURE_SUBSCRIPTION_ID_TCENG }}"
             Tenant_ID = "${{ secrets.AZURE_TENANT_ID }}"
             Application_ID = "${{ secrets.AZURE_APPLICATION_ID_TCENG }}"
