@@ -64,7 +64,6 @@ jobs:
           }
           New-AzWorkerImage @Vars
   job3:
-    runs-on: ubuntu-latest
     if: contains(env.CHOICE, '2022')
     needs: job1
     name: "${{ github.event.inputs.config }} - ${{ matrix.LOCATIONS }}"
