@@ -6,8 +6,8 @@ function Set-AzWorkerImageLocation {
         $Key
     )
     
-    Set-PSRepository PSGallery -InstallationPolicy Trusted
-    Install-Module powershell-yaml -ErrorAction Stop
+    #Set-PSRepository PSGallery -InstallationPolicy Trusted
+    #Install-Module powershell-yaml -ErrorAction Stop
     $YAML = Convertfrom-Yaml (Get-Content "config/$key.yaml" -raw)
     if ($YAML.azure.locations.count -eq 1) {
         $locations = '["' + $yaml.azure.locations + '"]'
