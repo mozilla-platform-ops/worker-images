@@ -64,7 +64,7 @@ jobs:
           }
           New-AzWorkerImage @Vars
   job3:
-    if: contains( env.github.event.inputs.config, 'FAIL')
+    if: contains(github.event.inputs.config, 'FAIL')
     needs: job1
     name: "${{ github.event.inputs.config }} - ${{ matrix.LOCATIONS }}"
     runs-on: ubuntu-latest
