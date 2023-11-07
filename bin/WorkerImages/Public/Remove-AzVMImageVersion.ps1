@@ -5,8 +5,8 @@ function Remove-AzVMImageVersion {
         $Key
     )
 
-    #Set-PSRepository PSGallery -InstallationPolicy Trusted
-    #Install-Module powershell-yaml -ErrorAction Stop
+    Set-PSRepository PSGallery -InstallationPolicy Trusted
+    Install-Module powershell-yaml -ErrorAction Stop
     $YAML = Convertfrom-Yaml (Get-Content "config/$key.yaml" -raw)
     ## Check if the image version is there
     $splat = @{
