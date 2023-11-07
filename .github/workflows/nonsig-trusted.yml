@@ -51,6 +51,10 @@ jobs:
             Import-Module .\bin\WorkerImages\WorkerImages.psm1
             Remove-AzWorkerImage -Key "${{ github.event.inputs.config }}" -Location "${{ matrix.LOCATIONS }}"
           azPSVersion: "latest"
+      - name: Install and cache PowerShell modules
+        uses: potatoqualitee/psmodulecache@v6.0
+        with:
+          modules-to-cache: Powershell-Yaml
       - name: 'Run Packer'
         shell: pwsh
         run: |
