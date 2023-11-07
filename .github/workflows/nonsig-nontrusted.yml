@@ -33,6 +33,7 @@ jobs:
     name: "${{ github.event.inputs.config }} - ${{ matrix.LOCATIONS }}"
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         locations: ${{fromJson(needs.job1.outputs.LOCATIONS)}}
     steps:
