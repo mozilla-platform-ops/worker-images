@@ -58,7 +58,6 @@ jobs:
         with:
           modules-to-cache: Powershell-Yaml
       - name: 'Run Packer'
-        if: ${{ !cancelled() }}
         shell: pwsh
         run: |
           Import-Module .\bin\WorkerImages\WorkerImages.psm1
