@@ -8,8 +8,8 @@ function Remove-AzWorkerImage {
         $Location
     )
 
-    Set-PSRepository PSGallery -InstallationPolicy Trusted
-    Install-Module powershell-yaml -ErrorAction Stop
+    #Set-PSRepository PSGallery -InstallationPolicy Trusted
+    #Install-Module powershell-yaml -ErrorAction Stop
     $YAML = Convertfrom-Yaml (Get-Content "config/$key.yaml" -raw)
     ## build managed image name 
     switch -Wildcard ($key) {

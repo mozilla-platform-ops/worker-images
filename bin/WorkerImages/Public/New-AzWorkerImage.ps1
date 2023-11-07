@@ -26,8 +26,8 @@ function New-AzWorkerImage {
         $PackerDebug
     )
 
-    Set-PSRepository PSGallery -InstallationPolicy Trusted
-    Install-Module powershell-yaml -ErrorAction Stop
+    #Set-PSRepository PSGallery -InstallationPolicy Trusted
+    #Install-Module powershell-yaml -ErrorAction Stop
     $YAML = Convertfrom-Yaml (Get-Content "config/$key.yaml" -raw)
     $ENV:PKR_VAR_config = $key
     $ENV:PKR_VAR_location = $Location

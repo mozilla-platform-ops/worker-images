@@ -54,6 +54,7 @@ jobs:
             Remove-AzWorkerImage -Key "${{ github.event.inputs.config }}" -Location "${{ matrix.LOCATIONS }}"
           azPSVersion: "latest"
       - name: 'Run Packer'
+        if: ${{ !cancelled() }}
         shell: pwsh
         run: |
           Import-Module .\bin\WorkerImages\WorkerImages.psm1

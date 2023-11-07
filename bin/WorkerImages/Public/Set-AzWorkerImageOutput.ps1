@@ -6,8 +6,8 @@ function Set-AzWorkerImageOutput {
         $CommitMessage
     )
     
-    Set-PSRepository PSGallery -InstallationPolicy Trusted
-    Install-Module powershell-yaml -ErrorAction Stop
+    #Set-PSRepository PSGallery -InstallationPolicy Trusted
+    #Install-Module powershell-yaml -ErrorAction Stop
     $Commit = ConvertFrom-Json $CommitMessage
     ## Handle the pools and pluck them out
     $keys_index = $commit.IndexOf("keys:")
