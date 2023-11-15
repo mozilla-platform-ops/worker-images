@@ -14,6 +14,8 @@ azure:
   build_location: eastus
   locations:
     - uksouth
+    - eastus
+    - eastus2
 vm:
   size: Standard_F8s_v2
   tags:
