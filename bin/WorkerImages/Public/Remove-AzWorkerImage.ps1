@@ -11,7 +11,7 @@ function Remove-AzWorkerImage {
     Set-PSRepository PSGallery -InstallationPolicy Trusted
     Install-Module powershell-yaml -ErrorAction Stop
     $YAML = Convertfrom-Yaml (Get-Content "config/$key.yaml" -raw)
-    if ($null -eq $yaml) {
+    if ([string]::IsNullOrEmpty($YAML)) {
         throw "Unable to config using $key. Exiting!"
         exit 1
     }
@@ -34,7 +34,7 @@ function Remove-AzWorkerImage {
         }
     }
     ## Check if the image is even there
-    if ($null -eq $managed_image_name) {
+    if ([string]::IsNullOrEmpty($managed_image_name)) {
         throw "Unable to find managed image name. Exiting!"
         exit 1
     }
@@ -46,7 +46,7 @@ function Remove-AzWorkerImage {
         exit 1
     }
     ## If image is has a result and it's equal or less than the number of locations in the config, remove it
-    if ($null -ne $image -and $image.count -le $locations) {
+    if ((-not [string]::IsNullOrEmpty($managed_image_name)) -and $image.count -le $locations) {
         Write-Host "Removing $($managed_image_name)"
         Get-AzImage -Name $managed_image_name | Remove-AzImage -Force
     }
