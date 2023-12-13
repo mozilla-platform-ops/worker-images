@@ -47,9 +47,10 @@ function Start-AzRoninPuppet {
 
         Write-Log -message ('{0} :: Moving old logs.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
         Write-host ('{0} :: Moving old logs.' -f $($MyInvocation.MyCommand.Name))
-        Get-ChildItem -Path $logdir\*.log -Recurse | Move-Item -Destination $logdir\old -ErrorAction SilentlyContinue
+        Get-ChildItem -Path $logdir\*.json -Recurse -ErrorAction SilentlyContinue | Move-Item -Destination $logdir\old -ErrorAction SilentlyContinue
+        $logDate = $(get-date -format yyyyMMdd-HHmm)
         Write-Log -message  ('{0} :: Running Puppet apply .' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-        puppet apply manifests\nodes.pp --onetime --verbose --no-daemonize --no-usecacheonfailure --detailed-exitcodes --no-splay --show_diff --modulepath=modules`;r10k_modules --hiera_config=hiera.yaml --logdest $logdir\$datetime-bootstrap-puppet.log,$logdir\$datetime-bootstrap-puppet.json
+        puppet apply manifests\nodes.pp --onetime --verbose --no-daemonize --no-usecacheonfailure --detailed-exitcodes --no-splay --show_diff --modulepath=modules`;r10k_modules --hiera_config=hiera.yaml --logdest $env:systemdrive\logs\$($logdate)-bootstrap-puppet.json
         [int]$puppet_exit = $LastExitCode
         ## https://www.puppet.com/docs/puppet/6/man/apply.html#options
         
@@ -62,7 +63,7 @@ function Start-AzRoninPuppet {
                 #Move-StrapPuppetLogs
                 if ($worker_pool -like "trusted*") {
                     if (Test-Path -Path $ed_key) {
-                        Remove-Item  $ed_key -force
+                        Remove-Item $ed_key -force
                     }
                     while (!(Test-Path $ed_key)) {
                         Write-Log -message  ('{0} :: Trusted image. Waiting on CoT key. Human intervention needed.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
@@ -79,10 +80,18 @@ function Start-AzRoninPuppet {
                 Write-Log -message ('{0} :: Puppet apply failed :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit) -severity 'DEBUG'
                 Write-Host ('{0} :: Puppet apply failed :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit)
                 Set-ItemProperty -Path $ronnin_key -name "last_run_exit" -value $puppet_exit
-                Add-Content "$logdir\$datetime-bootstrap-puppet.json" "`n]" | ConvertFrom-Json | Where-Object {
-                    $psitem.Level -match "warning|err" 
+                ## The JSON file isn't formatted correctly, so add a ] to complete the json formatting and then output warnings or errors
+                Add-Content "$logdir\$logdate-bootstrap-puppet.json" "`n]" 
+                $log = Get-Content "$logdir\$logdate-bootstrap-puppet.json" | ConvertFrom-Json 
+                $log | Where-Object {
+                    $psitem.Level -match "warning|err" -and $_.message -notmatch "Client Certificate|Private Key"
                 } | ForEach-Object {
-                    Write-Output $psitem
+                    $data = $psitem
+                    Write-Log -message ('{0} :: Puppet File {1}' -f $($MyInvocation.MyCommand.Name), $data.file) -severity 'DEBUG'
+                    Write-Log -message ('{0} :: Puppet Message {1}' -f $($MyInvocation.MyCommand.Name), $data.message) -severity 'DEBUG'
+                    Write-Log -message ('{0} :: Puppet Level {1}' -f $($MyInvocation.MyCommand.Name), $data.level) -severity 'DEBUG'
+                    Write-Log -message ('{0} :: Puppet Line {1}' -f $($MyInvocation.MyCommand.Name), $data.line) -severity 'DEBUG'
+                    Write-Log -message ('{0} :: Puppet Source {1}' -f $($MyInvocation.MyCommand.Name), $data.source) -severity 'DEBUG'
                 }
                 Move-StrapPuppetLogs
                 exit 1
@@ -93,6 +102,19 @@ function Start-AzRoninPuppet {
                 Set-ItemProperty -Path $ronnin_key -name last_run_exit -value $puppet_exit
                 Set-ItemProperty -Path $ronnin_key -Name 'bootstrap_stage' -Value 'complete'
                 #Move-StrapPuppetLogs
+                if ($worker_pool -like "trusted*") {
+                    if (Test-Path -Path $ed_key) {
+                        Remove-Item $ed_key -force
+                    }
+                    while (!(Test-Path $ed_key)) {
+                        Write-Log -message  ('{0} :: Trusted image. Waiting on CoT key. Human intervention needed.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
+                        Start-Sleep -seconds 15
+                    }
+                    # Provide a window for the file to be writen
+                    Start-Sleep -seconds 30
+                    Write-Log -message  ('{0} :: Trusted image. Blocking livelog outbound access.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
+                    New-NetFirewallRule -DisplayName "Block LiveLog" -Direction Outbound -Program "c:\generic-worker\livelog.exe" -Action block
+                }
                 exit 2
             }
             4 {
@@ -100,10 +122,17 @@ function Start-AzRoninPuppet {
                 Write-Host ('{0} :: Puppet apply succeeded, but some resources failed :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit)
                 Set-ItemProperty -Path $ronnin_key -name last_run_exit -value $puppet_exit
                 ## The JSON file isn't formatted correctly, so add a ] to complete the json formatting and then output warnings or errors
-                Add-Content "$logdir\$datetime-bootstrap-puppet.json" "`n]" | ConvertFrom-Json | Where-Object {
-                    $psitem.Level -match "warning|err" 
+                Add-Content "$logdir\$logdate-bootstrap-puppet.json" "`n]" 
+                $log = Get-Content "$logdir\$logdate-bootstrap-puppet.json" | ConvertFrom-Json 
+                $log | Where-Object {
+                    $psitem.Level -match "warning|err" -and $_.message -notmatch "Client Certificate|Private Key"
                 } | ForEach-Object {
-                    Write-Host $psitem
+                    $data = $psitem
+                    Write-Log -message ('{0} :: Puppet File {1}' -f $($MyInvocation.MyCommand.Name), $data.file) -severity 'DEBUG'
+                    Write-Log -message ('{0} :: Puppet Message {1}' -f $($MyInvocation.MyCommand.Name), $data.message) -severity 'DEBUG'
+                    Write-Log -message ('{0} :: Puppet Level {1}' -f $($MyInvocation.MyCommand.Name), $data.level) -severity 'DEBUG'
+                    Write-Log -message ('{0} :: Puppet Line {1}' -f $($MyInvocation.MyCommand.Name), $data.line) -severity 'DEBUG'
+                    Write-Log -message ('{0} :: Puppet Source {1}' -f $($MyInvocation.MyCommand.Name), $data.source) -severity 'DEBUG'
                 }
                 Move-StrapPuppetLogs
                 exit 4
@@ -113,10 +142,17 @@ function Start-AzRoninPuppet {
                 Write-Host ('{0} :: Puppet apply succeeded, but included changes and failures :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit)
                 Set-ItemProperty -Path $ronnin_key -name last_run_exit -value $puppet_exit
                 ## The JSON file isn't formatted correctly, so add a ] to complete the json formatting and then output warnings or errors
-                Add-Content "$logdir\$datetime-bootstrap-puppet.json" "`n]" | ConvertFrom-Json | Where-Object {
-                    $psitem.Level -match "warning|err" 
+                Add-Content "$logdir\$logdate-bootstrap-puppet.json" "`n]" 
+                $log = Get-Content "$logdir\$logdate-bootstrap-puppet.json" | ConvertFrom-Json 
+                $log | Where-Object {
+                    $psitem.Level -match "warning|err" -and $_.message -notmatch "Client Certificate|Private Key"
                 } | ForEach-Object {
-                    Write-Host $psitem
+                    $data = $psitem
+                    Write-Log -message ('{0} :: Puppet File {1}' -f $($MyInvocation.MyCommand.Name), $data.file) -severity 'DEBUG'
+                    Write-Log -message ('{0} :: Puppet Message {1}' -f $($MyInvocation.MyCommand.Name), $data.message) -severity 'DEBUG'
+                    Write-Log -message ('{0} :: Puppet Level {1}' -f $($MyInvocation.MyCommand.Name), $data.level) -severity 'DEBUG'
+                    Write-Log -message ('{0} :: Puppet Line {1}' -f $($MyInvocation.MyCommand.Name), $data.line) -severity 'DEBUG'
+                    Write-Log -message ('{0} :: Puppet Source {1}' -f $($MyInvocation.MyCommand.Name), $data.source) -severity 'DEBUG'
                 }
                 Move-StrapPuppetLogs
                 exit 6

@@ -41,6 +41,7 @@ function New-AzSharedWorkerImage {
     $ENV:PKR_VAR_tenant_id = $Tenant_ID
     $ENV:PKR_VAR_subscription_id = $Subscription_ID
     $ENV:PKR_VAR_client_secret = $Client_Secret
+    $ENV:PKR_VAR_worker_pool_id = $YAML.vm.tags["worker_pool_id"]
     switch -Wildcard ($key) {
         "*alpha2*" {
             $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-alpha2' -f $YAML.vm.tags["worker_pool_id"], $ENV:PKR_VAR_image_sku)

@@ -1,4 +1,5 @@
-name: Legacy Worker Image Deployment - Dev
+run-name: ${{ github.event.inputs.config }} - Dev
+name: FXCI - Dev
 
 on:
   workflow_dispatch:

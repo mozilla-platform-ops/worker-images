@@ -1,4 +1,5 @@
-name: Legacy Worker Image Deployment - FXCI Trusted
+run-name: ${{ github.event.inputs.config }} - FXCI Trusted
+name: FXCI - Trusted
 
 on:
   workflow_dispatch:
@@ -7,11 +8,9 @@ on:
         type: choice
         description: Choose which pool to build
         options:
-        - win10-64-2009-alpha
-        - win10-64-2009
-        - win11-64-2009-alpha
-        - win11-64-2009
         - win2022-64-2009-alpha
+        - win2022-64-2009
+        - trusted-win2022-64-2009
 
 jobs:
   job1:
@@ -19,6 +18,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+      - name: Install and cache PowerShell modules
+        uses: potatoqualitee/psmodulecache@v6.0
+        with:
+          modules-to-cache: Powershell-Yaml
       - id: set-matrix
         shell: pwsh
         run: |
@@ -31,6 +35,7 @@ jobs:
     name: "${{ github.event.inputs.config }} - ${{ matrix.LOCATIONS }}"
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         locations: ${{fromJson(needs.job1.outputs.LOCATIONS)}}
     steps:
@@ -58,5 +63,6 @@ jobs:
             Client_Secret = "${{ secrets.AZURE_CLIENT_ID_FXCI_TRUSTED_SECRET }}"
             Subscription_ID = "${{ secrets.AZURE_SUBSCRIPTION_ID_TRUSTED }}"
             Tenant_ID = "${{ secrets.AZURE_TENANT_ID }}"
+            Application_ID = "${{ secrets.AZURE_APPLICATION_ID_FXCI_TRUSTED }}"
           }
           New-AzWorkerImage @Vars

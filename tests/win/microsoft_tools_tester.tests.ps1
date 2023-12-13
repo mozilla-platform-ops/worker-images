@@ -7,7 +7,11 @@ BeforeDiscovery {
     $Hiera = Get-HieraRoleData -Path $File
 }
 
-Describe "Microsoft Tools" {
+## Skip if this is run on a builder
+Describe "Microsoft Tools - Tester" {
+    BeforeAll {
+        $Directories = Get-WinFactsDirectories
+    }
     It "<_.DisplayName> is installed" -ForEach @(
         Show-Win10SDK
     ) {
