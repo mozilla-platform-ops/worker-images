@@ -3,7 +3,7 @@ image:
   publisher: MicrosoftWindowsDesktop
   offer: Windows-11
   sku: win11-22h2-avd
-  version: 22621.1992.230708 ## July 2023 https://support.microsoft.com/en-gb/topic/july-11-2023-kb5028185-os-build-22621-1992-605fa18f-bd49-41d8-80b1-245080e26c3d
+  version: 22621.3007.240108 ## January 2024 https://support.microsoft.com/en-au/topic/windows-10-and-windows-11-client-images-for-january-2024-1a2b5966-c246-4961-a424-5eea8a868172
 sharedimage:
   gallery_name: "ronin_t_windows11_64_2009_alpha"
   image_name: "win11-64-2009-alpha"
@@ -23,8 +23,8 @@ vm:
     worker_pool_id: win11-64-2009
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: cloud_windows
-    deploymentId: 531c001
+    sourceBranch: mozbuild41
+    deploymentId: d1f9018
     managed_by: packer
 tests:
   - microsoft_tools_tester.tests.ps1
