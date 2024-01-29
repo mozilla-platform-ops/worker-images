@@ -18,6 +18,11 @@ function Start-AzRoninPuppet {
         Write-Host ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime())
     }
     process {
+        ## Set azcopy vars
+        $ENV:AZCOPY_AUTO_LOGIN_TYPE = "SPN"
+        $ENV:AZCOPY_SPA_APPLICATION_ID = $ENV:application_id
+        $ENV:AZCOPY_SPA_CLIENT_SECRET = $ENV:client_secret
+        $ENV:AZCOPY_TENANT_ID = $ENV:tenant_id
 
         Set-Location $env:systemdrive\ronin
         If ( -Not (test-path $logdir\old)) {
@@ -49,8 +54,9 @@ function Start-AzRoninPuppet {
         Write-host ('{0} :: Moving old logs.' -f $($MyInvocation.MyCommand.Name))
         Get-ChildItem -Path $logdir\*.json -Recurse -ErrorAction SilentlyContinue | Move-Item -Destination $logdir\old -ErrorAction SilentlyContinue
         $logDate = $(get-date -format yyyyMMdd-HHmm)
+        $LogDestination = ("$env:systemdrive\logs\{0}-{1}-bootstrap-puppet.json" -f $ENV:COMPUTERNAME,$logdate)
         Write-Log -message  ('{0} :: Running Puppet apply .' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-        puppet apply manifests\nodes.pp --onetime --verbose --no-daemonize --no-usecacheonfailure --detailed-exitcodes --no-splay --show_diff --modulepath=modules`;r10k_modules --hiera_config=hiera.yaml --logdest $env:systemdrive\logs\$($logdate)-bootstrap-puppet.json
+        puppet apply manifests\nodes.pp --onetime --verbose --no-daemonize --no-usecacheonfailure --detailed-exitcodes --no-splay --show_diff --modulepath=modules`;r10k_modules --hiera_config=hiera.yaml --logdest $LogDestination
         [int]$puppet_exit = $LastExitCode
         ## https://www.puppet.com/docs/puppet/6/man/apply.html#options
         
@@ -93,6 +99,21 @@ function Start-AzRoninPuppet {
                     Write-Log -message ('{0} :: Puppet Line {1}' -f $($MyInvocation.MyCommand.Name), $data.line) -severity 'DEBUG'
                     Write-Log -message ('{0} :: Puppet Source {1}' -f $($MyInvocation.MyCommand.Name), $data.source) -severity 'DEBUG'
                 }
+
+                ## Authenticate
+                Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
+                    "login",
+                    "--service-principal",
+                    "--application-id $ENV:AZCOPY_SPA_APPLICATION_ID",
+                    "--tenant-id=$ENV:tenant_id"
+                ) -Wait -NoNewWindow
+
+                Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
+                    "copy",
+                    $LogDestination,
+                    "https://roninpuppetassets.blob.core.windows.net/packer"
+                ) -Wait -NoNewWindow
+
                 Move-StrapPuppetLogs
                 exit 1
             }
@@ -134,6 +155,21 @@ function Start-AzRoninPuppet {
                     Write-Log -message ('{0} :: Puppet Line {1}' -f $($MyInvocation.MyCommand.Name), $data.line) -severity 'DEBUG'
                     Write-Log -message ('{0} :: Puppet Source {1}' -f $($MyInvocation.MyCommand.Name), $data.source) -severity 'DEBUG'
                 }
+
+                ## Authenticate
+                Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
+                    "login",
+                    "--service-principal",
+                    "--application-id $ENV:AZCOPY_SPA_APPLICATION_ID",
+                    "--tenant-id=$ENV:tenant_id"
+                ) -Wait -NoNewWindow
+
+                Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
+                    "copy",
+                    $LogDestination,
+                    "https://roninpuppetassets.blob.core.windows.net/packer"
+                ) -Wait -NoNewWindow
+
                 Move-StrapPuppetLogs
                 exit 4
             }
@@ -154,6 +190,21 @@ function Start-AzRoninPuppet {
                     Write-Log -message ('{0} :: Puppet Line {1}' -f $($MyInvocation.MyCommand.Name), $data.line) -severity 'DEBUG'
                     Write-Log -message ('{0} :: Puppet Source {1}' -f $($MyInvocation.MyCommand.Name), $data.source) -severity 'DEBUG'
                 }
+
+                ## Authenticate
+                Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
+                    "login",
+                    "--service-principal",
+                    "--application-id $ENV:AZCOPY_SPA_APPLICATION_ID",
+                    "--tenant-id=$ENV:tenant_id"
+                ) -Wait -NoNewWindow
+
+                Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
+                    "copy",
+                    $LogDestination,
+                    "https://roninpuppetassets.blob.core.windows.net/packer"
+                ) -Wait -NoNewWindow
+
                 Move-StrapPuppetLogs
                 exit 6
             }
