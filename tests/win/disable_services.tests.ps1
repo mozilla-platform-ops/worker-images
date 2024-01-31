@@ -22,16 +22,16 @@ Describe "Disable Services" {
     Context "Windows Update" {
         BeforeAll {
             $win_update_key = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"
-            $win_update_au_key = $win_update_key + "\AU"
-            $win_au_key = "HKLM:\SOFTWARE\Microsoft\Windows\Windows\AU"
+            $win_au_key = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU"
             $win_update_preview_builds = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PreviewBuilds"
             $service = "wuauserv"
+            $service_key = "HKLM:\SYSTEM\CurrentControlSet\Services\wuauserv"
         }
 
         It "Exists as a service" {
             Get-Service $service | Should -Not -Be $null
         }
-        It "Windows Update is disabled" -Skip {
+        It "Windows Update is disabled" {
             (Get-Service $service).Status | Should -Be "Stopped"
         }
         It "Windows Update SearchOrderConfig is 0" {
@@ -42,6 +42,9 @@ Describe "Disable Services" {
         }
         It "Windows Update NoAutoUpdate is 1" {
             Get-ItemPropertyValue $win_au_key -Name "NoAutoUpdate" | Should -Be 1
+        }
+        It "wuauserv start set to disable" {
+            Get-ItemPropertyValue $service_key -Name "Start" | Should -Be 4
         }
     }
     Context "Disable User Account Control" {
