@@ -22,8 +22,7 @@ Describe "Disable Services" {
     Context "Windows Update" {
         BeforeAll {
             $win_update_key = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"
-            $win_update_au_key = $win_update_key + "\AU"
-            $win_au_key = "HKLM:\SOFTWARE\Microsoft\Windows\Windows\AU"
+            $win_au_key = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU"
             $win_update_preview_builds = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PreviewBuilds"
             $service = "wuauserv"
             $service_key = "HKLM:\SYSTEM\CurrentControlSet\Services\$($Service)"
