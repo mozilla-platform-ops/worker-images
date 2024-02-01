@@ -11,6 +11,9 @@ function Get-OSVersion {
         "*windows_11*" {
             -join ("win_11_", $release_key)
         }
+        "*2022*" {
+            -join ( "win_2022_", $release_key)
+        }
         default {
             $null
         }
