@@ -27,12 +27,17 @@ Describe "Disable Services" {
             $service = "wuauserv"
             $service_key = "HKLM:\SYSTEM\CurrentControlSet\Services\wuauserv"
         }
-
-        It "Exists as a service" {
-            Get-Service $service | Should -Not -Be $null
-        }
         It "Windows Update is disabled" {
-            (Get-Service $service).Status | Should -Be "Stopped"
+            (Get-Service "wuauserv").StartType | Should -Be "Disabled"
+        }
+        It "Update Orchestrator Service is disabled" {
+            (Get-Service "usosvc").StartType | Should -Be "Disabled"
+        }
+        It "Microsoft Update Health Service is disabled" {
+            (Get-Service "uhssvc").StartType | Should -Be "Disabled"
+        }
+        It "Windows Update Medic Service is disabled" {
+            (Get-Service "WaaSMedicSvc").StartType | Should -Be "Disabled"
         }
         It "Windows Update SearchOrderConfig is 0" {
             Get-ItemPropertyValue HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\DriverSearching -Name "SearchOrderConfig" | Should -Be 0
