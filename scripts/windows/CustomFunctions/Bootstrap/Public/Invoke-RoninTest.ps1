@@ -57,6 +57,7 @@ Function Invoke-RoninTest {
         File = $RolePath
     }
     $Configuration = New-PesterConfiguration
+    $Configuration.Run.Exit = $true
     $Configuration.Run.Container = $Container
     $Configuration.TestResult.Enabled = $true
     $Configuration.Output.Verbosity = "Detailed"

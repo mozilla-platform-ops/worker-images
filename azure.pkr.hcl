@@ -378,8 +378,7 @@ build {
       "Invoke-RoninTest -Role $ENV:base_image -Config $ENV:config"
     ]
     valid_exit_codes = [
-      0,
-      2
+      0
     ]
   }
 
