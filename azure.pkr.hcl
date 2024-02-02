@@ -362,6 +362,14 @@ build {
   provisioner "powershell" {
     elevated_password = ""
     elevated_user     = "SYSTEM"
+    inline = [
+      "if ((Get-Service 'wuauserv').StartType -ne 'Disabled') {if ((Get-Service 'wuauserv').Status -ne 'Stopped') {Stop-Service 'wuauserv' -Force}; Get-Service wuauserv | Set-Service -StartupType Disabled}"
+    ]
+  }
+
+  provisioner "powershell" {
+    elevated_password = ""
+    elevated_user     = "SYSTEM"
     environment_vars = [
       "worker_pool_id=${var.worker_pool_id}",
       "base_image=${var.base_image}",

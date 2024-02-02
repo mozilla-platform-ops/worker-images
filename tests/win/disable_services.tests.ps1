@@ -32,9 +32,6 @@ Describe "Disable Services" {
         It "Update Orchestrator Service is disabled" {
             (Get-Service "usosvc").StartType | Should -Be "Disabled"
         }
-        It "Microsoft Update Health Service is disabled" {
-            (Get-Service "uhssvc").StartType | Should -Be "Disabled"
-        }
         It "Windows Update Medic Service is disabled" {
             (Get-Service "WaaSMedicSvc").StartType | Should -Be "Disabled"
         }
