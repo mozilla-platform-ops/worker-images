@@ -363,7 +363,8 @@ build {
     elevated_password = ""
     elevated_user     = "SYSTEM"
     inline = [
-      "if ((Get-Service 'wuauserv').StartType -ne 'Disabled') {if ((Get-Service 'wuauserv').Status -ne 'Stopped') {Stop-Service 'wuauserv' -Force}; Get-Service wuauserv | Set-Service -StartupType Disabled}"
+      "Import-Module BootStrap -Force",
+      "Disable-Services"
     ]
   }
 
