@@ -32,7 +32,7 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: cloud_windows
-    deploymentId: 531c001
+    deploymentId: f34cb49
     managed_by: packer
 tests:
   - microsoft_tools_tester.tests.ps1
