@@ -4,7 +4,6 @@ function Install-AzPreReq {
         [string] $local_dir = "$env:systemdrive\BootStrap",
         [string] $work_dir = "$env:systemdrive\scratch",
         [string] $git = "Git-2.37.3-64-bit.exe",
-        [string] $puppet = "puppet-agent-6.28.0-x64.msi",
         [string] $vault_file = "azure_vault_template.yaml",
         [string] $rdagent = "rdagent",
         [string] $azure_guest_agent = "WindowsAzureGuestAgent",
@@ -29,6 +28,18 @@ function Install-AzPreReq {
         $azcopy_path = Get-ChildItem "$ENV:systemdrive\azcopy" -Recurse | Where-Object {$PSItem.name -eq "azcopy.exe"}
         Copy-Item $azcopy_path.FullName -Destination "$ENV:systemdrive\"
         Remove-Item "$ENV:systemdrive\azcopy.zip"
+
+        ## Add support for switching between puppet versions for testing
+
+        ## Pull in the configuration file of the worker pool
+        $Config = Convertfrom-Yaml (Get-Content -Path "C:\Config\$Config.yaml" -Raw)
+
+        if ([string]::IsNullOrEmpty($config.vm.puppet_version)) {
+            $puppet = "puppet-agent-6.28.0-x64.msi"
+        }
+        else {
+            $puppet = ("puppet-agent-{0}-x64.msi") -f $config.vm.puppet_version
+        }
 
         ## Set azcopy vars
         $ENV:AZCOPY_AUTO_LOGIN_TYPE = "SPN"
