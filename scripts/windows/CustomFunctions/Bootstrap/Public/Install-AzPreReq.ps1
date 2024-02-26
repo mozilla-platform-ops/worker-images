@@ -18,6 +18,8 @@ function Install-AzPreReq {
     begin {
         Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
         Write-Host ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime())
+        Set-PSRepository PSGallery -InstallationPolicy Trusted
+        Install-Module powershell-yaml -ErrorAction Stop
     }
     process {
         ## Setup azcopy
