@@ -101,12 +101,7 @@ function Start-AzRoninPuppet {
                 }
 
                 ## Authenticate
-                Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
-                    "login",
-                    "--service-principal",
-                    "--application-id $ENV:AZCOPY_SPA_APPLICATION_ID",
-                    "--tenant-id=$ENV:tenant_id"
-                ) -Wait -NoNewWindow
+                $Env:AZCOPY_AUTO_LOGIN_TYPE="PSCRED"
 
                 Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
                     "copy",
@@ -157,12 +152,7 @@ function Start-AzRoninPuppet {
                 }
 
                 ## Authenticate
-                Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
-                    "login",
-                    "--service-principal",
-                    "--application-id $ENV:AZCOPY_SPA_APPLICATION_ID",
-                    "--tenant-id=$ENV:tenant_id"
-                ) -Wait -NoNewWindow
+                $Env:AZCOPY_AUTO_LOGIN_TYPE="PSCRED"
 
                 Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
                     "copy",
@@ -192,12 +182,7 @@ function Start-AzRoninPuppet {
                 }
 
                 ## Authenticate
-                Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
-                    "login",
-                    "--service-principal",
-                    "--application-id $ENV:AZCOPY_SPA_APPLICATION_ID",
-                    "--tenant-id=$ENV:tenant_id"
-                ) -Wait -NoNewWindow
+                $Env:AZCOPY_AUTO_LOGIN_TYPE="PSCRED"
 
                 Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
                     "copy",
