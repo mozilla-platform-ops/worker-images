@@ -36,18 +36,18 @@ function Install-AzPreReq {
         ## Add support for switching between puppet versions for testing
 
         ## Pull in the configuration file of the worker pool
-        $Config = Convertfrom-Yaml (Get-Content -Path "C:\Config\$($ENV:Config).yaml" -Raw)
+        $data = Convertfrom-Yaml (Get-Content -Path "C:\Config\$($ENV:Config).yaml" -Raw)
 
-        if ([string]::IsNullOrEmpty($Config)) {
-            Write-Log -message ('{0} :: - {2:o}' -f "Could not find Config at C:\Config\$Config.yaml", (Get-Date).ToUniversalTime()) -severity 'DEBUG'
-            Write-Host ('{0} :: - {1:o}' -f "Could not find Config at C:\Config\$Config.yaml",,(Get-Date).ToUniversalTime())
+        if ([string]::IsNullOrEmpty($data)) {
+            Write-Log -message ('{0} :: - {2:o}' -f "Could not find Config at C:\Config\$($ENV:Config).yaml", (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+            Write-Host ('{0} :: - {1:o}' -f "Could not find Config at C:\Config\$($ENV:Config).yaml",,(Get-Date).ToUniversalTime())
         }
 
-        if ([string]::IsNullOrEmpty($config.vm.puppet_version)) {
+        if ([string]::IsNullOrEmpty($data.vm.puppet_version)) {
             $puppet = "puppet-agent-6.28.0-x64.msi"
         }
         else {
-            $puppet = ("puppet-agent-{0}-x64.msi") -f $config.vm.puppet_version
+            $puppet = ("puppet-agent-{0}-x64.msi") -f $data.vm.puppet_version
         }
 
         Write-Log -message ('Puppet version: {0} :: - {1:o}' -f $puppet, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
