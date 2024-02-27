@@ -303,7 +303,8 @@ build {
       "client_id=${var.client_id}",
       "client_secret=${var.client_secret}",
       "tenant_id=${var.tenant_id}",
-      "application_id=${var.application_id}"
+      "application_id=${var.application_id}",
+      "config=${var.config}"
     ]
     inline = [
       "Import-Module BootStrap -Force",

@@ -36,7 +36,7 @@ function Install-AzPreReq {
         ## Add support for switching between puppet versions for testing
 
         ## Pull in the configuration file of the worker pool
-        $Config = Convertfrom-Yaml (Get-Content -Path "C:\Config\$Config.yaml" -Raw)
+        $Config = Convertfrom-Yaml (Get-Content -Path "C:\Config\$($ENV:Config).yaml" -Raw)
 
         if ([string]::IsNullOrEmpty($Config)) {
             Write-Log -message ('{0} :: - {2:o}' -f "Could not find Config at C:\Config\$Config.yaml", (Get-Date).ToUniversalTime()) -severity 'DEBUG'
