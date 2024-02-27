@@ -55,7 +55,9 @@ function Install-AzPreReq {
         Write-Host ('Puppet version: {0} :: - {1:o}' -f $puppet,(Get-Date).ToUniversalTime())
 
         ## Set azcopy vars
-        $ENV:AZCOPY_AUTO_LOGIN_TYPE = "SPN"
+        $Env:AZCOPY_AUTO_LOGIN_TYPE="PSCRED"
+
+<#         $ENV:AZCOPY_AUTO_LOGIN_TYPE = "SPN"
         $ENV:AZCOPY_SPA_APPLICATION_ID = $ENV:application_id
         $ENV:AZCOPY_SPA_CLIENT_SECRET = $ENV:client_secret
         $ENV:AZCOPY_TENANT_ID = $ENV:tenant_id
@@ -66,7 +68,7 @@ function Install-AzPreReq {
             "--service-principal",
             "--application-id $ENV:AZCOPY_SPA_APPLICATION_ID",
             "--tenant-id=$ENV:tenant_id"
-        ) -Wait -NoNewWindow
+        ) -Wait -NoNewWindow #>
 
         Write-host ('Puppet version: {0} :: - {1:o}' -f $puppet,(Get-Date).ToUniversalTime())
 
