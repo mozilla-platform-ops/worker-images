@@ -16,6 +16,8 @@ function Install-AzPreReq {
         [string] $manifest = "nodes.pp"
     )
     begin {
+        Get-PackageProvider -Name Nuget -ForceBootstrap | Out-Null
+        Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
         Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
         Write-Host ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime())
         Set-PSRepository PSGallery -InstallationPolicy Trusted
