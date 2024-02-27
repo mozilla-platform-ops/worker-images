@@ -101,7 +101,10 @@ function Start-AzRoninPuppet {
                 }
 
                 ## Authenticate
-                $Env:AZCOPY_AUTO_LOGIN_TYPE="PSCRED"
+                $ENV:AZCOPY_AUTO_LOGIN_TYPE = "SPN"
+                $ENV:AZCOPY_SPA_APPLICATION_ID = $ENV:application_id
+                $ENV:AZCOPY_SPA_CLIENT_SECRET = $ENV:client_secret
+                $ENV:AZCOPY_TENANT_ID = $ENV:tenant_id
 
                 Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
                     "copy",
@@ -152,7 +155,10 @@ function Start-AzRoninPuppet {
                 }
 
                 ## Authenticate
-                $Env:AZCOPY_AUTO_LOGIN_TYPE="PSCRED"
+                $ENV:AZCOPY_AUTO_LOGIN_TYPE = "SPN"
+                $ENV:AZCOPY_SPA_APPLICATION_ID = $ENV:application_id
+                $ENV:AZCOPY_SPA_CLIENT_SECRET = $ENV:client_secret
+                $ENV:AZCOPY_TENANT_ID = $ENV:tenant_id
 
                 Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
                     "copy",
@@ -182,7 +188,10 @@ function Start-AzRoninPuppet {
                 }
 
                 ## Authenticate
-                $Env:AZCOPY_AUTO_LOGIN_TYPE="PSCRED"
+                $ENV:AZCOPY_AUTO_LOGIN_TYPE = "SPN"
+                $ENV:AZCOPY_SPA_APPLICATION_ID = $ENV:application_id
+                $ENV:AZCOPY_SPA_CLIENT_SECRET = $ENV:client_secret
+                $ENV:AZCOPY_TENANT_ID = $ENV:tenant_id
 
                 Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
                     "copy",
