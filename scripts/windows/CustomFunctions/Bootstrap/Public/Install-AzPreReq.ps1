@@ -75,19 +75,22 @@ function Install-AzPreReq {
         Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
             "copy",
             "$ext_src/$puppet",
-            "$env:systemdrive\$puppet"
+            "$env:systemdrive\$puppet",
+            "--log-level ERROR"
         ) -Wait -NoNewWindow
 
         Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
             "copy",
             "$ext_src/$git",
-            "$env:systemdrive\$git"
+            "$env:systemdrive\$git",
+            "--log-level ERROR"
         ) -Wait -NoNewWindow
 
         Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
             "copy",
             "$ext_src/$manifest ",
-            "$local_dir\$manifest"
+            "$local_dir\$manifest",
+            "--log-level ERROR"
         ) -Wait -NoNewWindow
 
         Start-Process "$env:systemdrive\$git" /verysilent -wait
