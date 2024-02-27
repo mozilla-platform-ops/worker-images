@@ -41,6 +41,7 @@ function Install-AzPreReq {
         if ([string]::IsNullOrEmpty($data)) {
             Write-Log -message ('{0} :: - {2:o}' -f "Could not find Config at C:\Config\$($ENV:Config).yaml", (Get-Date).ToUniversalTime()) -severity 'DEBUG'
             Write-Host ('{0} :: - {1:o}' -f "Could not find Config at C:\Config\$($ENV:Config).yaml",,(Get-Date).ToUniversalTime())
+            exit 1
         }
 
         if ([string]::IsNullOrEmpty($data.vm.puppet_version)) {
