@@ -36,12 +36,20 @@ function Install-AzPreReq {
         ## Pull in the configuration file of the worker pool
         $Config = Convertfrom-Yaml (Get-Content -Path "C:\Config\$Config.yaml" -Raw)
 
+        if ([string]::IsNullOrEmpty($Config)) {
+            Write-Log -message ('{0} :: - {2:o}' -f "Could not find Config at C:\Config\$Config.yaml", (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+            Write-Host ('{0} :: - {1:o}' -f "Could not find Config at C:\Config\$Config.yaml",,(Get-Date).ToUniversalTime())
+        }
+
         if ([string]::IsNullOrEmpty($config.vm.puppet_version)) {
             $puppet = "puppet-agent-6.28.0-x64.msi"
         }
         else {
             $puppet = ("puppet-agent-{0}-x64.msi") -f $config.vm.puppet_version
         }
+
+        Write-Log -message ('Puppet version: {0} :: - {1:o}' -f $puppet, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+        Write-Host ('Puppet version: {0} :: - {1:o}' -f $puppet,(Get-Date).ToUniversalTime())
 
         ## Set azcopy vars
         $ENV:AZCOPY_AUTO_LOGIN_TYPE = "SPN"
@@ -56,6 +64,8 @@ function Install-AzPreReq {
             "--application-id $ENV:AZCOPY_SPA_APPLICATION_ID",
             "--tenant-id=$ENV:tenant_id"
         ) -Wait -NoNewWindow
+
+        Write-host ('Puppet version: {0} :: - {1:o}' -f $puppet,(Get-Date).ToUniversalTime())
 
         Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
             "copy",
