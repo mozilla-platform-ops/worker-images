@@ -15,14 +15,15 @@ azure:
     - ukwest
     - uksouth
 vm:
+  puppet_version: 8.4.0
   size: Standard_F8s_v2
   tags:
     base_image: win10642009azure
     worker_pool_id: win10-64-2009
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: mozbuild41
-    deploymentId: 01df842
+    sourceBranch: cloud_windows_puppetupdate
+    deploymentId: 9a4e2c6
     managed_by: packer
 tests:
   - microsoft_tools_tester.tests.ps1
