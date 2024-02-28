@@ -392,6 +392,9 @@ build {
     ]
   }
 
+  provisioner "windows-restart" {
+  }
+
   provisioner "powershell" {
     inline = [
       "Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Mozilla\\ronin_puppet' -Name hand_off_ready -Type string -Value yes",
