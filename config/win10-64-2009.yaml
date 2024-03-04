@@ -25,6 +25,7 @@ azure:
     - westus2
     - westus3
 vm:
+  puppet_version: 6.28.0
   size: Standard_F8s_v2
   tags:
     base_image: win10642009azure

@@ -20,6 +20,7 @@ azure:
     - westus
     - westus2
 vm:
+  puppet_version: 6.28.0
   size: Standard_F32s_v2
   tags:
     base_image: win2022642009azure
@@ -27,7 +28,7 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: cloud_windows
-    deploymentId: f34cb49
+    deploymentId: 1734abb
     managed_by: packer
 tests:
   - microsoft_tools_builder.tests.ps1
