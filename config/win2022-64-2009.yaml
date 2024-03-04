@@ -16,6 +16,7 @@ azure:
     - centralus
     - northcentralus
     - eastus
+    - eastus2
     - southcentralus
     - westus
     - westus2
