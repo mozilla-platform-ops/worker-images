@@ -55,15 +55,22 @@ function Start-AzRoninPuppet {
         Get-ChildItem -Path $logdir\*.json -Recurse -ErrorAction SilentlyContinue | Move-Item -Destination $logdir\old -ErrorAction SilentlyContinue
         $logDate = $(get-date -format yyyyMMdd-HHmm)
         $LogDestination = ("$env:systemdrive\logs\{0}-{1}-bootstrap-puppet.json" -f $ENV:COMPUTERNAME,$logdate)
-        Write-Log -message  ('{0} :: Running Puppet apply .' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
+        ## create a step where we're recording the time it takes to run puppet apply
+        $stopWatch = New-Object -TypeName System.Diagnostics.Stopwatch
+        ## start the timer
+        $stopWatch.Start()
         puppet apply manifests\nodes.pp --onetime --verbose --no-daemonize --no-usecacheonfailure --detailed-exitcodes --no-splay --show_diff --modulepath=modules`;r10k_modules --hiera_config=hiera.yaml --logdest $LogDestination
         [int]$puppet_exit = $LastExitCode
+        ## stop the timer
+        $stopWatch.Stop()
+        ## get the time it took to run puppet apply
+        $time = $stopWatch.Elapsed
+        Write-host ('{0} :: Puppet apply took - {1} minutes, {2} seconds to complete' -f $($MyInvocation.MyCommand.Name),$time.Minutes, $time.Seconds)
+        Write-Log -message  ('{0} :: Puppet apply took - {1} minutes, {2} seconds to complete' -f $($MyInvocation.MyCommand.Name),$time.Minutes, $time.Seconds) -severity 'DEBUG'
         ## https://www.puppet.com/docs/puppet/6/man/apply.html#options
         
         switch ($puppet_exit) {
             0 {
-                Write-Log -message  ('{0} :: Puppet apply succeeded with no changes or failures :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit) -severity 'DEBUG'
-                Write-Host ('{0} :: Puppet apply succeeded with no changes or failures :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit)
                 Set-ItemProperty -Path $ronnin_key -name last_run_exit -value $puppet_exit
                 Set-ItemProperty -Path $ronnin_key -Name 'bootstrap_stage' -Value 'complete'
                 #Move-StrapPuppetLogs
@@ -116,8 +123,8 @@ function Start-AzRoninPuppet {
                 exit 1
             }
             2 {
-                Write-Log -message ('{0} :: Puppet apply succeeded, and some resources were changed :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit) -severity 'DEBUG'
-                Write-Host ('{0} :: Puppet apply succeeded, and some resources were changed :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit)
+                Write-Log -message ('{0} :: Puppet apply succeeded, and some resources were changed :: Error code {1} :: {2:o}' -f $($MyInvocation.MyCommand.Name), $puppet_exit,(Get-Date).ToUniversalTime()) -severity 'DEBUG'
+                Write-Host ('{0} :: Puppet apply succeeded, and some resources were changed :: Error code {1} :: {2:o}' -f $($MyInvocation.MyCommand.Name), $puppet_exit,(Get-Date).ToUniversalTime())
                 Set-ItemProperty -Path $ronnin_key -name last_run_exit -value $puppet_exit
                 Set-ItemProperty -Path $ronnin_key -Name 'bootstrap_stage' -Value 'complete'
                 #Move-StrapPuppetLogs
