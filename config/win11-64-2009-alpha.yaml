@@ -16,6 +16,8 @@ azure:
     - uksouth
     - eastus
     - eastus2
+    - westus2
+    - westus
 vm:
   puppet_version: 8.4.0
   size: Standard_F8s_v2
