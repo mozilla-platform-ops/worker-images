@@ -17,8 +17,8 @@ Describe "File System Management" {
     It "Long paths enabled" -Skip {
         Get-ItemPropertyValue "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" | Should -Be 1
     }
-    It "PageFile is set to Y" -Skip {
-            (Get-CimInstance Win32_PageFileSetting).Name | Should -Be "y:\pagefile.sys"
+    It "PageFile is set to D" -Skip {
+            (Get-CimInstance Win32_PageFileSetting).Name | Should -Be "D:\pagefile.sys"
     }
     It "PageFile min size is 8192 MB" -Skip {
             (Get-CimInstance Win32_PageFile).InitialSize | Should -Be 8192
