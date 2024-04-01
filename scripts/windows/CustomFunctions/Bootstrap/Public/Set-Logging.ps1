@@ -12,12 +12,15 @@ function Set-Logging {
     }
     process {
         $null = New-Item -ItemType Directory -Force -Path $local_dir -ErrorAction SilentlyContinue
-        Invoke-WebRequest $ext_src/$nxlog_msi -outfile $local_dir\$nxlog_msi -UseBasicParsing
+        Invoke-DownloadWithRetry $ext_src/$nxlog_msi -Path $local_dir\$nxlog_msi 
+        #Invoke-WebRequest $ext_src/$nxlog_msi -outfile $local_dir\$nxlog_msi -UseBasicParsing
         msiexec /i $local_dir\$nxlog_msi /passive
         while (!(Test-Path "$nxlog_dir\conf\")) { Start-Sleep 10 }
-        Invoke-WebRequest  $ext_src/$nxlog_conf -outfile "$nxlog_dir\conf\$nxlog_conf" -UseBasicParsing
+        Invoke-DownloadWithRetry -Url $ext_src/$nxlog_conf -Path "$nxlog_dir\conf\$nxlog_conf"
+        #Invoke-WebRequest  $ext_src/$nxlog_conf -outfile "$nxlog_dir\conf\$nxlog_conf" -UseBasicParsing
         while (!(Test-Path "$nxlog_dir\conf\")) { Start-Sleep 10 }
-        Invoke-WebRequest  $ext_src/$nxlog_pem -outfile "$nxlog_dir\cert\$nxlog_pem" -UseBasicParsing
+        Invoke-DownloadWithRetry -Url $ext_src/$nxlog_pem -Path "$nxlog_dir\cert\$nxlog_pem"
+        #Invoke-WebRequest  $ext_src/$nxlog_pem -outfile "$nxlog_dir\cert\$nxlog_pem" -UseBasicParsing
         Restart-Service -Name nxlog -force
     }
     end {

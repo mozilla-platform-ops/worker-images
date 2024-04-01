@@ -33,6 +33,6 @@ function Write-Log {
     Write-EventLog -LogName $logName -Source $source -EntryType $entryType -Category 0 -EventID $eventId -Message $message
     if ([Environment]::UserInteractive) {
         $fc = @{ 'Information' = 'White'; 'Error' = 'Red'; 'Warning' = 'DarkYellow'; 'SuccessAudit' = 'DarkGray' }[$entryType]
-        Write-Host  -object $message -ForegroundColor $fc
+        Write-Host -Object $message -ForegroundColor $fc
     }
 }
