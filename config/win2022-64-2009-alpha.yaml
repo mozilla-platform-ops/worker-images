@@ -3,7 +3,7 @@ image:
   publisher: MicrosoftWindowsServer
   offer: WindowsServer
   sku: 2022-datacenter-azure-edition
-  version: 20348.2227.240104 ## January 2024 https://support.microsoft.com/en-us/topic/windows-server-images-for-january-2024-001a10f0-c04b-45f9-9883-f21a78f71cec
+  version: 20348.2340.240303 ## March 2024 https://support.microsoft.com/en-us/topic/windows-server-images-for-march-2024-5f6ba461-9020-4bce-ab83-9b2c8c08cc56
 sharedimage:
   gallery_name: ""
   image_name: ""
@@ -16,15 +16,15 @@ azure:
     - centralus
     - northcentralus
 vm:
-  puppet_version: 6.28.0
+  puppet_version: 8.5.1
   size: Standard_F32s_v2
   tags:
     base_image: win2022642009azure
     worker_pool_id: win2022-64-2009
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: mozbuild41
-    deploymentId: 01df842
+    sourceBranch: puppet_optimizations
+    deploymentId: b247e58
     managed_by: packer
 tests:
   - microsoft_tools_builder.tests.ps1

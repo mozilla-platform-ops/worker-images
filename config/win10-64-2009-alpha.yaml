@@ -15,7 +15,7 @@ azure:
     - ukwest
     - uksouth
 vm:
-  puppet_version: 8.4.0
+  puppet_version: 8.5.1
   size: Standard_F8s_v2
   tags:
     base_image: win10642009azure
@@ -23,7 +23,7 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: puppet_optimizations
-    deploymentId: 89c34bc
+    deploymentId: b247e58
     managed_by: packer
 tests:
   - microsoft_tools_tester.tests.ps1
