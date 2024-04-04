@@ -16,7 +16,6 @@ azure:
     - centralus
     - northcentralus
 vm:
-  puppet_version: 8.5.1
   size: Standard_F32s_v2
   tags:
     base_image: win2022642009azure
@@ -24,7 +23,7 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: puppet_optimizations
-    deploymentId: e8d196c
+    deploymentId: 553aadd
     managed_by: packer
 tests:
   - microsoft_tools_builder.tests.ps1
