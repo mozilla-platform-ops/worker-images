@@ -17,12 +17,7 @@ jobs:
     name: "Create Image Tasks"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/checkout@v3
-      - name: Install and cache PowerShell modules
-        uses: potatoqualitee/psmodulecache@v6.0
-        with:
-          modules-to-cache: Powershell-Yaml
+      - uses: actions/checkout@v4
       - id: set-matrix
         shell: pwsh
         run: |
