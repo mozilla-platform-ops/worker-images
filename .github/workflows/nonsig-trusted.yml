@@ -34,7 +34,7 @@ jobs:
       matrix:
         locations: ${{fromJson(needs.job1.outputs.LOCATIONS)}}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Azure Login
         uses: azure/login@v2
         with:

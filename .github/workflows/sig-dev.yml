@@ -17,7 +17,7 @@ jobs:
     name: "Remove imageversion from ${{ github.event.inputs.config }}"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Azure Login
         uses: azure/login@v2
         with:
@@ -34,7 +34,7 @@ jobs:
     name: "Build ${{ github.event.inputs.config }}"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: 'Run Packer'
         shell: pwsh
         run: |
