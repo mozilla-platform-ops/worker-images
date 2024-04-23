@@ -3,7 +3,7 @@ image:
   publisher: MicrosoftWindowsServer
   offer: WindowsServer
   sku: 2022-datacenter-azure-edition
-  version: 20348.2340.240303 ## March 2024 https://support.microsoft.com/en-us/topic/windows-server-images-for-march-2024-5f6ba461-9020-4bce-ab83-9b2c8c08cc56
+  version: 20348.2402.240405 ## April 2024 https://support.microsoft.com/en-us/topic/windows-server-images-for-april-2024-3c03f503-9658-4c20-9d34-a4ff25d8b319
 sharedimage:
   gallery_name: ""
   image_name: ""
@@ -29,7 +29,7 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: cloud_windows
-    deploymentId: 801fce5
+    deploymentId: b1285eb
     managed_by: packer
 tests:
   - microsoft_tools_builder.tests.ps1

@@ -3,7 +3,7 @@ image:
   publisher: MicrosoftWindowsDesktop
   offer: Windows-10
   sku: win10-22h2-avd
-  version: 19045.4170.240307 ## March 2024 https://support.microsoft.com/en-us/topic/windows-10-and-windows-11-client-images-for-march-2024-01722e49-608c-4f42-9b37-4cf7ac781a19
+  version: 19045.4291.240406 ## April 2024 https://support.microsoft.com/en-us/topic/windows-10-and-windows-11-client-images-for-april-2024-fc1a11ee-4c52-48de-80ed-987d1cf37430
 sharedimage:
   gallery_name: "ronin_t_windows10_64_2009_prod"
   image_name: "win10-64-2009"
@@ -25,7 +25,7 @@ azure:
     - westus2
     - westus3
 vm:
-  puppet_version: 8.4.0
+  puppet_version: 8.5.1
   size: Standard_F8s_v2
   tags:
     base_image: win10642009azure
@@ -33,7 +33,7 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: cloud_windows
-    deploymentId: 801fce5
+    deploymentId: b1285eb
     managed_by: packer
 tests:
   - microsoft_tools_tester.tests.ps1
