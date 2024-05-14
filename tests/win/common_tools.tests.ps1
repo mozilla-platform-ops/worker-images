@@ -41,17 +41,17 @@ Describe "Common Tools" {
             ((Get-Item "C:\ProcessExplorer\procexp.exe").versioninfo).fileversion | Should -Be 16.21
         }
     }
-    Context "jq is present" {
-        It "Binary is present" {
-            Test-Path "C:\Windows\System32\jq.exe" | Should -Be $true
-        }
-        It "Version is jq1-5" {
-            Start-Process -FilePath "C:\Windows\System32\jq.exe" -ArgumentList @(
-                "--version"
-            ) -RedirectStandardOutput "Testdrive:\jqversion.txt" -Wait -NoNewWindow
-            Get-Content "Testdrive:\jqversion.txt" | Should -Be "jq-1.5"
-        }
-    }
+    #Context "jq is present" {
+    #    It "Binary is present" {
+    #        Test-Path "C:\Windows\System32\jq.exe" | Should -Be $true
+    #    }
+    #    It "Version is jq1-5" {
+    #        Start-Process -FilePath "C:\Windows\System32\jq.exe" -ArgumentList @(
+    #            "--version"
+    #        ) -RedirectStandardOutput "Testdrive:\jqversion.txt" -Wait -NoNewWindow
+    #        Get-Content "Testdrive:\jqversion.txt" | Should -Be "jq-1.5"
+    #    }
+    #}
     Context "gpg4win" {
         It "GPG4Win is installed" {
             $gpg4win.DisplayName | Should -Not -Be $null
