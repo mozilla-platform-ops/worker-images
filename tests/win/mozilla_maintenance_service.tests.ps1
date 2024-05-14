@@ -53,8 +53,8 @@ Describe "Mozilla Maintenance Service" {
         It "Registry exists" {
             Test-Path "HKLM:\SOFTWARE\Mozilla\MaintenanceService\3932ecacee736d366d6436db0f55bce4" | Should -BeTrue
         }
-        It "Thawte Code Signing CA Issuer" {
-            Get-ItemPropertyValue $thawte -Name "issuer" | Should -Be "Thawte Code Signing CA - G2"
+        It "DigiCert Trusted G4 Code Signing RSA4096 SHA384 2021 CA1" {
+            Get-ItemPropertyValue $thawte -Name "issuer" | Should -Be "DigiCert Trusted G4 Code Signing RSA4096 SHA384 2021 CA1"
         }
         It "Thawte Code Signing CA Name" {
             Get-ItemPropertyValue $thawte -Name "name" | Should -Be "Mozilla Corporation"
