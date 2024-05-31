@@ -62,6 +62,18 @@ Describe "Mozilla Build - Tester" {
             $ZStandard = ($pip_packages | Where-Object {$psitem -Match "zstandard"}) -split "==" 
             $ZStandard[1] | Should -Be $zstandard_ExepctedSoftwareVersion
         }
+        It "Python3 Pip is installed" {
+            $py3pip = ($pip_packages | Where-Object {$psitem -Match "pip"}) -split "==" 
+            $py3pip | Should -Not -Be $null
+        }
+        It "Python3 Pip version" {
+            $py3pip = ($pip_packages | Where-Object {$psitem -Match "pip"}) -split "==" 
+            $py3pip[1] | Should -Be $py3pip_ExpectedSoftwareVersion
+        }
+        It "Pip.conf file has correct drive for pip-cache" {
+            $pipini = Get-Content "$ENV:ProgramData\pip\pip.ini"
+            $pipini[3] | Should -Be "download-cache = D:\pip-cache"
+        }
     }
     Context "Mercurial" {
         It "Mercurial gets installed" {
