@@ -8,7 +8,6 @@ BeforeDiscovery {
     C:\mozilla-build\python3\python.exe -m pip freeze --all > C:\requirements.txt
 }
 
-
 Describe "Mozilla Build - Builder" {
     BeforeAll {
         $software = Get-InstalledSoftware
