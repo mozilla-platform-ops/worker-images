@@ -12,6 +12,6 @@ Describe "Nvidia GPU Downloaded" {
         $gpu = ($Hiera.'win-worker'.gpu.name) + ".zip"
     }
     It "Nvidia GPU Drivers are downloaded" {
-        Test-Path "C:\472.39_grid_win11_win10_64bit_Azure-SWL.zip" | Should -Be $true
+        Test-Path "C:\472.39_grid_win11_win10_64bit_Azure-SWL" | Should -Be $true
     }
 }
