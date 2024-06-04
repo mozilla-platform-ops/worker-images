@@ -9,9 +9,9 @@ BeforeDiscovery {
 
 Describe "Nvidia GPU Downloaded" {
     BeforeAll {
-        $gpu = ($Hiera.'win-worker'.gpu.name) + ".zip"
+        $gpu = ($Hiera.'win-worker'.gpu.name)
     }
     It "Nvidia GPU Drivers are downloaded" {
-        Test-Path "C:\472.39_grid_win11_win10_64bit_Azure-SWL" | Should -Be $true
+        Test-Path "C:\$gpu" | Should -Be $true
     }
 }
