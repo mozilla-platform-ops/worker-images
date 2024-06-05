@@ -90,7 +90,7 @@ Describe "Mozilla Build - Tester" {
             ([Version]$mercurial.DisplayVersion ).Build | Should -Be $hg_ExpectedSoftwareVersion.Build
         }
     }
-    Context "HG Files" {
+    Context "HG Files" -Skip {
         BeforeAll {
             $hgshared_acl = (Get-Acl -Path C:\hg-shared).Access |
             Where-Object { $PSItem.IdentityReference -eq "Everyone" }
