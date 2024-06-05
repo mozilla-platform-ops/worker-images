@@ -2,7 +2,7 @@ function Start-AzRoninPuppet {
     param (
         [int] $exit,
         [int] $last_exit = (Get-ItemProperty "HKLM:\SOFTWARE\Mozilla\ronin_puppet").last_run_exit,
-        [string] $nodes_def = "$env:systemdrive\ronin\manifests\nodes\odes.pp",
+        [string] $nodes_def = "$env:systemdrive\ronin\manifests\nodes\nodes.pp",
         [string] $puppetfile = "$env:systemdrive\ronin\Puppetfile",
         [string] $logdir = "$env:systemdrive\logs",
         [string] $ed_key = "$env:systemdrive\generic-worker\ed25519-private.key",
