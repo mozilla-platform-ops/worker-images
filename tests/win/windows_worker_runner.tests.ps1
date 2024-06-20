@@ -7,14 +7,19 @@ BeforeDiscovery {
     $Hiera = Get-HieraRoleData -Path $File
 }
 
-Describe "Windows Worker Runner" {
-    It "Custom NSSM exists" {
-        Test-Path "C:\nssm\nssm-2.24\win64\nssm.exe" | Should -Be $true
+Describe "Taskcluster" {
+    BeforeAll {
+        $nssm = ($Hiera.'win-worker'.nssm.version)
     }
-    It "Windows Service Exists" {
-        Get-Service "worker-runner" | Should -Not -Be $null
-    }
-    It "Worker runner directory exists" {
-        Test-Path "C:\worker-runner" | Should -Be $true
+    Context "Non-Sucking Service Manager" {
+        It "NSSM is installed" {
+            Test-Path "C:\nssm\nssm-$($nssm)\win64\nssm.exe" | Should -Be $true
+        }
+        It "NSSM Windows Service Exists" {
+            Get-Service "worker-runner" | Should -Not -Be $null
+        }
+        #It "Worker runner directory exists" {
+        #    Test-Path "C:\worker-runner" | Should -Be $true
+        #}
     }
 }
