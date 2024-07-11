@@ -3,7 +3,7 @@ image:
   publisher: MicrosoftWindowsDesktop
   offer: Windows-11
   sku: win11-22h2-avd
-  version: 22621.3737.240607 ## June 2024 https://support.microsoft.com/en-us/topic/windows-10-and-windows-11-client-images-for-june-2024-18ccaac2-72e8-4712-8186-cad29b4169b7
+  version: latest
 sharedimage:
   gallery_name: "ronin_t_windows11_64_2009_alpha"
   image_name: "win11-64-2009-alpha"

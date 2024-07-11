@@ -3,7 +3,7 @@ image:
   publisher: MicrosoftWindowsServer
   offer: WindowsServer
   sku: 2022-datacenter-azure-edition
-  version: 20348.2402.240405 ## April 2024 https://support.microsoft.com/en-us/topic/windows-server-images-for-april-2024-3c03f503-9658-4c20-9d34-a4ff25d8b319
+  version: latest
 sharedimage:
   gallery_name: ""
   image_name: ""
