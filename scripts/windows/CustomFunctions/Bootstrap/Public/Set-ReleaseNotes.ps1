@@ -35,7 +35,9 @@ function Set-ReleaseNotes {
     }
 
     ## Let's get the installed software installed on the OS
-    $InstalledSoftware = Get-InstalledSoftware
+    $InstalledSoftware = Get-InstalledSoftware | Where-Object {
+        ($psitem.DisplayName -match "\D") -and ($null -ne $psitem.DisplayVersion)
+    }
     if ($null -eq $InstalledSoftware) {
         $reason = "Unable to find Installed Software"
         Write-Log -message ('{0} :: {1} - {2:o}' -f $($MyInvocation.MyCommand.Name), $reason, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
