@@ -27,7 +27,7 @@ function Set-ReleaseNotes {
     $mozillabuild = Get-WinFactsMozillaBuild
 
     ## Let's also get the python packages inside the Mozilla Build environment
-    $pythonPackages = Get-MozillaBuildPythonPackages
+    $pythonPackages = Get-MozillaBuildPythonPackages -RequirementsFile "C:\requirements.txt"
 
     ## Now let's list out all software that isn't published by Microsoft
     $InstalledSoftware_NotMicrosoft = $InstalledSoftware | Where-Object {

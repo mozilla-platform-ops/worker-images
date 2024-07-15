@@ -6,7 +6,7 @@ function Get-MozillaBuildPythonPackages {
             }
             return $true
         })]
-    $RequirementsFile
+    $RequirementsFile = "C:\requirements.txt"
     
     Get-Content $RequirementsFile | ForEach-Object {
         $p = $psitem -split "=="
