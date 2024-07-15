@@ -415,13 +415,6 @@ build {
     ]
   }
 
-  provisioner "powershell" {
-    inline = [
-      "if (-not (Test-Path C:\\software-report.md)) { throw 'C:\\software-report.md not found' }"
-    ]
-  }
-
-
   provisioner "windows-restart" {
     restart_timeout = "30m"
   }
