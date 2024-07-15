@@ -13,21 +13,45 @@ function Set-ReleaseNotes {
 
     ## Let's get specific information about the OS
     $OSBuild = Get-OSVersionMarkDown
+    if ($null -eq $OSBuild) {
+        $reason = "Unable to find OSBuild"
+        Write-Log -message ('{0} :: {1} - {2:o}' -f $($MyInvocation.MyCommand.Name), $reason, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+    }
 
     ## Let's get all of the information about the OS
     $OSVersionExtended = Get-OSVersionExtended 
+    if ($null -eq $OSVersionExtended) {
+        $reason = "Unable to find OSVersionExtended"
+        Write-Log -message ('{0} :: {1} - {2:o}' -f $($MyInvocation.MyCommand.Name), $reason, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+    }
 
     ## Just return the OS version for manipulating the markdown header
     $OSVersion = Get-OSVersion
+    if ($null -eq $OSVersion) {
+        $reason = "Unable to find OSVersion"
+        Write-Log -message ('{0} :: {1} - {2:o}' -f $($MyInvocation.MyCommand.Name), $reason, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+    }
 
     ## Let's get the installed software installed on the OS
     $InstalledSoftware = Get-InstalledSoftware
+    if ($null -eq $InstalledSoftware) {
+        $reason = "Unable to find Installed Software"
+        Write-Log -message ('{0} :: {1} - {2:o}' -f $($MyInvocation.MyCommand.Name), $reason, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+    }
 
     ## Let's get speciifc information about the Mozilla Build environment
     $mozillabuild = Get-WinFactsMozillaBuild
+    if ($null -eq $mozillabuild) {
+        $reason = "Unable to find facts for win mozilla build"
+        Write-Log -message ('{0} :: {1} - {2:o}' -f $($MyInvocation.MyCommand.Name), $reason, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+    }
 
     ## Let's also get the python packages inside the Mozilla Build environment
     $pythonPackages = Get-MozillaBuildPythonPackages -RequirementsFile "C:\requirements.txt"
+    if ($null -eq $pythonPackages) {
+        $reason = "Unable to find python packges in c:\requirements.txt"
+        Write-Log -message ('{0} :: {1} - {2:o}' -f $($MyInvocation.MyCommand.Name), $reason, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+    }
 
     ## Now let's list out all software that isn't published by Microsoft
     $InstalledSoftware_NotMicrosoft = $InstalledSoftware | Where-Object {
@@ -66,6 +90,11 @@ function Set-ReleaseNotes {
         default {
             $null
         }
+    }
+
+    if ($null -eq $OSVersion) {
+        $reason = "Unable to determine OSVersion"
+        Write-Log -message ('{0} :: {1} - {2:o}' -f $($MyInvocation.MyCommand.Name), $reason, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
     }
 
     $markdown += New-MDHeader -Text $Header -Level 1

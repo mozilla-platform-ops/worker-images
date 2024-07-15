@@ -1,13 +1,12 @@
 function Get-MozillaBuildPythonPackages {
-    [System.IO.FileInfo]
-    [ValidateScript({
-            if ( -Not ($_ | Test-Path) ) {
-                throw "File or folder does not exist"
-            }
-            return $true
-        })]
-    $RequirementsFile = "C:\requirements.txt"
+    [CmdletBinding()]
+    param (
+        [String]
+        $RequirementsFile = "C:\requirements.txt"
+    )
     
+    C:\mozilla-build\python3\python.exe -m pip freeze --all > $RequirementsFile
+
     Get-Content $RequirementsFile | ForEach-Object {
         $p = $psitem -split "=="
         [PSCustomObject]@{

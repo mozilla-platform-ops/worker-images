@@ -402,7 +402,11 @@ build {
       "src_Repository=${var.source_repository}",
       "src_Branch=${var.source_branch}",
       "deploymentId=${var.deployment_id}",
-      "config=${var.config}"
+      "config=${var.config}",
+      "client_id=${var.client_id}",
+      "client_secret=${var.client_secret}",
+      "tenant_id=${var.tenant_id}",
+      "application_id=${var.application_id}"
     ]
     inline = [
       "Import-Module BootStrap -Force",
