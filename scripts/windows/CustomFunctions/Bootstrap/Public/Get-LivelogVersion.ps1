@@ -13,4 +13,7 @@ function Get-LiveLogVersion {
         Name = "LiveLog"
         Version = (Get-Content $StandardOutput)
     }
+    
+    $null = Remove-Item -Path $StandardOutput -Force -ErrorAction SilentlyContinue
+
 }

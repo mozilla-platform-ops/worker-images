@@ -13,4 +13,7 @@ function Get-ProxyVersion {
         Name = "Proxy"
         Version = (Get-Content $StandardOutput)
     }
+
+    $null = Remove-Item -Path $StandardOutput -Force -ErrorAction SilentlyContinue
+
 }

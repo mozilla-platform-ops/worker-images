@@ -13,4 +13,7 @@ function Get-WorkerRunnerVersion {
         Name = "StartWorker"
         Version = (Get-Content $StandardOutput)
     }
+
+    $null = Remove-Item -Path $StandardOutput -Force -ErrorAction SilentlyContinue
+
 }

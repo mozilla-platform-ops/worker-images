@@ -14,4 +14,5 @@ function Get-GenericWorkerVersion {
         Name = "GenericWorker"
         Version = (Get-Content $StandardOutput)[-1]
     }
+    $null = Remove-Item -Path $StandardOutput -Force -ErrorAction SilentlyContinue
 }
