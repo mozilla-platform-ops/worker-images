@@ -9,3 +9,6 @@ crash.log
 
 # local build script
 local.ps1
+
+# generate docs
+docs.ps1
