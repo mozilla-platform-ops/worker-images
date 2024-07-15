@@ -14,6 +14,12 @@ on:
         - win11-64-2009
         - win2022-64-2009-alpha
         - win2022-64-2009
+      releasenotes:
+        type: choice
+        description: Choose whether or not to generate release notes
+        options:
+        - "true"
+        - "false"
 
 jobs:
   job1:
@@ -66,6 +72,14 @@ jobs:
             Application_ID = "${{ secrets.AZURE_APPLICATION_ID_FXCI }}"
           }
           New-AzWorkerImage @Vars
+  job3:
+    if: ${{ inputs.releasenotes == 'true' }}
+    needs: job2
+    name: "${{ github.event.inputs.config }} - ${{ matrix.LOCATIONS }}"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
       - name: "Download Release Notes to Github"
         uses: azure/powershell@v2
         with:
