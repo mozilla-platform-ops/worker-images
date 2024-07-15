@@ -8,6 +8,8 @@ function Set-ReleaseNotes {
     ## The config will be the name of the configuration file (win11-64-2009) without the extension
     ## We'll use this to generate release notes for each OS
 
+    Write-Log -message ('{0} :: Processing {1} - {2:o}' -f $($MyInvocation.MyCommand.Name), $Config, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+
     ## Let's install markdownPS just in case it isn't installed
     Set-MarkdownPSModule
 
@@ -134,8 +136,22 @@ function Set-ReleaseNotes {
     
     $markdown | Out-File "C:\software_report.md"
 
+    $markdown_content = Get-Content -Path "C:\software_report.md"
+    if ($null -eq $markdown_content) {
+        $reason = "Unable to find software_report.md"
+        Write-Log -message ('{0} :: {1} - {2:o}' -f $($MyInvocation.MyCommand.Name), $reason, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+    }
+
+    ## output the contents of the markdown file
+    Get-Content -Path "C:\software_report.md"
+
     ## Now copy the software markdown file elsewhere to prep for uploading to azure
     Copy-Item -Path "C:\software_report.md" -Destination "C:\$($Config).md"
+
+    if (-Not (Test-Path "C:\software_report.md")) {
+        $reason = "Unable to find software_report.md after copy-item"
+        Write-Log -message ('{0} :: {1} - {2:o}' -f $($MyInvocation.MyCommand.Name), $reason, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+    }
 
     ## Upload it to Azure
     $ENV:AZCOPY_AUTO_LOGIN_TYPE = "SPN"
