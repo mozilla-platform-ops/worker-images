@@ -123,6 +123,11 @@ function Set-ReleaseNotes {
     
     $markdown += New-MDList -Lines $lines3 -Style Unordered
     
+    $markdown += New-MDHeader "Taskcluster Packages Installed" -Level 3
+    $markdown += "`n"
+    $markdown += Show-TaskclusterBinaries | New-MDTable
+    $markdown += "`n"
+
     $markdown += New-MDHeader "Python Packages" -Level 3
     $markdown += "`n"
     $markdown += $pythonPackages | New-MDTable
