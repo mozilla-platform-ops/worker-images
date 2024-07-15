@@ -4,8 +4,10 @@ function Get-MozillaBuildPythonPackages {
         [String]
         $RequirementsFile = "C:\requirements.txt"
     )
-    
-    C:\mozilla-build\python3\python.exe -m pip freeze --all > $RequirementsFile
+   
+    if (-Not (Test-Path $RequirementsFile)) {
+        C:\mozilla-build\python3\python.exe -m pip freeze --all > $RequirementsFile
+    }
 
     Get-Content $RequirementsFile | ForEach-Object {
         $p = $psitem -split "=="
