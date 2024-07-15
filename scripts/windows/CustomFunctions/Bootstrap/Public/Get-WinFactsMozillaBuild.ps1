@@ -42,6 +42,15 @@ function Get-WinFactsMozillaBuild {
         $py3_pip_version = 0.0.0
     }
 
+    # Python version
+    if (Test-Path $python3_file) {
+        $python_version_out = (C:\mozilla-build\python3\python3.exe --version)
+        $python_version = ($python_version_out -split " ")[1]
+    }
+    else {
+        $python_version = 0.0.0
+    }
+
     # Pyhton 3 zstandard
     if (Test-Path $python3_file) {
         $zstandard_info = (C:\mozilla-build\python3\python3.exe -m pip show zstandard)
@@ -56,6 +65,7 @@ function Get-WinFactsMozillaBuild {
         custom_win_mozbld_vesion         = $mozbld_ver
         custom_win_hg_version            = $hg_ver
         custom_win_py3_zstandard_version = $zstandard_version
+        custom_win_python_version        = $python_version
     }
     
 }
