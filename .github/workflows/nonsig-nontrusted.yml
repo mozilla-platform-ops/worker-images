@@ -75,7 +75,7 @@ jobs:
   job3:
     if: ${{ inputs.releasenotes == 'true' }}
     needs: job2
-    name: "${{ github.event.inputs.config }} - ${{ matrix.LOCATIONS }}"
+    name: "Upload release notes"
     runs-on: ubuntu-latest
     permissions:
       contents: write
