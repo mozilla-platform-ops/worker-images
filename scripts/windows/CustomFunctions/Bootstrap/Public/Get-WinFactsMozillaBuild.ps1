@@ -62,7 +62,7 @@ function Get-WinFactsMozillaBuild {
     
     [PSCustomObject]@{
         custom_win_py3_pip_version       = $py3_pip_version
-        custom_win_mozbld_vesion         = $mozbld_ver
+        custom_win_mozbld_version        = $mozbld_ver
         custom_win_hg_version            = $hg_ver
         custom_win_py3_zstandard_version = $zstandard_version
         custom_win_python_version        = $python_version
