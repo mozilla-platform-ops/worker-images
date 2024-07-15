@@ -21,7 +21,7 @@ function Set-ReleaseNotes {
     $OSVersion = Get-OSVersion
 
     ## Let's get the installed software installed on the OS
-    $InstalledSoftware = Get-InstalledSoftwareMarkDown
+    $InstalledSoftware = Get-InstalledSoftware
 
     ## Let's get speciifc information about the Mozilla Build environment
     $mozillabuild = Get-WinFactsMozillaBuild
