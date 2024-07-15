@@ -16,7 +16,7 @@ on:
         - win2022-64-2009
       releasenotes:
         type: choice
-        description: Choose whether or not to generate release notes
+        description: Generate release notes
         options:
         - "true"
         - "false"
