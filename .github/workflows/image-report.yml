@@ -78,7 +78,9 @@ jobs:
 
           $PR_Title = "$Config ($Date) Image Update"
 
-          git add "./config/$($Config).md"
-          git commit -m "$($Date) - Release Notes for $($Config).md"
-          git push -u origin $ReleaseBranch
-          gh pr create --base main --head $ReleaseBranch --title $PR_Title --body $PR_Body
+          if (git status --porcelain) {
+            git add "./config/$($Config).md"
+            git commit -m "$($Date) - Release Notes for $($Config).md"
+            git push -u origin $ReleaseBranch
+            gh pr create --base main --head $ReleaseBranch --title $PR_Title --body $PR_Body
+          }
