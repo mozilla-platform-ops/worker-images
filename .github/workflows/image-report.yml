@@ -60,7 +60,7 @@ jobs:
             $ReleaseBranch = $null
           }
           
-          $branchExists = git ls-remote --heads origin $ReleaseBranch
+          $branchExists = (gh api /repos/{{ github.GITHUB_REPOSITORY }}/branches/$releaseBranch | ConvertFrom-Json).Name
 
           if (-not $branchExists) {
             git checkout -b $ReleaseBranch
