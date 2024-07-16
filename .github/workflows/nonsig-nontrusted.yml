@@ -80,6 +80,7 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
       - name: "Download Release Notes to Github"
         uses: azure/powershell@v2
         with:
