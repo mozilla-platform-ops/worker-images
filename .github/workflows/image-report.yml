@@ -33,8 +33,8 @@ jobs:
               $ENV:AZCOPY_SPA_APPLICATION_ID = "${{ secrets.AZURE_APPLICATION_ID_FXCI }}"
               $ENV:AZCOPY_SPA_CLIENT_SECRET = "${{ secrets.AZURE_CLIENT_ID_FXCI_SECRET }}"
               $ENV:AZCOPY_TENANT_ID = "${{ secrets.AZURE_TENANT_ID }}"
-              Write-host "Downloading Release Notes for $($config).md"
-              azcopy copy "https://roninpuppetassets.blob.core.windows.net/packer/$($config).md" "./config/$($config).md"
+              Write-host "Downloading Release Notes for $($Config).md"
+              azcopy copy "https://roninpuppetassets.blob.core.windows.net/packer/$($Config).md" "./config/$($Config).md"
           azPSVersion: "latest"
       - name: Create Pull Request for Release
         shell: pwsh
@@ -48,34 +48,37 @@ jobs:
           $Config = "${{ github.event.inputs.config }}"
           $Date = Get-Date -Format "yyyyMMdd"
 
-          if ($config -match "win10") {
-            $ReleaseBranch = "(releases/win10/{0}-docs)" -f $Date
+          if ($Config -match "win10") {
+            $ReleaseBranch = "releases/win10/$Date-docs"
           }
-          if ($config -match "win11") {
-            $ReleaseBranch = "(releases/win11/{0}-docs)" -f $Date
+          elseif ($Config -match "win11") {
+            $ReleaseBranch = "releases/win11/$Date-docs"
           }
-          if ($config -match "win2022") {
-            $ReleaseBranch = "(releases/win2022/{0}-docs)" -f $Date
+          elseif ($Config -match "win2022") {
+            $ReleaseBranch = "releases/win2022/$Date-docs"
+          }
+          else {
+            $ReleaseBranch = $null
           }
           
-          $branchExists = git branch --list $ReleaseBranch
+          $branchExists = git ls-remote --heads origin $ReleaseBranch
 
           if (-not $branchExists) {
-            git checkout -b $branchName
-            git push origin $branchName
+            git checkout -b $ReleaseBranch
+            git push origin $ReleaseBranch
           } else {
-            git checkout $branchName
+            git checkout $ReleaseBranch
           }
           
           $PR_Body = @"
-          # Release Notes for $($config).md
+          # Release Notes for $($Config).md
 
-          Automatically generated PR for $($config).md
+          Automatically generated PR for $($Config).md
           "@
 
-          $PR_Title = "$Config ($date) Image Update"
+          $PR_Title = "$Config ($Date) Image Update"
 
-          git add "./config/$($config).md"
-          git commit -m "$($Date) - Release Notes for $($config).md"
+          git add "./config/$($Config).md"
+          git commit -m "$($Date) - Release Notes for $($Config).md"
           git push -u origin $ReleaseBranch
           gh pr create --base main --head $ReleaseBranch --title $PR_Title --body $PR_Body
