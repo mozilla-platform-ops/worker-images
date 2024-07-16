@@ -3,7 +3,7 @@ image:
   publisher: MicrosoftWindowsDesktop
   offer: Windows-10
   sku: win10-22h2-avd
-  version: 19045.4529.240607 ## June 2024 https://support.microsoft.com/en-us/topic/windows-10-and-windows-11-client-images-for-june-2024-18ccaac2-72e8-4712-8186-cad29b4169b7
+  version: latest
 sharedimage:
   gallery_name: "ronin_t_windows10_64_2009_prod"
   image_name: "win10-64-2009"
@@ -33,7 +33,7 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: windows
-    deploymentId: 8561b62
+    deploymentId: "74210e2"
     managed_by: packer
 tests:
   - microsoft_tools_tester.tests.ps1
