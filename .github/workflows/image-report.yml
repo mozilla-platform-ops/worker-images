@@ -45,7 +45,7 @@ jobs:
           
           ## Vars
           $Config = "${{ github.event.inputs.config }}"
-          $Date = Get-Date -Format "yyyyMMdd"
+          $Date = Get-Date -Format "yyyyMMddTHHmm"
           $Repo = "${{ github.repository }}"
 
           if ($Config -match "win10") {
