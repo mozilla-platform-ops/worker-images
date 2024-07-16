@@ -16,7 +16,7 @@ azure:
     - centralus
     - northcentralus
 vm:
-  puppet_version: 6.28.0
+  puppet_version: 8.5.1
   size: Standard_F32s_v2
   tags:
     base_image: win2022642009azure
