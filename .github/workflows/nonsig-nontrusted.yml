@@ -91,16 +91,48 @@ jobs:
               $ENV:AZCOPY_SPA_CLIENT_SECRET = "${{ secrets.AZURE_CLIENT_ID_FXCI_SECRET }}"
               $ENV:AZCOPY_TENANT_ID = "${{ secrets.AZURE_TENANT_ID }}"
               Write-host "Downloading Release Notes for $($config).md"
-              azcopy copy "https://roninpuppetassets.blob.core.windows.net/packer/$($config).md" "$($config).md"
+              azcopy copy "https://roninpuppetassets.blob.core.windows.net/packer/$($config).md" "./config/$($config).md"
           azPSVersion: "latest"
-      - name: Upload to Github Repository
+      - name: Create Pull Request for Release
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $Config = "${{ github.event.inputs.config }}"
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          mv "$($config).md" "./config/$($config).md"
+          
+          ## Vars
+          $Config = "${{ github.event.inputs.config }}"
+          $Date = Get-Date -Format "yyyyMMdd"
+
+          if ($config -match "win10") {
+            $ReleaseBranch = "(releases/win10/{0}-docs)" -f $Date
+          }
+          if ($config -match "win11") {
+            $ReleaseBranch = "(releases/win11/{0}-docs)" -f $Date
+          }
+          if ($config -match "win2022") {
+            $ReleaseBranch = "(releases/win2022/{0}-docs)" -f $Date
+          }
+          
+          $branchExists = git branch --list $ReleaseBranch
+
+          if (-not $branchExists) {
+            git checkout -b $branchName
+            git push origin $branchName
+          } else {
+            git checkout $branchName
+          }
+          
+          $PR_Body = @"
+          # Release Notes for $($config).md
+
+          Automatically generated PR for $($config).md
+          @"
+
+          $PR_Title = "$Config ($date) Image Update"
+
           git add "./config/$($config).md"
-          git commit -m "Updating Release Notes for $($config).md"
-          git remote set-url origin https://<username>:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
-          git push origin main
+          git commit -m "$($Date) - Release Notes for $($config).md"
+          git push -u origin $ReleaseBranch
+          gh pr create --base main --head $ReleaseBranch --title $PR_Title --body $PR_Body
