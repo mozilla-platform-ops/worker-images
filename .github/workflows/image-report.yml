@@ -25,7 +25,7 @@ jobs:
       - name: "Download Release Notes to Github"
         uses: azure/powershell@v2
         with:
-          inlinescript: |
+          inlineScript: |
               $Config = "${{ github.event.inputs.config }}"
               ## Download the release notes
               $ENV:AZCOPY_AUTO_LOGIN_TYPE = "SPN"
