@@ -62,8 +62,8 @@ jobs:
           }
           
           $branchExists = (gh api "/repos/$Repo/branches/$releaseBranch" | ConvertFrom-Json).Name
-
-          if (-not $branchExists) {
+          
+          if ($null -eq $branchExists) {
             git checkout -b $ReleaseBranch
             git push origin $ReleaseBranch
           } else {
