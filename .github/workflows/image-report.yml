@@ -46,6 +46,7 @@ jobs:
           ## Vars
           $Config = "${{ github.event.inputs.config }}"
           $Date = Get-Date -Format "yyyyMMdd"
+          $Repo = "${{ github.repository }}"
 
           if ($Config -match "win10") {
             $ReleaseBranch = "releases/win10/$Date-docs"
@@ -60,7 +61,7 @@ jobs:
             $ReleaseBranch = $null
           }
           
-          $branchExists = (gh api /repos/{{ github.GITHUB_REPOSITORY }}/branches/$releaseBranch | ConvertFrom-Json).Name
+          $branchExists = (gh api "/repos/$Repo/branches/$releaseBranch" | ConvertFrom-Json).Name
 
           if (-not $branchExists) {
             git checkout -b $ReleaseBranch
