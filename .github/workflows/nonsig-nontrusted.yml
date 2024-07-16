@@ -128,7 +128,7 @@ jobs:
           # Release Notes for $($config).md
 
           Automatically generated PR for $($config).md
-          @"
+          "@
 
           $PR_Title = "$Config ($date) Image Update"
 
