@@ -22,14 +22,6 @@ jobs:
     permissions: write-all
     steps:
       - uses: actions/checkout@v4
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID_FXCI }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}
-          #creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID_FXCI }}","clientSecret":"${{ secrets.AZURE_CLIENT_ID_FXCI_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
-          enable-AzPSSession: true
       - name: "Download Release Notes to Github"
         uses: azure/powershell@v2
         with:
@@ -37,11 +29,10 @@ jobs:
               $Config = "${{ github.event.inputs.config }}"
               ## Download the release notes
               $ENV:AZCOPY_AUTO_LOGIN_TYPE = "SPN"
-              ## $ENV:AZCOPY_SPA_APPLICATION_ID = "${{ secrets.AZURE_APPLICATION_ID_FXCI }}"
-              ## $ENV:AZCOPY_SPA_CLIENT_SECRET = "${{ secrets.AZURE_CLIENT_ID_FXCI_SECRET }}"
+              $ENV:AZCOPY_SPA_APPLICATION_ID = "${{ secrets.AZURE_APPLICATION_ID_FXCI }}"
+              $ENV:AZCOPY_SPA_CLIENT_SECRET = "${{ secrets.AZURE_CLIENT_ID_FXCI_SECRET }}"
               $ENV:AZCOPY_TENANT_ID = "${{ secrets.AZURE_TENANT_ID }}"
               Write-host "Downloading Release Notes for $($Config).md"
-              $Env:AZCOPY_AUTO_LOGIN_TYPE = "PSCRED"
               azcopy copy "https://roninpuppetassets.blob.core.windows.net/packer/$($Config).md" "./config/$($Config).md"
           azPSVersion: "latest"
       - name: Create Pull Request for Release
