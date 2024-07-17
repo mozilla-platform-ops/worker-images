@@ -105,6 +105,11 @@ function Start-AzRoninPuppet {
                     Write-Log -message ('{0} :: Puppet Level {1}' -f $($MyInvocation.MyCommand.Name), $data.level) -severity 'DEBUG'
                     Write-Log -message ('{0} :: Puppet Line {1}' -f $($MyInvocation.MyCommand.Name), $data.line) -severity 'DEBUG'
                     Write-Log -message ('{0} :: Puppet Source {1}' -f $($MyInvocation.MyCommand.Name), $data.source) -severity 'DEBUG'
+                    Write-Host ('{0} :: Puppet File {1}' -f $($MyInvocation.MyCommand.Name), $data.file)
+                    Write-Host ('{0} :: Puppet Message {1}' -f $($MyInvocation.MyCommand.Name), $data.message)
+                    Write-Host ('{0} :: Puppet Level {1}' -f $($MyInvocation.MyCommand.Name), $data.level)
+                    Write-Host ('{0} :: Puppet Line {1}' -f $($MyInvocation.MyCommand.Name), $data.line)
+                    Write-Host ('{0} :: Puppet Source {1}' -f $($MyInvocation.MyCommand.Name), $data.source)
                 }
 
                 ## Authenticate
@@ -159,6 +164,11 @@ function Start-AzRoninPuppet {
                     Write-Log -message ('{0} :: Puppet Level {1}' -f $($MyInvocation.MyCommand.Name), $data.level) -severity 'DEBUG'
                     Write-Log -message ('{0} :: Puppet Line {1}' -f $($MyInvocation.MyCommand.Name), $data.line) -severity 'DEBUG'
                     Write-Log -message ('{0} :: Puppet Source {1}' -f $($MyInvocation.MyCommand.Name), $data.source) -severity 'DEBUG'
+                    Write-Host ('{0} :: Puppet File {1}' -f $($MyInvocation.MyCommand.Name), $data.file)
+                    Write-Host ('{0} :: Puppet Message {1}' -f $($MyInvocation.MyCommand.Name), $data.message)
+                    Write-Host ('{0} :: Puppet Level {1}' -f $($MyInvocation.MyCommand.Name), $data.level)
+                    Write-Host ('{0} :: Puppet Line {1}' -f $($MyInvocation.MyCommand.Name), $data.line)
+                    Write-Host ('{0} :: Puppet Source {1}' -f $($MyInvocation.MyCommand.Name), $data.source)
                 }
 
                 ## Authenticate
@@ -192,6 +202,11 @@ function Start-AzRoninPuppet {
                     Write-Log -message ('{0} :: Puppet Level {1}' -f $($MyInvocation.MyCommand.Name), $data.level) -severity 'DEBUG'
                     Write-Log -message ('{0} :: Puppet Line {1}' -f $($MyInvocation.MyCommand.Name), $data.line) -severity 'DEBUG'
                     Write-Log -message ('{0} :: Puppet Source {1}' -f $($MyInvocation.MyCommand.Name), $data.source) -severity 'DEBUG'
+                    Write-Host ('{0} :: Puppet File {1}' -f $($MyInvocation.MyCommand.Name), $data.file)
+                    Write-Host ('{0} :: Puppet Message {1}' -f $($MyInvocation.MyCommand.Name), $data.message)
+                    Write-Host ('{0} :: Puppet Level {1}' -f $($MyInvocation.MyCommand.Name), $data.level)
+                    Write-Host ('{0} :: Puppet Line {1}' -f $($MyInvocation.MyCommand.Name), $data.line)
+                    Write-Host ('{0} :: Puppet Source {1}' -f $($MyInvocation.MyCommand.Name), $data.source)
                 }
 
                 ## Authenticate
