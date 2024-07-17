@@ -15,10 +15,6 @@ on:
         - win2022-64-2009-alpha
         - win2022-64-2009
 
-permissions:
-  id-token: write
-  contents: read
-
 jobs:
   job1:
     name: "Create Image Tasks"
@@ -38,6 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
     strategy:
       fail-fast: false
       matrix:
