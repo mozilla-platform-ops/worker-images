@@ -1,0 +1,26 @@
+# .github/workflows/azure.yml
+name: Generate Azure Image
+
+on:
+  workflow_call:
+    inputs:
+      releasenotes:
+        required: true
+        type: boolean
+      config:
+        required: true
+        type: string
+
+jobs:
+  Create_Image_Tasks:
+    name: "Create Image Tasks"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: set-matrix
+        shell: pwsh
+        run: |
+          Import-Module .\bin\WorkerImages\WorkerImages.psm1
+          Set-AzWorkerImageLocation -Key '${{ github.event.inputs.config }}'
+    outputs:
+      LOCATIONS: ${{ steps.set-matrix.outputs.LOCATIONS }}
