@@ -22,12 +22,14 @@ variable "client_id" {
   default = "${env("client_id")}"
 }
 
-variable "oidc_request_url" {
-  type    = string
-}
-
 variable "oidc_request_token" {
   type    = string
+  default = "${env("ACTIONS_ID_TOKEN_REQUEST_TOKEN")}"
+}
+
+variable "oidc_request_url" {
+  type    = string
+  default = "${env("ACTIONS_ID_TOKEN_REQUEST_URL")}"
 }
 
 variable "client_secret" {
@@ -165,7 +167,7 @@ source "azure-arm" "sig" {
   winrm_username = "packer"
 
   # Authentication
-  client_id       = "${var.client_id}"
+  client_id = "${var.client_id}"
   #client_secret   = "${var.client_secret}"
   subscription_id = "${var.subscription_id}"
   tenant_id       = "${var.tenant_id}"
@@ -227,10 +229,9 @@ source "azure-arm" "nonsig" {
   winrm_username = "packer"
 
   # Authentication
-  oidc_request_url = "${var.oidc_request_url}"
   oidc_request_token = "${var.oidc_request_token}"
-
-  client_id       = "${var.client_id}"
+  oidc_request_url   = "${var.oidc_request_url}"
+  client_id          = "${var.client_id}"
   #client_secret   = "${var.client_secret}"
   subscription_id = "${var.subscription_id}"
   tenant_id       = "${var.tenant_id}"
