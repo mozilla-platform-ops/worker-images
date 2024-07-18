@@ -32,6 +32,7 @@ jobs:
     permissions:
       contents: write
     strategy:
+      fail-fast: false
       matrix:
         locations: ${{fromJson(needs.job1.outputs.LOCATIONS)}}
     steps:
