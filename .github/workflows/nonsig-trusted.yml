@@ -29,8 +29,9 @@ jobs:
     needs: job1
     name: "${{ github.event.inputs.config }} - ${{ matrix.LOCATIONS }}"
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     strategy:
-      fail-fast: false
       matrix:
         locations: ${{fromJson(needs.job1.outputs.LOCATIONS)}}
     steps:
@@ -43,7 +44,7 @@ jobs:
       - name: "Remove current images"
         uses: azure/powershell@v2
         with:
-          inlinescript: |
+          inlineScript: |
             Import-Module .\bin\WorkerImages\WorkerImages.psm1
             Remove-AzWorkerImage -Key "${{ github.event.inputs.config }}" -Location "${{ matrix.LOCATIONS }}"
           azPSVersion: "latest"
