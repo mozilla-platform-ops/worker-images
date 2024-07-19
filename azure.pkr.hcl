@@ -392,28 +392,28 @@ build {
     ]
   }
 
-  provisioner "powershell" {
-    elevated_password = ""
-    elevated_user     = "SYSTEM"
-    environment_vars = [
-      "worker_pool_id=${var.worker_pool_id}",
-      "base_image=${var.base_image}",
-      "src_organisation=${var.source_organization}",
-      "src_Repository=${var.source_repository}",
-      "src_Branch=${var.source_branch}",
-      "deploymentId=${var.deployment_id}",
-      "config=${var.config}",
-      "client_id=${var.client_id}",
-      "client_secret=${var.client_secret}",
-      "tenant_id=${var.tenant_id}",
-      "application_id=${var.application_id}"
-    ]
-    inline = [
-      "Import-Module BootStrap -Force",
-      "Set-MarkdownPSModule",
-      "Set-ReleaseNotes -Config $ENV:config"
-    ]
-  }
+  // provisioner "powershell" {
+  //   elevated_password = ""
+  //   elevated_user     = "SYSTEM"
+  //   environment_vars = [
+  //     "worker_pool_id=${var.worker_pool_id}",
+  //     "base_image=${var.base_image}",
+  //     "src_organisation=${var.source_organization}",
+  //     "src_Repository=${var.source_repository}",
+  //     "src_Branch=${var.source_branch}",
+  //     "deploymentId=${var.deployment_id}",
+  //     "config=${var.config}",
+  //     "client_id=${var.client_id}",
+  //     "client_secret=${var.client_secret}",
+  //     "tenant_id=${var.tenant_id}",
+  //     "application_id=${var.application_id}"
+  //   ]
+  //   inline = [
+  //     "Import-Module BootStrap -Force",
+  //     "Set-MarkdownPSModule",
+  //     "Set-ReleaseNotes -Config $ENV:config"
+  //   ]
+  // }
 
   provisioner "windows-restart" {
     restart_timeout = "30m"
