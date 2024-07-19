@@ -48,4 +48,3 @@ tests:
   - google_auth.tests.ps1
   - git.tests.ps1
   - mozilla_build_builder.tests.ps1
-  - windows_worker_runner.tests.ps1
