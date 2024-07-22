@@ -14,6 +14,7 @@ on:
         - win11-64-2009
         - win2022-64-2009-alpha
         - win2022-64-2009
+        - trusted-win2022-64-2009
 
 jobs:
   upload:
