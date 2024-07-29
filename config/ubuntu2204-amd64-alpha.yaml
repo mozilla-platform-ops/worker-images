@@ -1,0 +1,10 @@
+---
+image:
+  source_image_family: ubuntu-2204-lts
+  project_id: taskcluster-imaging
+  image_name: ubuntu2204-alpha
+  zone: us-west1-a
+vm:
+  disk_size: 100
+  taskcluster_version: 67.1.0
+  tc_arch: AMD64
