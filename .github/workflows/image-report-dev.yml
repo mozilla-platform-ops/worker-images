@@ -3,19 +3,10 @@ name: Release Notes - Dev
 
 on:
   workflow_dispatch:
-    inputs:
-      config:
-        type: choice
-        description: Release Notes
-        options:
-        - win10-64-2009-alpha
-        - win10-64-2009
-        - win11-64-2009-alpha
-        - win11-64-2009
-        - win2022-64-2009-alpha
-        - win2022-64-2009
-        - trusted-win2022-64-2009
 
+permissions:
+  id-token: write
+  contents: read
 jobs:
   upload:
     name: "Upload release notes"
@@ -23,15 +14,19 @@ jobs:
     permissions: write-all
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_APPLICATION_ID_FXCI }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}
+          enable-AzPSSession: true
+
       - name: "Download Release Notes to Github"
         uses: azure/powershell@v2
         with:
           inlineScript: |
-              $Config = "${{ github.event.inputs.config }}"
-              ## Download the release notes
-              $ENV:AZCOPY_AUTO_LOGIN_TYPE = "WORKLOAD"
-              $ENV:AZCOPY_SPA_APPLICATION_ID = "${{ secrets.AZURE_APPLICATION_ID_FXCI }}"
-              $ENV:AZCOPY_TENANT_ID = "${{ secrets.AZURE_TENANT_ID }}"
               Write-host "List packer files"
               azcopy list "https://roninpuppetassets.blob.core.windows.net/packer/"
           azPSVersion: "latest"
