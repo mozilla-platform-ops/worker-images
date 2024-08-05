@@ -28,6 +28,6 @@ jobs:
         with:
           inlineScript: |
               Write-host "List packer files"
-              $ENV:AZCOPY_AUTO_LOGIN_TYPE = "WORKLOAD"
+              $ENV:AZCOPY_AUTO_LOGIN_TYPE = "PSCRED"
               azcopy list "https://roninpuppetassets.blob.core.windows.net/packer/"
           azPSVersion: "latest"
