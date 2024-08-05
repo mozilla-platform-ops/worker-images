@@ -1,5 +1,5 @@
-run-name: Release Notes
-name: Release Notes
+run-name: Release Notes - Dev
+name: Release Notes - Dev
 
 on:
   workflow_dispatch:
