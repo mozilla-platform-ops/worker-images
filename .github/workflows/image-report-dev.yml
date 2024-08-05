@@ -1,0 +1,36 @@
+run-name: Release Notes
+name: Release Notes
+
+on:
+  workflow_dispatch:
+    inputs:
+      config:
+        type: choice
+        description: Release Notes
+        options:
+        - win10-64-2009-alpha
+        - win10-64-2009
+        - win11-64-2009-alpha
+        - win11-64-2009
+        - win2022-64-2009-alpha
+        - win2022-64-2009
+        - trusted-win2022-64-2009
+
+jobs:
+  upload:
+    name: "Upload release notes"
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+      - uses: actions/checkout@v4
+      - name: "Download Release Notes to Github"
+        uses: azure/powershell@v2
+        with:
+          inlineScript: |
+              $Config = "${{ github.event.inputs.config }}"
+              ## Download the release notes
+              $ENV:AZCOPY_AUTO_LOGIN_TYPE = "WORKLOAD"
+              $ENV:AZCOPY_TENANT_ID = "${{ secrets.AZURE_TENANT_ID }}"
+              Write-host "List packer files"
+              azcopy list "https://roninpuppetassets.blob.core.windows.net/packer/"
+          azPSVersion: "latest"
