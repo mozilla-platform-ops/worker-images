@@ -30,6 +30,7 @@ jobs:
               $Config = "${{ github.event.inputs.config }}"
               ## Download the release notes
               $ENV:AZCOPY_AUTO_LOGIN_TYPE = "WORKLOAD"
+              $ENV:AZCOPY_SPA_APPLICATION_ID = "${{ secrets.AZURE_APPLICATION_ID_FXCI }}"
               $ENV:AZCOPY_TENANT_ID = "${{ secrets.AZURE_TENANT_ID }}"
               Write-host "List packer files"
               azcopy list "https://roninpuppetassets.blob.core.windows.net/packer/"
