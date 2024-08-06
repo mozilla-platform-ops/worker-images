@@ -161,14 +161,14 @@ function Set-ReleaseNotes {
     }
 
     ## Upload it to Azure
-    $ENV:AZCOPY_AUTO_LOGIN_TYPE = "SPN"
-    $ENV:AZCOPY_SPA_APPLICATION_ID = $ENV:application_id
-    $ENV:AZCOPY_SPA_CLIENT_SECRET = $ENV:client_secret
-    $ENV:AZCOPY_TENANT_ID = $ENV:tenant_id
+    # $ENV:AZCOPY_AUTO_LOGIN_TYPE = "SPN"
+    # $ENV:AZCOPY_SPA_APPLICATION_ID = $ENV:application_id
+    # $ENV:AZCOPY_SPA_CLIENT_SECRET = $ENV:client_secret
+    # $ENV:AZCOPY_TENANT_ID = $ENV:tenant_id
     
-    Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
-        "copy",
-        "C:\$($Config).md",
-        "https://roninpuppetassets.blob.core.windows.net/packer"
-    ) -Wait -NoNewWindow
+    # Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
+    #     "copy",
+    #     "C:\$($Config).md",
+    #     "https://roninpuppetassets.blob.core.windows.net/packer"
+    # ) -Wait -NoNewWindow
 }
