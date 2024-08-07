@@ -76,15 +76,17 @@ jobs:
           }
           New-AzWorkerImage @Vars
       - name: "Upload Release Notes for ${{ github.event.inputs.config }}"
-        shell: pwsh
-        run: |
-          $Config = "${{ github.event.inputs.config }}"
-          $exists = Test-Path -Path "${{ github.workspace }}/config/$($config).md"
-          if ($null -eq $exists) {
-            Write-Host "No release notes found for ${{ github.event.inputs.config }}"
-            exit 1
-          }
-          Write-Host "Release notes found for ${{ github.event.inputs.config }}"
-          Write-host "Uploading Release Notes for $($Config).md"
-          $ENV:AZCOPY_AUTO_LOGIN_TYPE = "PSCRED"
-          azcopy copy "${{ github.workspace }}/config/$($Config).md" "https://roninpuppetassets.blob.core.windows.net/packer"
+        uses: azure/powershell@v2  
+        with:
+          inlineScript: |
+            $Config = "${{ github.event.inputs.config }}"
+            $exists = Test-Path -Path "${{ github.workspace }}/config/$($config).md"
+            if ($null -eq $exists) {
+              Write-Host "No release notes found for ${{ github.event.inputs.config }}"
+              exit 1
+            }
+            Write-Host "Release notes found for ${{ github.event.inputs.config }}"
+            Write-host "Uploading Release Notes for $($Config).md"
+            $ENV:AZCOPY_AUTO_LOGIN_TYPE = "PSCRED"
+            azcopy copy "${{ github.workspace }}/config/$($Config).md" "https://roninpuppetassets.blob.core.windows.net/packer"
+          azPSVersion: "latest"
