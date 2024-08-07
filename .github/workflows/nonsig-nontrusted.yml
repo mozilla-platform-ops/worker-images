@@ -89,4 +89,4 @@ jobs:
           }
           Write-host "Uploading Release Notes for $($Config).md"
           $ENV:AZCOPY_AUTO_LOGIN_TYPE = "PSCRED"
-          azcopy copy ${{ github.workspace }}/config/$($Config).md" "https://roninpuppetassets.blob.core.windows.net/packer"
+          azcopy copy "${{ github.workspace }}/config/$($Config).md" "https://roninpuppetassets.blob.core.windows.net/packer"
