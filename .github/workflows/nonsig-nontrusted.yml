@@ -81,7 +81,7 @@ jobs:
           $exists = Test-Path -Path "${{ github.workspace }}/config/${{ github.event.inputs.config }}.md"
           if ($null -eq $exists) {
             Write-Host "No release notes found for ${{ github.event.inputs.config }}"
-            exit 0
+            exit 1
           } else {
             Write-Host "Release notes found for ${{ github.event.inputs.config }}"
             exit 0
@@ -99,7 +99,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if (-Not Test-Path "${{ github.workspace }}/config/$($Config).md") {
+          $config = ${{ github.event.inputs.config }}
+          if (-Not (Test-Path "${{ github.workspace }}/config/$($Config).md")) {
             Write-Host "No release notes found for $Config"
             Exit 1
           }
