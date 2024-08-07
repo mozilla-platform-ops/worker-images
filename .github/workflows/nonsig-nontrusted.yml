@@ -83,10 +83,8 @@ jobs:
           if ($null -eq $exists) {
             Write-Host "No release notes found for ${{ github.event.inputs.config }}"
             exit 1
-          } else {
-            Write-Host "Release notes found for ${{ github.event.inputs.config }}"
-            exit 0
           }
+          Write-Host "Release notes found for ${{ github.event.inputs.config }}"
           Write-host "Uploading Release Notes for $($Config).md"
           $ENV:AZCOPY_AUTO_LOGIN_TYPE = "PSCRED"
           azcopy copy "${{ github.workspace }}/config/$($Config).md" "https://roninpuppetassets.blob.core.windows.net/packer"
