@@ -81,9 +81,7 @@ jobs:
               azcopy copy "https://roninpuppetassets.blob.core.windows.net/packer/$($ENV:Config).md" "./config/$($ENV:Config).md"
             }
 
-            if (git status --porcelain) {
-              git add "./config/$($ENV:CONFIG).md"
-              git commit -m "$($ENV:CONFIG) - Release Notes for $($ENV:CONFIG).md"
-              git push -u origin $ReleaseBranch
-              gh pr create --base main --head $ReleaseBranch --title $PR_Title --body $PR_Body
-            }
+            git add "./config/$($ENV:CONFIG).md"
+            git commit -m "$($ENV:CONFIG) - Release Notes for $($ENV:CONFIG).md"
+            git push -u origin $ReleaseBranch
+            gh pr create --base main --head $ReleaseBranch --title $PR_Title --body $PR_Body
