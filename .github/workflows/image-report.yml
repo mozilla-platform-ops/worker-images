@@ -45,13 +45,13 @@ jobs:
             $Date = Get-Date -Format "yyyyMMddTHHmm"
             $Repo = "${{ github.repository }}"
 
-            if ($ENV:Config -match "win10") {
+            if ($ENV:CONFIG -match "win10") {
               $ReleaseBranch = "releases/win10/$Date-docs"
             }
-            elseif ($ENV:Config -match "win11") {
+            elseif ($ENV:CONFIG -match "win11") {
               $ReleaseBranch = "releases/win11/$Date-docs"
             }
-            elseif ($ENV:Config -match "win2022") {
+            elseif ($ENV:CONFIG -match "win2022") {
               $ReleaseBranch = "releases/win2022/$Date-docs"
             }
             else {
@@ -68,22 +68,22 @@ jobs:
             }
           
             $PR_Body = @"
-            # Release Notes for $($ENV:Config).md
+            # Release Notes for $($ENV:CONFIG).md
 
-            Automatically generated PR for $($ENV:Config).md
+            Automatically generated PR for $($ENV:CONFIG).md
             "@
 
-            $PR_Title = "$ENV:Config ($Date) Image Update"
+            $PR_Title = "$ENV:CONFIG ($Date) Image Update"
 
-            if (-Not (Test-Path "./config/$($ENV:Config).md")) {
-              Write-host "Downloading Release Notes for $($ENV:Config).md"
+            if (-Not (Test-Path "./config/$($ENV:CONFIG).md")) {
+              Write-host "Downloading Release Notes for $($ENV:CONFIG).md"
               $ENV:AZCOPY_AUTO_LOGIN_TYPE = "PSCRED"
-              azcopy copy "https://roninpuppetassets.blob.core.windows.net/packer/$($Config).md" "./config/$($Config).md"
+              azcopy copy "https://roninpuppetassets.blob.core.windows.net/packer/$($ENV:Config).md" "./config/$($ENV:Config).md"
             }
 
             if (git status --porcelain) {
-              git add "./config/$($Config).md"
-              git commit -m "$($Date) - Release Notes for $($Config).md"
+              git add "./config/$($ENV:CONFIG).md"
+              git commit -m "$($ENV:CONFIG) - Release Notes for $($ENV:CONFIG).md"
               git push -u origin $ReleaseBranch
               gh pr create --base main --head $ReleaseBranch --title $PR_Title --body $PR_Body
             }
