@@ -30,8 +30,7 @@ jobs:
           client-id: ${{ secrets.AZURE_APPLICATION_ID_FXCI }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}
-          enable-AzPSSession: true
-      
+          enable-AzPSSession: true 
       - name: "Download Release Notes to Github"
         uses: azure/powershell@v2
         with:
@@ -42,6 +41,7 @@ jobs:
               $ENV:AZCOPY_AUTO_LOGIN_TYPE = "PSCRED"
               azcopy copy "https://roninpuppetassets.blob.core.windows.net/packer/$($Config).md" "./config/$($Config).md"
           azPSVersion: "latest"
+      - uses: actions/checkout@v4
       - name: Create Pull Request for Release
         shell: pwsh
         env:
