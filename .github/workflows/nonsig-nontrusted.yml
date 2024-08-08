@@ -97,3 +97,76 @@ jobs:
             $ENV:AZCOPY_AUTO_LOGIN_TYPE = "PSCRED"
             azcopy copy "${{ github.workspace }}/config/$($Config).md" "https://roninpuppetassets.blob.core.windows.net/packer"
           azPSVersion: "latest"
+      - name: Upload Release Notes Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes-${{ github.event.inputs.config }}
+          path: ./config/${{ github.event.inputs.config }}.md
+          overwrite: true
+          retention-days: 1
+  
+  job3:
+    needs: job2
+    name: "Upload release notes"
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+      - uses: actions/checkout@v4
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_APPLICATION_ID_FXCI }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}
+          enable-AzPSSession: true 
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-notes-${{ github.event.inputs.config }}
+
+      - name: "Create Pull Request for Release"
+        shell: pwsh  
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CONFIG: ${{ github.event.inputs.config }}
+        run: |
+            git config --local user.name "github-actions[bot]"
+            git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          
+            ## Vars
+            $Date = Get-Date -Format "yyyyMMddTHHmm"
+            $Repo = "${{ github.repository }}"
+
+            if ($ENV:CONFIG -match "win10") {
+              $ReleaseBranch = "releases/win10/$Date-docs"
+            }
+            elseif ($ENV:CONFIG -match "win11") {
+              $ReleaseBranch = "releases/win11/$Date-docs"
+            }
+            elseif ($ENV:CONFIG -match "win2022") {
+              $ReleaseBranch = "releases/win2022/$Date-docs"
+            }
+            else {
+              $ReleaseBranch = $null
+            }
+          
+            $branchExists = (gh api "/repos/$Repo/branches/$releaseBranch" | ConvertFrom-Json).Name
+          
+            if ($null -eq $branchExists) {
+              git checkout -b $ReleaseBranch
+              git push origin $ReleaseBranch
+            } else {
+              git checkout $ReleaseBranch
+            }
+        
+            $PR_Body = @"
+            # Release Notes for $($ENV:CONFIG).md
+
+            Automatically generated PR for $($ENV:CONFIG).md
+            "@
+
+            $PR_Title = "$ENV:CONFIG ($Date) Image Update"
+            Move-Item ${{ github.event.inputs.config }}.md ${{ github.workspace }}/config
+            git add ${{ github.event.inputs.config }}.md
+            git commit -m "$($ENV:CONFIG) - Release Notes for $($ENV:CONFIG).md"
+            git push -u origin $ReleaseBranch
+            gh pr create --base main --head $ReleaseBranch --title $PR_Title --body $PR_Body
