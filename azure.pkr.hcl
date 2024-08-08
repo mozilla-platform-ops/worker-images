@@ -432,7 +432,7 @@ build {
   }
 
   provisioner "file" {
-    destination = "${path.root}/config/${local.sbom_name}.md"
+    destination = "${path.root}"
     source      = "C:/Config/${local.sbom_name}.md"
     direction   = "download"
   }
