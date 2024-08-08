@@ -100,10 +100,11 @@ jobs:
       - name: Upload Release Notes Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: release-notes-${{ github.event.inputs.config }}
-          path: ${{ github.event.inputs.config }}.md
+          name: release-notes-${{ github.event.inputs.config }}-${{ matrix.LOCATIONS }}
+          path: ${{ github.workspace }}\${{ github.event.inputs.config }}.md
           overwrite: true
           retention-days: 1
+          if-no-files-found: error
   
   job3:
     needs: job2
@@ -112,61 +113,66 @@ jobs:
     permissions: write-all
     steps:
       - uses: actions/checkout@v4
-      - name: Azure login
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_APPLICATION_ID_FXCI }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}
-          enable-AzPSSession: true 
       - uses: actions/download-artifact@v4
-        with:
-          name: release-notes-${{ github.event.inputs.config }}
-
-      - name: "Create Pull Request for Release"
+      - name: "Test SBOM Exists & Create PR"
         shell: pwsh  
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CONFIG: ${{ github.event.inputs.config }}
         run: |
-            git config --local user.name "github-actions[bot]"
-            git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          
-            ## Vars
-            $Date = Get-Date -Format "yyyyMMddTHHmm"
-            $Repo = "${{ github.repository }}"
+          ## Get the config
+          $SBOMs = Get-ChildItem -Path "${{ github.workspace }}" -Filter "${{ github.event.inputs.config }}" | 
+          Where-Object { $_.Extension -eq "md" }
+          $SBOMS.FullName
+          if ($null -eq $SBOMS) {
+            Write-Host "No artifact found for ${{ github.event.inputs.config }}.md"
+            Exit 1
+          }
+          if ($SBOMS.count -gt 1) {
+            Move-item -Path $($SBOMS[0].FullName) -Destination "${{ github.workspace }}\config\${{ github.event.inputs.config }}.md" -Force
+            Write-Host "Artifact found for ${{ github.event.inputs.config }}.md"
+          } else {
+            Write-Host "No artifact found for ${{ github.event.inputs.config }}.md"
+            Exit 1
+          }
 
-            if ($ENV:CONFIG -match "win10") {
-              $ReleaseBranch = "releases/win10/$Date-docs"
-            }
-            elseif ($ENV:CONFIG -match "win11") {
-              $ReleaseBranch = "releases/win11/$Date-docs"
-            }
-            elseif ($ENV:CONFIG -match "win2022") {
-              $ReleaseBranch = "releases/win2022/$Date-docs"
-            }
-            else {
-              $ReleaseBranch = $null
-            }
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
           
-            $branchExists = (gh api "/repos/$Repo/branches/$releaseBranch" | ConvertFrom-Json).Name
+          ## Vars
+          $Date = Get-Date -Format "yyyyMMddTHHmm"
+          $Repo = "${{ github.repository }}"
+
+          if ($ENV:CONFIG -match "win10") {
+            $ReleaseBranch = "releases/win10/$Date-docs"
+          }
+          elseif ($ENV:CONFIG -match "win11") {
+            $ReleaseBranch = "releases/win11/$Date-docs"
+          }
+          elseif ($ENV:CONFIG -match "win2022") {
+            $ReleaseBranch = "releases/win2022/$Date-docs"
+          }
+          else {
+            $ReleaseBranch = $null
+          }
           
-            if ($null -eq $branchExists) {
-              git checkout -b $ReleaseBranch
-              git push origin $ReleaseBranch
-            } else {
-              git checkout $ReleaseBranch
-            }
+          $branchExists = (gh api "/repos/$Repo/branches/$releaseBranch" | ConvertFrom-Json).Name
+          
+          if ($null -eq $branchExists) {
+            git checkout -b $ReleaseBranch
+            git push origin $ReleaseBranch
+          } else {
+            git checkout $ReleaseBranch
+          }
         
-            $PR_Body = @"
-            # Release Notes for $($ENV:CONFIG).md
+          $PR_Body = @"
+          # Release Notes for $($ENV:CONFIG).md
 
-            Automatically generated PR for $($ENV:CONFIG).md
-            "@
+          Automatically generated PR for $($ENV:CONFIG).md
+          "@
 
-            $PR_Title = "$ENV:CONFIG ($Date) Image Update"
-            Move-Item -Path "${{ github.workspace }}/$($ENV:CONFIG).md" "${{ github.workspace }}/config" -Force
-            git add "${{ github.workspace }}/config/$($ENV:CONFIG).md"
-            git commit -m "$($ENV:CONFIG) - Release Notes for $($ENV:CONFIG).md"
-            git push -u origin $ReleaseBranch
-            gh pr create --base main --head $ReleaseBranch --title $PR_Title --body $PR_Body
+          $PR_Title = "$ENV:CONFIG ($Date) Image Update"
+          git add "${{ github.workspace }}\config\${{ github.event.inputs.config }}.md"
+          git commit -m "$($ENV:CONFIG) - Release Notes for $($ENV:CONFIG).md"
+          git push -u origin $ReleaseBranch
+          gh pr create --base main --head $ReleaseBranch --title $PR_Title --body $PR_Body
