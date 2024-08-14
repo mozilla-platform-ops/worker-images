@@ -122,16 +122,22 @@ jobs:
         run: |
           Get-ChildItem
           $SBOMs = Get-ChildItem -Path "${{ github.workspace }}" -Filter "*${{ github.event.inputs.config }}*"
-          Expand-Archive -Path $SBOMS.FullName -DestinationPath "${{ github.workspace }}" -Force
-          ## Get the new md file
-          $SBOM = Get-ChildItem -Path "${{ github.workspace }}" -Filter "${{ github.event.inputs.config }}.md"
-          Move-item -Path $SBOM.FullName -Destination "${{ github.workspace }}\config\${{ github.event.inputs.config }}.md" -Force
+          $SBOMs | Foreach-Object {
+            Write-Host $_.FullName
+          }
           if ($null -eq $SBOMS) {
             Write-Host "No artifact found for ${{ github.event.inputs.config }}.md"
             Exit 1
           }
+          if ($SBOMS.count -lt 1) {
+            ## Get the new md file
+            $SBOM = Get-ChildItem -Path "${{ github.workspace }}" -Filter "*${{ github.event.inputs.config }}*"
+            Expand-Archive -Path $SBOM.FullName -DestinationPath "${{ github.workspace }}" -Force
+            Move-item -Path $SBOM.Name -Destination "${{ github.workspace }}\config\${{ github.event.inputs.config }}.md" -Force
+          }
           if ($SBOMS.count -gt 1) {
-            Move-item -Path $($SBOMS[0].FullName) -Destination "${{ github.workspace }}\config\${{ github.event.inputs.config }}.md" -Force
+            Expand-Archive -Path $($SBOMS[0].FullName) -DestinationPath "${{ github.workspace }}" -Force
+            Move-item -Path $($SBOMS[0].Name) -Destination "${{ github.workspace }}\config\${{ github.event.inputs.config }}.md" -Force
             Write-Host "Artifact found for ${{ github.event.inputs.config }}.md"
           } else {
             Write-Host "No artifact found for ${{ github.event.inputs.config }}.md"
