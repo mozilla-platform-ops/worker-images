@@ -176,7 +176,7 @@ jobs:
           "@
 
           $PR_Title = "$ENV:CONFIG ($Date) Image Update"
-          git add "${{ github.workspace }}\config\${{ github.event.inputs.config }}.md"
+          git add "${{ github.workspace }}/config/${{ github.event.inputs.config }}.md"
           git commit -m "$($ENV:CONFIG) - Release Notes for $($ENV:CONFIG).md"
           git push -u origin $ReleaseBranch
           gh pr create --base main --head $ReleaseBranch --title $PR_Title --body $PR_Body
