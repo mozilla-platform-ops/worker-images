@@ -124,6 +124,7 @@ jobs:
           $SBOMs = Get-ChildItem -Path "${{ github.workspace }}" -Filter "*${{ github.event.inputs.config }}*"
           $SBOMs | Foreach-Object {
             Write-Host $_.FullName
+            Get-Content $_.FullName
           }
           if ($null -eq $SBOMS) {
             Write-Host "No artifact found for ${{ github.event.inputs.config }}.md"
