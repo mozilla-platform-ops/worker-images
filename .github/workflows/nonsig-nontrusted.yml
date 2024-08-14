@@ -120,10 +120,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CONFIG: ${{ github.event.inputs.config }}
         run: |
-          ## Get the config
-          $SBOMs = Get-ChildItem -Path "${{ github.workspace }}" -Filter "${{ github.event.inputs.config }}" | 
-          Where-Object { $_.Extension -eq "md" }
-          $SBOMS.FullName
+          $SBOMs = Get-ChildItem -Path "${{ github.workspace }}" -Filter "${{ github.event.inputs.config }}"
+          Expand-Archive -Path $SBOMS.FullName -DestinationPath "${{ github.workspace }}" -Force
+          ## Get the new md file
+          $SBOM = Get-ChildItem -Path "${{ github.workspace }}" -Filter "${{ github.event.inputs.config }}.md"
+          Move-item -Path $SBOM.FullName -Destination "${{ github.workspace }}\config\${{ github.event.inputs.config }}.md" -Force
           if ($null -eq $SBOMS) {
             Write-Host "No artifact found for ${{ github.event.inputs.config }}.md"
             Exit 1
