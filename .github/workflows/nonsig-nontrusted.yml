@@ -120,7 +120,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CONFIG: ${{ github.event.inputs.config }}
         run: |
-          $SBOMs = Get-ChildItem -Path "${{ github.workspace }}" -Filter "${{ github.event.inputs.config }}"
+          Get-ChildItem
+          $SBOMs = Get-ChildItem -Path "${{ github.workspace }}" -Filter "*${{ github.event.inputs.config }}*"
           Expand-Archive -Path $SBOMS.FullName -DestinationPath "${{ github.workspace }}" -Force
           ## Get the new md file
           $SBOM = Get-ChildItem -Path "${{ github.workspace }}" -Filter "${{ github.event.inputs.config }}.md"
