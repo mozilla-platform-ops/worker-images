@@ -133,7 +133,8 @@ jobs:
             Move-item -Path "$($SBOM.FullName)\${{ github.event.inputs.config }}.md" -Destination "${{ github.workspace }}\config\${{ github.event.inputs.config }}.md" -Force
           }
           if ($SBOMS.count -gt 1) {
-            Move-item -Path "$($SBOMS[0].FullName)\${{ github.event.inputs.config }}.md" -Destination "${{ github.workspace }}\config\${{ github.event.inputs.config }}.md" -Force
+          Get-Content "$($SBOMS[0].FullName)\${{ github.event.inputs.config }}.md"
+          Move-item -Path "$($SBOMS[0].FullName)\${{ github.event.inputs.config }}.md" -Destination "${{ github.workspace }}\config\${{ github.event.inputs.config }}.md" -Force
             Write-Host "Artifact found for ${{ github.event.inputs.config }}.md"
           } else {
             Write-Host "No artifact found for ${{ github.event.inputs.config }}.md"
