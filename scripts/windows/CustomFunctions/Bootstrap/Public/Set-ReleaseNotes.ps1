@@ -141,7 +141,7 @@ function Set-ReleaseNotes {
     $markdown += "`n"
     $markdown += $InstalledSoftware_Microsoft | New-MDTable
     
-    $markdown | Out-File "C:\software_report.md"
+    $markdown | Out-File "C:\software_report.md" -Encoding utf8NoBOM
 
     $markdown_content = Get-Content -Path "C:\software_report.md"
     if ($null -eq $markdown_content) {
