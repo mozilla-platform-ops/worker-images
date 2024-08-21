@@ -102,6 +102,7 @@ function Set-ReleaseNotes {
     }
 
     $markdown += New-MDHeader -Text $Header -Level 1
+    $markdown += "`n"
     $lines = @(
         "Config: $($Config)",
         "OS Name: $($Header) $($OSVersionExtended.DisplayVersion)",
@@ -111,7 +112,7 @@ function Set-ReleaseNotes {
     $markdown += New-MDList -Lines $lines -Style Unordered
     
     $markdown += New-MDHeader "Mozilla Build" -Level 2
-    
+    $markdown += "`n"
     $lines2 = @(
         "Find more information about Mozilla Build on [Wiki](https://wiki.mozilla.org/MozillaBuild#Technical_Details)"
     )
@@ -136,7 +137,8 @@ function Set-ReleaseNotes {
     $markdown += New-MDHeader "Installed Software (Not Microsoft)" -Level 2
     $markdown += "`n"
     $markdown += $InstalledSoftware_NotMicrosoft | New-MDTable
-    
+    $markdown += "`n"
+
     $markdown += New-MDHeader "Installed Software (Microsoft)" -Level 2
     $markdown += "`n"
     $markdown += $InstalledSoftware_Microsoft | New-MDTable
