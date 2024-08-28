@@ -36,7 +36,7 @@ Describe "Taskcluster" {
             Test-Path "C:\generic-worker\generic-worker.exe" | Should -Be $true
         }
         It "Generic Worker Version is correct" {
-            Start-Process -FilePath "C:\generic-worker\generic-worker.exe" -ArgumentList "--short-version" -RedirectStandardOutput "Testdrive:\gwversion.txt" -Wait -NoNewWindow
+            Start-Process -FilePath "C:\generic-worker\generic-worker.exe" -ArgumentList "--short-version" -RedirectStandardError "Testdrive:\gwversion.txt" -Wait -NoNewWindow
             (Get-Content "Testdrive:\gwversion.txt")[-1] | Should -be $generic_worker_version
         }
     }
@@ -45,7 +45,7 @@ Describe "Taskcluster" {
             Test-Path "C:\worker-runner\start-worker.exe" | Should -Be $true
         }
         It "Worker Runner Version is correct" {
-            Start-Process -FilePath "C:\worker-runner\start-worker.exe" -ArgumentList "--short-version" -RedirectStandardOutput "Testdrive:\startworkerversion.txt" -Wait -NoNewWindow
+            Start-Process -FilePath "C:\worker-runner\start-worker.exe" -ArgumentList "--short-version" -RedirectStandardError "Testdrive:\startworkerversion.txt" -Wait -NoNewWindow
             Get-Content "Testdrive:\startworkerversion.txt" | Should -be $worker_runner_version
         }
     }
@@ -54,7 +54,7 @@ Describe "Taskcluster" {
             Test-Path "C:\generic-worker\taskcluster-proxy.exe" | Should -Be $true
         }
         It "Proxy version is correct" {
-            Start-Process -FilePath "C:\generic-worker\taskcluster-proxy.exe" -ArgumentList "--short-version" -RedirectStandardOutput "Testdrive:\proxyversion.txt" -Wait -NoNewWindow
+            Start-Process -FilePath "C:\generic-worker\taskcluster-proxy.exe" -ArgumentList "--short-version" -RedirectStandardError "Testdrive:\proxyversion.txt" -Wait -NoNewWindow
             Get-Content "Testdrive:\proxyversion.txt" | Should -be $proxy_version
         }
     }
@@ -63,7 +63,7 @@ Describe "Taskcluster" {
             Test-Path "C:\generic-worker\livelog.exe" | Should -Be $true
         }
         It "Livelog version is correct" {
-            Start-Process -FilePath "C:\generic-worker\livelog.exe" -ArgumentList "--short-version" -RedirectStandardOutput "Testdrive:\livelogversion.txt" -Wait -NoNewWindow
+            Start-Process -FilePath "C:\generic-worker\livelog.exe" -ArgumentList "--short-version" -RedirectStandardError "Testdrive:\livelogversion.txt" -Wait -NoNewWindow
             Get-Content "Testdrive:\livelogversion.txt" | Should -be $livelog_version
         }
     }
