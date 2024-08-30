@@ -14,6 +14,7 @@ on:
         - win11-64-2009
         - win2022-64-2009-alpha
         - win2022-64-2009
+        - win11-a64-24h2-builder-alpha
 
 permissions:
   id-token: write
