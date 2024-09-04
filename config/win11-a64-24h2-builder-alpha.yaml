@@ -24,10 +24,10 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: win11Aarch64
-    deploymentId: "c7ec65d"
+    deploymentId: "523a49e"
     managed_by: packer
 tests:
-  - microsoft_tools_builder.tests.ps1
+  - microsoft_tools_builder-a64.tests.ps1
   - disable_services_builder.tests.ps1
   - error_reporting.tests.ps1
   - suppress_dialog_boxes.tests.ps1
