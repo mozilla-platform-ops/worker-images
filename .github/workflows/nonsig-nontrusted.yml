@@ -12,6 +12,8 @@ on:
         - win10-64-2009
         - win11-64-2009-alpha
         - win11-64-2009
+        - win11-64-24h2-alpha
+        - win11-64-24h2
         - win2022-64-2009-alpha
         - win2022-64-2009
         - win11-a64-24h2-builder-alpha
