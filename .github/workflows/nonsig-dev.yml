@@ -45,7 +45,7 @@ jobs:
       - name: "Remove current images"
         uses: azure/powershell@v2
         with:
-          inlinescript: |
+          inlineScript: |
             Import-Module .\bin\WorkerImages\WorkerImages.psm1
             Remove-AzWorkerImage -Key "${{ github.event.inputs.config }}" -Location "${{ matrix.LOCATIONS }}"
           azPSVersion: "latest"
@@ -63,28 +63,3 @@ jobs:
             Application_ID = "${{ secrets.AZURE_APPLICATION_ID_DEV }}"
           }
           New-AzWorkerImage @Vars
-      - name: "Download Release Notes to Github"
-        uses: azure/powershell@v2
-        with:
-          inlinescript: |
-              $Config = "${{ github.event.inputs.config }}"
-              ## Download the release notes
-              $ENV:AZCOPY_AUTO_LOGIN_TYPE = "SPN"
-              $ENV:AZCOPY_SPA_APPLICATION_ID = "${{ secrets.AZURE_APPLICATION_ID_DEV }}"
-              $ENV:AZCOPY_SPA_CLIENT_SECRET = "${{ secrets.AZURE_CLIENT_ID_DEV_SECRET }}"
-              $ENV:AZCOPY_TENANT_ID = "${{ secrets.AZURE_TENANT_ID }}"
-              Write-host "Downloading Release Notes for $($config).md"
-              azcopy copy "https://roninpuppetassets.blob.core.windows.net/packer/$($config).md" "$($config).md"
-          azPSVersion: "latest"
-      - uses: actions/checkout@v4
-      - name: Upload to Github Repository
-        shell: pwsh
-        run: |
-          $Config = "${{ github.event.inputs.config }}"
-          git config --local user.name "github-actions[bot]"
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          mv "$($config).md" "./docs/$($config).md"
-          git add "./docs/$($config).md"
-          git commit -m "Updating Release Notes for $($config).md"
-          git remote set-url origin https://<username>:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
-          git push origin main
