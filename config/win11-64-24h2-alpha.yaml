@@ -1,12 +1,12 @@
 ---
 image:
   publisher: MicrosoftWindowsDesktop
-  offer: Windows-11
-  sku: win11-22h2-avd
+  offer: windows11preview
+  sku: win11-24h2-avd
   version: latest
 sharedimage:
-  gallery_name: "ronin_t_windows11_64_2009_alpha"
-  image_name: "win11-64-2009-alpha"
+  gallery_name: "ronin_t_windows11_64_24h2_alpha"
+  image_name: "win11-64-24h2-alpha"
   image_version: 1.0.0
 azure:
   managed_image_resource_group_name: rg-packer-through-cib
@@ -23,12 +23,12 @@ vm:
   git_version: 2.46.0
   size: Standard_F8s_v2
   tags:
-    base_image: win11642009azure
-    worker_pool_id: win11-64-2009
+    base_image: win116424h2azure
+    worker_pool_id: win11-64-24h2
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: windows_choco
-    deploymentId: "0c7d9ca"
+    sourceBranch: windows_24h2
+    deploymentId: "b1005b6"
     managed_by: packer
 tests:
   - microsoft_tools_tester.tests.ps1

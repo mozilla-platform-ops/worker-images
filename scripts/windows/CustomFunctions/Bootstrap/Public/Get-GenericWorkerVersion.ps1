@@ -12,7 +12,7 @@ function Get-GenericWorkerVersion {
     Start-Process -FilePath $FilePath -ArgumentList "--short-version" -RedirectStandardOutput $StandardOutput -Wait -NoNewWindow
     [PSCustomObject]@{
         Name = "GenericWorker"
-        Version = (Get-Content $StandardOutput)[-1]
+        Version = (Get-Content $StandardOutput)
     }
     $null = Remove-Item -Path $StandardOutput -Force -ErrorAction SilentlyContinue
 }

@@ -12,8 +12,15 @@ on:
         - win10-64-2009
         - win11-64-2009-alpha
         - win11-64-2009
+        - win11-64-24h2-alpha
+        - win11-64-24h2
         - win2022-64-2009-alpha
         - win2022-64-2009
+        - win11-a64-24h2-builder-alpha
+
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
   job1:
@@ -24,7 +31,7 @@ jobs:
       - id: set-matrix
         shell: pwsh
         run: |
-          Import-Module .\bin\WorkerImages\WorkerImages.psm1
+          Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
           Set-AzWorkerImageLocation -Key '${{ github.event.inputs.config }}'
     outputs:
       LOCATIONS: ${{ steps.set-matrix.outputs.LOCATIONS }}
@@ -34,6 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
     strategy:
       fail-fast: false
       matrix:
@@ -43,26 +51,136 @@ jobs:
       - name: Azure Login
         uses: azure/login@v2
         with:
-          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID_FXCI }}","clientSecret":"${{ secrets.AZURE_CLIENT_ID_FXCI_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
+          client-id: ${{ secrets.AZURE_CLIENT_ID_FXCI }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}
           enable-AzPSSession: true
       - name: "Remove current images"
         uses: azure/powershell@v2
         with:
           inlineScript: |
-            Import-Module .\bin\WorkerImages\WorkerImages.psm1
+            Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
             Remove-AzWorkerImage -Key "${{ github.event.inputs.config }}" -Location "${{ matrix.LOCATIONS }}"
           azPSVersion: "latest"
       - name: 'Run Packer'
         shell: pwsh
         run: |
-          Import-Module .\bin\WorkerImages\WorkerImages.psm1
+          Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
           $Vars = @{
             Location = "${{ matrix.LOCATIONS }}"
             Key = '${{ github.event.inputs.config }}'
             Client_ID = "${{ secrets.AZURE_CLIENT_ID_FXCI }}"
             Client_Secret = "${{ secrets.AZURE_CLIENT_ID_FXCI_SECRET }}"
+            oidc_request_url = "${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}"
+            oidc_request_token = "${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}"
             Subscription_ID = "${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}"
             Tenant_ID = "${{ secrets.AZURE_TENANT_ID }}"
             Application_ID = "${{ secrets.AZURE_APPLICATION_ID_FXCI }}"
           }
           New-AzWorkerImage @Vars
+      # - name: Azure Login
+      #   uses: azure/login@v2
+      #   with:
+      #     client-id: ${{ secrets.AZURE_CLIENT_ID_FXCI }}
+      #     tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+      #     subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}
+      #     enable-AzPSSession: true
+      # - name: "Upload Release Notes for ${{ github.event.inputs.config }}"
+      #   uses: azure/powershell@v2  
+      #   with:
+      #     inlineScript: |
+      #       $Config = "${{ github.event.inputs.config }}"
+      #       $exists = Test-Path -Path "${{ github.workspace }}/$($config).md"
+      #       if ($null -eq $exists) {
+      #         Write-Host "No release notes found for ${{ github.event.inputs.config }}"
+      #         exit 1
+      #       }
+      #       Write-Host "Release notes found for ${{ github.event.inputs.config }}"
+      #       Write-host "Uploading Release Notes for $($Config).md"
+      #       $ENV:AZCOPY_AUTO_LOGIN_TYPE = "PSCRED"
+      #       azcopy copy "${{ github.workspace }}/config/$($Config).md" "https://roninpuppetassets.blob.core.windows.net/packer"
+      #     azPSVersion: "latest"
+      - name: Upload Release Notes Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes-${{ github.event.inputs.config }}-${{ matrix.LOCATIONS }}
+          path: ${{ github.event.inputs.config }}.md
+          overwrite: true
+          retention-days: 1
+          if-no-files-found: error
+  
+  job3:
+    needs: job2
+    name: "Upload release notes"
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+      - name: "Test SBOM Exists & Create PR"
+        shell: pwsh  
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CONFIG: ${{ github.event.inputs.config }}
+        run: |
+          ## Extracted to a directory
+          Get-ChildItem
+          $SBOMs = Get-ChildItem -Path "${{ github.workspace }}" -Filter "*${{ github.event.inputs.config }}*"
+          if ($null -eq $SBOMS) {
+            Write-Host "No artifact found for ${{ github.event.inputs.config }}.md"
+            Exit 1
+          }
+          if ($SBOMS.count -lt 1) {
+            ## Get the new md file
+            $SBOM = Get-ChildItem -Path "${{ github.workspace }}" -Filter "*${{ github.event.inputs.config }}*"
+            Move-item -Path "$($SBOM.FullName)\${{ github.event.inputs.config }}.md" -Destination "${{ github.workspace }}\config\${{ github.event.inputs.config }}.md" -Force
+          }
+          if ($SBOMS.count -gt 1) {
+            Get-Content "$($SBOMS[0].FullName)\${{ github.event.inputs.config }}.md"
+            Move-item -Path "$($SBOMS[0].FullName)\${{ github.event.inputs.config }}.md" -Destination "${{ github.workspace }}\config\${{ github.event.inputs.config }}.md" -Force
+            Write-Host "Artifact found for ${{ github.event.inputs.config }}.md"
+          } else {
+            Write-Host "No artifact found for ${{ github.event.inputs.config }}.md"
+            Exit 1
+          }
+
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          
+          ## Vars
+          $Date = Get-Date -Format "yyyyMMddTHHmm"
+          $Repo = "${{ github.repository }}"
+
+          if ($ENV:CONFIG -match "win10") {
+            $ReleaseBranch = "releases/win10/$Date-docs"
+          }
+          elseif ($ENV:CONFIG -match "win11") {
+            $ReleaseBranch = "releases/win11/$Date-docs"
+          }
+          elseif ($ENV:CONFIG -match "win2022") {
+            $ReleaseBranch = "releases/win2022/$Date-docs"
+          }
+          else {
+            $ReleaseBranch = $null
+          }
+          
+          $branchExists = (gh api "/repos/$Repo/branches/$releaseBranch" | ConvertFrom-Json).Name
+          
+          if ($null -eq $branchExists) {
+            git checkout -b $ReleaseBranch
+            git push origin $ReleaseBranch
+          } else {
+            git checkout $ReleaseBranch
+          }
+        
+          $PR_Body = @"
+          # Release Notes for $($ENV:CONFIG).md
+
+          Automatically generated PR for $($ENV:CONFIG).md
+          "@
+
+          $PR_Title = "$ENV:CONFIG ($Date) Image Update"
+          git add "${{ github.workspace }}/config/${{ github.event.inputs.config }}.md"
+          git commit -m "$($ENV:CONFIG) - Release Notes for $($ENV:CONFIG).md"
+          git push -u origin $ReleaseBranch
+          gh pr create --base main --head $ReleaseBranch --title $PR_Title --body $PR_Body

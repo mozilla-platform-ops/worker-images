@@ -1,0 +1,33 @@
+run-name: Release Notes - Dev
+name: Release Notes - Dev
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+jobs:
+  upload:
+    name: "Upload release notes"
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_APPLICATION_ID_FXCI }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}
+          enable-AzPSSession: true
+
+      - name: "Download Release Notes to Github"
+        uses: azure/powershell@v2
+        with:
+          inlineScript: |
+              Write-host "List packer files"
+              $ENV:AZCOPY_AUTO_LOGIN_TYPE = "PSCRED"
+              azcopy list "https://roninpuppetassets.blob.core.windows.net/packer/"
+          azPSVersion: "latest"

@@ -37,7 +37,7 @@ Describe "Taskcluster" {
         }
         It "Generic Worker Version is correct" {
             Start-Process -FilePath "C:\generic-worker\generic-worker.exe" -ArgumentList "--short-version" -RedirectStandardOutput "Testdrive:\gwversion.txt" -Wait -NoNewWindow
-            (Get-Content "Testdrive:\gwversion.txt")[-1] | Should -be $generic_worker_version
+            Get-Content "Testdrive:\gwversion.txt" | Should -be $generic_worker_version
         }
     }
     Context "Worker Runner" {

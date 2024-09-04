@@ -17,14 +17,15 @@ azure:
     - northcentralus
 vm:
   puppet_version: 8.5.1
+  git_version: 2.46.0
   size: Standard_F32s_v2
   tags:
     base_image: win2022642009azure
     worker_pool_id: win2022-64-2009
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: windows
-    deploymentId: "16538c1"
+    sourceBranch: windows_choco
+    deploymentId: "0c7d9ca"
     managed_by: packer
 tests:
   - microsoft_tools_builder.tests.ps1

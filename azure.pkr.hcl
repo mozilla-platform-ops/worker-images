@@ -7,6 +7,10 @@ packer {
   }
 }
 
+locals {
+  sbom_name = var.config
+}
+
 variable "base_image" {
   type    = string
   default = "${env("base_image")}"
@@ -20,6 +24,16 @@ variable "bootstrap_script" {
 variable "client_id" {
   type    = string
   default = "${env("client_id")}"
+}
+
+variable "oidc_request_url" {
+  type    = string
+  default = "${env("ACTIONS_ID_TOKEN_REQUEST_URL")}"
+}
+
+variable "oidc_request_token" {
+  type    = string
+  default = "${env("ACTIONS_ID_TOKEN_REQUEST_TOKEN")}"
 }
 
 variable "client_secret" {
@@ -157,8 +171,8 @@ source "azure-arm" "sig" {
   winrm_username = "packer"
 
   # Authentication
-  client_id       = "${var.client_id}"
-  client_secret   = "${var.client_secret}"
+  client_id = "${var.client_id}"
+  #client_secret   = "${var.client_secret}"
   subscription_id = "${var.subscription_id}"
   tenant_id       = "${var.tenant_id}"
 
@@ -219,8 +233,10 @@ source "azure-arm" "nonsig" {
   winrm_username = "packer"
 
   # Authentication
-  client_id       = "${var.client_id}"
-  client_secret   = "${var.client_secret}"
+  oidc_request_url   = "${var.oidc_request_url}"
+  oidc_request_token = "${var.oidc_request_token}"
+  client_id          = "${var.client_id}"
+  #client_secret   = "${var.client_secret}"
   subscription_id = "${var.subscription_id}"
   tenant_id       = "${var.tenant_id}"
 
@@ -413,6 +429,12 @@ build {
       "Set-MarkdownPSModule",
       "Set-ReleaseNotes -Config $ENV:config"
     ]
+  }
+
+  provisioner "file" {
+    destination = "${path.root}/${local.sbom_name}.md"
+    source      = "C:/${local.sbom_name}.md"
+    direction   = "download"
   }
 
   provisioner "windows-restart" {
