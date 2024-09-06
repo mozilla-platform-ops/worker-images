@@ -1,3 +1,19 @@
+$directoryPath = "C:\Temp"
+$filePath = "$directoryPath\testfile.txt"
+
+if (-not (Test-Path -Path $directoryPath)) {
+    New-Item -Path $directoryPath -ItemType Directory -Force
+    Write-Host "Directory created at $directoryPath"
+}
+
+New-Item -Path $filePath -ItemType File -Force
+
+
+while (Test-Path $filePath) {
+    Start-Sleep -Seconds 1
+}
+
+
 Describe "Microsoft Tools - Builder" {
     BeforeAll {
         $Directories = Get-WinFactsDirectories
