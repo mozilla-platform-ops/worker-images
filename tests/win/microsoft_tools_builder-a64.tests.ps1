@@ -12,7 +12,7 @@ Describe "Microsoft Tools - Builder" {
             $PSItem.DisplayName -eq "Microsoft Visual C++ 2015 Redistributable (x86) - 14.0.23918"
         }
         $vccx64 = $software | Where-Object {
-            $PSItem.DisplayName -eq "Microsoft Visual C++ 2015 Redistributable (x64) - 14.0.23918"
+            $PSItem.DisplayName -eq "Microsoft Visual C++ 2022 Redistributable (Arm64) - 14.38.33130"
         }
         $system_env = Get-ChildItem env:
     }
@@ -23,7 +23,7 @@ Describe "Microsoft Tools - Builder" {
         $directxsdk.DisplayName | Should -Not -Be $Null
     }
     It "DirectX SDK version" {
-        $directxsdk.DisplayVersion | Should -Be "9.29.1962.0"
+        $directxsdk.DisplayVersion | Should -Be "10.1.19041.685"
     }
     It "DirectX Environment Variable is set" {
         $system_env | Where-Object {$PSItem.name -eq "DXSDK_DIR"} | Should -Not -Be $Null
