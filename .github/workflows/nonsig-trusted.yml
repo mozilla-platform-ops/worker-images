@@ -62,7 +62,7 @@ jobs:
             Client_ID = "${{ secrets.AZURE_CLIENT_ID_FXCI_TRUSTED }}"
             oidc_request_url = "${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}"
             oidc_request_token = "${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}"
-            Subscription_ID = "${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}"
+            Subscription_ID = "${{ secrets.AZURE_SUBSCRIPTION_ID_TRUSTED }}"
             Tenant_ID = "${{ secrets.AZURE_TENANT_ID }}"
             Application_ID = "${{ secrets.AZURE_APPLICATION_ID_FXCI_TRUSTED }}"
           }
