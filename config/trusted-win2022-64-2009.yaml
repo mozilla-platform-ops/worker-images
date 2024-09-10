@@ -17,7 +17,6 @@ azure:
     - northcentralus
     - eastus
     - eastus2
-    - southcentralus
     - westus
     - westus2
 vm:
