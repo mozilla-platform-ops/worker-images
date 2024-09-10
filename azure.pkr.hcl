@@ -36,12 +36,6 @@ variable "oidc_request_token" {
   default = "${env("ACTIONS_ID_TOKEN_REQUEST_TOKEN")}"
 }
 
-variable "client_secret" {
-  type      = string
-  default   = "${env("client_secret")}"
-  sensitive = true
-}
-
 variable "deployment_id" {
   type    = string
   default = "${env("deployment_id")}"
@@ -172,7 +166,6 @@ source "azure-arm" "sig" {
 
   # Authentication
   client_id = "${var.client_id}"
-  #client_secret   = "${var.client_secret}"
   subscription_id = "${var.subscription_id}"
   tenant_id       = "${var.tenant_id}"
 
@@ -236,7 +229,6 @@ source "azure-arm" "nonsig" {
   oidc_request_url   = "${var.oidc_request_url}"
   oidc_request_token = "${var.oidc_request_token}"
   client_id          = "${var.client_id}"
-  #client_secret   = "${var.client_secret}"
   subscription_id = "${var.subscription_id}"
   tenant_id       = "${var.tenant_id}"
 
@@ -317,7 +309,6 @@ build {
       "src_Branch=${var.source_branch}",
       "deploymentId=${var.deployment_id}",
       "client_id=${var.client_id}",
-      "client_secret=${var.client_secret}",
       "tenant_id=${var.tenant_id}",
       "application_id=${var.application_id}",
       "config=${var.config}"
@@ -362,7 +353,6 @@ build {
       "src_Branch=${var.source_branch}",
       "deploymentId=${var.deployment_id}",
       "client_id=${var.client_id}",
-      "client_secret=${var.client_secret}",
       "tenant_id=${var.tenant_id}",
       "application_id=${var.application_id}"
     ]
@@ -420,7 +410,6 @@ build {
       "deploymentId=${var.deployment_id}",
       "config=${var.config}",
       "client_id=${var.client_id}",
-      "client_secret=${var.client_secret}",
       "tenant_id=${var.tenant_id}",
       "application_id=${var.application_id}"
     ]
