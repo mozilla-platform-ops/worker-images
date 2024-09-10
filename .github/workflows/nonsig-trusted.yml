@@ -41,7 +41,7 @@ jobs:
       - name: Azure Login
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID_FXCI }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID_FXCI_TRUSTED }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_TRUSTED }}
           enable-AzPSSession: true
