@@ -67,14 +67,14 @@ jobs:
             Application_ID = "${{ secrets.AZURE_APPLICATION_ID_FXCI_TRUSTED }}"
           }
           New-AzWorkerImage @Vars
-          - name: Upload Release Notes Artifact
-          uses: actions/upload-artifact@v4
-          with:
-            name: release-notes-${{ github.event.inputs.config }}-${{ matrix.LOCATIONS }}
-            path: ${{ github.event.inputs.config }}.md
-            overwrite: true
-            retention-days: 1
-            if-no-files-found: error
+      - name: Upload Release Notes Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes-${{ github.event.inputs.config }}-${{ matrix.LOCATIONS }}
+          path: ${{ github.event.inputs.config }}.md
+          overwrite: true
+          retention-days: 1
+          if-no-files-found: error
   job3:
     needs: job2
     name: "Upload release notes"
