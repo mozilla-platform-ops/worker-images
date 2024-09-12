@@ -12,7 +12,7 @@ Describe "Microsoft Tools - Builder" {
             $PSItem.DisplayName -eq "Microsoft Visual C++ 2015 Redistributable (x86) - 14.0.23918"
         }
         $vccx64 = $software | Where-Object {
-            $PSItem.DisplayName -eq "Microsoft Visual C++ 2022 Redistributable (Arm64) - 14.38.33130"
+            $PSItem.DisplayName -eq "Microsoft Visual C++ 2022 Arm64 Runtime - 14.40.33810"
         }
         $system_env = Get-ChildItem env:
     }
