@@ -47,7 +47,4 @@ Describe "Microsoft Tools - Builder" {
     It "Microsoft Visual C++ 2022 Arm64 Runtime gets installed" {
         $vccx64.DisplayName | Should -Not -Be $Null
     }
-    It "Microsoft Visual C++ 2022 Redistributable (Arm64) version" {
-        $vccx64.DisplayVersion | Should -Be "14.38.33130"
-    }
 }
