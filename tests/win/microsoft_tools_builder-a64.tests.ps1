@@ -44,10 +44,10 @@ Describe "Microsoft Tools - Builder" {
     It "Visual c++ runtime 2015 x86 version" {
         $vccx86.DisplayVersion | Should -Be "14.0.23918.0"
     }
-    It "Microsoft Visual C++ 2022 Redistributable (Arm64) gets installed" {
+    It "Microsoft Visual C++ 2022 Arm64 Runtime gets installed" {
         $vccx64.DisplayName | Should -Not -Be $Null
     }
     It "Microsoft Visual C++ 2022 Redistributable (Arm64) version" {
-        $vccx64.DisplayVersion | Should -Be "14.38.33130.0"
+        $vccx64.DisplayVersion | Should -Be "14.38.33130"
     }
 }
