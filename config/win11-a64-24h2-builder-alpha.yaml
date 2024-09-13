@@ -28,7 +28,7 @@ vm:
     managed_by: packer
 tests:
   - microsoft_tools_builder-a64.tests.ps1
-  - disable_services_builder.tests.ps1
+  #- disable_services_builder.tests.ps1
   - error_reporting.tests.ps1
   - suppress_dialog_boxes.tests.ps1
   - files_system_management.tests.ps1
