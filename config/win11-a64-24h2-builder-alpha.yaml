@@ -18,7 +18,8 @@ azure:
 vm:
   puppet_version: 8.5.1
   git_version: 2.46.0
-  size: Standard_D8ps_v5
+  #size: Standard_D8ps_v5
+  size: Standard_E8pds_v5
   tags:
     base_image: win11a6424h2azurebuilder
     worker_pool_id: win11-a64-24h2-builder-alpha
