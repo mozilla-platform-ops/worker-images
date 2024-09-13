@@ -2,7 +2,8 @@
 image:
   publisher: MicrosoftWindowsDesktop
   offer: windows11preview-arm64
-  sku: win11-24h2-ent
+  #sku: win11-24h2-ent
+  sku: win11-21h2-ent
   version: latest
 sharedimage:
   gallery_name: ""
@@ -24,7 +25,7 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: win11Aarch64
-    deploymentId: "3068202"
+    deploymentId: "27ba2b0"
     managed_by: packer
 tests:
   - microsoft_tools_builder-a64.tests.ps1
