@@ -11,6 +11,15 @@ function New-AzSharedWorkerImage {
         $Client_Secret,
 
         [String]
+        $Application_ID,
+
+        [String]
+        $oidc_request_url,
+
+        [String]
+        $oidc_request_token,
+
+        [String]
         $Subscription_ID,
 
         [String]
@@ -20,6 +29,7 @@ function New-AzSharedWorkerImage {
     Set-PSRepository PSGallery -InstallationPolicy Trusted
     Install-Module powershell-yaml -ErrorAction Stop
     $YAML = Convertfrom-Yaml (Get-Content "config/$key.yaml" -raw)
+    $ENV:PKR_VAR_config = $key
     $ENV:PKR_VAR_image_key_name = $key
     $ENV:PKR_VAR_image_publisher = $YAML.image["publisher"]
     $ENV:PKR_VAR_resource_group = $yaml.azure["managed_image_resource_group_name"]
@@ -40,7 +50,9 @@ function New-AzSharedWorkerImage {
     $ENV:PKR_VAR_temp_resource_group_name = ('{0}-{1}-{2}-pkrtmp' -f $YAML.vm.tags["worker_pool_id"], $YAML.vm.tags["deploymentId"], (Get-Random -Maximum 999))
     $ENV:PKR_VAR_tenant_id = $Tenant_ID
     $ENV:PKR_VAR_subscription_id = $Subscription_ID
-    $ENV:PKR_VAR_client_secret = $Client_Secret
+    $ENV:PKR_VAR_application_id = $Application_ID
+    $ENV:PKR_VAR_oidc_request_url = $oidc_request_url
+    $ENV:PKR_VAR_oidc_request_token = $oidc_request_token
     $ENV:PKR_VAR_worker_pool_id = $YAML.vm.tags["worker_pool_id"]
     switch -Wildcard ($key) {
         "*alpha2*" {

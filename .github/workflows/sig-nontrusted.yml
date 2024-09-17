@@ -1,4 +1,4 @@
-name: Shared Image Gallery Deployment - FXCI
+name: SIG Deployment - FXCI
 
 on:
   workflow_dispatch:
@@ -13,29 +13,26 @@ on:
         - win11-64-2009
         - win11-a64-24h2-builder-alpha
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
-  validate:
-    name: "Remove imageversion from ${{ github.event.inputs.config }}"
+  packer:
+    name: "Build ${{ github.event.inputs.config }}"
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - name: Azure Login
         uses: azure/login@v2
         with:
-          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID_FXCI }}","clientSecret":"${{ secrets.AZURE_CLIENT_ID_FXCI_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
+          client-id: ${{ secrets.AZURE_CLIENT_ID_FXCI }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}
           enable-AzPSSession: true
-      - name: "Remove current images"
-        uses: azure/powershell@v2
-        with:
-          inlinescript: |
-            Import-Module .\bin\WorkerImages\WorkerImages.psm1
-            Remove-VMImageVersion -Key '${{ github.event.inputs.config }}'
-          azPSVersion: "latest"
-  packer:
-    name: "Build ${{ github.event.inputs.config }}"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
       - name: 'Run Packer'
         shell: pwsh
         run: |
@@ -43,8 +40,10 @@ jobs:
           $Vars = @{
             Key = '${{ github.event.inputs.config }}'
             Client_ID = "${{ secrets.AZURE_CLIENT_ID_FXCI }}"
-            Client_Secret = "${{ secrets.AZURE_CLIENT_ID_FXCI_SECRET }}"
+            oidc_request_url = "${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}"
+            oidc_request_token = "${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}"
             Subscription_ID = "${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}"
             Tenant_ID = "${{ secrets.AZURE_TENANT_ID }}"
+            Application_ID = "${{ secrets.AZURE_APPLICATION_ID_FXCI }}"
           }
           New-AzSharedWorkerImage @Vars

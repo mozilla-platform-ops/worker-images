@@ -10,6 +10,10 @@ on:
         options:
         - ubuntu2204-amd64-alpha
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   job1:
     name: "Get Project ID from Config"
@@ -24,10 +28,12 @@ jobs:
     outputs:
       PROJECT: ${{ steps.set-matrix.outputs.PROJECT }}
   job2:
+    needs: job1
     name: "GCP ${{ github.event.inputs.config }}"
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
         id: auth
