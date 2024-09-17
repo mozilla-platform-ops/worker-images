@@ -11,6 +11,9 @@ function New-AzSharedWorkerImage {
         $Client_Secret,
 
         [String]
+        $Application_ID,
+
+        [String]
         $Subscription_ID,
 
         [String]
@@ -40,7 +43,7 @@ function New-AzSharedWorkerImage {
     $ENV:PKR_VAR_temp_resource_group_name = ('{0}-{1}-{2}-pkrtmp' -f $YAML.vm.tags["worker_pool_id"], $YAML.vm.tags["deploymentId"], (Get-Random -Maximum 999))
     $ENV:PKR_VAR_tenant_id = $Tenant_ID
     $ENV:PKR_VAR_subscription_id = $Subscription_ID
-    $ENV:PKR_VAR_client_secret = $Client_Secret
+    $ENV:PKR_VAR_application_id = $Application_ID
     $ENV:PKR_VAR_worker_pool_id = $YAML.vm.tags["worker_pool_id"]
     switch -Wildcard ($key) {
         "*alpha2*" {
