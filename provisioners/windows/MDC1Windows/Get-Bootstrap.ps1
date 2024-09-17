@@ -165,8 +165,7 @@ function Invoke-DownloadWithRetry {
 function Set-SSH {
     [CmdletBinding()]
     param (
-        [Switch]
-        $DownloadKeys
+
     )
 
     ## OpenSSH
@@ -174,8 +173,7 @@ function Set-SSH {
     if ($null -eq $sshdService) {
         Write-Log -message ('{0} :: Enabling OpenSSH.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
         Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
-        Invoke-DownloadWithRetry -Url https://raw.githubusercontent.com/SRCOrganisation/SRCRepository/SRCBranch/provisioners/windows/ImageProvisioner/authorized_keys -Path $AuthorizedKeys
-        Invoke-DownloadWithRetry -Url https://raw.githubusercontent.com/SRCOrganisation/SRCRepository/SRCBranch/provisioners/windows/ImageProvisioner/bootstrap.ps1 -Path $local_bootstrap
+        Invoke-DownloadWithRetry -Url "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/main/provisioners/windows/MDC1Windows/ssh/authorized_keys" -Path $AuthorizedKeys
         Start-Service sshd
         Set-Service -Name sshd -StartupType Automatic
         New-NetFirewallRule -Name "AllowSSH" -DisplayName "Allow SSH" -Description "Allow SSH traffic on port 22" -Profile Any -Direction Inbound -Action Allow -Protocol TCP -LocalPort 22
@@ -214,10 +212,10 @@ $local_bootstrap = "C:\bootstrap\bootstrap.ps1"
 
 Test-ConnectionUntilOnline
 
-## Setup logging much earlier
-
 ## Set up ssh early on to ensure access if bootstrap fails.
 Set-WinRM
-Set-SSH -DownloadKeys $true
+Set-SSH
+
+Invoke-DownloadWithRetry -Url "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/main/provisioners/windows/MDC1Windows/bootstrap.ps1" -Path $local_bootstrap
 
 powershell -file $local_bootstrap -worker_pool_id WorkerPoolId -role 1Role  -src_Organisation SRCOrganisation -src_Repository SRCRepository -src_Branch SRCBranch
