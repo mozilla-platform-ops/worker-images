@@ -6,9 +6,9 @@ image:
   sku: win11-21h2-ent
   version: latest
 sharedimage:
-  gallery_name: ""
-  image_name: ""
-  image_version: ""
+  gallery_name: "win11_a64_24h2_builder_alpha"
+  image_name: "win_a64_24h2_builder_alpha"
+  image_version: "0.0.1"
 azure:
   managed_image_resource_group_name: rg-packer-through-cib
   managed_image_storage_account_type: Standard_LRS
