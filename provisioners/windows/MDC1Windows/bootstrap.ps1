@@ -711,7 +711,7 @@ Write-host "Secret Date: $secret_date"
 Write-Host "Image Provisioner: $image_provisioner"
 
 ## Add a 10 second delay to view the variables above
-Start-sleep -Seconds 10
+Start-sleep -Seconds 20
 
 Set-ExecutionPolicy Unrestricted -Force -ErrorAction SilentlyContinue
 
