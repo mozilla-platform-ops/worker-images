@@ -81,6 +81,16 @@ variable "managed-by" {
   default = "${env("managed_by")}"
 }
 
+variable "managed_image_name" {
+  type    = string
+  default = "${env("managed_image_name")}"
+}
+
+variable "managed_image_storage_account_type" {
+  type    = string
+  default = "${env("managed_image_storage_account_type")}"
+}
+
 variable "source_branch" {
   type    = string
   default = "${env("source_branch")}"
