@@ -14,7 +14,7 @@ variable "image_name" {
 
 variable "disk_size" {
   type    = number
-  default = "${env("DISK_SIZE")}"
+  default = 100
 }
 
 variable "project_id" {
@@ -43,26 +43,26 @@ variable "zone" {
 }
 
 variable "access_token" {
-  type    = string
-  default = "${env("ACCESS_TOKEN")}"
+  type      = string
+  default   = "${env("ACCESS_TOKEN")}"
   sensitive = true
 }
 
 variable "worker_env_var_key" {
-  type    = string
-  default = "${env("WORKER_ENV_VAR_KEY")}"
+  type      = string
+  default   = "${env("WORKER_ENV_VAR_KEY")}"
   sensitive = true
 }
 
 variable "tc_worker_cert" {
-  type    = string
-  default = "${env("TC_WORKER_CERT")}"
+  type      = string
+  default   = "${env("TC_WORKER_CERT")}"
   sensitive = true
 }
 
 variable "tc_worker_key" {
-  type    = string
-  default = "${env("TC_WORKER_KEY")}"
+  type      = string
+  default   = "${env("TC_WORKER_KEY")}"
   sensitive = true
 }
 
@@ -83,34 +83,51 @@ build {
 
   ## Upload cloud-init items & helper functions
   provisioner "file" {
-    destination = "/etc/"
-    source      = "${path.cwd}/files/"
+    destination = "/tmp/cloud"
+    source      = "${path.cwd}/files/cloud"
+  }
+
+  provisioner "file" {
+    destination = "/tmp/monopacker"
+    source      = "${path.cwd}/files/monopacker"
+  }
+
+  provisioner "file" {
+    destination = "/tmp/var"
+    source      = "${path.cwd}/files/var"
   }
 
   provisioner "shell" {
-    execute_command     = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
-    environment_vars    = [
+    execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
+    inline = [
+      "mkdir -p /etc/taskcluster/secrets",
+      "touch /etc/taskcluster/secrets/worker_env_var_key",
+      "touch /etc/taskcluster/secrets/worker_livelog_tls_cert",
+      "touch /etc/taskcluster/secrets/worker_livelog_tls_key",
+      "chmod +x /etc/taskcluster/secrets/worker_env_var_key",
+      "chmod +x /etc/taskcluster/secrets/worker_livelog_tls_cert",
+      "chmod +x /etc/taskcluster/secrets/worker_livelog_tls_key",
+    ]
+  }
+
+  provisioner "shell" {
+    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    environment_vars = [
       "WORKER_ENV_VAR_KEY=${var.worker_env_var_key}",
       "TC_WORKER_CERT=${var.tc_worker_cert}",
       "TC_WORKER_KEY=${var.tc_worker_key}",
       "CLOUD=google"
     ]
-    inline = [
-      "sudo mkdir -p /etc/taskcluster/secrets",  
-      "echo $WORKER_ENV_VAR_KEY > /etc/taskcluster/secrets/worker_env_var_key",
-      "echo $TC_WORKER_CERT > /etc/taskcluster/secrets/worker_livelog_tls_cert",
-      "echo $TC_WORKER_KEY > /etc/taskcluster/secrets/worker_livelog_tls_key",
-      "sudo chown root:root -R /etc/taskcluster", 
-      "sudo chmod 0400 -R /etc/taskcluster/secrets"
+    scripts = [
+      "${path.cwd}/scripts/linux/taskcluster/tc.sh"
     ]
   }
 
   provisioner "shell" {
-    execute_command     = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
+    execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
     inline = [
-      "sudo mkdir -p /etc/taskcluster/secrets",  
-      "sudo chown root:root -R /etc/taskcluster", 
-      "sudo chmod 0400 -R /etc/taskcluster/secrets"
+      "chown root:root -R /etc/taskcluster",
+      "chmod 0400 -R /etc/taskcluster/secrets"
     ]
   }
 
@@ -120,8 +137,8 @@ build {
 
   ## Run OS specific scripts
   provisioner "shell" {
-    only = ["source.googlecompute.ubuntu2204"]
-    execute_command     = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
+    execute_command   = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
+    only            = ["source.googlecompute.ubuntu2204"]
     scripts = [
       "scripts/ubuntu-tc-barebones/01-install-packages.sh",
     ]
@@ -129,16 +146,16 @@ build {
 
   ## Install taskcluster binaries
   provisioner "shell" {
-    environment_vars    = [
+    environment_vars = [
       "TASKCLUSTER_VERSION=${var.taskcluster_version}",
       "TC_ARCH=${var.tc_arch}",
       "CLOUD=google"
     ]
-    execute_command     = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
-    expect_disconnect   = true
-    scripts             = [
+    execute_command   = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
+    expect_disconnect = true
+    scripts = [
       "scripts/linux/ubuntu-tc-barebones/05-install-tc.sh",
-      ]
+    ]
     start_retry_timeout = "30m"
   }
 
@@ -146,7 +163,7 @@ build {
   provisioner "shell" {
     execute_command     = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect   = true
-    inline             = ["apt-get autoremove -y --purge"]
+    inline              = ["apt-get autoremove -y --purge"]
     start_retry_timeout = "30m"
   }
 
