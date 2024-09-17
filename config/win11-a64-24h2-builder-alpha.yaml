@@ -6,7 +6,7 @@ image:
   sku: win11-21h2-ent
   version: latest
 sharedimage:
-  gallery_name: "ronin_t_windows11_a64_24h2_builder_alpha"
+  gallery_name: "ronin_b_windows11_a64_24h2_builder_alpha"
   image_name: "win11_a64_24h2_builder_alpha"
   image_version: "0.0.1"
 azure:
