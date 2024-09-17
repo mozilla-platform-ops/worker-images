@@ -221,7 +221,6 @@ source "azure-arm" "sig" {
 
 build {
   sources = [
-    "source.azure-arm.nonsig",
     "source.azure-arm.sig"
   ]
 
