@@ -21,6 +21,9 @@ jobs:
   packer:
     name: "Build ${{ github.event.inputs.config }}"
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - name: Azure Login
