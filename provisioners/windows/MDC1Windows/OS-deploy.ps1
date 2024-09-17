@@ -47,7 +47,7 @@ function Update-GetBoot {
     }
 
     $bootstrapSplat = @{
-        URI = "https://raw.githubusercontent.com/{0}/{1}/{2}/provisioners/windows/MDC1Windows/Template_Get-Bootstrap.ps1" -f $src_Organisation, $src_Repository, $src_Branch
+        URI = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/main/provisioners/windows/MDC1Windows/Template_Get-Bootstrap.ps1"
         OutFile = $Template_Get_Bootstrap
     }
 
