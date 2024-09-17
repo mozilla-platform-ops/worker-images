@@ -14,6 +14,12 @@ function New-AzSharedWorkerImage {
         $Application_ID,
 
         [String]
+        $oidc_request_url,
+
+        [String]
+        $oidc_request_token,
+
+        [String]
         $Subscription_ID,
 
         [String]
@@ -44,6 +50,8 @@ function New-AzSharedWorkerImage {
     $ENV:PKR_VAR_tenant_id = $Tenant_ID
     $ENV:PKR_VAR_subscription_id = $Subscription_ID
     $ENV:PKR_VAR_application_id = $Application_ID
+    $ENV:PKR_VAR_oidc_request_url = $oidc_request_url
+    $ENV:PKR_VAR_oidc_request_token = $oidc_request_token
     $ENV:PKR_VAR_worker_pool_id = $YAML.vm.tags["worker_pool_id"]
     switch -Wildcard ($key) {
         "*alpha2*" {
