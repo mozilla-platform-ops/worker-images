@@ -185,6 +185,7 @@ source "azure-arm" "sig" {
     gallery_name   = "${var.gallery_name}"
     image_name     = "${var.image_name}"
     image_version  = "${var.sharedimage_version}"
+    storage_account_type = "Standard_LRS"
     replication_regions = [
       "centralindia",
       "eastus",
