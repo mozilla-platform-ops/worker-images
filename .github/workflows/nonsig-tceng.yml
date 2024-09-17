@@ -20,7 +20,7 @@ jobs:
       - id: set-matrix
         shell: pwsh
         run: |
-          Import-Module .\bin\WorkerImages\WorkerImages.psm1
+          Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
           Set-AzWorkerImageLocation -Key '${{ github.event.inputs.config }}'
     outputs:
       LOCATIONS: ${{ steps.set-matrix.outputs.LOCATIONS }}
@@ -28,6 +28,9 @@ jobs:
     needs: job1
     name: "${{ github.event.inputs.config }} - ${{ matrix.LOCATIONS }}"
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
     strategy:
       fail-fast: false
       matrix:
@@ -37,24 +40,27 @@ jobs:
       - name: Azure Login
         uses: azure/login@v2
         with:
-          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID_TCENG }}","clientSecret":"${{ secrets.AZURE_CLIENT_ID_TCENG_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID_TCENG }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
+          client-id: ${{ secrets.AZURE_CLIENT_ID_TCENG }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_TCENG }}
           enable-AzPSSession: true
       - name: "Remove current images"
         uses: azure/powershell@v2
         with:
-          inlinescript: |
+          inlineScript: |
             Import-Module .\bin\WorkerImages\WorkerImages.psm1
             Remove-AzWorkerImage -Key "${{ github.event.inputs.config }}" -Location "${{ matrix.LOCATIONS }}"
           azPSVersion: "latest"
       - name: 'Run Packer'
         shell: pwsh
         run: |
-          Import-Module .\bin\WorkerImages\WorkerImages.psm1
+          Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
           $Vars = @{
             Location = "${{ matrix.LOCATIONS }}"
             Key = '${{ github.event.inputs.config }}'
-            Client_ID = "${{ secrets.AZURE_CLIENT_ID_TCENG }}"
-            Client_Secret = "${{ secrets.AZURE_CLIENT_ID_TCENG_SECRET }}"
+            Client_ID = "${{ secrets.AZURE_CLIENT_ID_FXCI_TRUSTED }}"
+            oidc_request_url = "${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}"
+            oidc_request_token = "${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}"
             Subscription_ID = "${{ secrets.AZURE_SUBSCRIPTION_ID_TCENG }}"
             Tenant_ID = "${{ secrets.AZURE_TENANT_ID }}"
             Application_ID = "${{ secrets.AZURE_APPLICATION_ID_TCENG }}"
