@@ -165,9 +165,11 @@ source "azure-arm" "sig" {
   winrm_username = "packer"
 
   # Authentication
-  client_id = "${var.client_id}"
-  subscription_id = "${var.subscription_id}"
-  tenant_id       = "${var.tenant_id}"
+  oidc_request_url   = "${var.oidc_request_url}"
+  oidc_request_token = "${var.oidc_request_token}"
+  client_id          = "${var.client_id}"
+  subscription_id    = "${var.subscription_id}"
+  tenant_id          = "${var.tenant_id}"
 
   # Source 
   os_type         = "Windows"
@@ -229,8 +231,8 @@ source "azure-arm" "nonsig" {
   oidc_request_url   = "${var.oidc_request_url}"
   oidc_request_token = "${var.oidc_request_token}"
   client_id          = "${var.client_id}"
-  subscription_id = "${var.subscription_id}"
-  tenant_id       = "${var.tenant_id}"
+  subscription_id    = "${var.subscription_id}"
+  tenant_id          = "${var.tenant_id}"
 
   # Source 
   os_type         = "Windows"
