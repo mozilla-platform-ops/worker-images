@@ -1,4 +1,4 @@
-name: Shared Image Gallery Deployment - FXCI
+name: SIG Deployment - FXCI
 
 on:
   workflow_dispatch:
