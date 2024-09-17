@@ -24,6 +24,7 @@ jobs:
     outputs:
       PROJECT: ${{ steps.set-matrix.outputs.PROJECT }}
   job2:
+    needs: job1
     name: "GCP ${{ github.event.inputs.config }}"
     runs-on: ubuntu-latest
     permissions:
