@@ -34,8 +34,8 @@ function Mount-ZDrive {
 function Update-GetBoot {
     param(
     )
-    $Get_Bootstrap =  $local_scripts + "Get-Bootstrap.ps1"
-    $Template_Get_Bootstrap =  $local_scripts + "Template_Get-Bootstrap.ps1"
+    $Get_Bootstrap = $local_scripts + "Get-Bootstrap.ps1"
+    $Template_Get_Bootstrap = $local_scripts + "Template_Get-Bootstrap.ps1"
 
     ## Remove existing Get-Bootstrap.ps1 with latest values
 
@@ -47,7 +47,7 @@ function Update-GetBoot {
     }
 
     $bootstrapSplat = @{
-        URI = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/main/provisioners/windows/MDC1Windows/Template_Get-Bootstrap.ps1"
+        URI     = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/main/provisioners/windows/MDC1Windows/Template_Get-Bootstrap.ps1"
         OutFile = $Template_Get_Bootstrap
     }
 
@@ -65,7 +65,7 @@ function Update-GetBoot {
         @{ OldString = "1HASH"; NewString = $hash },
         @{ OldString = "1secret_date"; NewString = $secret_date },
         @{ OldString = "1puppet_version"; NewString = $puppet_version }
-)
+    )
     $content = Get-Content -Path $Template_Get_Bootstrap
     foreach ($replacement in $replacements) {
         $content = $content -replace $replacement.OldString, $replacement.NewString
@@ -139,8 +139,8 @@ foreach ($partition in $partitions) {
 #>
 ## Get node name
 
-$Ethernet = [System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces() | Where-Object {$_.name -match "ethernet"}
-$IPAddress = ($Ethernet.GetIPProperties().UnicastAddresses.Address | Where-object {$_.AddressFamily -eq "InterNetwork"}).IPAddressToString
+$Ethernet = [System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces() | Where-Object { $_.name -match "ethernet" }
+$IPAddress = ($Ethernet.GetIPProperties().UnicastAddresses.Address | Where-object { $_.AddressFamily -eq "InterNetwork" }).IPAddressToString
 $ResolvedName = (Resolve-DnsName -Name $IPAddress -Server "10.48.75.120").NameHost
 
 $index = $ResolvedName.IndexOf('.')
@@ -174,7 +174,8 @@ foreach ($pool in $YAML.pools) {
         }
         if ($found) {
             break
-        } else {
+        }
+        else {
             $defaultPool = $YAML.pools | Where-Object { $_.name -eq "Default" }
             $neededImage = $defaultPool.image
             $WorkerPool = $pool.name
@@ -210,10 +211,10 @@ $AZsecret_file = $secret_dir + "\azcredentials.yaml"
 $source_scripts = $source_dir + "scripts\"
 $local_scripts = $local_install + "scripts\"
 $local_yaml_dir = $local_install + "yaml"
-$local_yaml =  $local_install + "yaml\pools.yaml"
+$local_yaml = $local_install + "yaml\pools.yaml"
 $unattend = $OS_files + "\autounattend.xml"
 $source_app = $source_dir + "applications"
-$local_app  = $local_install + "applications"
+$local_app = $local_install + "applications"
 
 
 if (!(Test-Path $setup)) {
@@ -250,7 +251,7 @@ if (!(Test-Path $setup)) {
     Write-Host "Disconecting Deployment Share."
     net use Z: /delete
 
-    Invoke-WebRequest -Uri https://raw.githubusercontent.com/${src_Organisation}/${src_Repository}/${src_Branch}/provisioners/windows/MDC1Windows/base-autounattend.xml  -OutFile $unattend
+    Invoke-WebRequest -Uri "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/main/provisioners/windows/MDC1Windows/base-autounattend.xml"  -OutFile $unattend
 
     $secret_YAML = Convertfrom-Yaml (Get-Content $secret_file -raw)
 
@@ -259,7 +260,7 @@ if (!(Test-Path $setup)) {
     $replacetheses = @(
         @{ OldString = "THIS-IS-A-NAME"; NewString = $shortname },
         @{ OldString = "NotARealPassword"; NewString = $secret_YAML.win_adminpw }
-)
+    )
 
     $content2 = Get-Content -Path $unattend
     foreach ($replacethese in $replacetheses) {
@@ -267,7 +268,8 @@ if (!(Test-Path $setup)) {
     }
 
     Set-Content -Path $unattend -Value $content2
-} elseif (!(Test-Path $secret_file)) {
+}
+elseif (!(Test-Path $secret_file)) {
     Get-ChildItem -Path $secret_dir | Remove-Item -Recurse
     Mount-ZDrive
     Write-host "Updating secret file."
@@ -277,7 +279,8 @@ if (!(Test-Path $setup)) {
     Write-Host "Disconecting Deployment Share."
     net use Z: /delete
     Update-GetBoot
-} else {
+}
+else {
     Write-Host "Local installation files are good. No further action needed."
     Update-GetBoot
 }
