@@ -92,7 +92,7 @@ function Invoke-DownloadWithRetry {
         }
 
         Write-Warning "Waiting $interval seconds before retrying (retries left: $retries)..."
-        Write-Log -message ('{0} :: Waiting {1} seconds before retrying (retries left: {2}})... - {3:o}' -f $($MyInvocation.MyCommand.Name), $interval, $retries, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+        Write-Log -message ('{0} :: Waiting {1} seconds before retrying (retries left: {2})... - {3:o}' -f $($MyInvocation.MyCommand.Name), $interval, $retries, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
         Start-Sleep -Seconds $interval
     }
 
