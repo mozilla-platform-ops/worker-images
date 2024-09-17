@@ -11,6 +11,7 @@ on:
         - win10-64-2009
         - win11-64-2009-alpha
         - win11-64-2009
+        - win11-a64-24h2-builder-alpha
 
 jobs:
   validate:
