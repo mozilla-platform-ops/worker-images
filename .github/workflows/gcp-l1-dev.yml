@@ -45,7 +45,7 @@ jobs:
       - name: 'Set up Cloud SDK'
         uses: 'google-github-actions/setup-gcloud@v2'
       - name: 'Use gcloud CLI'
-        run: 'gcloud info'
+        run: 'gcloud compute instances list'
       # - name: 'Run Packer'
       #   shell: pwsh
       #   run: |
