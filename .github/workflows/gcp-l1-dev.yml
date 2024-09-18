@@ -46,8 +46,11 @@ jobs:
           create_credentials_file: true
       - name: 'Run Packer'
         shell: pwsh
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth.outputs.credentials_file_path }}
         run: |
           Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
+          Write-host $ENV:GOOGLE_APPLICATION_CREDENTIALS
           $Vars = @{
             Key = '${{ github.event.inputs.config }}'
             Credentials_File = $ENV:GOOGLE_APPLICATION_CREDENTIALS
