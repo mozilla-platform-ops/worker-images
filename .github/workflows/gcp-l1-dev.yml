@@ -54,4 +54,7 @@ jobs:
             TC_worker_cert = "${{ secrets.TC_WORKER_CERT }}"
             TC_worker_key = "${{ secrets.TC_WORKER_KEY }}"
           }
+          Write-Host "Key: $($Vars.Key)"
+          Write-Host "Account_File: $($Vars.Account_File)"
+          
           New-GCPWorkerImage @Vars
