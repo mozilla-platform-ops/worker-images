@@ -37,8 +37,8 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
-        id: auth
       - uses: 'google-github-actions/auth@v2'
+        id: auth
         with:
           workload_identity_provider: "projects/324168772199/locations/global/workloadIdentityPools/github-actions/providers/github-actions"
           service_account: "deploy-prod@fxci-production-level1-workers.iam.gserviceaccount.com"
@@ -46,13 +46,9 @@ jobs:
         shell: pwsh
         run: |
           Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
-          if ($null -eq $ENV:GOOGLE_APPLICATION_CREDENTIALS) {
-            throw "GOOGLE_APPLICATION_CREDENTIALS is not set"
-            exit 1
-          }
           $Vars = @{
             Key = '${{ github.event.inputs.config }}'
-            Credentials_File = $ENV:GOOGLE_APPLICATION_CREDENTIALS
+            Credentials_File = '${{ steps.auth.outputs.credentials_file_path }}'
             Worker_Env_Var_Key = "${{ secrets.WORKER_ENV_VAR_KEY }}"
             TC_worker_cert = "${{ secrets.TC_WORKER_CERT }}"
             TC_worker_key = "${{ secrets.TC_WORKER_KEY }}"
