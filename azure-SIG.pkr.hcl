@@ -181,10 +181,10 @@ source "azure-arm" "sig" {
   # Destination
   temp_resource_group_name           = "${var.temp_resource_group_name}"
   location                           = "Central US"
-  managed_image_storage_account_type = "Standard_LRS"
+  #managed_image_storage_account_type = "Standard_LRS"
   vm_size                            = "${var.vm_size}"
-  managed_image_name                 = "${var.managed_image_name}"
-  managed_image_resource_group_name  = "${var.resource_group}"
+  #managed_image_name                 = "${var.managed_image_name}"
+  #managed_image_resource_group_name  = "${var.resource_group}"
   async_resourcegroup_delete         = true
 
   # Shared image gallery https:github.com/mozilla-platform-ops/relops_infra_as_code/blob/master/terraform/azure_fx_nonci/worker-images.tf 
