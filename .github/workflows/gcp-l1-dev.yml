@@ -51,7 +51,7 @@ jobs:
           Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
           $Vars = @{
             Key = '${{ github.event.inputs.config }}'
-            Access_Token = "${{ steps.auth.outputs.access_token }}"
+            Access_Token = "${{ steps.auth.outputs.auth_token }}"
             Worker_Env_Var_Key = "${{ secrets.WORKER_ENV_VAR_KEY }}"
             TC_worker_cert = "${{ secrets.TC_WORKER_CERT }}"
             TC_worker_key = "${{ secrets.TC_WORKER_KEY }}"
