@@ -42,16 +42,14 @@ jobs:
         with:
           #project_id: ${{ needs.job1.outputs.PROJECT }}
           workload_identity_provider: "projects/324168772199/locations/global/workloadIdentityPools/github-actions/providers/github-actions"
-          #service_account: "deploy-prod@fxci-production-level1-workers.iam.gserviceaccount.com"
-          #token_format: "access_token"
-          #create_credentials_file: false
+          service_account: "deploy-prod@fxci-production-level1-workers.iam.gserviceaccount.com"
       - name: 'Run Packer'
         shell: pwsh
         run: |
           Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
           $Vars = @{
             Key = '${{ github.event.inputs.config }}'
-            Access_Token = "${{ steps.auth.outputs.auth_token }}"
+            Credentials_File = '${{ steps.auth.outputs.credentials_file_path }}'
             Worker_Env_Var_Key = "${{ secrets.WORKER_ENV_VAR_KEY }}"
             TC_worker_cert = "${{ secrets.TC_WORKER_CERT }}"
             TC_worker_key = "${{ secrets.TC_WORKER_KEY }}"

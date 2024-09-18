@@ -8,6 +8,9 @@ function New-GCPWorkerImage {
         $Access_Token,
 
         [String]
+        $Credentials_File,
+
+        [String]
         $Worker_Env_Var_Key,
 
         [String]
@@ -23,8 +26,8 @@ function New-GCPWorkerImage {
     $ENV:PKR_VAR_config = $key
     
     ## Authentication
-    $ENV:PKR_VAR_access_token = $Access_Token
-
+    #$ENV:PKR_VAR_access_token = $Access_Token
+    $ENV:GOOGLE_APPLICATION_CREDENTIALS = $Credentials_File
     ## Taskcluster Secrets
     $ENV:PKR_VAR_worker_env_var_key = $Worker_Env_Var_Key
     $ENV:PKR_VAR_tc_worker_cert = $TC_worker_cert
