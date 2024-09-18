@@ -48,12 +48,6 @@ variable "access_token" {
   sensitive = true
 }
 
-variable "account_file" {
-  type      = string
-  default   = "${env("ACCOUNT_FILE")}"
-  sensitive = true
-}
-
 variable "worker_env_var_key" {
   type      = string
   default   = "${env("WORKER_ENV_VAR_KEY")}"
@@ -81,7 +75,6 @@ source "googlecompute" "ubuntu2204" {
   source_image_family = var.source_image_family
   ssh_username        = "ubuntu"
   zone                = var.zone
-  credentials_file    = var.account_file
 }
 
 build {

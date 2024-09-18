@@ -26,7 +26,7 @@ function New-GCPWorkerImage {
     $ENV:PKR_VAR_config = $key
     
     ## Authentication
-    $ENV:PKR_VAR_account_file = $Account_File
+    #$ENV:PKR_VAR_account_file = $Account_File
     #$ENV:GOOGLE_APPLICATION_CREDENTIALS = $Credentials_File
 
     ## Taskcluster Secrets
