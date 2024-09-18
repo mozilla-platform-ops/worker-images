@@ -35,14 +35,26 @@ function New-GCPWorkerImage {
     $ENV:PKR_VAR_tc_worker_key = $TC_worker_key
 
     ## Configuration
+    Write-Host "image name: $($YAML.image["name"])"
     $ENV:PKR_VAR_image_name = $YAML.image["name"]
+
+    Write-Host "disk size: $($YAML.vm["disk_size"])"
     $ENV:PKR_VAR_disk_size = $YAML.vm["disk_size"]
+
+    Write-Host "project id: $($YAML.image["project_id"])"
     $ENV:PKR_VAR_project_id = $YAML.image["project_id"]
+
+    Write-Host "tc version: $($YAML.vm["taskcluster_version"])"
     $ENV:PKR_VAR_taskcluster_version = $YAML.vm["taskcluster_version"]
+
+    Write-Host "tc arch: $($YAML.vm["tc_arch"])"
     $ENV:PKR_VAR_tc_arch = $YAML.vm["tc_arch"]
+
+    Write-Host "image family: $($YAML.image["source_image_family"])"
     $ENV:PKR_VAR_source_image_family = $YAML.image["source_image_family"]
+
+    Write-Host "zone: $($YAML.image["zone"])"
     $ENV:PKR_VAR_zone = $YAML.image["zone"]
-    $ENV:PKR_VAR_worker_pool_id = $YAML.vm.tags["worker_pool_id"]
 
     ## Initialize Packer plugins
     packer init gcp.pkr.hcl
