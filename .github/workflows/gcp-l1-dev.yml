@@ -40,21 +40,23 @@ jobs:
       - uses: 'google-github-actions/auth@v2'
         id: auth
         with:
-          project_id: ${{ needs.job1.outputs.PROJECT }}
           workload_identity_provider: "projects/324168772199/locations/global/workloadIdentityPools/github-actions/providers/github-actions"
           service_account: "deploy-prod@fxci-production-level1-workers.iam.gserviceaccount.com"
-      - name: 'Run Packer'
-        shell: pwsh
-        run: |
-          Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
-          $Vars = @{
-            Key = '${{ github.event.inputs.config }}'
-            Account_File = '${{ steps.auth.outputs.credentials_file_path }}'
-            Worker_Env_Var_Key = "foo"
-            TC_worker_cert = "foobar"
-            TC_worker_key = "bar"
-          }
-          Write-Host "Key: $($Vars.Key)"
-          Write-Host "Account_File: $($Vars.Account_File)"
-          
-          New-GCPWorkerImage @Vars
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v2'
+      - name: 'Use gcloud CLI'
+        run: 'gcloud info'
+      # - name: 'Run Packer'
+      #   shell: pwsh
+      #   run: |
+      #     Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
+      #     $Vars = @{
+      #       Key = '${{ github.event.inputs.config }}'
+      #       Account_File = '${{ steps.auth.outputs.credentials_file_path }}'
+      #       Worker_Env_Var_Key = "${{ secrets.WORKER_ENV_VAR_KEY }}"
+      #       TC_worker_cert = "${{ secrets.TC_WORKER_CERT }}"
+      #       TC_worker_key = "${{ secrets.TC_WORKER_KEY }}"
+      #     }
+      #     Write-Host "Key: $($Vars.Key)"
+      #     Write-Host "Account_File: $($Vars.Account_File)"
+      #     New-GCPWorkerImage @Vars
