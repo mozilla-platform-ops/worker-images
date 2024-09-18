@@ -30,9 +30,9 @@ function New-GCPWorkerImage {
     #$ENV:GOOGLE_APPLICATION_CREDENTIALS = $Credentials_File
 
     ## Taskcluster Secrets
-    $ENV:PKR_VAR_worker_env_var_key = $Worker_Env_Var_Key
-    $ENV:PKR_VAR_tc_worker_cert = $TC_worker_cert
-    $ENV:PKR_VAR_tc_worker_key = $TC_worker_key
+    $ENV:PKR_VAR_worker_env_var_key = "foo"
+    $ENV:PKR_VAR_tc_worker_cert = "foobar"
+    $ENV:PKR_VAR_tc_worker_key = "bar"
 
     ## Configuration
     $ENV:PKR_VAR_image_name = $YAML.image["name"]
