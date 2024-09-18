@@ -75,6 +75,7 @@ source "googlecompute" "ubuntu2204" {
   source_image_family = var.source_image_family
   ssh_username        = "ubuntu"
   zone                = var.zone
+  use_iap             = true
 }
 
 build {
