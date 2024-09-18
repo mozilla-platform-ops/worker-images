@@ -1,7 +1,7 @@
 ---
 image:
   source_image_family: ubuntu-2404-lts-amd64
-  project_id: "324168772199"
+  project_id: 324168772199
   image_name: ubuntu2204-alpha
   zone: us-west1-a
 vm:
