@@ -40,17 +40,16 @@ jobs:
         id: auth
       - uses: 'google-github-actions/auth@v2'
         with:
-          #project_id: ${{ needs.job1.outputs.PROJECT }}
           workload_identity_provider: "projects/324168772199/locations/global/workloadIdentityPools/github-actions/providers/github-actions"
           service_account: "deploy-prod@fxci-production-level1-workers.iam.gserviceaccount.com"
-          create_credentials_file: true
       - name: 'Run Packer'
         shell: pwsh
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth.outputs.credentials_file_path }}
         run: |
           Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
-          Write-host $ENV:GOOGLE_APPLICATION_CREDENTIALS
+          if ($null -eq $ENV:GOOGLE_APPLICATION_CREDENTIALS) {
+            throw "GOOGLE_APPLICATION_CREDENTIALS is not set"
+            exit 1
+          }
           $Vars = @{
             Key = '${{ github.event.inputs.config }}'
             Credentials_File = $ENV:GOOGLE_APPLICATION_CREDENTIALS
