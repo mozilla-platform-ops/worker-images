@@ -34,6 +34,7 @@ function New-GCPWorkerImage {
     $ENV:PKR_VAR_image_name = $YAML.image["name"]
     $ENV:PKR_VAR_disk_size = $YAML.vm["disk_size"]
     $ENV:PKR_VAR_project_id = $YAML.image["project_id"]
+    $ENV:PKR_VAR_project_id = $YAML.image["workload_identity_provider_project_number"]
     $ENV:PKR_VAR_taskcluster_version = $YAML.vm["taskcluster_version"]
     $ENV:PKR_VAR_tc_arch = $YAML.vm["tc_arch"]
     $ENV:PKR_VAR_source_image_family = $YAML.image["source_image_family"]

@@ -41,7 +41,7 @@ jobs:
       - uses: 'google-github-actions/auth@v2'
         with:
           project_id: ${{ needs.job1.outputs.PROJECT }}
-          workload_identity_provider: "projects/${{ needs.job1.outputs.PROJECT }}/locations/global/workloadIdentityPools/github-actions/providers/github-actions"
+          workload_identity_provider: "projects/324168772199/locations/global/workloadIdentityPools/github-actions/providers/github-actions"
           service_account: "deploy-prod@fxci-production-level1-workers.iam.gserviceaccount.com"
           token_format: "access_token"
           create_credentials_file: false
