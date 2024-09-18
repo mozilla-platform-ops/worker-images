@@ -40,6 +40,7 @@ jobs:
       - uses: 'google-github-actions/auth@v2'
         id: auth
         with:
+          project_id: ${{ needs.job1.outputs.PROJECT }}
           workload_identity_provider: "projects/324168772199/locations/global/workloadIdentityPools/github-actions/providers/github-actions"
           service_account: "deploy-prod@fxci-production-level1-workers.iam.gserviceaccount.com"
       - name: 'Run Packer'

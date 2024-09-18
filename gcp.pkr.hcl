@@ -81,7 +81,7 @@ source "googlecompute" "ubuntu2204" {
   source_image_family = var.source_image_family
   ssh_username        = "ubuntu"
   zone                = var.zone
-  account_file        = var.account_file
+  credentials_file    = var.account_file
 }
 
 build {
@@ -143,7 +143,7 @@ build {
 
   ## Run OS specific scripts
   provisioner "shell" {
-    execute_command   = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
+    execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
     only            = ["source.googlecompute.ubuntu2204"]
     scripts = [
       "scripts/ubuntu-tc-barebones/01-install-packages.sh",
