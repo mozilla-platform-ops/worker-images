@@ -40,7 +40,7 @@ jobs:
       - uses: 'google-github-actions/auth@v2'
         id: auth
         with:
-          workload_identity_provider: "projects/238626610360/locations/global/workloadIdentityPools/github-actions/providers/github-actions"
+          workload_identity_provider: "projects/324168772199/locations/global/workloadIdentityPools/github-actions/providers/github-actions"
           service_account: "deploy-prod@fxci-production-level1-workers.iam.gserviceaccount.com"
       - name: 'Set up Cloud SDK'
         uses: 'google-github-actions/setup-gcloud@v2'
