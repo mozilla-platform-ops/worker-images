@@ -50,9 +50,9 @@ jobs:
           $Vars = @{
             Key = '${{ github.event.inputs.config }}'
             Account_File = '${{ steps.auth.outputs.credentials_file_path }}'
-            Worker_Env_Var_Key = "${{ secrets.WORKER_ENV_VAR_KEY }}"
-            TC_worker_cert = "${{ secrets.TC_WORKER_CERT }}"
-            TC_worker_key = "${{ secrets.TC_WORKER_KEY }}"
+            Worker_Env_Var_Key = "foo"
+            TC_worker_cert = "foobar"
+            TC_worker_key = "bar"
           }
           Write-Host "Key: $($Vars.Key)"
           Write-Host "Account_File: $($Vars.Account_File)"
