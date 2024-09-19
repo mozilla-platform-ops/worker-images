@@ -35,8 +35,8 @@ function New-GCPWorkerImage {
     $ENV:PKR_VAR_tc_worker_key = $TC_worker_key
 
     ## Configuration
-    Write-Host "image name: $($YAML.image["name"])"
-    $ENV:PKR_VAR_image_name = $YAML.image["name"]
+    Write-Host "image name: $($YAML.image["image_name"])"
+    $ENV:PKR_VAR_image_name = $YAML.image["image_name"]
 
     Write-Host "disk size: $($YAML.vm["disk_size"])"
     $ENV:PKR_VAR_disk_size = $YAML.vm["disk_size"]
