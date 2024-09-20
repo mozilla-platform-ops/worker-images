@@ -181,10 +181,7 @@ source "azure-arm" "sig" {
   # Destination
   temp_resource_group_name           = "${var.temp_resource_group_name}"
   location                           = "Central US"
-  #managed_image_storage_account_type = "Standard_LRS"
   vm_size                            = "${var.vm_size}"
-  #managed_image_name                 = "${var.managed_image_name}"
-  #managed_image_resource_group_name  = "${var.resource_group}"
   async_resourcegroup_delete         = true
 
   # Shared image gallery https:github.com/mozilla-platform-ops/relops_infra_as_code/blob/master/terraform/azure_fx_nonci/worker-images.tf 
@@ -219,8 +216,53 @@ source "azure-arm" "sig" {
   }
 }
 
+source "azure-arm" "nonsig" {
+  # WinRM
+  communicator   = "winrm"
+  winrm_insecure = "true"
+  winrm_timeout  = "3m"
+  winrm_use_ssl  = "true"
+  winrm_username = "packer"
+
+  # Authentication
+  oidc_request_url   = "${var.oidc_request_url}"
+  oidc_request_token = "${var.oidc_request_token}"
+  client_id          = "${var.client_id}"
+  subscription_id    = "${var.subscription_id}"
+  tenant_id          = "${var.tenant_id}"
+
+  # Source 
+  os_type         = "Windows"
+  image_publisher = "${var.image_publisher}"
+  image_offer     = "${var.image_offer}"
+  image_sku       = "${var.image_sku}"
+  image_version   = "${var.image_version}"
+
+  # Destination
+  temp_resource_group_name           = "${var.temp_resource_group_name}"
+  location                           = "${var.location}"
+  managed_image_storage_account_type = "Standard_LRS"
+  vm_size                            = "${var.vm_size}"
+  managed_image_name                 = "${var.managed_image_name}"
+  managed_image_resource_group_name  = "${var.resource_group}"
+  async_resourcegroup_delete         = true
+
+  # Tags
+  azure_tags = {
+    base_image         = "${var.base_image}"
+    deploymentId       = "${var.deployment_id}"
+    sourceBranch       = "${var.source_branch}"
+    sourceOrganisation = "${var.source_organization}"
+    sourceRepository   = "${var.source_repository}"
+    worker_pool_id     = "${var.worker_pool_id}"
+    image_version      = "${var.image_version}"
+  }
+
+}
+
 build {
   sources = [
+    "source.azure-arm.nonsig",
     "source.azure-arm.sig"
   ]
 
