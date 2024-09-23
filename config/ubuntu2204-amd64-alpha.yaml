@@ -7,5 +7,5 @@ image:
   zone: us-west1-a
 vm:
   disk_size: 100
-  taskcluster_version: 68.0.4
+  taskcluster_version: 69.0.1
   tc_arch: AMD64
