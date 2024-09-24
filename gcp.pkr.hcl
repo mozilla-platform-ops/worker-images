@@ -100,7 +100,7 @@ build {
       "CLOUD=google",
       "TC_ARCH=${var.tc_arch}",
       "TASKCLUSTER_VERSION=${var.taskcluster_version}",
-     ]
+    ]
     scripts = [
       "${path.cwd}/scripts/linux/ubuntu-community-2404-bootstrap/bootstrap.sh"
     ]
@@ -112,7 +112,7 @@ build {
       "WORKER_ENV_VAR_KEY=${var.worker_env_var_key}",
       "TC_WORKER_CERT=${var.tc_worker_cert}",
       "TC_WORKER_KEY=${var.tc_worker_key}"
-     ]
+    ]
     scripts = [
       "${path.cwd}/scripts/linux/taskcluster/tc.sh"
     ]
