@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -exv
-exec &> /var/log/bootstrap.log
+#exec &> /var/log/bootstrap.log
 
 function retry {
   set +e
