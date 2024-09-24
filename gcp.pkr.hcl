@@ -102,7 +102,7 @@ build {
       "TASKCLUSTER_VERSION=${var.taskcluster_version}",
      ]
     scripts = [
-      "${path.cwd}/scripts/linux/ubuntu-community-2204-bootstrap/bootstrap.sh"
+      "${path.cwd}/scripts/linux/ubuntu-community-2404-bootstrap/bootstrap.sh"
     ]
   }
 

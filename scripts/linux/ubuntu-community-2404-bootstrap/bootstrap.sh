@@ -124,7 +124,6 @@ worker:
 cacheOverRestarts: /etc/start-worker-cache.json
 EOF
 
-
 systemctl enable worker
 
 retry apt-get install -y ubuntu-desktop ubuntu-gnome-desktop podman
