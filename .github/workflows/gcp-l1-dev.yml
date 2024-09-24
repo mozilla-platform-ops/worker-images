@@ -8,7 +8,7 @@ on:
         type: choice
         description: Choose which pool to build
         options:
-        - ubuntu2204-amd64-alpha
+        - ubuntu2404-amd64-alpha
 
 permissions:
   id-token: write
