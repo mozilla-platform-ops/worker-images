@@ -81,22 +81,6 @@ source "googlecompute" "ubuntu2204" {
 build {
   sources = ["source.googlecompute.ubuntu2204"]
 
-  ## Upload cloud-init items & helper functions
-  provisioner "file" {
-    destination = "/tmp/cloud"
-    source      = "${path.cwd}/files/cloud"
-  }
-
-  provisioner "file" {
-    destination = "/tmp/monopacker"
-    source      = "${path.cwd}/files/monopacker"
-  }
-
-  provisioner "file" {
-    destination = "/tmp/var"
-    source      = "${path.cwd}/files/var"
-  }
-
   provisioner "shell" {
     execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
     inline = [
@@ -113,11 +97,22 @@ build {
   provisioner "shell" {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     environment_vars = [
+      "CLOUD=google",
+      "TC_ARCH=${var.tc_arch}",
+      "TASKCLUSTER_VERSION=${var.taskcluster_version}",
+     ]
+    scripts = [
+      "${path.cwd}/scripts/linux/ubuntu-community-2204-bootstrap/bootstrap.sh"
+    ]
+  }
+
+  provisioner "shell" {
+    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    environment_vars = [
       "WORKER_ENV_VAR_KEY=${var.worker_env_var_key}",
       "TC_WORKER_CERT=${var.tc_worker_cert}",
-      "TC_WORKER_KEY=${var.tc_worker_key}",
-      "CLOUD=google"
-    ]
+      "TC_WORKER_KEY=${var.tc_worker_key}"
+     ]
     scripts = [
       "${path.cwd}/scripts/linux/taskcluster/tc.sh"
     ]
@@ -133,30 +128,6 @@ build {
 
   provisioner "shell" {
     inline = ["/usr/bin/cloud-init status --wait"]
-  }
-
-  ## Run OS specific scripts
-  provisioner "shell" {
-    execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
-    only            = ["source.googlecompute.ubuntu2204"]
-    scripts = [
-      "scripts/ubuntu-tc-barebones/01-install-packages.sh",
-    ]
-  }
-
-  ## Install taskcluster binaries
-  provisioner "shell" {
-    environment_vars = [
-      "TASKCLUSTER_VERSION=${var.taskcluster_version}",
-      "TC_ARCH=${var.tc_arch}",
-      "CLOUD=google"
-    ]
-    execute_command   = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
-    expect_disconnect = true
-    scripts = [
-      "scripts/linux/ubuntu-tc-barebones/05-install-tc.sh",
-    ]
-    start_retry_timeout = "30m"
   }
 
   ## Clean up prior to creating the image

@@ -3,11 +3,9 @@
 set -exv
 exec &> /var/log/bootstrap.log
 
-##############################################################################
-# TASKCLUSTER_REF can be a git commit SHA, a git branch name, or a git tag name
-# (i.e. for a taskcluster version number, prefix with 'v' to make it a git tag)
-TASKCLUSTER_REF='main'
-##############################################################################
+# Version numbers ####################
+TASKCLUSTER_VERSION='v68.0.4'
+######################################
 
 function retry {
   set +e
@@ -80,19 +78,12 @@ echo 'kernel.perf_event_paranoid = 1' >> /etc/sysctl.d/90-custom.conf
 groupadd snap_sudo
 echo '%snap_sudo ALL=(ALL:ALL) NOPASSWD: /usr/bin/snap' | EDITOR='tee -a' visudo
 
-# build generic-worker/livelog/start-worker/taskcluster-proxy from ${TASKCLUSTER_REF} commit / branch / tag etc
-retry apt-get install -y git tar
-retry curl -fsSL 'https://dl.google.com/go/go1.22.0.linux-amd64.tar.gz' > go.tar.gz
-tar xvfz go.tar.gz -C /usr/local
-export HOME=/root
-export GOPATH=~/go
-export GOROOT=/usr/local/go
-export PATH="${GOROOT}/bin:${GOPATH}/bin:${PATH}"
-git clone https://github.com/taskcluster/taskcluster
-cd taskcluster
-git checkout "${TASKCLUSTER_REF}"
-CGO_ENABLED=0 go install -tags multiuser -ldflags "-X main.revision=$(git rev-parse HEAD)" ./...
-mv "${GOPATH}/bin"/* /usr/local/bin/
+cd /usr/local/bin
+retry curl -fsSL "https://github.com/taskcluster/taskcluster/releases/download/${TASKCLUSTER_VERSION}/generic-worker-multiuser-linux-${TC_ARCH}" > generic-worker
+retry curl -fsSL "https://github.com/taskcluster/taskcluster/releases/download/${TASKCLUSTER_VERSION}/start-worker-linux-${TC_ARCH}" > start-worker
+retry curl -fsSL "https://github.com/taskcluster/taskcluster/releases/download/${TASKCLUSTER_VERSION}/livelog-linux-${TC_ARCH}" > livelog
+retry curl -fsSL "https://github.com/taskcluster/taskcluster/releases/download/${TASKCLUSTER_VERSION}/taskcluster-proxy-linux-${TC_ARCH}" > taskcluster-proxy
+chmod a+x generic-worker start-worker taskcluster-proxy livelog
 
 mkdir -p /etc/generic-worker
 mkdir -p /var/local/generic-worker
@@ -125,7 +116,7 @@ EOF
 
 cat > /etc/start-worker.yml << EOF
 provider:
-    providerType: %MY_CLOUD%
+    providerType: google
 worker:
     implementation: generic-worker
     path: /usr/local/bin/generic-worker
@@ -133,15 +124,14 @@ worker:
 cacheOverRestarts: /etc/start-worker-cache.json
 EOF
 
+
 systemctl enable worker
 
 retry apt-get install -y ubuntu-desktop ubuntu-gnome-desktop podman
 
-if [ '%MY_CLOUD%' == 'google' ]; then
-    # this is neccessary in GCP because after installing gnome desktop both NetworkManager and systemd-networkd are enabled
-    # which leads to https://bugs.launchpad.net/ubuntu/jammy/+source/systemd/+bug/2036358
-    systemctl disable systemd-networkd-wait-online.service
-fi
+# this is neccessary in GCP because after installing gnome desktop both NetworkManager and systemd-networkd are enabled
+# which leads to https://bugs.launchpad.net/ubuntu/jammy/+source/systemd/+bug/2036358
+systemctl disable systemd-networkd-wait-online.service
 
 # set podman registries conf
 (
@@ -174,6 +164,3 @@ systemctl disable unattended-upgrades
 
 end_time="$(date '+%s')"
 echo "UserData execution took: $(($end_time - $start_time)) seconds"
-
-# shutdown so that instance can be snapshotted
-shutdown -h now
