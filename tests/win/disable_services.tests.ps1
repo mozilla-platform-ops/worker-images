@@ -55,12 +55,10 @@ Describe "Disable Services" {
     }
     Context "Disable Local Clipboard" -Tags "Azure" {
         It "Service is stopped" {
-            (Get-Service -Name "cbdhsvc_*").Status | Should -Be "Stopped"
+            (Get-Service -Name "cbdhsvc*").Status | Should -Be "Stopped"
         }
-        It "<_> is set to disabled" -Foreach @(
-            (Get-Item -Path "HKLM:\SYSTEM\CurrentControlSet\Services\cbdhsvc_*").PSChildName
-        ){
-            Get-ItemPropertyValue "HKLM:\SYSTEM\CurrentControlSet\Services\$_" -Name "Start" | Should -Be 4
+        It "cbdhsvc is set to disabled" {
+            Get-ItemPropertyValue "HKLM:\SYSTEM\CurrentControlSet\Services\cbdhsvc" -Name "Start" | Should -Be 4
         }
         It "UserServiceFlags is set to 0" {
             Get-ItemPropertyValue "HKLM:\SYSTEM\CurrentControlSet\Services\cbdhsvc" -Name "UserServiceFlags" | Should -Be 0
