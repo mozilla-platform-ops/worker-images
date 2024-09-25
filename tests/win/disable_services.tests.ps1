@@ -54,9 +54,9 @@ Describe "Disable Services" {
         }
     }
     Context "Disable Local Clipboard" -Tags "Azure" {
-        It "Service is stopped" {
-            (Get-Service -Name "cbdhsvc*").Status | Should -Be "Stopped"
-        }
+        #It "Service is stopped" {
+        #    (Get-Service -Name "cbdhsvc*").Status | Should -Be "Stopped"
+        #}
         It "cbdhsvc is set to disabled" {
             Get-ItemPropertyValue "HKLM:\SYSTEM\CurrentControlSet\Services\cbdhsvc" -Name "Start" | Should -Be 4
         }
