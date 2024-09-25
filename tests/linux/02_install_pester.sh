@@ -1,1 +1,1 @@
-pwsh -Command "Invoke-Module Pester -Force"
+pwsh -Command "Install-Module Pester -Force"
