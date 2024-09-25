@@ -9,6 +9,7 @@ on:
         description: Choose which pool to build
         options:
         - ubuntu2404-amd64-alpha
+        - gw-fxci-gcp-l1
 
 permissions:
   id-token: write

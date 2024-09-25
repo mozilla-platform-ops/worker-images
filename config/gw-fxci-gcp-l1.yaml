@@ -1,0 +1,11 @@
+---
+image:
+  source_image_family: ubuntu-2204-lts
+  project_id: "taskcluster-imaging"
+  workload_identity_provider_project_number: 324168772199
+  image_name: gw-fxci-gcp-l1-gui-googlecompute-alpha
+  zone: us-west1-a
+vm:
+  disk_size: 100
+  taskcluster_version: 70.0.0
+  tc_arch: AMD64

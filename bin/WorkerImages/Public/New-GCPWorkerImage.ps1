@@ -60,5 +60,9 @@ function New-GCPWorkerImage {
     packer init gcp.pkr.hcl
 
     ## Run Packer
-    packer build --only googlecompute.ubuntu2204 -force gcp.pkr.hcl
+    #packer build --only googlecompute.ubuntu2204 -force gcp.pkr.hcl
+
+    ## Run packer on specific builder
+    $builder = "googlecompute.$($key)"
+    packer build --only $builder -force gcp.pkr.hcl
 }
