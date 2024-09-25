@@ -1,0 +1,1 @@
+pwsh -Command "Invoke-Module Pester -Force"

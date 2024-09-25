@@ -148,7 +148,8 @@ build {
   provisioner "shell" {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     scripts = [
-      "${path.cwd}/tests/linux/01_prep.sh"
+      "${path.cwd}/tests/linux/01_prep.sh",
+      "${path.cwd}/tests/linux/02_install_pester.sh"
     ]
   }
 
