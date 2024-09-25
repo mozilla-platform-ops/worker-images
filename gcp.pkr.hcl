@@ -84,7 +84,8 @@ build {
   provisioner "shell" {
     execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
     inline = [
-      "mkdir -p /workerimages/tests"
+      "mkdir -p /workerimages/tests",
+      "chmod -R 644 /workerimages/tests",
     ]
   }
 
