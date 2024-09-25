@@ -85,7 +85,7 @@ build {
     execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
     inline = [
       "mkdir -p /workerimages/tests",
-      "chmod -R 775 /workerimages/tests",
+      "chmod -R 777 /workerimages/tests",
     ]
   }
 
