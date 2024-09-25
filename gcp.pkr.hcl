@@ -84,6 +84,19 @@ build {
   provisioner "shell" {
     execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
     inline = [
+      "mkdir -p /workerimages/tests"
+    ]
+  }
+
+  ## Just start with taskcluster tests using pester
+  provisioner "file" {
+    source      = "${path.cwd}/tests/linux/taskcluster.tests.ps1"
+    destination = "/workerimages/tests/taskcluster.tests.ps1"
+  }
+
+  provisioner "shell" {
+    execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
+    inline = [
       "mkdir -p /etc/taskcluster/secrets",
       "touch /etc/taskcluster/secrets/worker_env_var_key",
       "touch /etc/taskcluster/secrets/worker_livelog_tls_cert",
@@ -128,6 +141,22 @@ build {
 
   provisioner "shell" {
     inline = ["/usr/bin/cloud-init status --wait"]
+  }
+
+  ## Install dependencies for tests
+  provisioner "shell" {
+    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    scripts = [
+      "${path.cwd}/tests/linux/01_prep.sh"
+    ]
+  }
+
+  ## Run all tests
+  provisioner "shell" {
+    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    scripts = [
+      "${path.cwd}/tests/linux/run_all_tests.sh"
+    ]
   }
 
   ## Clean up prior to creating the image
