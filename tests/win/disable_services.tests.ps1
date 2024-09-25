@@ -53,7 +53,7 @@ Describe "Disable Services" {
             Get-ItemPropertyValue HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -Name "EnableLUA" | Should -Be 1
         }
     }
-    Context "Disable Local Clipboard" -Tags "Azure" -Skip {
+    Context "Disable Local Clipboard" -Tags "Azure" {
         It "Service is stopped" {
             (Get-Service -Name "cbdhsvc_*").Status | Should -Be "Stopped"
         }
@@ -61,6 +61,9 @@ Describe "Disable Services" {
             (Get-Item -Path "HKLM:\SYSTEM\CurrentControlSet\Services\cbdhsvc_*").PSChildName
         ){
             Get-ItemPropertyValue "HKLM:\SYSTEM\CurrentControlSet\Services\$_" -Name "Start" | Should -Be 4
+        }
+        It "UserServiceFlags is set to 0" {
+            Get-ItemPropertyValue "HKLM:\SYSTEM\CurrentControlSet\Services\cbdhsvc" -Name "UserServiceFlags" | Should -Be 0
         }
     }
 }
