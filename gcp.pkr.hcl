@@ -78,7 +78,7 @@ source "googlecompute" "gw-fxci-gcp-l1" {
   use_iap             = true
 }
 
-source "googlecompute" "ubuntu2204gw" {
+source "googlecompute" "gw-fxci-gcp-l1-gui" {
   disk_size           = var.disk_size
   image_licenses      = ["projects/vm-options/global/licenses/enable-vmx"]
   image_name          = var.image_name
@@ -166,8 +166,9 @@ build {
 
 build {
   sources = [
-    "source.googlecompute.ubuntu2204gw"
+    "source.googlecompute.gw-fxci-gcp-l1-gui"
   ]
+  
   ## Every image has tests, so create the tests directory
   provisioner "shell" {
     execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
@@ -183,53 +184,22 @@ build {
     destination = "/workerimages/tests/taskcluster.tests.ps1"
   }
 
-  ## Do we need these secrets?
-  // provisioner "shell" {
-  //   execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
-  //   inline = [
-  //     "mkdir -p /etc/taskcluster/secrets",
-  //     "touch /etc/taskcluster/secrets/worker_env_var_key",
-  //     "touch /etc/taskcluster/secrets/worker_livelog_tls_cert",
-  //     "touch /etc/taskcluster/secrets/worker_livelog_tls_key",
-  //     "chmod +x /etc/taskcluster/secrets/worker_env_var_key",
-  //     "chmod +x /etc/taskcluster/secrets/worker_livelog_tls_cert",
-  //     "chmod +x /etc/taskcluster/secrets/worker_livelog_tls_key",
-  //   ]
-  // }
-
   provisioner "shell" {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     environment_vars = [
       "CLOUD=google",
       "TC_ARCH=${var.tc_arch}",
       "TASKCLUSTER_VERSION=${var.taskcluster_version}",
+      "NUM_LOOPBACK_AUDIO_DEVICES=8"
     ]
+    expect_disconnect = true
     scripts = [
-      "${path.cwd}/scripts/linux/ubuntu-community-2404-bootstrap/bootstrap.sh"
+      "${path.cwd}/scripts/linux/ubuntu-jammy-from-community-gui/05-install.sh",
+      "${path.cwd}/scripts/linux/ubuntu-jammy-from-community-gui/50-wayland_errata.sh",
+      "${path.cwd}/scripts/linux/ubuntu-jammy-from-community-gui/60-reboot.sh",
+      "${path.cwd}/scripts/linux/ubuntu-jammy-from-community-gui/70-additional-talos-reqs.sh"
     ]
   }
-
-  # Do we need these secrets?
-  // provisioner "shell" {
-  //   execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-  //   environment_vars = [
-  //     "WORKER_ENV_VAR_KEY=${var.worker_env_var_key}",
-  //     "TC_WORKER_CERT=${var.tc_worker_cert}",
-  //     "TC_WORKER_KEY=${var.tc_worker_key}"
-  //   ]
-  //   scripts = [
-  //     "${path.cwd}/scripts/linux/taskcluster/tc.sh"
-  //   ]
-  // }
-
-  # Do we need these secrets?
-  // provisioner "shell" {
-  //   execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
-  //   inline = [
-  //     "chown root:root -R /etc/taskcluster",
-  //     "chmod 0400 -R /etc/taskcluster/secrets"
-  //   ]
-  // }
 
   provisioner "shell" {
     inline = ["/usr/bin/cloud-init status --wait"]
@@ -266,4 +236,5 @@ build {
     output     = "packer-artifacts.json"
     strip_path = true
   }
+
 }
