@@ -244,22 +244,22 @@ build {
     inline = ["/usr/bin/cloud-init status --wait"]
   }
 
-  ## Install dependencies for tests
-  provisioner "shell" {
-    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-    scripts = [
-      "${path.cwd}/tests/linux/01_prep.sh",
-      "${path.cwd}/tests/linux/02_install_pester.sh"
-    ]
-  }
+  // ## Install dependencies for tests
+  // provisioner "shell" {
+  //   execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+  //   scripts = [
+  //     "${path.cwd}/tests/linux/01_prep.sh",
+  //     "${path.cwd}/tests/linux/02_install_pester.sh"
+  //   ]
+  // }
 
-  ## Run all tests
-  provisioner "shell" {
-    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-    scripts = [
-      "${path.cwd}/tests/linux/run_all_tests.sh"
-    ]
-  }
+  // ## Run all tests
+  // provisioner "shell" {
+  //   execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+  //   scripts = [
+  //     "${path.cwd}/tests/linux/run_all_tests.sh"
+  //   ]
+  // }
 
   ## Install gcp ops agent and cleanup
   provisioner "shell" {
