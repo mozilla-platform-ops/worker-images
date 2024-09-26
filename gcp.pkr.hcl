@@ -112,7 +112,6 @@ build {
 
   provisioner "shell" {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-    only = ["source.googlecompute.gw-fxci-gcp-l1"]
     environment_vars = [
       "CLOUD=google",
       "TC_ARCH=${var.tc_arch}",
@@ -200,7 +199,6 @@ build {
 
   provisioner "shell" {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-    only = ["source.googlecompute.ubuntu2404gw"]
     environment_vars = [
       "CLOUD=google",
       "TC_ARCH=${var.tc_arch}",
