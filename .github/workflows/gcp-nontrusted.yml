@@ -8,8 +8,8 @@ on:
         type: choice
         description: Choose which pool to build
         options:
-        - gw-fxci-gcp-l1
-        - gw-fxci-gcp-l1-gui
+        - gw-fxci-gcp-l1-2404
+        - gw-fxci-gcp-l1-2404-gui
         - gw-fxci-gcp-l1-arm64
         - gw-fxci-gcp-l1-arm64-gui
 

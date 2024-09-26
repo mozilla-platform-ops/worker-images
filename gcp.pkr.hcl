@@ -90,6 +90,30 @@ source "googlecompute" "gw-fxci-gcp-l1-2404-gui" {
   use_iap             = true
 }
 
+source "googlecompute" "gw-fxci-gcp-l1-arm64" {
+  disk_size           = var.disk_size
+  image_licenses      = ["projects/vm-options/global/licenses/enable-vmx"]
+  image_name          = var.image_name
+  machine_type        = null
+  project_id          = var.project_id
+  source_image_family = var.source_image_family
+  ssh_username        = "ubuntu"
+  zone                = var.zone
+  use_iap             = true
+}
+
+source "googlecompute" "gw-fxci-gcp-l1-arm64-gui" {
+  disk_size           = var.disk_size
+  image_licenses      = ["projects/vm-options/global/licenses/enable-vmx"]
+  image_name          = var.image_name
+  machine_type        = null
+  project_id          = var.project_id
+  source_image_family = var.source_image_family
+  ssh_username        = "ubuntu"
+  zone                = var.zone
+  use_iap             = true
+}
+
 build {
   sources = [
     "source.googlecompute.gw-fxci-gcp-l1-2404"
@@ -184,6 +208,7 @@ build {
     destination = "/workerimages/tests/taskcluster.tests.ps1"
   }
 
+  ## Let's use taskcluster community shell script, the staging version
   provisioner "shell" {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     environment_vars = [
@@ -194,12 +219,26 @@ build {
     ]
     expect_disconnect = true
     scripts = [
-      "${path.cwd}/scripts/linux/ubuntu-jammy-from-community-gui/05-install.sh",
-      "${path.cwd}/scripts/linux/ubuntu-jammy-from-community-gui/50-wayland_errata.sh",
-      "${path.cwd}/scripts/linux/ubuntu-jammy-from-community-gui/60-reboot.sh",
-      "${path.cwd}/scripts/linux/ubuntu-jammy-from-community-gui/70-additional-talos-reqs.sh"
+      "${path.cwd}/scripts/linux/ubuntu-2204-amd64-gui/bootstrap.sh",
     ]
   }
+
+  // provisioner "shell" {
+  //   execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+  //   environment_vars = [
+  //     "CLOUD=google",
+  //     "TC_ARCH=${var.tc_arch}",
+  //     "TASKCLUSTER_VERSION=${var.taskcluster_version}",
+  //     "NUM_LOOPBACK_AUDIO_DEVICES=8"
+  //   ]
+  //   expect_disconnect = true
+  //   scripts = [
+  //     "${path.cwd}/scripts/linux/ubuntu-jammy-from-community-gui/05-install.sh",
+  //     "${path.cwd}/scripts/linux/ubuntu-jammy-from-community-gui/50-wayland_errata.sh",
+  //     "${path.cwd}/scripts/linux/ubuntu-jammy-from-community-gui/60-reboot.sh",
+  //     "${path.cwd}/scripts/linux/ubuntu-jammy-from-community-gui/70-additional-talos-reqs.sh"
+  //   ]
+  // }
 
   provisioner "shell" {
     inline = ["/usr/bin/cloud-init status --wait"]
