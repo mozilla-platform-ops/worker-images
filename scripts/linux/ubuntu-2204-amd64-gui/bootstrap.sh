@@ -1,7 +1,6 @@
 #!/bin/bash
 
 set -exv
-exec &> /var/log/bootstrap.log
 
 ##############################################################################
 # TASKCLUSTER_REF can be a git commit SHA, a git branch name, or a git tag name
@@ -65,9 +64,9 @@ retry docker run hello-world
 
 # configure kvm vmware backdoor
 # this enables a vmware compatible interface for kvm, and is needed for some fuzzing tasks
-cat > /etc/modprobe.d/kvm-backdoor.conf << "EOF"
-options kvm enable_vmware_backdoor=y
-EOF
+#cat > /etc/modprobe.d/kvm-backdoor.conf << "EOF"
+#options kvm enable_vmware_backdoor=y
+#EOF
 
 # configure core dumps to be in the process' current directory with filename 'core'
 # (required for 3 legacy JS engine fuzzers)
@@ -125,7 +124,7 @@ EOF
 
 cat > /etc/start-worker.yml << EOF
 provider:
-    providerType: %MY_CLOUD%
+    providerType: google
 worker:
     implementation: generic-worker
     path: /usr/local/bin/generic-worker
@@ -137,11 +136,9 @@ systemctl enable worker
 
 retry apt-get install -y ubuntu-desktop ubuntu-gnome-desktop podman
 
-if [ '%MY_CLOUD%' == 'google' ]; then
-    # this is neccessary in GCP because after installing gnome desktop both NetworkManager and systemd-networkd are enabled
-    # which leads to https://bugs.launchpad.net/ubuntu/jammy/+source/systemd/+bug/2036358
-    systemctl disable systemd-networkd-wait-online.service
-fi
+# this is neccessary in GCP because after installing gnome desktop both NetworkManager and systemd-networkd are enabled
+# which leads to https://bugs.launchpad.net/ubuntu/jammy/+source/systemd/+bug/2036358
+systemctl disable systemd-networkd-wait-online.service
 
 # set podman registries conf
 (
@@ -164,10 +161,10 @@ sed '/platform-vkms/d' /lib/udev/rules.d/61-mutter.rules > /etc/udev/rules.d/61-
 retry apt-get install -y qemu-kvm bridge-utils
 
 # snd-aloop currently supported in aws kernel, but not in gcp kernel
-if [ '%MY_CLOUD%' == 'aws' ]; then
-  echo 'options snd-aloop enable=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 index=0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31' > /etc/modprobe.d/snd-aloop.conf
-  echo 'snd-aloop' >> /etc/modules
-fi
+#if [ '%MY_CLOUD%' == 'aws' ]; then
+#  echo 'options snd-aloop enable=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 index=0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31' > /etc/modprobe.d/snd-aloop.conf
+#  echo 'snd-aloop' >> /etc/modules
+#fi
 
 # avoid unnecessary shutdowns during worker startups
 systemctl disable unattended-upgrades
@@ -176,4 +173,4 @@ end_time="$(date '+%s')"
 echo "UserData execution took: $(($end_time - $start_time)) seconds"
 
 # shutdown so that instance can be snapshotted
-shutdown -h now
+#shutdown -h now
