@@ -91,7 +91,84 @@ source "googlecompute" "ubuntu2204gw" {
 }
 
 build {
+  sources = [
+    "source.googlecompute.gw-fxci-gcp-l1"
+  ]
+  
+  ## Every image has tests, so create the tests directory
+  provisioner "shell" {
+    execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
+    inline = [
+      "mkdir -p /workerimages/tests",
+      "chmod -R 777 /workerimages/tests",
+    ]
+  }
 
+  ## Every image has taskcluster, so upload the taskcluster tests fle
+  provisioner "file" {
+    source      = "${path.cwd}/tests/linux/taskcluster.tests.ps1"
+    destination = "/workerimages/tests/taskcluster.tests.ps1"
+  }
+
+  provisioner "shell" {
+    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    only = ["source.googlecompute.gw-fxci-gcp-l1"]
+    environment_vars = [
+      "CLOUD=google",
+      "TC_ARCH=${var.tc_arch}",
+      "TASKCLUSTER_VERSION=${var.taskcluster_version}",
+    ]
+    scripts = [
+      "${path.cwd}/scripts/linux/ubuntu-jammy-from-community/05-install.sh",
+      "${path.cwd}/scripts/linux/ubuntu-jammy-from-community/10-additional-packages.sh",
+      "${path.cwd}/scripts/linux/ubuntu-jammy-from-community/15-additional-pips.sh",
+      "${path.cwd}/scripts/linux/ubuntu-jammy-from-community/20-snap-sudo.sh",
+      "${path.cwd}/scripts/linux/ubuntu-jammy-from-community/25-hg.sh"
+    ]
+  }
+
+  provisioner "shell" {
+    inline = ["/usr/bin/cloud-init status --wait"]
+  }
+
+  ## Install dependencies for tests
+  provisioner "shell" {
+    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    scripts = [
+      "${path.cwd}/tests/linux/01_prep.sh",
+      "${path.cwd}/tests/linux/02_install_pester.sh"
+    ]
+  }
+
+  ## Run all tests
+  provisioner "shell" {
+    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    scripts = [
+      "${path.cwd}/tests/linux/run_all_tests.sh"
+    ]
+  }
+
+  ## Install gcp ops agent and cleanup
+  provisioner "shell" {
+    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    scripts = [
+      "${path.cwd}/scripts/linux/common/01-install-ops-agent.sh",
+      "${path.cwd}/scripts/linux/common/99-clean.sh",
+    ]
+    start_retry_timeout = "30m"
+  }
+
+  post-processor "manifest" {
+    output     = "packer-artifacts.json"
+    strip_path = true
+  }
+
+}
+
+build {
+  sources = [
+    "source.googlecompute.ubuntu2204gw"
+  ]
   ## Every image has tests, so create the tests directory
   provisioner "shell" {
     execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
@@ -131,23 +208,6 @@ build {
     ]
     scripts = [
       "${path.cwd}/scripts/linux/ubuntu-community-2404-bootstrap/bootstrap.sh"
-    ]
-  }
-
-  provisioner "shell" {
-    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-    only = ["source.googlecompute.gw-fxci-gcp-l1"]
-    environment_vars = [
-      "CLOUD=google",
-      "TC_ARCH=${var.tc_arch}",
-      "TASKCLUSTER_VERSION=${var.taskcluster_version}",
-    ]
-    scripts = [
-      "${path.cwd}/scripts/linux/ubuntu-jammy-from-community/05-install.sh",
-      "${path.cwd}/scripts/linux/ubuntu-jammy-from-community/10-additional-packages.sh",
-      "${path.cwd}/scripts/linux/ubuntu-jammy-from-community/15-additional-pips.sh",
-      "${path.cwd}/scripts/linux/ubuntu-jammy-from-community/20-snap-sudo.sh",
-      "${path.cwd}/scripts/linux/ubuntu-jammy-from-community/25-hg.sh"
     ]
   }
 
