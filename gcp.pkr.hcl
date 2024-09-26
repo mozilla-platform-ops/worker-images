@@ -91,10 +91,6 @@ source "googlecompute" "ubuntu2204gw" {
 }
 
 build {
-  sources = [
-    "source.googlecompute.gw-fxci-gcp-l1",
-    "source.googlecompute.ubuntu2204gw"
-  ]
 
   ## Every image has tests, so create the tests directory
   provisioner "shell" {
