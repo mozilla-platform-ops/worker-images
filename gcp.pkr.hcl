@@ -66,7 +66,7 @@ variable "tc_worker_key" {
   sensitive = true
 }
 
-source "googlecompute" "gw-fxci-gcp-l1" {
+source "googlecompute" "gw-fxci-gcp-l1-2404" {
   disk_size           = var.disk_size
   image_licenses      = ["projects/vm-options/global/licenses/enable-vmx"]
   image_name          = var.image_name
@@ -78,7 +78,7 @@ source "googlecompute" "gw-fxci-gcp-l1" {
   use_iap             = true
 }
 
-source "googlecompute" "gw-fxci-gcp-l1-gui" {
+source "googlecompute" "gw-fxci-gcp-l1-2404-gui" {
   disk_size           = var.disk_size
   image_licenses      = ["projects/vm-options/global/licenses/enable-vmx"]
   image_name          = var.image_name
@@ -92,7 +92,7 @@ source "googlecompute" "gw-fxci-gcp-l1-gui" {
 
 build {
   sources = [
-    "source.googlecompute.gw-fxci-gcp-l1"
+    "source.googlecompute.gw-fxci-gcp-l1-2404"
   ]
   
   ## Every image has tests, so create the tests directory
@@ -166,7 +166,7 @@ build {
 
 build {
   sources = [
-    "source.googlecompute.gw-fxci-gcp-l1-gui"
+    "source.googlecompute.gw-fxci-gcp-l1-2404-gui"
   ]
   
   ## Every image has tests, so create the tests directory
