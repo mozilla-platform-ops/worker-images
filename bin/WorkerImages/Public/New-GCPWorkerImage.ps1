@@ -64,5 +64,6 @@ function New-GCPWorkerImage {
 
     ## Run packer on specific builder
     $builder = "googlecompute.$($key)"
+    Write-Host "packer build --only $builder -force gcp.pkr.hcl"
     packer build --only $builder -force gcp.pkr.hcl
 }
