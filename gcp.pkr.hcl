@@ -231,7 +231,9 @@ build {
     ]
     expect_disconnect = true
     scripts = [
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/bootstrap.sh",
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/community/01-bootstrap.sh",
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/02-additional-packages.sh",
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/03-additional-pips.sh",
     ]
   }
 
