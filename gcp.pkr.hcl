@@ -222,7 +222,7 @@ build {
 
   ## Let's use taskcluster community shell script, the staging version
   provisioner "shell" {
-    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
     environment_vars = [
       "CLOUD=google",
       "TC_ARCH=${var.tc_arch}",
@@ -232,7 +232,8 @@ build {
     expect_disconnect = true
     scripts = [
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/community/01-bootstrap.sh",
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/02-additional-packages.sh"
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/02-additional-packages.sh",
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/03-additional-pips.sh"
     ]
   }
 
