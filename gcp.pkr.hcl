@@ -114,6 +114,18 @@ source "googlecompute" "gw-fxci-gcp-l1-arm64-gui" {
   use_iap             = true
 }
 
+source "googlecompute" "gw-fxci-gcp-l1-2404-tc" {
+  disk_size           = var.disk_size
+  image_licenses      = ["projects/vm-options/global/licenses/enable-vmx"]
+  image_name          = var.image_name
+  machine_type        = null
+  project_id          = var.project_id
+  source_image_family = var.source_image_family
+  ssh_username        = "ubuntu"
+  zone                = var.zone
+  use_iap             = true
+}
+
 build {
   sources = [
     "source.googlecompute.gw-fxci-gcp-l1-2404"
@@ -269,6 +281,27 @@ build {
       "${path.cwd}/scripts/linux/common/99-clean.sh",
     ]
     start_retry_timeout = "30m"
+  }
+
+  post-processor "manifest" {
+    output     = "packer-artifacts.json"
+    strip_path = true
+  }
+
+}
+
+build {
+  sources = [
+    "source.googlecompute.gw-fxci-gcp-l1-2404-tc"
+  ]
+
+  ## Let's use taskcluster community shell script, the staging version
+  provisioner "shell" {
+    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    expect_disconnect = true
+    scripts = [
+      "${path.cwd}/scripts/linux/tc-ubuntu-2404-amd64-staging/bootstrap.sh",
+    ]
   }
 
   post-processor "manifest" {
