@@ -154,11 +154,11 @@ build {
       "TASKCLUSTER_VERSION=${var.taskcluster_version}",
     ]
     scripts = [
-      "${path.cwd}/scripts/linux/ubuntu-jammy-from-community/05-install.sh",
-      "${path.cwd}/scripts/linux/ubuntu-jammy-from-community/10-additional-packages.sh",
-      "${path.cwd}/scripts/linux/ubuntu-jammy-from-community/15-additional-pips.sh",
-      "${path.cwd}/scripts/linux/ubuntu-jammy-from-community/20-snap-sudo.sh",
-      "${path.cwd}/scripts/linux/ubuntu-jammy-from-community/25-hg.sh"
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64/05-install.sh",
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64/10-additional-packages.sh",
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64/15-additional-pips.sh",
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64/20-snap-sudo.sh",
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64/25-hg.sh"
     ]
   }
 
@@ -234,23 +234,6 @@ build {
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/bootstrap.sh",
     ]
   }
-
-  // provisioner "shell" {
-  //   execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-  //   environment_vars = [
-  //     "CLOUD=google",
-  //     "TC_ARCH=${var.tc_arch}",
-  //     "TASKCLUSTER_VERSION=${var.taskcluster_version}",
-  //     "NUM_LOOPBACK_AUDIO_DEVICES=8"
-  //   ]
-  //   expect_disconnect = true
-  //   scripts = [
-  //     "${path.cwd}/scripts/linux/ubuntu-jammy-from-community-gui/05-install.sh",
-  //     "${path.cwd}/scripts/linux/ubuntu-jammy-from-community-gui/50-wayland_errata.sh",
-  //     "${path.cwd}/scripts/linux/ubuntu-jammy-from-community-gui/60-reboot.sh",
-  //     "${path.cwd}/scripts/linux/ubuntu-jammy-from-community-gui/70-additional-talos-reqs.sh"
-  //   ]
-  // }
 
   provisioner "shell" {
     inline = ["/usr/bin/cloud-init status --wait"]

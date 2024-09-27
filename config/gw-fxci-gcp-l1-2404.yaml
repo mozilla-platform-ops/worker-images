@@ -9,3 +9,5 @@ vm:
   disk_size: 100
   taskcluster_version: 70.0.0
   tc_arch: AMD64
+  script_paths: 
+  - "scripts/linux/ubuntu-2404-amd64"
