@@ -231,7 +231,7 @@ build {
     ]
     expect_disconnect = true
     scripts = [
-      "${path.cwd}/scripts/linux/ubuntu-2204-amd64-gui/bootstrap.sh",
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/bootstrap.sh",
     ]
   }
 
