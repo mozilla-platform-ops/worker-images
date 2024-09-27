@@ -3,10 +3,6 @@
 set -exv
 
 # init helpers
-helpers_dir=${MONOPACKER_HELPERS_DIR:-"/etc/monopacker/scripts"}
-for h in ${helpers_dir}/*.sh; do
-    . $h;
-done
 
 # see https://github.com/mozilla-platform-ops/monopacker/issues/138
 
