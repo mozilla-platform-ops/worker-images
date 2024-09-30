@@ -1,7 +1,12 @@
 #!/bin/bash
 
 set -exv
-#exec &> /var/log/bootstrap.log
+
+##############################################################################
+# TASKCLUSTER_REF can be a git commit SHA, a git branch name, or a git tag name
+# (i.e. for a taskcluster version number, prefix with 'v' to make it a git tag)
+TASKCLUSTER_REF='main'
+##############################################################################
 
 function retry {
   set +e
@@ -59,9 +64,9 @@ retry docker run hello-world
 
 # configure kvm vmware backdoor
 # this enables a vmware compatible interface for kvm, and is needed for some fuzzing tasks
-cat > /etc/modprobe.d/kvm-backdoor.conf << "EOF"
-options kvm enable_vmware_backdoor=y
-EOF
+#cat > /etc/modprobe.d/kvm-backdoor.conf << "EOF"
+#options kvm enable_vmware_backdoor=y
+#EOF
 
 # configure core dumps to be in the process' current directory with filename 'core'
 # (required for 3 legacy JS engine fuzzers)
@@ -74,12 +79,19 @@ echo 'kernel.perf_event_paranoid = 1' >> /etc/sysctl.d/90-custom.conf
 groupadd snap_sudo
 echo '%snap_sudo ALL=(ALL:ALL) NOPASSWD: /usr/bin/snap' | EDITOR='tee -a' visudo
 
-cd /usr/local/bin
-retry curl -fsSL "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/generic-worker-multiuser-linux-${TC_ARCH}" > generic-worker
-retry curl -fsSL "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/start-worker-linux-${TC_ARCH}" > start-worker
-retry curl -fsSL "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/livelog-linux-${TC_ARCH}" > livelog
-retry curl -fsSL "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/taskcluster-proxy-linux-${TC_ARCH}" > taskcluster-proxy
-chmod a+x generic-worker start-worker taskcluster-proxy livelog
+# build generic-worker/livelog/start-worker/taskcluster-proxy from ${TASKCLUSTER_REF} commit / branch / tag etc
+retry apt-get install -y git tar
+retry curl -fsSL 'https://dl.google.com/go/go1.23.1.linux-amd64.tar.gz' > go.tar.gz
+tar xvfz go.tar.gz -C /usr/local
+export HOME=/root
+export GOPATH=~/go
+export GOROOT=/usr/local/go
+export PATH="${GOROOT}/bin:${GOPATH}/bin:${PATH}"
+git clone https://github.com/taskcluster/taskcluster
+cd taskcluster
+git checkout "${TASKCLUSTER_REF}"
+CGO_ENABLED=0 go install -tags multiuser -ldflags "-X main.revision=$(git rev-parse HEAD)" ./...
+mv "${GOPATH}/bin"/* /usr/local/bin/
 
 mkdir -p /etc/generic-worker
 mkdir -p /var/local/generic-worker
@@ -149,13 +161,16 @@ sed '/platform-vkms/d' /lib/udev/rules.d/61-mutter.rules > /etc/udev/rules.d/61-
 retry apt-get install -y qemu-kvm bridge-utils
 
 # snd-aloop currently supported in aws kernel, but not in gcp kernel
-if [ '%MY_CLOUD%' == 'aws' ]; then
-  echo 'options snd-aloop enable=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 index=0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31' > /etc/modprobe.d/snd-aloop.conf
-  echo 'snd-aloop' >> /etc/modules
-fi
+#if [ '%MY_CLOUD%' == 'aws' ]; then
+#  echo 'options snd-aloop enable=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 index=0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31' > /etc/modprobe.d/snd-aloop.conf
+#  echo 'snd-aloop' >> /etc/modules
+#fi
 
 # avoid unnecessary shutdowns during worker startups
 systemctl disable unattended-upgrades
 
 end_time="$(date '+%s')"
 echo "UserData execution took: $(($end_time - $start_time)) seconds"
+
+# shutdown so that instance can be snapshotted
+#shutdown -h now

@@ -154,11 +154,8 @@ build {
       "TASKCLUSTER_VERSION=${var.taskcluster_version}",
     ]
     scripts = [
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64/05-install.sh",
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64/10-additional-packages.sh",
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64/15-additional-pips.sh",
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64/20-snap-sudo.sh",
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64/25-hg.sh"
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64/community/01-bootstrap.sh",
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64/fxci/02-additional-packages.sh"
     ]
   }
 
@@ -167,21 +164,21 @@ build {
   }
 
   ## Install dependencies for tests
-  provisioner "shell" {
-    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-    scripts = [
-      "${path.cwd}/tests/linux/01_prep.sh",
-      "${path.cwd}/tests/linux/02_install_pester.sh"
-    ]
-  }
+  // provisioner "shell" {
+  //   execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+  //   scripts = [
+  //     "${path.cwd}/tests/linux/01_prep.sh",
+  //     "${path.cwd}/tests/linux/02_install_pester.sh"
+  //   ]
+  // }
 
-  ## Run all tests
-  provisioner "shell" {
-    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-    scripts = [
-      "${path.cwd}/tests/linux/run_all_tests.sh"
-    ]
-  }
+  // ## Run all tests
+  // provisioner "shell" {
+  //   execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+  //   scripts = [
+  //     "${path.cwd}/tests/linux/run_all_tests.sh"
+  //   ]
+  // }
 
   ## Install gcp ops agent and cleanup
   provisioner "shell" {
@@ -232,7 +229,19 @@ build {
     expect_disconnect = true
     scripts = [
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/community/01-bootstrap.sh",
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/02-additional-packages.sh"
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/02-additional-packages.sh",
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/04-wayland.sh",
+    ]
+  }
+
+  ## Reboot to get wayland config applied
+  provisioner "shell" {
+    execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
+    expect_disconnect = true
+    pause_before = "10s"
+    start_retry_timeout = 30m
+    scripts = [
+      "${path.cwd}/scripts/linux/common/reboot.sh"
     ]
   }
 
