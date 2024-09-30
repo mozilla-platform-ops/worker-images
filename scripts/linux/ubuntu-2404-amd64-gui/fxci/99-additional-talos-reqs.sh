@@ -19,15 +19,11 @@ export DEBIAN_FRONTEND=noninteractive
 # ensure kernel headers are present so dkms works
 # - had issue where there were broken symlinks
 
-version=`uname -r`
-version_minus_dash_gcp=`uname -r | sed -r  s/-gcp//`
-short_version=`uname -r | cut -d "." -f1,2`
-pkg_name="linux-gcp-${short_version}-headers-${version_minus_dash_gcp}"
+kernel_version=$(uname -r)
+header_package="linux-headers-$kernel_version"
 
 sudo apt-get update
-sudo apt-get -y reinstall linux-headers-gcp linux-headers-`uname -r` ${pkg_name}
-
-
+sudo apt-get -y reinstall linux-headers-gcp $header_package
 #
 # apt packages
 #
