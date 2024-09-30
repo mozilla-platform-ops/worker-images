@@ -183,6 +183,7 @@ build {
   ## Install gcp ops agent and cleanup
   provisioner "shell" {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    expect_disconnect = true
     scripts = [
       "${path.cwd}/scripts/linux/common/01-install-ops-agent.sh",
       "${path.cwd}/scripts/linux/common/99-clean.sh",
@@ -270,6 +271,8 @@ build {
   ## Install gcp ops agent and cleanup
   provisioner "shell" {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    expect_disconnect = true
+    pause_before = "10s"
     scripts = [
       "${path.cwd}/scripts/linux/common/01-install-ops-agent.sh",
       "${path.cwd}/scripts/linux/common/99-clean.sh",
