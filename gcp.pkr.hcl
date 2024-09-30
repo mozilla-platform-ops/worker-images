@@ -224,7 +224,8 @@ build {
       "CLOUD=google",
       "TC_ARCH=${var.tc_arch}",
       "TASKCLUSTER_VERSION=${var.taskcluster_version}",
-      "NUM_LOOPBACK_AUDIO_DEVICES=8"
+      "NUM_LOOPBACK_AUDIO_DEVICES=8",
+      "NUM_LOOPBACK_VIDEO_DEVICES=8"
     ]
     expect_disconnect = true
     scripts = [

@@ -6,7 +6,7 @@ image:
   image_name: gw-fxci-gcp-l1-2404-amd64-tc-googlecompute-alpha
   zone: us-west1-a
 vm:
-  disk_size: 100
+  disk_size: 60
   tc_arch: AMD64
   script_paths: 
   - "scripts/linux/tc-ubuntu-2404-amd64-staging"

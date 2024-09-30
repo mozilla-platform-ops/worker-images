@@ -6,8 +6,8 @@ image:
   image_name: gw-fxci-gcp-l1-2404-amd64-googlecompute-alpha
   zone: us-west1-a
 vm:
-  disk_size: 100
-  taskcluster_version: 70.0.0
+  disk_size: 60
+  taskcluster_version: 72.0.0
   tc_arch: AMD64
   script_paths: 
   - "scripts/linux/ubuntu-2404-amd64"
