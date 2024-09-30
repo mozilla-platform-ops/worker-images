@@ -131,20 +131,20 @@ build {
     "source.googlecompute.gw-fxci-gcp-l1-2404"
   ]
   
-  ## Every image has tests, so create the tests directory
-  provisioner "shell" {
-    execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
-    inline = [
-      "mkdir -p /workerimages/tests",
-      "chmod -R 777 /workerimages/tests",
-    ]
-  }
+  // ## Every image has tests, so create the tests directory
+  // provisioner "shell" {
+  //   execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
+  //   inline = [
+  //     "mkdir -p /workerimages/tests",
+  //     "chmod -R 777 /workerimages/tests",
+  //   ]
+  // }
 
-  ## Every image has taskcluster, so upload the taskcluster tests fle
-  provisioner "file" {
-    source      = "${path.cwd}/tests/linux/taskcluster.tests.ps1"
-    destination = "/workerimages/tests/taskcluster.tests.ps1"
-  }
+  // ## Every image has taskcluster, so upload the taskcluster tests fle
+  // provisioner "file" {
+  //   source      = "${path.cwd}/tests/linux/taskcluster.tests.ps1"
+  //   destination = "/workerimages/tests/taskcluster.tests.ps1"
+  // }
 
   provisioner "shell" {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
@@ -202,20 +202,20 @@ build {
     "source.googlecompute.gw-fxci-gcp-l1-2404-gui"
   ]
   
-  ## Every image has tests, so create the tests directory
-  provisioner "shell" {
-    execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
-    inline = [
-      "mkdir -p /workerimages/tests",
-      "chmod -R 777 /workerimages/tests",
-    ]
-  }
+  // ## Every image has tests, so create the tests directory
+  // provisioner "shell" {
+  //   execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
+  //   inline = [
+  //     "mkdir -p /workerimages/tests",
+  //     "chmod -R 777 /workerimages/tests",
+  //   ]
+  // }
 
-  ## Every image has taskcluster, so upload the taskcluster tests fle
-  provisioner "file" {
-    source      = "${path.cwd}/tests/linux/taskcluster.tests.ps1"
-    destination = "/workerimages/tests/taskcluster.tests.ps1"
-  }
+  // ## Every image has taskcluster, so upload the taskcluster tests fle
+  // provisioner "file" {
+  //   source      = "${path.cwd}/tests/linux/taskcluster.tests.ps1"
+  //   destination = "/workerimages/tests/taskcluster.tests.ps1"
+  // }
 
   ## Let's use taskcluster community shell script, the staging version
   provisioner "shell" {
