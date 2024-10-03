@@ -415,7 +415,8 @@ build {
     inline = [
       "Import-Module BootStrap -Force",
       "Set-MarkdownPSModule",
-      "Set-ReleaseNotes -Config $ENV:config"
+      "Set-ReleaseNotes -Config $ENV:config",
+      "Set-OOBE"
     ]
   }
 
