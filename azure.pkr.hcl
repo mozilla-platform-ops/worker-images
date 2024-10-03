@@ -389,6 +389,7 @@ build {
     inline = [
       "Import-Module BootStrap -Force",
       "Set-PesterVersion",
+      "Set-OOBE",
       "Set-YAMLModule",
       "Invoke-RoninTest -Role $ENV:base_image -Config $ENV:config"
     ]
@@ -415,8 +416,7 @@ build {
     inline = [
       "Import-Module BootStrap -Force",
       "Set-MarkdownPSModule",
-      "Set-ReleaseNotes -Config $ENV:config",
-      "Set-OOBE"
+      "Set-ReleaseNotes -Config $ENV:config"
     ]
   }
 
