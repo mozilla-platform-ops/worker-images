@@ -4,10 +4,11 @@ This repository contains an opinionated way to build virtual machine images via 
 
 ## Features
 
-- Packer variables provided through configuration yaml files
+- Packer variables provided through configuration files
 - Supports Windows 10 and Windows 11
-- Integration with Pester with configuration yaml files
+- Integration with Pester with configuration files
 - Azure Authentication using [OpenID Connect](https://docs.github.com/en/actions/security-for-github-actions/security-hardening-your-deployments/configuring-openid-connect-in-azure)
+- Automatically generates software bill of materials for each machine image created
 
 ## Repository structure
 
