@@ -77,28 +77,6 @@ jobs:
             Application_ID = "${{ secrets.AZURE_APPLICATION_ID_FXCI }}"
           }
           New-AzWorkerImage @Vars
-      # - name: Azure Login
-      #   uses: azure/login@v2
-      #   with:
-      #     client-id: ${{ secrets.AZURE_CLIENT_ID_FXCI }}
-      #     tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-      #     subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}
-      #     enable-AzPSSession: true
-      # - name: "Upload Release Notes for ${{ github.event.inputs.config }}"
-      #   uses: azure/powershell@v2  
-      #   with:
-      #     inlineScript: |
-      #       $Config = "${{ github.event.inputs.config }}"
-      #       $exists = Test-Path -Path "${{ github.workspace }}/$($config).md"
-      #       if ($null -eq $exists) {
-      #         Write-Host "No release notes found for ${{ github.event.inputs.config }}"
-      #         exit 1
-      #       }
-      #       Write-Host "Release notes found for ${{ github.event.inputs.config }}"
-      #       Write-host "Uploading Release Notes for $($Config).md"
-      #       $ENV:AZCOPY_AUTO_LOGIN_TYPE = "PSCRED"
-      #       azcopy copy "${{ github.workspace }}/config/$($Config).md" "https://roninpuppetassets.blob.core.windows.net/packer"
-      #     azPSVersion: "latest"
       - name: Upload Release Notes Artifact
         uses: actions/upload-artifact@v4
         with:

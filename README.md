@@ -1,48 +1,41 @@
 # Worker Images
-This repository stores the code used to create a machine image for use in [Taskcluster](https://github.com/taskcluster). This repository uses Packer to provision the machine image, and the azure windows packer machine images use [Powershell Packer Provisioner](https://developer.hashicorp.com/packer/docs/provisioners/powershell) to call a custom script which bootstrap the OS using [Puppet](https://www.puppet.com/docs/puppet/7/puppet_index.html).
 
-## High level Overview
+This repository contains an opinionated way to execute packer using configuration that is pre-defined in YAML format, executed through github actions, and built-in automated integration tests for azure windows virtual machine images using [Pester](https://pester.dev/). Images are deployed using either Github Actions or by running Packer locally. 
 
-This repository contains an opinionated way to run packer using configuration that is pre-defined in YAML format, along with integration tests for azure windows 11 virtual machine image used within [Taskcluster](https://github.com/taskcluster) using [Pester](https://pester.dev/). Images are deployed using either Github Actions or by running Packer locally. 
+## Features
 
-Within the Azure Packer HCL file, there are two `source` blocks, one for generating an [Azure Shared Image](https://learn.microsoft.com/en-us/azure/virtual-machines/shared-image-galleries?tabs=azure-cli) called `sig` (which stands for shared image gallery) and one for generating an Azure Managed Image called `non-sig`.
+- Packer variables provided through configuration yaml files
+- Supports Windows 10 and Windows 11
+- Integration with Pester with configuration yaml files
+- Azure Authentication using [OpenID Connect](https://docs.github.com/en/actions/security-for-github-actions/security-hardening-your-deployments/configuring-openid-connect-in-azure)
 
-## Local development with Azure
+## Repository structure
 
-There are two packer hcl files, one for Azure and one for GCP. To run packer locally for debugging purposes or to generate an image against the existing Packer HCL files, load the Powershell module and debug locally.
+`.github/*` - Github Action Workflows
 
-For example, to deploy a Windows 11 Alpha managed image (non shared image) for use in Azure and debug locally, follow these steps
+`bin/WorkerImages` - Powershell Module that provides helper functions to start packer with pre-defined variables
 
-```PowerShell
-## Set the powershell gallery to trusted
-Set-PSRepository PSGallery -InstallationPolicy Trusted
-## Install Powershel YAML Module
-Install-Module powershell-yaml -ErrorAction Stop
-## Import workerimages powershell module
-Import-Module ".\bin\WorkerImages\WorkerImages.psm1"
-## Select the win11-64-2009-alpha key
-$key = "win11-64-2009-alpha"
-## Build the parameters to pass to the function
-$Vars = @{
-    Location        = "uksouth"
-    Key             = "config/$key.yaml"
-    Client_ID       = "foo" ## Update this with the app registration client id from azure
-    Client_Secret   = "bar" ## Update this with the app registration client secret from azure
-    Subscription_ID = "marco" ## Subscription ID to deploy to
-    Tenant_ID       = "polo" ## Tenant ID to deploy to
-}
+`config` - Worker Pool Definition that Packer uses for varibles
 
-## Run packer
-New-AzWorkerImage @Vars -PackerDebug
-```
+`provisioners` - Internal directory used for non-cloud worker deployments at Mozilla
 
-## Local Development with GCP
+`scripts/*` - OS specific directories that host either shell scripts or a powershell module to support provisioning and configuring windows 
 
-WIP
+`tests/win/*` - Windows integration tests written for use with Pester 
+
+`azure.pkr.hcl` - Packer HCL template used for building an Azure Managed Image or Azure Managed Image in a Shared Image Gallery
+
+## Future plans
+
+- Support non-windows platforms
+- Integrate with other Mozilla Release Engineering repositories
+- Consolidate github action workflow into reusable workflows
+- Create better documentation for local debugging
+- Create better workflow for multiple branches
 
 ## Acronyms
 
 * GHA = Github Actions
 * TC = Taskcluster, the CI pipeline to build and release Firefox.
-* Worker Image = A machine image for use with Taskcluster that contains configuration from puppet.
+* Worker Image = A machine image for use with Taskcluster.
 * Ronin Puppet = Git repository that contains [puppet code](https://github.com/mozilla-platform-ops/ronin_puppet) which configures each worker image with specific configuration 
