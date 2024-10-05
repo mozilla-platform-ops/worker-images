@@ -19,9 +19,9 @@ This repository contains an opinionated way to build virtual machine images via 
 
 `provisioners` - Internal directory used for non-cloud worker deployments at Mozilla
 
-`scripts/*` - OS specific directories that host either shell scripts or a powershell module to support provisioning and configuring windows 
+`scripts/*` - OS specific directories that host either shell scripts or a powershell module to support provisioning and configuring windows
 
-`tests/win/*` - Windows integration tests written for use with Pester 
+`tests/win/*` - Windows integration tests written for use with Pester
 
 `azure.pkr.hcl` - Packer HCL template used for building an Azure Managed Image or Azure Managed Image in a Shared Image Gallery
 
@@ -38,7 +38,7 @@ This repository contains an opinionated way to build virtual machine images via 
 
 ## Acronyms
 
-* GHA = Github Actions
-* TC = Taskcluster, the CI pipeline to build and release Firefox.
-* Worker Image = A machine image for use with Taskcluster.
-* Ronin Puppet = Git repository that contains [puppet code](https://github.com/mozilla-platform-ops/ronin_puppet) which configures each worker image with specific configuration 
+- GHA = Github Actions
+- TC = Taskcluster, the CI pipeline to build and release Firefox.
+- Worker Image = A machine image for use with Taskcluster.
+- Ronin Puppet = Git repository that contains [puppet code](https://github.com/mozilla-platform-ops/ronin_puppet) which configures each worker image with specific configuration
