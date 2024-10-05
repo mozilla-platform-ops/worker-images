@@ -25,8 +25,8 @@ This repository contains an opinionated way to build virtual machine images via 
 
 `azure.pkr.hcl` - Packer HCL template used for building an Azure Managed Image or Azure Managed Image in a Shared Image Gallery
 
-[!NOTE]
-Building an Azure Machine Image with support for Shared Image Gallery requires additional configuration outside of Packer.
+> [!NOTE]
+> Building an Azure Machine Image with support for Shared Image Gallery requires additional configuration outside of Packer.
 
 ## Future plans
 
