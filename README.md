@@ -15,9 +15,9 @@ This repository contains an opinionated way to build virtual machine images via 
 
 `bin/WorkerImages` - Powershell Module that provides helper functions to start packer with pre-defined variables
 
-`config` - Worker Pool Definition that Packer uses for varibles
+`config/` - Worker Pool Definition that Packer uses for varibles
 
-`provisioners` - Internal directory used for non-cloud worker deployments at Mozilla
+`provisioners/` - Internal directory used for non-cloud worker deployments at Mozilla
 
 `scripts/*` - OS specific directories that host either shell scripts or a powershell module to support provisioning and configuring windows
 
