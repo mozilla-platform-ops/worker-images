@@ -12,7 +12,7 @@ The software bill of materials are dyanmically generated markdown files stored w
 
 ```
 image:
-  publisher: MicrosoftWindowsDesktop The Azure Marketplace Publisher
+  publisher: MicrosoftWindowsDesktop
   offer: Windows-11
   sku: win11-22h2-avd
   version: latest
