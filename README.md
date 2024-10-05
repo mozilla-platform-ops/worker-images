@@ -1,6 +1,6 @@
 # Worker Images
 
-This repository contains an opinionated way to execute packer using configuration that is pre-defined in YAML format, executed through github actions, and built-in automated integration tests for azure windows virtual machine images using [Pester](https://pester.dev/). Images are deployed using either Github Actions or by running Packer locally. 
+This repository contains an opinionated way to build virtual machine images via packer by using configuration that is pre-defined in YAML format, executed through github actions, with support for automated integration tests using [Pester](https://pester.dev/).
 
 ## Features
 
