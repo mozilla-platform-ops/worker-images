@@ -169,6 +169,7 @@ build {
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64/fxci/01-bootstrap.sh",
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64/fxci/02-additional-packages.sh",
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64/fxci/03-hg.sh",
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64/fxci/04-aslr.sh",
     ]
   }
 
