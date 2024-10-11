@@ -1,4 +1,4 @@
-run-name: GCP - ${{ github.event.inputs.config }}
+run-name: GCP Production - ${{ github.event.inputs.config }}
 name: FXCI - GCP
 
 on:
