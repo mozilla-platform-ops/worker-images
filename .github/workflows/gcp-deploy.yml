@@ -1,0 +1,58 @@
+run-name: GCP - ${{ github.event.inputs.config }}
+name: FXCI - GCP
+
+on:
+  workflow_dispatch:
+    inputs:
+      config:
+        type: choice
+        description: Choose which pool to build
+        options:
+        - gw-fxci-gcp-l1-2404-alpha
+        - gw-fxci-gcp-l1-2404-gui-alpha
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  job1:
+    name: "Get Project ID from Config"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: set-matrix
+        shell: pwsh
+        run: |
+          Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
+          Set-GCPWorkerImageName -Key '${{ github.event.inputs.config }}'
+          Set-GCPWorkerImageProject -Key '${{ github.event.inputs.config }}'
+    outputs:
+      IMAGENAME: ${{ steps.set-matrix.outputs.IMAGENAME }}
+      PROJECT: ${{ steps.set-matrix.outputs.PROJECT }}
+  job2:
+    needs: job1
+    name: "GCP ${{ github.event.inputs.config }}"
+    runs-on: ubuntu-latest
+    environment: prod
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: 'google-github-actions/auth@v2'
+        id: auth
+        with:
+          workload_identity_provider: "projects/324168772199/locations/global/workloadIdentityPools/github-actions/providers/github-actions"
+          service_account: "deploy-prod@${{ needs.job1.outputs.PROJECT }}.iam.gserviceaccount.com"
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v2'
+      - name: 'Build Production Image'
+        shell: pwsh
+        run: |
+          $date = Get-Date -Format "yyyy-MM-dd"
+          $ProdImageName = -join((${{ needs.job1.outputs.IMAGENAME }} -Replace "alpha"),$date)
+          Write-Output "Creating image $ProdImageName"
+          gcloud compute images create $ProdImageName `
+          --source-image ${{ needs.job1.outputs.IMAGENAME }} `
+          --source-image-project ${{ needs.job1.outputs.PROJECT }}
