@@ -52,7 +52,12 @@ jobs:
         run: |
           $date = Get-Date -Format "yyyy-MM-dd"
           $ProdImageName = -join(('${{ needs.job1.outputs.IMAGENAME }}' -Replace "alpha"),$date)
+          $exists = gcloud compute images describe $ProdImageName
+          if ($exists) {
+            gcloud compute images delete $ProdImageName --quiet
+          }
           Write-Output "Creating image $ProdImageName"
           gcloud compute images create $ProdImageName `
           --source-image ${{ needs.job1.outputs.IMAGENAME }} `
-          --source-image-project ${{ needs.job1.outputs.PROJECT }}
+          --source-image-project ${{ needs.job1.outputs.PROJECT }} `
+          --force 
