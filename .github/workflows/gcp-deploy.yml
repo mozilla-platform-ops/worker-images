@@ -17,7 +17,7 @@ permissions:
 
 jobs:
   job1:
-    name: "Get Project ID from Config"
+    name: "Get Project ID & ImageName from Config"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
