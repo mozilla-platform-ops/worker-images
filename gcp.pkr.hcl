@@ -66,7 +66,7 @@ variable "tc_worker_key" {
   sensitive = true
 }
 
-source "googlecompute" "gw-fxci-gcp-l1-2404" {
+source "googlecompute" "gw-fxci-gcp-l1-2404-alpha" {
   disk_size           = var.disk_size
   image_licenses      = ["projects/vm-options/global/licenses/enable-vmx"]
   image_name          = var.image_name
@@ -140,7 +140,7 @@ source "googlecompute" "gw-fxci-gcp-l1-2404-tc" {
 
 build {
   sources = [
-    "source.googlecompute.gw-fxci-gcp-l1-2404"
+    "source.googlecompute.gw-fxci-gcp-l1-2404-alpha"
   ]
   
   // ## Every image has tests, so create the tests directory
@@ -166,6 +166,7 @@ build {
       "TASKCLUSTER_VERSION=${var.taskcluster_version}",
     ]
     scripts = [
+      "${path.cwd}/scripts/linux/common/papertrail.sh",
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64/fxci/01-bootstrap.sh",
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64/fxci/02-additional-packages.sh",
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64/fxci/03-hg.sh",
