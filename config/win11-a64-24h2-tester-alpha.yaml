@@ -5,8 +5,8 @@ image:
   sku: win11-23h2-ent
   version: latest
 sharedimage:
-  gallery_name: "ronin_b_windows11_a64_23h2_builder_alpha"
-  image_name: "win11_a64_23h2_builder_alpha"
+  gallery_name: "ronin_b_windows11_a64_24h2_tester_alpha"
+  image_name: "win11_a64_24h2_tester_alpha"
   image_version: "0.0.1"
 azure:
   managed_image_resource_group_name: rg-packer-worker-images
@@ -20,11 +20,11 @@ vm:
   size: Standard_E8pds_v5
   tags:
     base_image: win11a6424h2azurebuilder
-    worker_pool_id: win11-a64-23h2-builder-alpha
+    worker_pool_id: win11-a64-24h2-tester-alpha
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: win11Aarch64
-    deploymentId: "42dfbdd"
+    deploymentId: "77716b9"
     managed_by: packer
 tests:
   - microsoft_tools_builder-a64.tests.ps1
