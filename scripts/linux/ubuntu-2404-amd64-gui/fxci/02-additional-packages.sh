@@ -39,6 +39,8 @@ MISC_PACKAGES+=(python3-zstandard)
 MISC_PACKAGES+=(apt-transport-https ca-certificates software-properties-common)
 # docker-worker needs this for unpacking lz4 images, perhaps uneeded but shouldn't hurt
 MISC_PACKAGES+=(liblz4-tool)
+# needed for runtests.py: error: Missing binary pactl required for --use-test-media-devices
+MISC_PACKAGES+=(pulseaudio-utils)
 # random bits
 MISC_PACKAGES+=(libhunspell-1.7-0 libhunspell-dev)
 
