@@ -11,13 +11,13 @@ apt-get install -y wget apt-transport-https software-properties-common
 source /etc/os-release
 
 # Download the Microsoft repository keys
-wget -q https://packages.microsoft.com/config/ubuntu/$VERSION_ID/packages-microsoft-prod.deb
+wget -q https://packages.microsoft.com/ubuntu/24.04/prod/pool/main/p/powershell-preview/powershell-preview_7.5.0-preview.5-1.deb_amd64.deb
 
 # Register the Microsoft repository keys
-dpkg -i packages-microsoft-prod.deb
+dpkg -i powershell-preview_7.5.0-preview.5-1.deb_amd64.deb
 
 # Delete the Microsoft repository keys file
-rm packages-microsoft-prod.deb
+rm powershell-preview_7.5.0-preview.5-1.deb_amd64.deb
 
 # Update the list of packages after we added packages.microsoft.com
 apt-get update
