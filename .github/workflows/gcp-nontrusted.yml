@@ -23,7 +23,7 @@ permissions:
   contents: read
 
 jobs:
-  job1:
+  config:
     name: "Get Project ID from Config"
     runs-on: ubuntu-latest
     steps:
@@ -35,8 +35,8 @@ jobs:
           Set-GCPWorkerImageProject -Key '${{ github.event.inputs.config }}'
     outputs:
       PROJECT: ${{ steps.set-matrix.outputs.PROJECT }}
-  job2:
-    needs: job1
+  packer:
+    needs: config
     name: "GCP ${{ github.event.inputs.config }}"
     runs-on: ubuntu-latest
     environment: prod

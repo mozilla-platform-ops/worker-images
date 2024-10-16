@@ -23,7 +23,7 @@ permissions:
   contents: read
 
 jobs:
-  job1:
+  config:
     name: "Create Image Tasks"
     runs-on: ubuntu-latest
     steps:
@@ -35,8 +35,8 @@ jobs:
           Set-AzWorkerImageLocation -Key '${{ github.event.inputs.config }}'
     outputs:
       LOCATIONS: ${{ steps.set-matrix.outputs.LOCATIONS }}
-  job2:
-    needs: job1
+  packer:
+    needs: config
     name: "${{ github.event.inputs.config }} - ${{ matrix.LOCATIONS }}"
     runs-on: ubuntu-latest
     permissions:
@@ -86,8 +86,8 @@ jobs:
           retention-days: 1
           if-no-files-found: error
   
-  job3:
-    needs: job2
+  sbom:
+    needs: packer
     name: "Upload release notes"
     runs-on: ubuntu-latest
     permissions: write-all
