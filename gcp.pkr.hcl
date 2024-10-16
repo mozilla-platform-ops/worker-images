@@ -508,6 +508,8 @@ build {
       "TASKCLUSTER_VERSION=${var.taskcluster_version}",
     ]
     scripts = [
+      "${path.cwd}/tests/linux/01_prep.sh",
+      "${path.cwd}/tests/linux/02_install_pester.sh",
       "${path.cwd}/tests/linux/run_all_tests.sh"
     ]
     valid_exit_codes = [
