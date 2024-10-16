@@ -24,10 +24,10 @@ apt-get update
 
 ###################################
 # Install PowerShell
-apt-get install -y powershell
+#apt-get install -y powershell
 
 # Verify PowerShell installation
-if command -v pwsh &> /dev/null
+if command -v pwsh-preview &> /dev/null
 then
     echo "PowerShell successfully installed."
 else
