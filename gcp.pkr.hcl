@@ -488,17 +488,6 @@ build {
     inline = ["/usr/bin/cloud-init status --wait"]
   }
 
-  ## Install gcp ops agent and cleanup
-  provisioner "shell" {
-    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-    expect_disconnect = true
-    scripts = [
-      "${path.cwd}/scripts/linux/common/01-install-ops-agent.sh",
-      "${path.cwd}/scripts/linux/common/99-clean.sh",
-    ]
-    start_retry_timeout = "30m"
-  }
-
   ## Run all tests
   provisioner "shell" {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
@@ -515,6 +504,17 @@ build {
     valid_exit_codes = [
       0
     ]
+  }
+
+    ## Install gcp ops agent and cleanup
+  provisioner "shell" {
+    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    expect_disconnect = true
+    scripts = [
+      "${path.cwd}/scripts/linux/common/01-install-ops-agent.sh",
+      "${path.cwd}/scripts/linux/common/99-clean.sh",
+    ]
+    start_retry_timeout = "30m"
   }
 
   post-processor "manifest" {
