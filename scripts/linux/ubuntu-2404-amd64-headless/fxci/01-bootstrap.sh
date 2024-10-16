@@ -46,7 +46,7 @@ retry apt-get -y remove docker docker.io containerd runc
 retry apt-get install -y apt-transport-https ca-certificates curl software-properties-common gzip python3-venv build-essential snapd
 
 # needed for kvm, see https://help.ubuntu.com/community/KVM/Installation
-retry apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
+#retry apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
 
 # install docker
 retry curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
@@ -122,7 +122,9 @@ EOF
 
 systemctl enable worker
 
-retry apt-get install -y ubuntu-desktop ubuntu-gnome-desktop podman
+# Don't install ubuntu-desktop ubuntu-gnome-desktop on headless image but install podman
+retry apt-get install -y podman
+#retry apt-get install -y ubuntu-desktop ubuntu-gnome-desktop podman
 
 # this is neccessary in GCP because after installing gnome desktop both NetworkManager and systemd-networkd are enabled
 # which leads to https://bugs.launchpad.net/ubuntu/jammy/+source/systemd/+bug/2036358
@@ -137,16 +139,16 @@ systemctl disable systemd-networkd-wait-online.service
 # Installs the v4l2loopback kernel module
 # used for the video device, and vkms
 # required by Wayland
-retry apt-get install -y linux-modules-extra-$(uname -r)
+#retry apt-get install -y linux-modules-extra-$(uname -r)
 # needed for mutter to work with DRM rather than falling back to X11
-grep -Fx vkms /etc/modules || echo vkms >> /etc/modules
+#grep -Fx vkms /etc/modules || echo vkms >> /etc/modules
 # disable udev rule that tags platform-vkms with "mutter-device-ignore"
 # ENV{ID_PATH}=="platform-vkms", TAG+="mutter-device-ignore"
-sed '/platform-vkms/d' /lib/udev/rules.d/61-mutter.rules > /etc/udev/rules.d/61-mutter.rules
+#sed '/platform-vkms/d' /lib/udev/rules.d/61-mutter.rules > /etc/udev/rules.d/61-mutter.rules
 
 # install necessary packages for KVM
 # https://help.ubuntu.com/community/KVM/Installation
-retry apt-get install -y qemu-kvm bridge-utils
+#retry apt-get install -y qemu-kvm bridge-utils
 
 # snd-aloop currently supported in aws kernel, but not in gcp kernel
 #if [ '%MY_CLOUD%' == 'aws' ]; then
