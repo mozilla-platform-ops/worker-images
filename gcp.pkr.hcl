@@ -150,6 +150,18 @@ source "googlecompute" "gw-fxci-gcp-l1-2404-x11-alpha" {
   use_iap             = true
 }
 
+source "googlecompute" "gw-fxci-gcp-l1-2404-headless-alpha" {
+  disk_size           = var.disk_size
+  image_licenses      = ["projects/vm-options/global/licenses/enable-vmx"]
+  image_name          = var.image_name
+  machine_type        = null
+  project_id          = var.project_id
+  source_image_family = var.source_image_family
+  ssh_username        = "ubuntu"
+  zone                = var.zone
+  use_iap             = true
+}
+
 build {
   sources = [
     "source.googlecompute.gw-fxci-gcp-l1-2404-alpha"
@@ -413,6 +425,47 @@ build {
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-x11/fxci/01-bootstrap.sh",
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-x11/fxci/02-additional-packages.sh",
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-x11/fxci/03-x11.sh"
+    ]
+  }
+
+  provisioner "shell" {
+    inline = ["/usr/bin/cloud-init status --wait"]
+  }
+
+  ## Install gcp ops agent and cleanup
+  provisioner "shell" {
+    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    expect_disconnect = true
+    scripts = [
+      "${path.cwd}/scripts/linux/common/01-install-ops-agent.sh",
+      "${path.cwd}/scripts/linux/common/99-clean.sh",
+    ]
+    start_retry_timeout = "30m"
+  }
+
+  post-processor "manifest" {
+    output     = "packer-artifacts.json"
+    strip_path = true
+  }
+
+}
+
+build {
+  sources = [
+    "source.googlecompute.gw-fxci-gcp-l1-2404-headless-alpha"
+  ]
+
+  provisioner "shell" {
+    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    environment_vars = [
+      "CLOUD=google",
+      "TC_ARCH=${var.tc_arch}",
+      "TASKCLUSTER_VERSION=${var.taskcluster_version}",
+    ]
+    scripts = [
+      "${path.cwd}/scripts/linux/common/papertrail.sh",
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/01-bootstrap.sh",
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/02-additional-packages.sh"
     ]
   }
 
