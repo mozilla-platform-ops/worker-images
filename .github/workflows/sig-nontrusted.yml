@@ -19,32 +19,109 @@ permissions:
   contents: read
 
 jobs:
-  packer:
-    name: "Build ${{ github.event.inputs.config }}"
+  job1:
+    packer:
+      name: "Build ${{ github.event.inputs.config }}"
+      runs-on: ubuntu-latest
+      permissions:
+        contents: write
+        id-token: write
+      steps:
+        - uses: actions/checkout@v4
+        - name: Azure Login
+          uses: azure/login@v2
+          with:
+            client-id: ${{ secrets.AZURE_CLIENT_ID_FXCI }}
+            tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+            subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}
+            enable-AzPSSession: true
+        - name: 'Run Packer'
+          shell: pwsh
+          run: |
+            Import-Module .\bin\WorkerImages\WorkerImages.psm1
+            $Vars = @{
+              Key = '${{ github.event.inputs.config }}'
+              Client_ID = "${{ secrets.AZURE_CLIENT_ID_FXCI }}"
+              oidc_request_url = "${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}"
+              oidc_request_token = "${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}"
+              Subscription_ID = "${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}"
+              Tenant_ID = "${{ secrets.AZURE_TENANT_ID }}"
+              Application_ID = "${{ secrets.AZURE_APPLICATION_ID_FXCI }}"
+            }
+            New-AzSharedWorkerImage @Vars
+
+  job2:
+    needs: job1
+    name: "Upload release notes"
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: write
+    permissions: write-all
     steps:
       - uses: actions/checkout@v4
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID_FXCI }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}
-          enable-AzPSSession: true
-      - name: 'Run Packer'
-        shell: pwsh
+      - uses: actions/download-artifact@v4
+      - name: "Test SBOM Exists & Create PR"
+        shell: pwsh  
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CONFIG: ${{ github.event.inputs.config }}
         run: |
-          Import-Module .\bin\WorkerImages\WorkerImages.psm1
-          $Vars = @{
-            Key = '${{ github.event.inputs.config }}'
-            Client_ID = "${{ secrets.AZURE_CLIENT_ID_FXCI }}"
-            oidc_request_url = "${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}"
-            oidc_request_token = "${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}"
-            Subscription_ID = "${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}"
-            Tenant_ID = "${{ secrets.AZURE_TENANT_ID }}"
-            Application_ID = "${{ secrets.AZURE_APPLICATION_ID_FXCI }}"
+          ## Extracted to a directory
+          Get-ChildItem
+          $SBOMs = Get-ChildItem -Path "${{ github.workspace }}" -Filter "*${{ github.event.inputs.config }}*"
+          if ($null -eq $SBOMS) {
+            Write-Host "No artifact found for ${{ github.event.inputs.config }}.md"
+            Exit 1
           }
-          New-AzSharedWorkerImage @Vars
+          if ($SBOMS.count -lt 1) {
+            ## Get the new md file
+            $SBOM = Get-ChildItem -Path "${{ github.workspace }}" -Filter "*${{ github.event.inputs.config }}*"
+            Move-item -Path "$($SBOM.FullName)\${{ github.event.inputs.config }}.md" -Destination "${{ github.workspace }}\config\${{ github.event.inputs.config }}.md" -Force
+          }
+          if ($SBOMS.count -gt 1) {
+            Get-Content "$($SBOMS[0].FullName)\${{ github.event.inputs.config }}.md"
+            Move-item -Path "$($SBOMS[0].FullName)\${{ github.event.inputs.config }}.md" -Destination "${{ github.workspace }}\config\${{ github.event.inputs.config }}.md" -Force
+            Write-Host "Artifact found for ${{ github.event.inputs.config }}.md"
+          } else {
+            Write-Host "No artifact found for ${{ github.event.inputs.config }}.md"
+            Exit 1
+          }
+
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          
+          ## Vars
+          $Date = Get-Date -Format "yyyyMMddTHHmm"
+          $Repo = "${{ github.repository }}"
+
+          if ($ENV:CONFIG -match "win10") {
+            $ReleaseBranch = "releases/win10/$Date-docs"
+          }
+          elseif ($ENV:CONFIG -match "win11") {
+            $ReleaseBranch = "releases/win11/$Date-docs"
+          }
+          elseif ($ENV:CONFIG -match "win2022") {
+            $ReleaseBranch = "releases/win2022/$Date-docs"
+          }
+          else {
+            $ReleaseBranch = $null
+          }
+          
+          $branchExists = (gh api "/repos/$Repo/branches/$releaseBranch" | ConvertFrom-Json).Name
+          
+          if ($null -eq $branchExists) {
+            git checkout -b $ReleaseBranch
+            git push origin $ReleaseBranch
+          } else {
+            git checkout $ReleaseBranch
+          }
+        
+          $PR_Body = @"
+          # Release Notes for $($ENV:CONFIG).md
+
+          Automatically generated PR for $($ENV:CONFIG).md
+          "@
+
+          $PR_Title = "$ENV:CONFIG ($Date) Image Update"
+          git add "${{ github.workspace }}/config/${{ github.event.inputs.config }}.md"
+          git commit -m "$($ENV:CONFIG) - Release Notes for $($ENV:CONFIG).md"
+          git push -u origin $ReleaseBranch
+          gh pr create --base main --head $ReleaseBranch --title $PR_Title --body $PR_Body
