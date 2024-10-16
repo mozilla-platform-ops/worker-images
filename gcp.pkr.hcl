@@ -510,6 +510,9 @@ build {
     scripts = [
       "${path.cwd}/tests/linux/run_all_tests.sh"
     ]
+    valid_exit_codes = [
+      0
+    ]
   }
 
   post-processor "manifest" {
