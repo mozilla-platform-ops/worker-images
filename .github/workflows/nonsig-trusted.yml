@@ -35,7 +35,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        locations: ${{fromJson(needs.job1.outputs.LOCATIONS)}}
+        locations: ${{fromJson(needs.config.outputs.LOCATIONS)}}
     steps:
       - uses: actions/checkout@v4
       - name: Azure Login
