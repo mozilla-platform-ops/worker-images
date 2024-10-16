@@ -23,7 +23,7 @@ permissions:
   contents: read
 
 jobs:
-  job1:
+  config:
     name: "Get Project ID from Config"
     runs-on: ubuntu-latest
     steps:
@@ -35,8 +35,8 @@ jobs:
           Set-GCPWorkerImageProject -Key '${{ github.event.inputs.config }}'
     outputs:
       PROJECT: ${{ steps.set-matrix.outputs.PROJECT }}
-  job2:
-    needs: job1
+  packer:
+    needs: config
     name: "GCP ${{ github.event.inputs.config }}"
     runs-on: ubuntu-latest
     environment: prod
@@ -49,7 +49,7 @@ jobs:
         id: auth
         with:
           workload_identity_provider: "projects/324168772199/locations/global/workloadIdentityPools/github-actions/providers/github-actions"
-          service_account: "deploy-prod@${{ needs.job1.outputs.PROJECT }}.iam.gserviceaccount.com"
+          service_account: "deploy-prod@${{ needs.config.outputs.PROJECT }}.iam.gserviceaccount.com"
       - name: 'Set up Cloud SDK'
         uses: 'google-github-actions/setup-gcloud@v2'
       - name: 'Run Packer'
