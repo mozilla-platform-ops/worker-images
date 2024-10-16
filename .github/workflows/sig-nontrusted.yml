@@ -19,39 +19,45 @@ permissions:
   contents: read
 
 jobs:
-  job1:
-    packer:
-      name: "Build ${{ github.event.inputs.config }}"
-      runs-on: ubuntu-latest
-      permissions:
-        contents: write
-        id-token: write
-      steps:
-        - uses: actions/checkout@v4
-        - name: Azure Login
-          uses: azure/login@v2
-          with:
-            client-id: ${{ secrets.AZURE_CLIENT_ID_FXCI }}
-            tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-            subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}
-            enable-AzPSSession: true
-        - name: 'Run Packer'
-          shell: pwsh
-          run: |
-            Import-Module .\bin\WorkerImages\WorkerImages.psm1
-            $Vars = @{
-              Key = '${{ github.event.inputs.config }}'
-              Client_ID = "${{ secrets.AZURE_CLIENT_ID_FXCI }}"
-              oidc_request_url = "${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}"
-              oidc_request_token = "${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}"
-              Subscription_ID = "${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}"
-              Tenant_ID = "${{ secrets.AZURE_TENANT_ID }}"
-              Application_ID = "${{ secrets.AZURE_APPLICATION_ID_FXCI }}"
-            }
-            New-AzSharedWorkerImage @Vars
-
-  job2:
-    needs: job1
+  packer:
+    name: "Build ${{ github.event.inputs.config }}"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID_FXCI }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}
+          enable-AzPSSession: true
+      - name: 'Run Packer'
+        shell: pwsh
+        run: |
+          Import-Module .\bin\WorkerImages\WorkerImages.psm1
+          $Vars = @{
+            Key = '${{ github.event.inputs.config }}'
+            Client_ID = "${{ secrets.AZURE_CLIENT_ID_FXCI }}"
+            oidc_request_url = "${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}"
+            oidc_request_token = "${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}"
+            Subscription_ID = "${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}"
+            Tenant_ID = "${{ secrets.AZURE_TENANT_ID }}"
+            Application_ID = "${{ secrets.AZURE_APPLICATION_ID_FXCI }}"
+          }
+          New-AzSharedWorkerImage @Vars
+      - name: Upload Release Notes Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes-${{ github.event.inputs.config }}
+          path: ${{ github.event.inputs.config }}.md
+          overwrite: true
+          retention-days: 1
+          if-no-files-found: error
+  sbom:
+    needs: packer
     name: "Upload release notes"
     runs-on: ubuntu-latest
     permissions: write-all
