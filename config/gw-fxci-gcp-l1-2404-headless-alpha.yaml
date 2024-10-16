@@ -3,7 +3,7 @@ image:
   source_image_family: ubuntu-2404-lts-amd64
   project_id: "taskcluster-imaging"
   workload_identity_provider_project_number: 324168772199
-  image_name: gw-fxci-gcp-l1-2404-amd64-headless-googlecompute
+  image_name: gw-fxci-gcp-l1-2404-amd64-headless-googlecompute-alpha
   zone: us-west1-a
 vm:
   disk_size: 60
