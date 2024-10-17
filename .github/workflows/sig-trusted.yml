@@ -1,3 +1,4 @@
+run-name: SIG Trusted - ${{ github.event.inputs.config }}
 name: SIG Deployment - FXCI Trusted
 
 on:

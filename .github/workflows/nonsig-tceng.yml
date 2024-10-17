@@ -1,4 +1,4 @@
-run-name: ${{ github.event.inputs.config }} - TCEng
+run-name: TCEng - ${{ github.event.inputs.config }}
 name: TCEng
 
 on:

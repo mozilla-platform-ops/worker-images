@@ -1,4 +1,4 @@
-run-name: ${{ github.event.inputs.config }} - FXCI
+run-name: FXCI - ${{ github.event.inputs.config }}
 name: FXCI
 
 on:

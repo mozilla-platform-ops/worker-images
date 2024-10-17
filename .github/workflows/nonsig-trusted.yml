@@ -1,4 +1,4 @@
-run-name: ${{ github.event.inputs.config }} - FXCI Trusted
+run-name: FXCI Trusted - ${{ github.event.inputs.config }}
 name: FXCI - Trusted
 
 on:
