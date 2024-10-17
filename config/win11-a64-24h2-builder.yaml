@@ -5,8 +5,8 @@ image:
   sku: win11-24h2-ent
   version: latest
 sharedimage:
-  gallery_name: "win11_a64_24h2_tester"
-  image_name: "win11_a64_24h2_tester"
+  gallery_name: "win11_a64_24h2_builder"
+  image_name: "win11_a64_24h2_builder"
   image_version: "1.0.0"
 azure:
   managed_image_resource_group_name: rg-packer-worker-images
@@ -17,10 +17,11 @@ azure:
 vm:
   puppet_version: 8.5.1
   git_version: 2.46.0
+  #size: Standard_D8ps_v5
   size: Standard_E8pds_v5
   tags:
     base_image: win11a6424h2azurebuilder
-    worker_pool_id: win11-a64-24h2-tester
+    worker_pool_id: win11-a64-24h2-builder
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: win11Aarch64
@@ -28,6 +29,7 @@ vm:
     managed_by: packer
 tests:
   - microsoft_tools_builder-a64.tests.ps1
+  #- disable_services_builder.tests.ps1
   - error_reporting.tests.ps1
   - suppress_dialog_boxes.tests.ps1
   - files_system_management.tests.ps1
