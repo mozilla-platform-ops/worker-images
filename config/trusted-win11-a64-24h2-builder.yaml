@@ -21,7 +21,7 @@ vm:
   size: Standard_E8pds_v5
   tags:
     base_image: win11a6424h2azurebuilder
-    worker_pool_id: win11-a64-24h2-builder
+    worker_pool_id: trusted-win11-a64-24h2-builder
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: win11Aarch64
