@@ -63,5 +63,8 @@ Describe "Disable Services" {
         It "UserServiceFlags is set to 0" {
             Get-ItemPropertyValue "HKLM:\SYSTEM\CurrentControlSet\Services\cbdhsvc" -Name "UserServiceFlags" | Should -Be 0
         }
+        It "ClipboardHistory is set to 0" {
+            Get-ItemPropertyValue "HKLM:\SOFTWARE\Microsoft\Clipboard" -Name "EnableClipboardHistory" | Should -Be 0
+        }
     }
 }
