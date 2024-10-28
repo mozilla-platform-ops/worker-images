@@ -1,1 +1,1 @@
-pwsh-preview -Command "Install-Module Pester -Force"
+pwsh -Command "Install-Module Pester -Force"
