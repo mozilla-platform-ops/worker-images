@@ -5,9 +5,9 @@ image:
   sku: win11-24h2-ent
   version: latest
 sharedimage:
-  gallery_name: "win11_a64_24h2_tester"
-  image_name: "win11_a64_24h2_tester"
-  image_version: "1.0.0"
+  gallery_name: "win11_a64_24h2_tester_alpha"
+  image_name: "win11_a64_24h2_tester_alpha"
+  image_version: "0.0.1"
 azure:
   managed_image_resource_group_name: rg-packer-worker-images
   managed_image_storage_account_type: Standard_LRS
