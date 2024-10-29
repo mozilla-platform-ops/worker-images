@@ -199,6 +199,7 @@ source "azure-arm" "sig" {
       "northeurope",
       "southindia",
       "southcentralus",
+      "uksouth",
       "westus",
       "westus2",
       "westus3"
