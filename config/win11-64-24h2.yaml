@@ -9,7 +9,7 @@ sharedimage:
   image_name: "win11_64_24h2"
   image_version: 1.0.0
 azure:
-  managed_image_resource_group_name: rg-packer-through-cib
+  managed_image_resource_group_name: rg-packer-worker-images
   managed_image_storage_account_type: Standard_LRS
   build_location: eastus
   locations:
