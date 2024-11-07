@@ -85,6 +85,8 @@ $partitions = Get-Partition
 # Check if there are no partitions
 if (($partitions.Count -eq 0) -or ($partitions.driveletter -notcontains "D")) {
     # Get available disk space if no partitions exist
+    get-disk
+    pause
     $availableSpace = Get-Disk | Where-Object { $_.OperationalStatus -eq 'Online' } | Measure-Object -Property Size -Sum
     Write-Host "No partitions found. Partitioning disk."
 
