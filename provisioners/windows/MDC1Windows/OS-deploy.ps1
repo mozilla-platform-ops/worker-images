@@ -153,11 +153,11 @@ if ($disks.Count -eq 2) {
     Write-Host "No suitable disks found or more than two disks detected."
 }
 
-pause
-
 ## Check labels
 $part1 = Get-Partition -PartitionNumber 3
 $part2 = Get-Partition -PartitionNumber 4
+
+pause
 
 if ($part1.DriveLetter -ne 'C') {
     write-host “OS Disk incorrectly labeled. Re-labeling to C.”
@@ -166,6 +166,7 @@ if ($part2.DriveLetter -ne 'D') {
     Set-Partition -DriveLetter $part2.DriveLetter -NewDriveLetter Y
     Write-Host "Relabeling partition 2 to D."
 }
+pause
 ## Show if needed
 <#
 foreach ($partition in $partitions) {
