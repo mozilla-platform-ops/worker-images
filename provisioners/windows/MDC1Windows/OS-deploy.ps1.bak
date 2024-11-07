@@ -95,15 +95,9 @@ if (($partitions.Count -eq 0) -or ($partitions.driveletter -notcontains "D")) {
     Write-Host "Avilable space $all_space MB"
     Write-Host "Primary partition size is $primary_size MB"
     Write-Host "Local Install Partition is $local_files_size MB"
-    $disks = Get-PhysicalDisk | Sort-Object -Property Size -Descending
-    if ($disks.Count -ge 2) {
-	    $Disk = Get-PhysicalDisk | Sort-Object -Property Size -Descending | Select-Object -First 1
-    } else {
-        $Disk = "0"
-    }
 
     $diskPartScript = @"
-        select disk $Disk
+        select disk 0
         clean
         convert gpt
         create partition efi size=100
