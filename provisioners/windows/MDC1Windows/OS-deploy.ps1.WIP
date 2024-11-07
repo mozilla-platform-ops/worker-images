@@ -74,51 +74,86 @@ function Update-GetBoot {
     Set-Content -Path $Get_Bootstrap -Value $content
 }
 
-Write-Host "Preparing local environment."
-Set-Location X:\working
-Import-Module "X:\Windows\System32\WindowsPowerShell\v1.0\Modules\DnsClient"
-Import-Module "X:\Windows\System32\WindowsPowerShell\v1.0\Modules\powershell-yaml"
+# Get all online disks
+$disks = Get-Disk | Where-Object { $_.OperationalStatus -eq 'Online' }
 
-# Get all partitions
-$partitions = Get-Partition
+# Function to partition and format the selected disk
+function PartitionAndFormat-Disk {
+    param (
+        [int]$DiskNumber,
+        [int]$LocalFilesSizeMB = 20480
+    )
 
-# Check if there are no partitions
-if (($partitions.Count -eq 0) -or ($partitions.driveletter -notcontains "D")) {
-    # Get available disk space if no partitions exist
-    $availableSpace = Get-Disk | Where-Object { $_.OperationalStatus -eq 'Online' } | Measure-Object -Property Size -Sum
-    Write-Host "No partitions found. Partitioning disk."
+    # Get the available space on the disk
+    $disk = Get-Disk -Number $DiskNumber
+    $availableSpace = [math]::Floor($disk.Size / 1MB) # Total space in MB
+    $primary_size = $availableSpace - $LocalFilesSizeMB # Space for C drive
 
-    $local_files_size = 21480
-    $all_space = [math]::Floor($availableSpace.Sum / 1MB)
-    $primary_size = ($all_space - $local_files_size)
+    Write-Host "Available space: $availableSpace MB"
+    Write-Host "Primary partition size (C): $primary_size MB"
+    Write-Host "Local Install Partition size (D): $LocalFilesSizeMB MB"
 
-    Write-Host "Avilable space $all_space MB"
-    Write-Host "Primary partition size is $primary_size MB"
-    Write-Host "Local Install Partition is $local_files_size MB"
-
+    # Create Diskpart script
     $diskPartScript = @"
-        select disk 0
-        clean
-        convert gpt
-        create partition efi size=100
-        format fs=fat32 label=EFI
-        assign letter=S
-        create partition msr size=16
-        create partition primary size=$primary_size
-        format fs=ntfs quick
-        assign letter=C
-        create partition primary size=20480
-        format fs=ntfs quick
-        assign letter=D
-        exit
+select disk $DiskNumber
+clean
+convert gpt
+create partition efi size=100
+format fs=fat32 label=EFI quick
+assign letter=S
+create partition msr size=16
+create partition primary size=$primary_size
+format fs=ntfs quick
+assign letter=C
+create partition primary size=$LocalFilesSizeMB
+format fs=ntfs quick
+assign letter=D
+exit
 "@
 
-    $diskPartScript | Out-File -FilePath "$env:TEMP\diskpart_script.txt" -Encoding ASCII
-    Start-Process "diskpart.exe" -ArgumentList "/s $env:TEMP\diskpart_script.txt" -Wait
+    # Save the Diskpart script to a temporary file
+    $scriptPath = "$env:TEMP\diskpart_script.txt"
+    $diskPartScript | Out-File -FilePath $scriptPath -Encoding ASCII
+
+    # Run Diskpart with the script
+    Start-Process "diskpart.exe" -ArgumentList "/s $scriptPath" -Wait
+
+    Write-Host "Disk $DiskNumber has been partitioned and formatted."
 }
+
+# Main logic for disk selection and formatting
+if ($disks.Count -eq 2) {
+    # Sort disks by size and select the larger one
+    $largerDisk = $disks | Sort-Object -Property Size -Descending | Select-Object -First 1
+
+    # Check if the larger disk has no D drive
+    $partitions = Get-Partition -DiskNumber $largerDisk.Number
+    if ($partitions.DriveLetter -notcontains "D") {
+        Write-Host "Partitioning the larger of the two disks and adding D drive."
+        PartitionAndFormat-Disk -DiskNumber $largerDisk.Number
+    } else {
+        Write-Host "The larger disk already contains a D drive."
+    }
+} elseif ($disks.Count -eq 1) {
+    # Only one disk found, use this disk
+    $singleDisk = $disks[0]
+    $partitions = Get-Partition -DiskNumber $singleDisk.Number
+    if ($partitions.DriveLetter -notcontains "D") {
+        Write-Host "Only one disk found. Partitioning this disk and adding D drive."
+        PartitionAndFormat-Disk -DiskNumber $singleDisk.Number
+    } else {
+        Write-Host "The single disk already contains a D drive."
+    }
+} else {
+    Write-Host "No suitable disks found or more than two disks detected."
+}
+
+
 ## Check labels
 $part1 = Get-Partition -PartitionNumber 3
 $part2 = Get-Partition -PartitionNumber 4
+
+pause
 
 if ($part1.DriveLetter -ne 'C') {
     write-host “OS Disk incorrectly labeled. Re-labeling to C.”
@@ -127,6 +162,7 @@ if ($part2.DriveLetter -ne 'D') {
     Set-Partition -DriveLetter $part2.DriveLetter -NewDriveLetter Y
     Write-Host "Relabeling partition 2 to D."
 }
+pause
 ## Show if needed
 <#
 foreach ($partition in $partitions) {
