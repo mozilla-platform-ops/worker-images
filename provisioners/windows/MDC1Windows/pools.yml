@@ -1,5 +1,17 @@
 ---
 pools:
+  - name: "win10-64-2009-hw"
+    puppet_version: "8.5.1"
+    Description: "Moonshot Win 10 hardware "
+    image: "win10-2009-MS-11-05-2024"
+    src_Organisation: "mozilla-platform-ops"
+    src_Repository: "ronin_puppet"
+    src_Branch: "win11hardware"
+    hash: "8346140"
+    secret_date: "11-07-2024"
+    domain_suffix: "wintest2.releng.mdc1.mozilla.com"
+    nodes:
+    - t-w1064-ms-151
   - name: "win11-64-2009-hw-ref-alpha"
     puppet_version: "8.5.1"
     Description: "NUC12 Hardware Refrence Staging/Testing Pool"
