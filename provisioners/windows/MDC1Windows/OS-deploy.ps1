@@ -74,14 +74,6 @@ function Update-GetBoot {
     Set-Content -Path $Get_Bootstrap -Value $content
 }
 
-Write-Host "Preparing local environment."
-Set-Location X:\working
-Import-Module "X:\Windows\System32\WindowsPowerShell\v1.0\Modules\DnsClient"
-Import-Module "X:\Windows\System32\WindowsPowerShell\v1.0\Modules\powershell-yaml"
-
-# Get all online disks
-$disks = Get-Disk | Where-Object { $_.OperationalStatus -eq 'Online' }
-
 # Function to partition and format the selected disk
 function PartitionAndFormat-Disk {
     param (
@@ -126,12 +118,20 @@ exit
     Write-Host "Disk $DiskNumber has been partitioned and formatted."
 }
 
+Write-Host "Preparing local environment."
+Set-Location X:\working
+Import-Module "X:\Windows\System32\WindowsPowerShell\v1.0\Modules\DnsClient"
+Import-Module "X:\Windows\System32\WindowsPowerShell\v1.0\Modules\powershell-yaml"
+
+# Get all online disks
+$disks = Get-Disk | Where-Object { $_.OperationalStatus -eq 'Online' }
+
 # Main logic for disk selection and formatting
 if ($disks.Count -eq 2) {
-    # Sort disks by size and select the larger one
+    write-host Sort disks by size and select the larger one
     $largerDisk = $disks | Sort-Object -Property Size -Descending | Select-Object -First 1
 
-    # Check if the larger disk has no partitions or does not contain the "D" drive
+    write-host Check if the larger disk has no partitions or does not contain the "D" drive
     $partitions = Get-Partition -DiskNumber $largerDisk.Number
     if (($partitions.Count -eq 0) -or ($partitions.DriveLetter -notcontains "D")) {
         Write-Host "Partitioning the larger of the two disks."
@@ -140,7 +140,7 @@ if ($disks.Count -eq 2) {
         Write-Host "The larger disk already contains partitions with drive letter D."
     }
 } elseif ($disks.Count -eq 1) {
-    # Only one disk found, use this disk
+    write-host Only one disk found, use this disk
     $singleDisk = $disks[0]
     $partitions = Get-Partition -DiskNumber $singleDisk.Number
     if (($partitions.Count -eq 0) -or ($partitions.DriveLetter -notcontains "D")) {
@@ -153,6 +153,7 @@ if ($disks.Count -eq 2) {
     Write-Host "No suitable disks found or more than two disks detected."
 }
 
+pause
 
 ## Check labels
 $part1 = Get-Partition -PartitionNumber 3
