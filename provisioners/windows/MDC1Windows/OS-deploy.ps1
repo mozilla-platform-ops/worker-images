@@ -123,15 +123,14 @@ Set-Location X:\working
 Import-Module "X:\Windows\System32\WindowsPowerShell\v1.0\Modules\DnsClient"
 Import-Module "X:\Windows\System32\WindowsPowerShell\v1.0\Modules\powershell-yaml"
 
-# Get all online disks
 $disks = Get-Disk | Where-Object { $_.OperationalStatus -eq 'Online' }
 
 # Main logic for disk selection and formatting
 if ($disks.Count -eq 2) {
-    write-host Sort disks by size and select the larger one
+    # Sort disks by size and select the larger one
     $largerDisk = $disks | Sort-Object -Property Size -Descending | Select-Object -First 1
 
-    write-host Check if the larger disk has no partitions or does not contain the "D" drive
+    # Check if the larger disk has no partitions or does not contain the "D" drive
     $partitions = Get-Partition -DiskNumber $largerDisk.Number
     if (($partitions.Count -eq 0) -or ($partitions.DriveLetter -notcontains "D")) {
         Write-Host "Partitioning the larger of the two disks."
@@ -140,7 +139,7 @@ if ($disks.Count -eq 2) {
         Write-Host "The larger disk already contains partitions with drive letter D."
     }
 } elseif ($disks.Count -eq 1) {
-    write-host Only one disk found, use this disk
+    # Only one disk found, use this disk
     $singleDisk = $disks[0]
     $partitions = Get-Partition -DiskNumber $singleDisk.Number
     if (($partitions.Count -eq 0) -or ($partitions.DriveLetter -notcontains "D")) {
