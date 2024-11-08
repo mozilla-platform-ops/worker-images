@@ -237,11 +237,12 @@ foreach ($partition in $partitions) {
 #>
 ## Get node name
 
-$Ethernet = [System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces() | Where-Object { $_.name -match "ethernet" }
-$IPAddress = ($Ethernet.GetIPProperties().UnicastAddresses.Address | Where-object { $_.AddressFamily -eq "InterNetwork" }).IPAddressToString
-$ResolvedName = (Resolve-DnsName -Name $IPAddress -Server "10.48.75.120").NameHost
+write-host $Ethernet = [System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces() | Where-Object { $_.name -match "ethernet" }
+write-host $IPAddress = ($Ethernet.GetIPProperties().UnicastAddresses.Address | Where-object { $_.AddressFamily -eq "InterNetwork" }).IPAddressToString
+write-host $ResolvedName = (Resolve-DnsName -Name $IPAddress -Server "10.48.75.120").NameHost
 
-$index = $ResolvedName.IndexOf('.')
+write-host $index = $ResolvedName.IndexOf('.')
+pause
 $shortname = $ResolvedName.Substring(0, $index)
 
 write-host checking name
