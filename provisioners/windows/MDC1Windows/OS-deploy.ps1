@@ -194,17 +194,16 @@ if ($disks.Count -eq 2) {
     $partC = Get-Partition | Where-Object { $_.DriveLetter -eq 'C' }
     $partD = Get-Partition | Where-Object { $_.DriveLetter -eq 'D' }
 
-    if ($partC -eq $null) {
+    if (-not $partC) {
         Write-Host "OS Disk incorrectly labeled. Relabeling to C."
-        write-host $diskCPartition = Get-Partition -DiskNumber $diskC -PartitionNumber 3
-        write-host Set-Partition -DriveLetter $diskCPartition.DriveLetter -NewDriveLetter C
-        pause
+        $diskCPartition = Get-Partition -DiskNumber $diskC -PartitionNumber 3
+        Set-Partition -DiskNumber $diskCPartition.DiskNumber -PartitionNumber $diskCPartition.PartitionNumber -NewDriveLetter C
     }
 
-    if ($partD -eq $null) {
+    if (-not $partD) {
         Write-Host "Second disk incorrectly labeled. Relabeling to D."
         $diskDPartition = Get-Partition -DiskNumber $diskD -PartitionNumber 1
-        Set-Partition -DriveLetter $diskDPartition.DriveLetter -NewDriveLetter D
+        Set-Partition -DiskNumber $diskDPartition.DiskNumber -PartitionNumber $diskDPartition.PartitionNumber -NewDriveLetter D
     }
 } elseif ($disks.Count -eq 1) {
     # Check labels on single disk
@@ -215,12 +214,12 @@ if ($disks.Count -eq 2) {
 
     if ($partC) {
         Write-Host "OS Disk incorrectly labeled. Relabeling partition to C."
-        Set-Partition -DriveLetter $partC.DriveLetter -NewDriveLetter C
+        Set-Partition -DiskNumber $partC.DiskNumber -PartitionNumber $partC.PartitionNumber -NewDriveLetter C
     }
 
     if ($partD) {
         Write-Host "Data partition incorrectly labeled. Relabeling partition to D."
-        Set-Partition -DriveLetter $partD.DriveLetter -NewDriveLetter D
+        Set-Partition -DiskNumber $partD.DiskNumber -PartitionNumber $partD.PartitionNumber -NewDriveLetter D
     }
 }
 
