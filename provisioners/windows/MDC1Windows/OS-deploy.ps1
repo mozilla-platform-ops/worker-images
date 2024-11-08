@@ -237,9 +237,9 @@ foreach ($partition in $partitions) {
 #>
 ## Get node name
 
-$Ethernet = [System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces() | Where-Object { $_.name -match "ethernet" }"
-$IPAddress = ($Ethernet.GetIPProperties().UnicastAddresses.Address | Where-object { $_.AddressFamily -eq "InterNetwork" }).IPAddressToString"
-$ResolvedName = "(Resolve-DnsName -Name $IPAddress -Server "10.48.75.120").NameHost"
+$Ethernet = [System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces() | Where-Object { $_.name -match "ethernet" }
+$IPAddress = ($Ethernet.GetIPProperties().UnicastAddresses.Address | Where-object { $_.AddressFamily -eq "InterNetwork" }).IPAddressToString
+$ResolvedName = (Resolve-DnsName -Name $IPAddress -Server "10.48.75.120").NameHost
 
 pause
 
