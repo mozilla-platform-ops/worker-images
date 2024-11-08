@@ -12,6 +12,7 @@ pools:
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
     - t-w1064-ms-151
+    - t-w1064-ms-152
   - name: "win11-64-2009-hw-ref-alpha"
     puppet_version: "8.5.1"
     Description: "NUC12 Hardware Reference Staging/Testing Pool"
