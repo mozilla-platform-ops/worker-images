@@ -196,8 +196,9 @@ if ($disks.Count -eq 2) {
 
     if ($partC -eq $null) {
         Write-Host "OS Disk incorrectly labeled. Relabeling to C."
-        $diskCPartition = Get-Partition -DiskNumber $diskC -PartitionNumber 3
-        Set-Partition -DriveLetter $diskCPartition.DriveLetter -NewDriveLetter C
+        write-host $diskCPartition = Get-Partition -DiskNumber $diskC -PartitionNumber 3
+        write-host Set-Partition -DriveLetter $diskCPartition.DriveLetter -NewDriveLetter C
+        pause
     }
 
     if ($partD -eq $null) {
