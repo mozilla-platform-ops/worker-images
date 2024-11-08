@@ -225,18 +225,8 @@ if ($disks.Count -eq 2) {
 
 Write-Host "Partition labeling check and adjustments complete."
 
-pause
-
-if ($part1.DriveLetter -ne 'C') {
-    write-host “OS Disk incorrectly labeled. Re-labeling to C.”
-}
-if ($part2.DriveLetter -ne 'D') {
-    Set-Partition -DriveLetter $part2.DriveLetter -NewDriveLetter Y
-    Write-Host "Relabeling partition 2 to D."
-}
-pause
 ## Show if needed
-<#
+#<#
 foreach ($partition in $partitions) {
     Write-Host "Partition $($partition.DriveLetter):"
     Write-Host "   File System: $($partition.FileSystem)"
