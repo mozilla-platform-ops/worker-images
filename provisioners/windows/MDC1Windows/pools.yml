@@ -32,7 +32,7 @@ pools:
     image: "win11-2009-NUC-05-06-2024"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "win11hardware"
+    src_Branch: "windows"
     hash: "8346140"
     secret_date: "05-13-2024"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
