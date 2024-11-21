@@ -24,8 +24,8 @@ vm:
     worker_pool_id: win2022-64-2009
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: windows
-    deploymentId: "8346140"
+    sourceBranch: windows_servercore
+    deploymentId: "a211726"
     managed_by: packer
 tests:
   - microsoft_tools_builder.tests.ps1
