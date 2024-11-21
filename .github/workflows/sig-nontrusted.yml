@@ -53,11 +53,12 @@ jobs:
             Application_ID = "${{ secrets.AZURE_APPLICATION_ID_FXCI }}"
           }
           New-AzSharedWorkerImage @Vars
+          Write-Output "sharedimageversion=$ENV:PKR_VAR_sharedimage_version" >> $GITHUB_ENV
       - name: Upload Release Notes Artifact
         uses: actions/upload-artifact@v4
         with:
           name: release-notes-${{ github.event.inputs.config }}
-          path: ${{ github.event.inputs.config }}-${{ env.PKR_VAR_sharedimage_version }}.md
+          path: ${{ github.event.inputs.config }}-${{ env.sharedimageversion }}.md
           overwrite: true
           retention-days: 1
           if-no-files-found: error
@@ -74,14 +75,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CONFIG: ${{ github.event.inputs.config }}
+          VERSION: ${{ env.sharedimageversion }}
         run: |
           ## Extracted to a directory
           Get-ChildItem
           if ( -not (Test-Path "${{ github.workspace }}\sboms")) {
             New-Item -ItemType Directory -Path "${{ github.workspace }}\sboms" -Force
           }
-          $src = "release-notes-${{ github.event.inputs.config }}\${{ github.event.inputs.config }}-${{ env.PKR_VAR_sharedimage_version }}.md"
-          $dst = "${{ github.workspace }}\sboms\${{ github.event.inputs.config }}-${{ env.PKR_VAR_sharedimage_version }}.md"
+          $src = "release-notes-${{ github.event.inputs.config }}\${{ github.event.inputs.config }}-${{ env.VERSION }}.md"
+          $dst = "${{ github.workspace }}\sboms\${{ github.event.inputs.config }}-${{ env.VERSION }}.md"
           Move-item -Path $src -Destination $dst -Force
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
