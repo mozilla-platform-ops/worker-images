@@ -46,11 +46,9 @@ apt-get install -y \
     libseccomp-dev \
     libtool \
     pkg-config \
-    runc \
     squashfs-tools \
     squashfs-tools-ng \
     uidmap \
-    wget \
     zlib1g-dev
 
 # install deb
