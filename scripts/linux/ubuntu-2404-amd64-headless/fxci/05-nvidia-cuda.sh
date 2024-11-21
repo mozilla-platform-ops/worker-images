@@ -35,14 +35,23 @@ apt-get -y install libcudnn9-dev-cuda-12
 
 # pre-reqs
 apt-get install -y \
-   build-essential \
-   libseccomp-dev \
-   libglib2.0-dev \
-   pkg-config \
-   squashfs-tools \
-   cryptsetup \
-   runc \
-   uidmap
+    autoconf \
+    automake \
+    cryptsetup \
+    fuse2fs \
+    git \
+    fuse \
+    libfuse-dev \
+    libglib2.0-dev \
+    libseccomp-dev \
+    libtool \
+    pkg-config \
+    runc \
+    squashfs-tools \
+    squashfs-tools-ng \
+    uidmap \
+    wget \
+    zlib1g-dev
 
 # install deb
 cd /tmp
