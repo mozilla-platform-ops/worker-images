@@ -53,7 +53,7 @@ jobs:
             Application_ID = "${{ secrets.AZURE_APPLICATION_ID_FXCI }}"
           }
           New-AzSharedWorkerImage @Vars
-          Write-Output "sharedimageversion=$ENV:PKR_VAR_sharedimage_version" >> $GITHUB_ENV
+          "sharedimageversion=$ENV:PKR_VAR_sharedimage_version" >> $env:GITHUB_ENV
       - name: Upload Release Notes Artifact
         uses: actions/upload-artifact@v4
         with:
