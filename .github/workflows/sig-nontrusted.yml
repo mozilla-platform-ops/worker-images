@@ -77,8 +77,11 @@ jobs:
         run: |
           ## Extracted to a directory
           Get-ChildItem
+          if ( -not (Test-Path "${{ github.workspace }}\sboms")) {
+            New-Item -ItemType Directory -Path "${{ github.workspace }}\sboms" -Force
+          }
           $src = "release-notes-${{ github.event.inputs.config }}\${{ github.event.inputs.config }}-${{ env.PKR_VAR_sharedimage_version }}.md"
-          $dst = "${{ github.workspace }}\config\${{ github.event.inputs.config }}-${{ env.PKR_VAR_sharedimage_version }}.md"
+          $dst = "${{ github.workspace }}\sboms\${{ github.event.inputs.config }}-${{ env.PKR_VAR_sharedimage_version }}.md"
           Move-item -Path $src -Destination $dst -Force
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
