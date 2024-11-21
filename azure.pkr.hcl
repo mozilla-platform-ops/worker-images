@@ -430,8 +430,8 @@ build {
 
   provisioner "file" {
     only        = ["azure-arm.sig"]
-    destination = "${path.root}/${local.sbom_name}-${var.image_version}.md"
-    source      = "C:/${local.sbom_name}-${var.image_version}.md"
+    destination = "${path.root}/${local.sbom_name}-${var.sharedimage_version}.md"
+    source      = "C:/${local.sbom_name}-${var.sharedimage_version}.md"
     direction   = "download"
   }
 

@@ -11,7 +11,7 @@ function Set-ReleaseNotes {
     ## The config will be the name of the configuration file (win11-64-2009) without the extension
     ## We'll use this to generate release notes for each OS
 
-    Write-Log -message ('{0} :: Processing {1} - {2:o}' -f $($MyInvocation.MyCommand.Name), $Config, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+    Write-Log -message ('{0} :: Processing {1} {2} - {3:o}' -f $($MyInvocation.MyCommand.Name), $Config, $Version, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
 
     ## Let's install markdownPS just in case it isn't installed
     Set-MarkdownPSModule
@@ -162,13 +162,14 @@ function Set-ReleaseNotes {
         Write-Log -message ('{0} :: {1} - {2:o}' -f $($MyInvocation.MyCommand.Name), $reason, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
     }
 
-    if ([String]::IsNullOrEmpty($Version)) {
+    if ($Version) {
+        Write-Log -message ('{0} :: Copying software_report.md to {1} - {2:o}' -f $($MyInvocation.MyCommand.Name), "(C:\$($Config)-$($Version).md)", (Get-Date).ToUniversalTime()) -severity 'DEBUG'
         ## Now copy the software markdown file elsewhere to prep for uploading to azure
-        Copy-Item -Path "C:\software_report.md" -Destination "C:\$($Config).md"
+        Copy-Item -Path "C:\software_report.md" -Destination "C:\$($Config)-$($Version).md"
     }
     else {
         ## Now copy the software markdown file elsewhere to prep for uploading to azure
-        Copy-Item -Path "C:\software_report.md" -Destination "C:\$($Config)-$($version).md"
+        Copy-Item -Path "C:\software_report.md" -Destination "C:\$($Config).md"
     }
 
 }
