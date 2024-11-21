@@ -2,7 +2,10 @@ function Set-ReleaseNotes {
     [CmdletBinding()]
     param (
         [String]
-        $Config
+        $Config,
+
+        [String]
+        $Version
     )
 
     ## The config will be the name of the configuration file (win11-64-2009) without the extension
@@ -154,23 +157,18 @@ function Set-ReleaseNotes {
     ## output the contents of the markdown file
     Get-Content -Path "C:\software_report.md"
 
-    ## Now copy the software markdown file elsewhere to prep for uploading to azure
-    Copy-Item -Path "C:\software_report.md" -Destination "C:\$($Config).md"
-
     if (-Not (Test-Path "C:\software_report.md")) {
         $reason = "Unable to find software_report.md after copy-item"
         Write-Log -message ('{0} :: {1} - {2:o}' -f $($MyInvocation.MyCommand.Name), $reason, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
     }
 
-    ## Upload it to Azure
-    # $ENV:AZCOPY_AUTO_LOGIN_TYPE = "SPN"
-    # $ENV:AZCOPY_SPA_APPLICATION_ID = $ENV:application_id
-    # $ENV:AZCOPY_SPA_CLIENT_SECRET = $ENV:client_secret
-    # $ENV:AZCOPY_TENANT_ID = $ENV:tenant_id
-    
-    # Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
-    #     "copy",
-    #     "C:\$($Config).md",
-    #     "https://roninpuppetassets.blob.core.windows.net/packer"
-    # ) -Wait -NoNewWindow
+    if ([String]::IsNullOrEmpty($Version)) {
+        ## Now copy the software markdown file elsewhere to prep for uploading to azure
+        Copy-Item -Path "C:\software_report.md" -Destination "C:\$($Config).md"
+    }
+    else {
+        ## Now copy the software markdown file elsewhere to prep for uploading to azure
+        Copy-Item -Path "C:\software_report.md" -Destination "C:\$($Config)-$($version).md"
+    }
+
 }

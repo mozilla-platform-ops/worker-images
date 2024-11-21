@@ -179,10 +179,10 @@ source "azure-arm" "sig" {
   image_version   = "${var.image_version}"
 
   # Destination
-  temp_resource_group_name           = "${var.temp_resource_group_name}"
-  location                           = "Central US"
-  vm_size                            = "${var.vm_size}"
-  async_resourcegroup_delete         = true
+  temp_resource_group_name   = "${var.temp_resource_group_name}"
+  location                   = "Central US"
+  vm_size                    = "${var.vm_size}"
+  async_resourcegroup_delete = true
 
   # Shared image gallery https:github.com/mozilla-platform-ops/relops_infra_as_code/blob/master/terraform/azure_fx_nonci/worker-images.tf 
   shared_image_gallery_destination {
@@ -421,8 +421,16 @@ build {
   }
 
   provisioner "file" {
+    only        = ["azure-arm.nonsig"]
     destination = "${path.root}/${local.sbom_name}.md"
     source      = "C:/${local.sbom_name}.md"
+    direction   = "download"
+  }
+
+  provisioner "file" {
+    only        = ["azure-arm.sig"]
+    destination = "${path.root}/${local.sbom_name}-${var.image_version}.md"
+    source      = "C:/${local.sbom_name}-${var.image_version}.md"
     direction   = "download"
   }
 
