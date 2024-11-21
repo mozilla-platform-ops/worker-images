@@ -2,10 +2,11 @@
 #
 # cuda
 cd /tmp
+
 wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
 dpkg -i cuda-keyring_1.1-1_all.deb
 apt-get update
-apt-get -y install cuda
+apt-get -y install cuda-toolkit
 
 
 # see https://developer.nvidia.com/cudnn
@@ -16,8 +17,6 @@ apt-get -y install cuda
 
 UBUNTU_RELEASE=$(lsb_release -rs) # 18.04
 DISTRO=ubuntu${UBUNTU_RELEASE//\./} # ubuntu1804
-cuda_version="cuda12.0"
-cudnn_version="8.8.1.*"
 
 wget https://developer.download.nvidia.com/compute/cuda/repos/${DISTRO}/x86_64/cuda-${DISTRO}.pin 
 
@@ -26,8 +25,8 @@ apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repo
 add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/${DISTRO}/x86_64/ /"
 apt-get update
 
-apt-get install libcudnn8=${cudnn_version}-1+${cuda_version}
-apt-get install libcudnn8-dev=${cudnn_version}-1+${cuda_version}
+apt-get -y install cudnn9-cuda-12
+apt-get -y install libcudnn9-dev-cuda-12
 
 # see https://cloud.sylabs.io/ for more info
 # steps from https://docs.sylabs.io/guides/3.11/admin-guide/installation.html
