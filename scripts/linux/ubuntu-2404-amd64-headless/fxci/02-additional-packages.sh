@@ -41,5 +41,7 @@ MISC_PACKAGES+=(apt-transport-https ca-certificates software-properties-common)
 MISC_PACKAGES+=(liblz4-tool)
 # random bits
 MISC_PACKAGES+=(libhunspell-1.7-0 libhunspell-dev)
+# extra things that firefox translations needs
+MISC_PACKAGES+=(parallel tmux htop vim nano screen)
 
 retry apt-get install -y ${MISC_PACKAGES[@]}
