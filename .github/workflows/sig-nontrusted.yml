@@ -57,7 +57,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-notes-${{ github.event.inputs.config }}
-          path: ${{ github.event.inputs.config }}.md
+          path: ${{ github.event.inputs.config }}-${{ env.PKR_VAR_sharedimage_version }}.md
           overwrite: true
           retention-days: 1
           if-no-files-found: error
@@ -77,8 +77,9 @@ jobs:
         run: |
           ## Extracted to a directory
           Get-ChildItem
-          Move-item -Path "release-notes-${{ github.event.inputs.config }}\${{ github.event.inputs.config }}.md" -Destination "${{ github.workspace }}\config\${{ github.event.inputs.config }}.md" -Force
-
+          $src = "release-notes-${{ github.event.inputs.config }}\${{ github.event.inputs.config }}-${{ env.PKR_VAR_sharedimage_version }}.md"
+          $dst = "${{ github.workspace }}\config\${{ github.event.inputs.config }}-${{ env.PKR_VAR_sharedimage_version }}.md"
+          Move-item -Path $src -Destination $dst -Force
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           
@@ -115,7 +116,7 @@ jobs:
           "@
 
           $PR_Title = "$ENV:CONFIG ($Date) Image Update"
-          git add "${{ github.workspace }}/config/${{ github.event.inputs.config }}.md"
+          git add $dst
           git commit -m "$($ENV:CONFIG) - Release Notes for $($ENV:CONFIG).md"
           git push -u origin $ReleaseBranch
           gh pr create --base main --head $ReleaseBranch --title $PR_Title --body $PR_Body
