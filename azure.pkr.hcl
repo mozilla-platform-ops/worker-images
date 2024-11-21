@@ -411,12 +411,13 @@ build {
       "config=${var.config}",
       "client_id=${var.client_id}",
       "tenant_id=${var.tenant_id}",
-      "application_id=${var.application_id}"
+      "application_id=${var.application_id}",
+      "sharedimage_version=${var.sharedimage_version}"
     ]
     inline = [
       "Import-Module BootStrap -Force",
       "Set-MarkdownPSModule",
-      "Set-ReleaseNotes -Config $ENV:config"
+      "Set-ReleaseNotes -Config $ENV:config -Version $ENV:sharedimage_version"
     ]
   }
 
