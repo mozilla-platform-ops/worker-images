@@ -75,16 +75,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CONFIG: ${{ github.event.inputs.config }}
-          VERSION: ${{ env.sharedimageversion }}
         run: |
           ## Extracted to a directory
           Get-ChildItem
           if ( -not (Test-Path "${{ github.workspace }}\sboms")) {
             New-Item -ItemType Directory -Path "${{ github.workspace }}\sboms" -Force
           }
-          $src = "release-notes-${{ github.event.inputs.config }}\${{ github.event.inputs.config }}-${{ env.VERSION }}.md"
-          $dst = "${{ github.workspace }}\sboms\${{ github.event.inputs.config }}-${{ env.VERSION }}.md"
-          Move-item -Path $src -Destination $dst -Force
+          $sbom = Get-ChildItem -Path "release-notes-${{ github.event.inputs.config }}" -Recurse
+          $sbom
+          Copy-Item -Path $sbom.FullName -Destination "${{ github.workspace }}\sboms" -Recurse -Force
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           
@@ -121,7 +120,7 @@ jobs:
           "@
 
           $PR_Title = "$ENV:CONFIG ($Date) Image Update"
-          git add $dst
+          git add $sbom.FullName
           git commit -m "$($ENV:CONFIG) - Release Notes for $($ENV:CONFIG).md"
           git push -u origin $ReleaseBranch
           gh pr create --base main --head $ReleaseBranch --title $PR_Title --body $PR_Body
