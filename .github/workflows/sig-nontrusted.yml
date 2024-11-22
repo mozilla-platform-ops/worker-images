@@ -84,6 +84,7 @@ jobs:
           $sbom = Get-ChildItem -Path "release-notes-${{ github.event.inputs.config }}" -Recurse
           $sbom
           Copy-Item -Path $sbom.FullName -Destination "${{ github.workspace }}\sboms" -Recurse -Force
+          $dst = "${{ github.workspace }}\sboms\$($sbom.name)"
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           
@@ -120,7 +121,7 @@ jobs:
           "@
 
           $PR_Title = "$ENV:CONFIG ($Date) Image Update"
-          git add $sbom.FullName
+          git add $dst
           git commit -m "$($ENV:CONFIG) - Release Notes for $($ENV:CONFIG).md"
           git push -u origin $ReleaseBranch
           gh pr create --base main --head $ReleaseBranch --title $PR_Title --body $PR_Body
