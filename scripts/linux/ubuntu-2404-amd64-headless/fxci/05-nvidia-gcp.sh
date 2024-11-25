@@ -57,9 +57,9 @@ dpkg -i cuda-keyring_1.1-1_all.deb
 
 ## Install the cuDNN libraries https://docs.nvidia.com/deeplearning/cudnn/latest/installation/linux.html#ubuntu-debian-network-installation 
 apt-get update
-CUDA=()
+#CUDA=()
 ## meta-package name https://docs.nvidia.com/deeplearning/cudnn/latest/installation/linux.html#meta-packages
-CUDA+=(cudnn9-cuda-12)
+#CUDA+=(cudnn9-cuda-12)
 ## base package name
-CUDA+=(libcudnn9-cuda-12)
-retry apt-get install -y ${CUDA[@]}
+#CUDA+=(libcudnn9-cuda-12)
+apt-get install -y cudnn

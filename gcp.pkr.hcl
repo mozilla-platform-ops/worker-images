@@ -516,9 +516,9 @@ build {
     ]
   }
 
-  #provisioner "shell" {
-  #  inline = ["/usr/bin/cloud-init status --wait"]
-  #}
+  provisioner "shell" {
+    inline = ["/usr/bin/cloud-init status --wait"]
+  }
 
   ## Run all tests
   provisioner "shell" {
