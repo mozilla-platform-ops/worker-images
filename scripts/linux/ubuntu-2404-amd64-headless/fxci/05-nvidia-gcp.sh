@@ -52,7 +52,7 @@ UBUNTU_RELEASE=$(lsb_release -rs) # 24.04
 DISTRO=ubuntu${UBUNTU_RELEASE//\./} # ubuntu2404
 
 ## Install via network repo installation method https://docs.nvidia.com/cuda/archive/12.4.1/cuda-installation-guide-linux/index.html#network-repo-installation-for-ubuntu 
-retry curl -sSO https://developer.download.nvidia.com/compute/cuda/repos/$distro/$arch/cuda-keyring_1.1-1_all.deb
+retry curl -sSO https://developer.download.nvidia.com/compute/cuda/repos/${DISTRO}/x86_64/cuda-keyring_1.1-1_all.deb
 dpkg -i cuda-keyring_1.1-1_all.deb
 
 ## Install the cuDNN libraries https://docs.nvidia.com/deeplearning/cudnn/latest/installation/linux.html#ubuntu-debian-network-installation 
