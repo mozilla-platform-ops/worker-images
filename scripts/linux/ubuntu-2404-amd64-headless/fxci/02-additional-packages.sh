@@ -25,6 +25,8 @@ function retry {
   set -e
 }
 
+export DEBIAN_FRONTEND=noninteractive
+
 # add additional packages
 
 MISC_PACKAGES=()
@@ -43,5 +45,8 @@ MISC_PACKAGES+=(liblz4-tool)
 MISC_PACKAGES+=(libhunspell-1.7-0 libhunspell-dev)
 # extra things that firefox translations needs
 MISC_PACKAGES+=(parallel tmux htop vim nano screen)
+# nvidia driver needs this per 
+MISC_PACKAGES+=(gcc make dkms pciutils linux-image-gcp linux-headers-gcp)
 
+# install the packages
 retry apt-get install -y ${MISC_PACKAGES[@]}
