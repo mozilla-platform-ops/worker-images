@@ -69,22 +69,23 @@ jobs:
     permissions: write-all
     steps:
       - uses: actions/checkout@v4
+      - name: "Create sboms directory"
+        shell: pwsh
+        run: |
+          if ( -not (Test-Path "${{ github.workspace }}\sboms")) {
+            New-Item -ItemType Directory -Path "${{ github.workspace }}\sboms" -Force
+          }
       - uses: actions/download-artifact@v4
+        with:
+          path: ${{ github.workspace }}\sboms
       - name: "Test SBOM Exists & Create PR"
         shell: pwsh  
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CONFIG: ${{ github.event.inputs.config }}
         run: |
-          ## Extracted to a directory
-          Get-ChildItem
-          if ( -not (Test-Path "${{ github.workspace }}\sboms")) {
-            New-Item -ItemType Directory -Path "${{ github.workspace }}\sboms" -Force
-          }
-          $sbom = Get-ChildItem -Path "release-notes-${{ github.event.inputs.config }}" -Recurse
+          $sbom = Get-ChildItem -Path "${{ github.workspace }}\sboms" -Recurse
           $sbom
-          Copy-Item -Path $sbom.FullName -Destination "${{ github.workspace }}\sboms" -Recurse -Force
-          Remove-Item -Path "release-notes-${{ github.event.inputs.config }}" -Recurse -Force
           $dst = "${{ github.workspace }}\sboms\$($sbom.name)"
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
