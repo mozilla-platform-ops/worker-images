@@ -36,8 +36,6 @@ cd /opt/google/cuda-installer/ || exit
 retry curl -fSsL -O https://github.com/GoogleCloudPlatform/compute-gpu-installation/releases/download/cuda-installer-v1.1.0/cuda_installer.pyz
 python3 cuda_installer.pyz install_cuda
 
-python3 cuda_installer.pyz verify_cuda
-
 ## From https://cloud.google.com/compute/docs/gpus/install-drivers-gpu#install-script
 ## Installing the toolkit will reboot the machine so lets check if it's there before installing
 

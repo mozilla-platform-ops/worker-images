@@ -486,11 +486,31 @@ build {
     ]
   }
 
-    provisioner "shell" {
+  provisioner "shell" {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect = true
     scripts = [
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/06-nvidia-gcp.sh"
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/06-nvidia-gcp.sh",
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/07-nvidia-gcp-verify.sh",
+    ]
+  }
+
+  provisioner "shell" {
+    execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
+    expect_disconnect = true
+    pause_before = "10s"
+    start_retry_timeout = "30m"
+    scripts = [
+      "${path.cwd}/scripts/linux/common/reboot.sh"
+    ]
+  }
+
+  provisioner "shell" {
+    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    expect_disconnect = true
+    scripts = [
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/06-nvidia-gcp.sh",
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/07-nvidia-gcp-verify.sh",
     ]
   }
 
