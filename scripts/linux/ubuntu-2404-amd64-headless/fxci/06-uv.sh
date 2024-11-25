@@ -27,8 +27,6 @@ function retry {
 
 export DEBIAN_FRONTEND=noninteractive
 
-## Install UV
-retry curl -LsSf https://astral.sh/uv/install.sh | sh
 ## Install python 3.10 due to limitation in Translation
 uv python install 3.10
 uv python list --only-installed
