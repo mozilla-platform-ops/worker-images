@@ -482,8 +482,15 @@ build {
       "${path.cwd}/scripts/linux/common/papertrail.sh",
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/01-bootstrap.sh",
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/02-additional-packages.sh",
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/04-aslr.sh",
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/05-nvidia-cuda.sh"
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/04-aslr.sh"
+    ]
+  }
+
+    provisioner "shell" {
+    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    expect_disconnect = true
+    scripts = [
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/06-nvidia-gcp.sh"
     ]
   }
 
