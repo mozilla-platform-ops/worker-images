@@ -24,8 +24,6 @@ function retry {
   set -e
 }
 
-export DEBIAN_FRONTEND=noninteractive
-
 ## When installing from https://cloud.google.com/compute/docs/gpus/install-drivers-gpu during packer it will fail since nvidia-smi 
 ## will try and access the GPU. During packer build, we don't build with a GPU, therefore the below script is extracted from 
 ## https://github.com/GoogleCloudPlatform/compute-gpu-installation/tree/main in an effort to install the drivers without a gpu
