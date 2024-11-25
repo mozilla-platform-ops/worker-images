@@ -84,6 +84,7 @@ jobs:
           $sbom = Get-ChildItem -Path "release-notes-${{ github.event.inputs.config }}" -Recurse
           $sbom
           Copy-Item -Path $sbom.FullName -Destination "${{ github.workspace }}\sboms" -Recurse -Force
+          Remove-Item -Path "release-notes-${{ github.event.inputs.config }}" -Recurse -Force
           $dst = "${{ github.workspace }}\sboms\$($sbom.name)"
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
