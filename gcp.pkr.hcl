@@ -510,22 +510,23 @@ build {
   }
 
   ## Run all tests
-  # provisioner "shell" {
-  #   execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-  #   environment_vars = [
-  #     "CLOUD=google",
-  #     "TC_ARCH=${var.tc_arch}",
-  #     "TASKCLUSTER_VERSION=${var.taskcluster_version}",
-  #   ]
-  #   scripts = [
-  #     "${path.cwd}/tests/linux/01_prep.sh",
-  #     "${path.cwd}/tests/linux/02_install_pester.sh",
-  #     "${path.cwd}/tests/linux/run_all_tests.sh"
-  #   ]
-  #   valid_exit_codes = [
-  #     0
-  #   ]
-  # }
+  provisioner "shell" {
+    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    environment_vars = [
+      "CLOUD=google",
+      "TC_ARCH=${var.tc_arch}",
+      "TASKCLUSTER_VERSION=${var.taskcluster_version}",
+    ]
+    scripts = [
+      "${path.cwd}/tests/linux/01_prep.sh",
+      "${path.cwd}/tests/linux/02_install_pester.sh",
+      "${path.cwd}/tests/linux/test_docker.sh"
+      "${path.cwd}/tests/linux/run_all_tests.sh"
+    ]
+    valid_exit_codes = [
+      0
+    ]
+  }
 
     ## Install gcp ops agent and cleanup
   provisioner "shell" {
