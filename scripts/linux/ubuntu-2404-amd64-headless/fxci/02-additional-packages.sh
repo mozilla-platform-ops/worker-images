@@ -50,5 +50,3 @@ MISC_PACKAGES+=(gcc make dkms pciutils linux-image-gcp linux-headers-gcp)
 
 # install the packages
 retry apt-get install -y ${MISC_PACKAGES[@]}
-# UV
-retry curl -LsSf https://astral.sh/uv/install.sh | sh
