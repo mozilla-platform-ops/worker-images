@@ -46,4 +46,4 @@ retry curl -sSO $LATEST_DRIVER_URL
 chmod +x NVIDIA-Linux-x86_64-${LATEST_DRIVER_VERSION}.run
 
 # Execute the .run file
-bash NVIDIA-Linux-x86_64-${LATEST_DRIVER_VERSION}.run
+bash NVIDIA-Linux-x86_64-${LATEST_DRIVER_VERSION}.run -s
