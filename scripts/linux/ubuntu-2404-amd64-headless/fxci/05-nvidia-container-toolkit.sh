@@ -24,18 +24,14 @@ function retry {
   set -e
 }
 
-# Download the GPG key and save it in a keyring
-curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | \
-  gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
-
-# Download the NVIDIA container toolkit list, modify it, and save it
-curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
-  sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
-  tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg \
+  && curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+    sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+    sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
 
 apt-get update
 ## Install nvidia-container-toolkit
-retry apt-get install -y nvidia-container-toolkit
+apt-get install -y nvidia-container-toolkit
 ## Configure docker to use nvidia container runtime
 nvidia-ctk runtime configure --runtime=docker
 ## Restart docker daemon to take effect
