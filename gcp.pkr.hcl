@@ -509,7 +509,7 @@ build {
   provisioner "shell" {
     execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect = true
-    pause_before = "10s"
+    pause_before = "30s"
     start_retry_timeout = "30m"
     scripts = [
       "${path.cwd}/scripts/linux/common/reboot.sh"
