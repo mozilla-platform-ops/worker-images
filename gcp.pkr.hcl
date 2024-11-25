@@ -517,6 +517,7 @@ build {
   }
 
   provisioner "shell" {
+    expect_disconnect = true
     inline = ["/usr/bin/cloud-init status --wait"]
   }
 
