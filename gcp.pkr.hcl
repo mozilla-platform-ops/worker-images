@@ -501,7 +501,8 @@ build {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect = true
     scripts = [
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/05-nvidia-gcp.sh"
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/05-nvidia-gcp.sh",
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/06-uv.sh"
     ]
   }
 

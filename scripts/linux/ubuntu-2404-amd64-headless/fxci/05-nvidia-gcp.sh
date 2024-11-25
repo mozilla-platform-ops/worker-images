@@ -29,8 +29,8 @@ function retry {
 ## https://github.com/GoogleCloudPlatform/compute-gpu-installation/tree/main in an effort to install the drivers without a gpu
 
 ## Set the variables here (maybe move them into the config file)
-LATEST_DRIVER_VERSION="550.90.07"
-LATEST_DRIVER_URL="https://us.download.nvidia.com/tesla/${LATEST_DRIVER_VERSION}/NVIDIA-Linux-x86_64-${LATEST_DRIVER_VERSION}.run"
+#LATEST_DRIVER_VERSION="550.90.07"
+#LATEST_DRIVER_URL="https://us.download.nvidia.com/tesla/${LATEST_DRIVER_VERSION}/NVIDIA-Linux-x86_64-${LATEST_DRIVER_VERSION}.run"
 
 # kernel_version=$(uname -r)
 # image_package="linux-image-$kernel_version"
@@ -42,8 +42,24 @@ LATEST_DRIVER_URL="https://us.download.nvidia.com/tesla/${LATEST_DRIVER_VERSION}
 # KERNEL_UPDATES+=($image_package $header_package)
 # retry apt-mark hold ${KERNEL_UPDATES[@]}
 
-retry curl -sSO $LATEST_DRIVER_URL
-chmod +x NVIDIA-Linux-x86_64-${LATEST_DRIVER_VERSION}.run
+#retry curl -sSO $LATEST_DRIVER_URL
+#chmod +x NVIDIA-Linux-x86_64-${LATEST_DRIVER_VERSION}.run
 
 # Execute the .run file
-bash NVIDIA-Linux-x86_64-${LATEST_DRIVER_VERSION}.run -s
+#bash NVIDIA-Linux-x86_64-${LATEST_DRIVER_VERSION}.run -s
+
+UBUNTU_RELEASE=$(lsb_release -rs) # 24.04
+DISTRO=ubuntu${UBUNTU_RELEASE//\./} # ubuntu2404
+
+## Install via network repo installation method https://docs.nvidia.com/cuda/archive/12.4.1/cuda-installation-guide-linux/index.html#network-repo-installation-for-ubuntu 
+retry curl -sSO https://developer.download.nvidia.com/compute/cuda/repos/$distro/$arch/cuda-keyring_1.1-1_all.deb
+dpkg -i cuda-keyring_1.1-1_all.deb
+
+## Install the cuDNN libraries https://docs.nvidia.com/deeplearning/cudnn/latest/installation/linux.html#ubuntu-debian-network-installation 
+apt-get update
+CUDA=()
+## meta-package name https://docs.nvidia.com/deeplearning/cudnn/latest/installation/linux.html#meta-packages
+CUDA+=(cudnn9-cuda-12)
+## base package name
+CUDA+=(libcudnn9-cuda-12)
+retry apt-get install -y ${CUDA[@]}
