@@ -517,8 +517,12 @@ build {
   }
 
   provisioner "shell" {
+    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect = true
-    inline = ["/usr/bin/cloud-init status --wait"]
+    inline = [
+      "/usr/bin/cloud-init status --wait",
+      "dpkg --configure -a"
+    ]
   }
 
   ## Run all tests
