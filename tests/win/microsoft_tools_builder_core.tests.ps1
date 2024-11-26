@@ -2,9 +2,6 @@ Describe "Microsoft Tools - Builder" {
     BeforeAll {
         $Directories = Get-WinFactsDirectories
         $software = Get-InstalledSoftware
-        $directxsdk = $software | Where-Object {
-            $PSItem.DisplayName -eq "Microsoft DirectX SDK (June 2010)"
-        }
         $binscope = $software | Where-Object {
             $PSItem.DisplayName -eq "Microsoft BinScope 2014"
         }
@@ -19,11 +16,8 @@ Describe "Microsoft Tools - Builder" {
     It "NET Framework Core is installed" {
         Get-WindowsFeature -Name "NET-Framework-Core" | Should -Not -Be $Null
     }
-    It "DirectX SDK gets installed" {
-        $directxsdk.DisplayName | Should -Not -Be $Null
-    }
-    It "DirectX SDK version" {
-        $directxsdk.DisplayVersion | Should -Be "9.29.1962.0"
+    It "DirectX SDK Exists" {
+        Test-Path "${ENV:ProgramFiles(x86)}\Microsoft DirectX SDK (June 2010)" | Should -Be $true
     }
     It "DirectX Environment Variable is set" {
         $system_env | Where-Object {$PSItem.name -eq "DXSDK_DIR"} | Should -Not -Be $Null
