@@ -517,14 +517,13 @@ build {
     ]
   }
 
-  # provisioner "shell" {
-  #   execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-  #   expect_disconnect = true
-  #   inline = [
-  #     "/usr/bin/cloud-init status --wait",
-  #     "dpkg --configure -a"
-  #   ]
-  # }
+  provisioner "shell" {
+    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    expect_disconnect = true
+    scripts = [
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/06-nvidia-container-toolkit.sh"
+    ]
+  }
 
   ## Run all tests
   provisioner "shell" {
@@ -536,10 +535,10 @@ build {
       "TASKCLUSTER_VERSION=${var.taskcluster_version}",
     ]
     scripts = [
-      #"${path.cwd}/tests/linux/01_prep.sh",
-      #"${path.cwd}/tests/linux/02_install_pester.sh",
-      "${path.cwd}/tests/linux/test_docker.sh"
-      #"${path.cwd}/tests/linux/run_all_tests.sh"
+      "${path.cwd}/tests/linux/01_prep.sh",
+      "${path.cwd}/tests/linux/02_install_pester.sh",
+      "${path.cwd}/tests/linux/test_docker.sh",
+      "${path.cwd}/tests/linux/run_all_tests.sh"
     ]
     valid_exit_codes = [
       0
