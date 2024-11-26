@@ -63,4 +63,3 @@ apt-get update
 ## base package name
 #CUDA+=(libcudnn9-cuda-12)
 apt-get install -y cudnn
-dpkg --configure -a

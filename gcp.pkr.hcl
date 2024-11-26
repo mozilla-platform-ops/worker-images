@@ -482,8 +482,8 @@ build {
       "${path.cwd}/scripts/linux/common/papertrail.sh",
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/01-bootstrap.sh",
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/02-additional-packages.sh",
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/03-aslr.sh",
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/04-nvidia-driver-headers.sh"
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/03-aslr.sh"
+      #"${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/04-nvidia-driver-headers.sh"
     ]
   }
 
