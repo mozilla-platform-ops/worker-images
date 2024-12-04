@@ -245,7 +245,7 @@ foreach ($partition in $partitions) {
 #$IPAddress = ($Ethernet.GetIPProperties().UnicastAddresses.Address | Where-object { $_.AddressFamily -eq "InterNetwork" }).IPAddressToString
 $IPAddress = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notmatch "Loopback" } | Select-Object -ExpandProperty IPAddress)
 write-host $IPAddress
-$ResolvedName = (Resolve-DnsName -Name $IPAddress -Server "10.48.75.120").NameHost)
+$ResolvedName = ((Resolve-DnsName -Name $IPAddress -Server "10.48.75.120").NameHost)
 write-host $ResolvedName
 pause
 
