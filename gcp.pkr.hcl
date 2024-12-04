@@ -525,21 +525,21 @@ build {
     ]
   }
 
-  provisioner "shell" {
-    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-    pause_before = "30s"
-    start_retry_timeout = "30m"
-    environment_vars = [
-      "CLOUD=google",
-      "TC_ARCH=${var.tc_arch}",
-      "TASKCLUSTER_VERSION=${var.taskcluster_version}",
-      "NUM_LOOPBACK_AUDIO_DEVICES=8",
-      "NUM_LOOPBACK_VIDEO_DEVICES=8"
-    ]
-    scripts = [
-      "${path.cwd}/scripts/linux/common/v4l2loopback.sh"
-    ]
-  }
+  # provisioner "shell" {
+  #   execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+  #   pause_before = "30s"
+  #   start_retry_timeout = "30m"
+  #   environment_vars = [
+  #     "CLOUD=google",
+  #     "TC_ARCH=${var.tc_arch}",
+  #     "TASKCLUSTER_VERSION=${var.taskcluster_version}",
+  #     "NUM_LOOPBACK_AUDIO_DEVICES=8",
+  #     "NUM_LOOPBACK_VIDEO_DEVICES=8"
+  #   ]
+  #   scripts = [
+  #     "${path.cwd}/scripts/linux/common/v4l2loopback.sh"
+  #   ]
+  # }
 
   ## Run all tests
   provisioner "shell" {
