@@ -241,17 +241,17 @@ foreach ($partition in $partitions) {
 #>
 ## Get node name
 
-#$Ethernet = [System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces() | Where-Object { $_.name -match "ethernet" }
-#$IPAddress = ($Ethernet.GetIPProperties().UnicastAddresses.Address | Where-object { $_.AddressFamily -eq "InterNetwork" }).IPAddressToString
+$Ethernet = [System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces() | Where-Object { $_.name -match "ethernet" }
+try {
+    $IPAddress = ($Ethernet.GetIPProperties().UnicastAddresses |
+        Where-Object { $_.Address.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork -and $_.Address.IPAddressToString -ne "127.0.0.1" } |
+        Select-Object -ExpandProperty Address).IPAddressToString
 
-$IPAddress = ($Ethernet.GetIPProperties().UnicastAddresses |
-    Where-Object { $_.Address.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork -and $_.Address.IPAddressToString -ne "127.0.0.1" } |
-    Select-Object -ExpandProperty Address).IPAddressToString
-
-if (-not $IPAddress) {
-    # Use the netsh command as a fallback
+    if (-not $IPAddress) {
+        throw "No IP address found using .NET method."
+    }
+} catch {
     $NetshOutput = netsh interface ip show addresses
-
     $IPAddress = ($NetshOutput -match "IP Address" | ForEach-Object {
         if ($_ -notmatch "127.0.0.1") {
             $_ -replace ".*?:\s*", ""
