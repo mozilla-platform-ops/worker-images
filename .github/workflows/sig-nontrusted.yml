@@ -69,12 +69,6 @@ jobs:
     permissions: write-all
     steps:
       - uses: actions/checkout@v4
-      - name: "Create sboms directory"
-        shell: pwsh
-        run: |
-          if ( -not (Test-Path "${{ github.workspace }}\sboms")) {
-            New-Item -ItemType Directory -Path "${{ github.workspace }}\sboms" -Force
-          }
       - uses: actions/download-artifact@v4
         with:
           path: ${{ github.workspace }}\sboms
