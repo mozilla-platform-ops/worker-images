@@ -477,28 +477,23 @@ build {
       "CLOUD=google",
       "TC_ARCH=${var.tc_arch}",
       "TASKCLUSTER_VERSION=${var.taskcluster_version}",
+      "NUM_LOOPBACK_AUDIO_DEVICES=8",
+      "NUM_LOOPBACK_VIDEO_DEVICES=8"
     ]
     scripts = [
       "${path.cwd}/scripts/linux/common/papertrail.sh",
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/01-bootstrap.sh",
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/02-additional-packages.sh",
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/03-aslr.sh"
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/03-aslr.sh",
+      "${path.cwd}/scripts/linux/common/v4l2loopback.sh"
     ]
   }
 
   provisioner "shell" {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-    environment_vars = [
-      "CLOUD=google",
-      "TC_ARCH=${var.tc_arch}",
-      "TASKCLUSTER_VERSION=${var.taskcluster_version}",
-      "NUM_LOOPBACK_AUDIO_DEVICES=8",
-      "NUM_LOOPBACK_VIDEO_DEVICES=8"
-    ]
     expect_disconnect = true
     scripts = [
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/05-nvidia-gcp-driver-cudnn.sh",
-      "${path.cwd}/scripts/linux/common/v4l2loopback.sh"
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/05-nvidia-gcp-driver-cudnn.sh"
     ]
   }
 
