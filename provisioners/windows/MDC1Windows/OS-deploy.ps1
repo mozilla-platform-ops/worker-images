@@ -243,7 +243,22 @@ foreach ($partition in $partitions) {
 
 #$Ethernet = [System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces() | Where-Object { $_.name -match "ethernet" }
 #$IPAddress = ($Ethernet.GetIPProperties().UnicastAddresses.Address | Where-object { $_.AddressFamily -eq "InterNetwork" }).IPAddressToString
-$IPAddress = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notmatch "Loopback" } | Select-Object -ExpandProperty IPAddress)
+#$IPAddress = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.InterfaceAlias -notmatch "Loopback" } | Select-Object -ExpandProperty IPAddress)
+
+# Filter for active interfaces
+$ActiveInterfaces = $NetworkInterfaces | Where-Object { $_.OperationalStatus -eq "Up" }
+
+# Extract IPv4 addresses from active interfaces
+$IPAddresses = $ActiveInterfaces |
+    ForEach-Object {
+        $_.GetIPProperties().UnicastAddresses |
+        Where-Object { $_.Address.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork } |
+        Select-Object -ExpandProperty Address
+    }
+
+# Display each IP address
+$IPAddresses | ForEach-Object { Write-Host "IP Address: $($_.IPAddressToString)" }
+
 write-host $IPAddress
 $ResolvedName = ((Resolve-DnsName -Name $IPAddress -Server "10.48.75.120").NameHost)
 write-host $ResolvedName
