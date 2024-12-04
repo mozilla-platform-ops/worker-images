@@ -241,9 +241,35 @@ foreach ($partition in $partitions) {
 #>
 ## Get node name
 
-$Ethernet = [System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces() | Where-Object { $_.name -match "ethernet" }
-$IPAddress = ($Ethernet.GetIPProperties().UnicastAddresses.Address | Where-object { $_.AddressFamily -eq "InterNetwork" }).IPAddressToString
-$ResolvedName = (Resolve-DnsName -Name $IPAddress -Server "10.48.75.120").NameHost
+#$Ethernet = [System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces() | Where-Object { $_.name -match "ethernet" }
+#$IPAddress = ($Ethernet.GetIPProperties().UnicastAddresses.Address | Where-object { $_.AddressFamily -eq "InterNetwork" }).IPAddressToString
+#$ResolvedName = (Resolve-DnsName -Name $IPAddress -Server "10.48.75.120").NameHost
+
+
+# Get all interfaces that match the name "ethernet"
+$EthernetInterfaces = [System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces() |
+    Where-Object { $_.Name -match "ethernet" }
+
+# Iterate over each matching interface
+foreach ($Interface in $EthernetInterfaces) {
+    # Get the IP addresses for each interface
+    $IPAddresses = $Interface.GetIPProperties().UnicastAddresses |
+        Where-Object { $_.Address.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork } |
+        Select-Object -ExpandProperty Address
+
+    # Resolve the name for each IP address
+    foreach ($IPAddress in $IPAddresses) {
+        $ResolvedName = Resolve-DnsName -Name $IPAddress.IPAddressToString -Server "10.48.75.120" -ErrorAction SilentlyContinue
+
+        # Write results to the host
+        Write-Host "Interface: $($Interface.Name)"
+        Write-Host "IP Address: $($IPAddress.IPAddressToString)"
+        Write-Host "Resolved Name: $($ResolvedName.NameHost -join ', ')" -ForegroundColor Green
+        Write-Host ""
+    }
+}
+
+pause
 
 $index = $ResolvedName.IndexOf('.')
 pause
