@@ -70,16 +70,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
-        with:
-          path: ${{ github.workspace }}\sboms
       - name: "Test SBOM Exists & Create PR"
         shell: pwsh  
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CONFIG: ${{ github.event.inputs.config }}
         run: |
-          $sbom = Get-ChildItem -Path "${{ github.workspace }}\sboms" -Recurse
+          $sbom = Get-ChildItem -Path "${{ github.workspace }}" | 
+          Where-object { $psitem.Name -like "*${{ github.event.inputs.config }}*" -and $psitem.Extension -eq ".md" }
           $sbom
+          Move-item -Path $sbom.FullName -Destination "${{ github.workspace }}\sboms"
           $dst = "${{ github.workspace }}\sboms\$($sbom.name)"
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
