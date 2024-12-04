@@ -251,7 +251,7 @@ $IPAddress = ($Ethernet.GetIPProperties().UnicastAddresses |
 if (-not $IPAddress) {
     # Use the netsh command as a fallback
     $NetshOutput = netsh interface ip show addresses
-    $IPAddress = ($NetshOutput -match "IP Address" -replace ".*?:\s*", "").Trim()
+    $IPAddress = ($NetshOutput -match "IP Address" | Where-Object { $_ -notmatch "127.0.0.1" } -replace ".*?:\s*", "").Trim()
 }
 
 if ($IPAddress) {
