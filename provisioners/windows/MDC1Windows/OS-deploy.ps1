@@ -245,13 +245,18 @@ foreach ($partition in $partitions) {
 #$IPAddress = ($Ethernet.GetIPProperties().UnicastAddresses.Address | Where-object { $_.AddressFamily -eq "InterNetwork" }).IPAddressToString
 
 $IPAddress = ($Ethernet.GetIPProperties().UnicastAddresses |
-    Where-Object { $_.Address.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork } |
+    Where-Object { $_.Address.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork -and $_.Address.IPAddressToString -ne "127.0.0.1" } |
     Select-Object -ExpandProperty Address).IPAddressToString
 
 if (-not $IPAddress) {
     # Use the netsh command as a fallback
     $NetshOutput = netsh interface ip show addresses
-    $IPAddress = ($NetshOutput -match "IP Address" | Where-Object { $_ -notmatch "127.0.0.1" } -replace ".*?:\s*", "").Trim()
+
+    $IPAddress = ($NetshOutput -match "IP Address" | ForEach-Object {
+        if ($_ -notmatch "127.0.0.1") {
+            $_ -replace ".*?:\s*", ""
+        }
+    }).Trim()
 }
 
 if ($IPAddress) {
