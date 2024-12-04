@@ -43,23 +43,25 @@ lsmod | grep v4l2loopback
 # currently failing... only 7 devices... /dev/video7
 test -e /dev/video$((NUM_LOOPBACK_VIDEO_DEVICES - 1))
 
-# Configure audio loopback devices, with options enable=1,1,1...,1 index = 0,1,...,N
-i=0
-enable=''
-index=''
-while [ $i -lt ${NUM_LOOPBACK_AUDIO_DEVICES} ]; do
-    enable="$enable,1"
-    index="$index,$i"
-    i=$((i + 1))
-done
-# slice off the leading `,` in each variable
-enable=${enable:1}
-index=${index:1}
+## snd-aloop is unused since virtual devices in pulseaudio/pipewire don't require a kernel component
 
-echo "options snd-aloop enable=$enable index=$index" > /etc/modprobe.d/snd-aloop.conf
-echo "snd-aloop" | tee --append /etc/modules
+# # Configure audio loopback devices, with options enable=1,1,1...,1 index = 0,1,...,N
+# i=0
+# enable=''
+# index=''
+# while [ $i -lt ${NUM_LOOPBACK_AUDIO_DEVICES} ]; do
+#     enable="$enable,1"
+#     index="$index,$i"
+#     i=$((i + 1))
+# done
+# # slice off the leading `,` in each variable
+# enable=${enable:1}
+# index=${index:1}
 
-# test
-modprobe snd-aloop
-lsmod | grep snd_aloop
-test -e /dev/snd/controlC$((NUM_LOOPBACK_AUDIO_DEVICES - 1))
+# echo "options snd-aloop enable=$enable index=$index" > /etc/modprobe.d/snd-aloop.conf
+# echo "snd-aloop" | tee --append /etc/modules
+
+# # test
+# modprobe snd-aloop
+# lsmod | grep snd_aloop
+# test -e /dev/snd/controlC$((NUM_LOOPBACK_AUDIO_DEVICES - 1))
