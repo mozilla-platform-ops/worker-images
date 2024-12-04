@@ -527,6 +527,8 @@ build {
 
   provisioner "shell" {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    pause_before = "30s"
+    start_retry_timeout = "30m"
     environment_vars = [
       "CLOUD=google",
       "TC_ARCH=${var.tc_arch}",
