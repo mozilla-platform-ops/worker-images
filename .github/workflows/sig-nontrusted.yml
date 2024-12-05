@@ -54,6 +54,7 @@ jobs:
           }
           New-AzSharedWorkerImage @Vars
           "sharedimageversion=$ENV:PKR_VAR_sharedimage_version" >> $env:GITHUB_ENV
+          "sharedimageversion=$ENV:PKR_VAR_sharedimage_version" >> $env:GITHUB_OUTPUT
       - name: Upload Release Notes Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -67,6 +68,8 @@ jobs:
     name: "Upload release notes"
     runs-on: ubuntu-latest
     permissions: write-all
+    env:
+      SHAREDIMAGEVERSION: ${{ needs.packer.outputs.sharedimageversion }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
