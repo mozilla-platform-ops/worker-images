@@ -24,9 +24,17 @@ function retry {
   set -e
 }
 
+kernel_version=$(uname -r)
+header_package="linux-headers-$kernel_version"
+
+retry apt-get update
+retry apt-get -y reinstall linux-headers-gcp $header_package
+
 retry apt-get install -y v4l2loopback-dkms v4l2loopback-utils
 # verify
 dkms status
+
+retry apt-get install linux-modules-extra-gcp -y
 
 # Configure video loopback devices
 echo "options v4l2loopback devices=$NUM_LOOPBACK_VIDEO_DEVICES" > /etc/modprobe.d/v4l2loopback.conf
