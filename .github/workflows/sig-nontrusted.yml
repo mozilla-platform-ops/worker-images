@@ -120,7 +120,7 @@ jobs:
           "@
 
           $PR_Title = "$ENV:CONFIG ($Date) Image Update"
-          git add "sboms\${{ github.event.inputs.config }}-${{ env.sharedimageversion }}.md"
+          git add "sboms\${{ github.event.inputs.config }}-${{ env.SHAREDIMAGEVERSION }}.md"
           git commit -m "$($ENV:CONFIG) - Release Notes for $($ENV:CONFIG).md"
           git push -u origin $ReleaseBranch
           gh pr create --base main --head $ReleaseBranch --title $PR_Title --body $PR_Body
