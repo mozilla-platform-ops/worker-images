@@ -70,20 +70,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
+        with:
+          path: sboms
+          name: release-notes-${{ github.event.inputs.config }}
+          merge-multiple: true
       - name: "Test SBOM Exists & Create PR"
         shell: pwsh  
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CONFIG: ${{ github.event.inputs.config }}
         run: |
-          $sbom = Get-ChildItem -Path "release-notes-${{ github.event.inputs.config }}" -Recurse | 
-          Where-object { $psitem.Extension -eq ".md" }
-          $sbom
-          Move-item -Path $sbom.FullName -Destination "${{ github.workspace }}\sboms"
-          $dst = "${{ github.workspace }}\sboms\$($sbom.name)"
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           
+          Get-ChildItem sboms/ -Recurse
+
           ## Vars
           $Date = Get-Date -Format "yyyyMMddTHHmm"
           $Repo = "${{ github.repository }}"
@@ -117,7 +118,7 @@ jobs:
           "@
 
           $PR_Title = "$ENV:CONFIG ($Date) Image Update"
-          git add $dst
+          git add "sboms\${{ github.event.inputs.config }}-${{ env.sharedimageversion }}.md"
           git commit -m "$($ENV:CONFIG) - Release Notes for $($ENV:CONFIG).md"
           git push -u origin $ReleaseBranch
           gh pr create --base main --head $ReleaseBranch --title $PR_Title --body $PR_Body
