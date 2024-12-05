@@ -54,7 +54,6 @@ jobs:
           }
           New-AzSharedWorkerImage @Vars
           "sharedimageversion=$ENV:PKR_VAR_sharedimage_version" >> $env:GITHUB_ENV
-          "sharedimageversion=$ENV:PKR_VAR_sharedimage_version" >> $env:GITHUB_OUTPUT
       - name: Upload Release Notes Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -80,14 +79,20 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CONFIG: ${{ github.event.inputs.config }}
-          SHAREDIMAGEVERSION: ${{ needs.packer.outputs.sharedimageversion }}
         run: |
+          ## Install powershell-yaml module
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module powershell-yaml -ErrorAction Stop
+          
+          ## Get the shared image version from the config file
+          $YAML = Convertfrom-Yaml (Get-Content "${{ github.workspace }}/config/${{ env.CONFIG }}.yaml" -raw)
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           
-          Get-ChildItem sboms/ -Recurse
+          ## Confirm it's there
+          Get-ChildItem "${{ github.workspace }}/sboms" -Recurse
 
-          ## Vars
+          ## Create a new branch for the release notes
           $Date = Get-Date -Format "yyyyMMddTHHmm"
           $Repo = "${{ github.repository }}"
 
@@ -120,7 +125,7 @@ jobs:
           "@
 
           $PR_Title = "$ENV:CONFIG ($Date) Image Update"
-          git add "sboms\${{ github.event.inputs.config }}-${{ env.SHAREDIMAGEVERSION }}.md"
+          git add "${{ github.workspace }}\sboms\${{ github.event.inputs.config }}-$($Yaml.sharedimage.image_version).md"
           git commit -m "$($ENV:CONFIG) - Release Notes for $($ENV:CONFIG).md"
           git push -u origin $ReleaseBranch
           gh pr create --base main --head $ReleaseBranch --title $PR_Title --body $PR_Body
