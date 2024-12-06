@@ -68,7 +68,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions: write-all
     steps:
-      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           path: sboms
@@ -91,6 +90,13 @@ jobs:
           
           ## Confirm it's there
           Get-ChildItem "${{ github.workspace }}/sboms" -Recurse
+
+          ## Store the file in a variable
+          $SBOM_PATH = "${{ github.workspace }}\sboms\${{ github.event.inputs.config }}-$($Yaml.sharedimage.image_version).md"
+          $SBOM_NAME = "${{ github.event.inputs.config }}-$($Yaml.sharedimage.image_version).md"
+
+          Write-host "SBOM Path: $SBOM_PATH"
+          Write-host "SBOM Name: $SBOM_NAME"
 
           ## Create a new branch for the release notes
           $Date = Get-Date -Format "yyyyMMddTHHmm"
@@ -125,7 +131,10 @@ jobs:
           "@
 
           $PR_Title = "$ENV:CONFIG ($Date) Image Update"
-          git add "${{ github.workspace }}\sboms\${{ github.event.inputs.config }}-$($Yaml.sharedimage.image_version).md"
+          Write-host "Using git add $SBOM_PATH"
+          git add $SBOM_PATH
+          Write-Host "Using git add ."
+          git add .
           git commit -m "$($ENV:CONFIG) - Release Notes for $($ENV:CONFIG).md"
           git push -u origin $ReleaseBranch
           gh pr create --base main --head $ReleaseBranch --title $PR_Title --body $PR_Body
