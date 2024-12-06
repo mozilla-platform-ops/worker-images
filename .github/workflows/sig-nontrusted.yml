@@ -83,6 +83,10 @@ jobs:
           Set-PSRepository PSGallery -InstallationPolicy Trusted
           Install-Module powershell-yaml -ErrorAction Stop
           
+          Get-ChildItem "sboms" -Recurse
+          
+          Get-ChildItem
+
           ## Get the shared image version from the config file
           $YAML = Convertfrom-Yaml (Get-Content "config/${{ env.CONFIG }}.yaml" -raw)
           git config --local user.name "github-actions[bot]"
