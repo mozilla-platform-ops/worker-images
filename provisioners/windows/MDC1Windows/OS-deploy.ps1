@@ -168,6 +168,21 @@ Write-Host "Preparing local environment."
 Set-Location X:\working
 Import-Module "X:\Windows\System32\WindowsPowerShell\v1.0\Modules\DnsClient"
 Import-Module "X:\Windows\System32\WindowsPowerShell\v1.0\Modules\powershell-yaml"
+
+Write-Host "Detecting available disks..."
+$allDisks = Get-Disk
+$onlineDisks = $allDisks | Where-Object { $_.OperationalStatus -eq 'Online' -and $_.MediaType -ne 'Removable' }
+
+# Log details of all disks for debugging
+foreach ($disk in $allDisks) {
+    Write-Host "Disk $($disk.Number):"
+    Write-Host "  Size: $([math]::Round($disk.Size / 1GB, 2)) GB"
+    Write-Host "  MediaType: $($disk.MediaType)"
+    Write-Host "  OperationalStatus: $($disk.OperationalStatus)"
+}
+
+Write-Host "Number of online disks detected: $($onlineDisks.Count)"
+pause
 $disks = Get-Disk | Where-Object { $_.OperationalStatus -eq 'Online' }
 
 Write-Host "Detecting available disks..."
