@@ -46,6 +46,7 @@ function New-AzSharedWorkerImage {
     $ENV:PKR_VAR_gallery_name = $YAML.sharedimage["gallery_name"]
     $ENV:PKR_VAR_image_name = $YAML.sharedimage["image_name"]
     $ENV:PKR_VAR_sharedimage_version = $YAML.sharedimage["image_version"]
+    $ENV:PKR_VAR_image_locations = $YAML.azure["locations"]
     $ENV:PKR_VAR_client_id = $Client_ID
     $ENV:PKR_VAR_temp_resource_group_name = ('{0}-{1}-{2}-pkrtmp' -f $YAML.vm.tags["worker_pool_id"], $YAML.vm.tags["deploymentId"], (Get-Random -Maximum 999))
     $ENV:PKR_VAR_tenant_id = $Tenant_ID
