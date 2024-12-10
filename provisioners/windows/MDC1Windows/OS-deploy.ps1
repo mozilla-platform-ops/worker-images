@@ -170,21 +170,6 @@ Import-Module "X:\Windows\System32\WindowsPowerShell\v1.0\Modules\DnsClient"
 Import-Module "X:\Windows\System32\WindowsPowerShell\v1.0\Modules\powershell-yaml"
 $disks = Get-Disk | Where-Object { $_.OperationalStatus -eq 'Online' }
 
-pause
-write-host $disks.Count
-pause
-
-$existingC = Get-Partition | Where-Object { $_.DriveLetter -eq 'C' }
-$existingD = Get-Partition | Where-Object { $_.DriveLetter -eq 'D' }
-
-if ($existingC -and $existingD) {
-    Write-Host "Drives C and D are already labeled and configured. Skipping partitioning."
-} else {
-    Write-Host "Partitioning and formatting disks..."
-    # Call appropriate functions to partition
-}
-
-# Check if C and D are already labeled
 $existingC = Get-Partition | Where-Object { $_.DriveLetter -eq 'C' }
 $existingD = Get-Partition | Where-Object { $_.DriveLetter -eq 'D' }
 
@@ -195,8 +180,6 @@ if ($existingC -and $existingD) {
     Write-Host "Partitioning required. Drives are not properly configured."
     $skipPartitioning = $false
 }
-
-pause
 
 # Main logic for disk selection and formatting
 if (!($skipPartitioning)) {
