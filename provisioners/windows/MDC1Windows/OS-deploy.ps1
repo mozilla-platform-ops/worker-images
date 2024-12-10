@@ -199,21 +199,23 @@ if ($existingC -and $existingD) {
 pause
 
 # Main logic for disk selection and formatting
-if ($disks.Count -eq 2) {
-    # Sort disks by size and select larger as C and smaller as D
-    $sortedDisks = $disks | Sort-Object -Property Size -Descending
-    $diskC = $sortedDisks[0].Number
-    $diskD = $sortedDisks[1].Number
+if (!($skipPartitioning)) {
+    if ($disks.Count -eq 2) {
+        # Sort disks by size and select larger as C and smaller as D
+        $sortedDisks = $disks | Sort-Object -Property Size -Descending
+        $diskC = $sortedDisks[0].Number
+        $diskD = $sortedDisks[1].Number
 
-    Write-Host "Two disks found. Setting up the larger disk as C and the smaller as D."
-    PartitionAndFormat-TwoDisks -DiskC $diskC -DiskD $diskD
-} elseif ($disks.Count -eq 1) {
-    # Only one disk found, use it for both C and D
-    $singleDisk = $disks[0].Number
-    Write-Host "Only one disk found. Setting up C and D partitions on the same disk."
-    PartitionAndFormat-SingleDisk -DiskNumber $singleDisk
-} else {
-    Write-Host "No suitable disks found or more than two disks detected."
+        Write-Host "Two disks found. Setting up the larger disk as C and the smaller as D."
+        PartitionAndFormat-TwoDisks -DiskC $diskC -DiskD $diskD
+    } elseif ($disks.Count -eq 1) {
+        # Only one disk found, use it for both C and D
+        $singleDisk = $disks[0].Number
+        Write-Host "Only one disk found. Setting up C and D partitions on the same disk."
+        PartitionAndFormat-SingleDisk -DiskNumber $singleDisk
+    } else {
+        Write-Host "No suitable disks found or more than two disks detected."
+   }
 }
 
 # Pause before label check
