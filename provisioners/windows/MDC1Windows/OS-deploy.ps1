@@ -170,21 +170,13 @@ Import-Module "X:\Windows\System32\WindowsPowerShell\v1.0\Modules\DnsClient"
 Import-Module "X:\Windows\System32\WindowsPowerShell\v1.0\Modules\powershell-yaml"
 
 Write-Host "Detecting available disks..."
-$allDisks = Get-Disk
 
-Write-Host "Listing all disks detected by Get-Disk:"
-foreach ($disk in $allDisks) {
-    Write-Host "Disk Number: $($disk.Number)"
-    Write-Host "  Size: $([math]::Round($disk.Size / 1GB, 2)) GB"
-    Write-Host "  Operational Status: $($disk.OperationalStatus)"
-    Write-Host "  MediaType: $($disk.MediaType)"
-    Write-Host "------------------------------------"
+$disks = Get-Disk
+
+$availableDisks = $disks | Where-Object {
+    $_.OperationalStatus -eq 'OK'
 }
-
-$onlineDisks = $allDisks | Where-Object { $_.OperationalStatus -eq 'Online' }
-$diskCount = $onlineDisks.Count
-
-Write-Host "Number of online disks detected: $diskCount"
+$availableDiskCount = $availableDisks.Count
 
 pause
 $disks = Get-Disk | Where-Object { $_.OperationalStatus -eq 'Online' }
