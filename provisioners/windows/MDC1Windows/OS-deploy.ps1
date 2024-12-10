@@ -174,6 +174,18 @@ pause
 write-host $disks.Count
 pause
 
+$existingC = Get-Partition | Where-Object { $_.DriveLetter -eq 'C' }
+$existingD = Get-Partition | Where-Object { $_.DriveLetter -eq 'D' }
+
+if ($existingC -and $existingD) {
+    Write-Host "Drives C and D are already labeled and configured. Skipping partitioning."
+} else {
+    Write-Host "Partitioning and formatting disks..."
+    # Call appropriate functions to partition
+}
+
+pause
+
 # Main logic for disk selection and formatting
 if ($disks.Count -eq 2) {
     # Sort disks by size and select larger as C and smaller as D
