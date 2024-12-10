@@ -156,11 +156,6 @@ variable "config" {
   default = "${env("config")}"
 }
 
-variable "image_locations" {
-  type    = list(string)
-  default = ["${env("image_locations")}"]
-}
-
 source "azure-arm" "sig" {
   # WinRM
   communicator   = "winrm"
@@ -191,12 +186,25 @@ source "azure-arm" "sig" {
 
   # Shared image gallery https:github.com/mozilla-platform-ops/relops_infra_as_code/blob/master/terraform/azure_fx_nonci/worker-images.tf 
   shared_image_gallery_destination {
-    subscription        = "${var.subscription_id}"
-    resource_group      = "${var.resource_group}"
-    gallery_name        = "${var.gallery_name}"
-    image_name          = "${var.image_name}"
-    image_version       = "${var.sharedimage_version}"
-    replication_regions = "${var.image_locations}"
+    subscription   = "${var.subscription_id}"
+    resource_group = "${var.resource_group}"
+    gallery_name   = "${var.gallery_name}"
+    image_name     = "${var.image_name}"
+    image_version  = "${var.sharedimage_version}"
+    replication_regions = [
+      "canadacentral",
+      "centralindia",
+      "eastus",
+      "eastus2",
+      "northcentralus",
+      "northeurope",
+      "southindia",
+      "southcentralus",
+      "uksouth",
+      "westus",
+      "westus2",
+      "westus3"
+    ]
   }
 
   # Tags
