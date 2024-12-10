@@ -221,7 +221,6 @@ if ($disks.Count -eq 2) {
         $diskDPartition = Get-Partition -DiskNumber $diskD -PartitionNumber 1
         Set-Partition -DiskNumber $diskDPartition.DiskNumber -PartitionNumber $diskDPartition.PartitionNumber -NewDriveLetter D
     }
-    pause
 } elseif ($disks.Count -eq 1) {
     # Check labels on single disk
     $partitions = Get-Partition -DiskNumber $singleDisk
@@ -251,7 +250,6 @@ foreach ($partition in $partitions) {
     Write-Host "   Free Space: $($partition.SizeRemaining / 1GB) GB"
     Write-Host ""
 }
-pause
 #>
 ## Get node name
 
@@ -281,10 +279,8 @@ if ($IPAddress) {
 
 $ResolvedName = ((Resolve-DnsName -Name $IPAddress -Server "10.48.75.120").NameHost)
 write-host $ResolvedName
-pause
 
 $index = $ResolvedName.IndexOf('.')
-pause
 $shortname = $ResolvedName.Substring(0, $index)
 
 write-host checking name
