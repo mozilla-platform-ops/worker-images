@@ -169,9 +169,8 @@ Set-Location X:\working
 Import-Module "X:\Windows\System32\WindowsPowerShell\v1.0\Modules\DnsClient"
 Import-Module "X:\Windows\System32\WindowsPowerShell\v1.0\Modules\powershell-yaml"
 
-
 Write-Host "Detecting available disks..."
-
+$disks = Get-Disk | Where-Object { $_.OperationalStatus -eq 'Online' }
 $diskCount = (Get-Disk | Measure-Object).Count
 
 $existingC = Get-Partition | Where-Object { $_.DriveLetter -eq 'C' }
