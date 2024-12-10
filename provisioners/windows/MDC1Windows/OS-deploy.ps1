@@ -184,6 +184,18 @@ if ($existingC -and $existingD) {
     # Call appropriate functions to partition
 }
 
+# Check if C and D are already labeled
+$existingC = Get-Partition | Where-Object { $_.DriveLetter -eq 'C' }
+$existingD = Get-Partition | Where-Object { $_.DriveLetter -eq 'D' }
+
+if ($existingC -and $existingD) {
+    Write-Host "Drives C and D are already labeled and configured. Skipping partitioning."
+    $skipPartitioning = $true
+} else {
+    Write-Host "Partitioning required. Drives are not properly configured."
+    $skipPartitioning = $false
+}
+
 pause
 
 # Main logic for disk selection and formatting
