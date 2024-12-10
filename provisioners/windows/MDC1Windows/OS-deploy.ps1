@@ -116,6 +116,7 @@ exit
     Start-Process "diskpart.exe" -ArgumentList "/s $scriptPath" -Wait
 
     Write-Host "Disk $DiskNumber has been partitioned and formatted with both C and D drives."
+    pause
 }
 
 # Function to partition and format two disks: Larger disk as C, smaller disk as D
