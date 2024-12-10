@@ -74,163 +74,61 @@ function Update-GetBoot {
     Set-Content -Path $Get_Bootstrap -Value $content
 }
 
-# Function to partition and format a single disk with both C and D
-function PartitionAndFormat-SingleDisk {
-    param (
-        [int]$DiskNumber,
-        [int]$LocalFilesSizeMB = 20480
-    )
-
-    # Get the available space on the disk
-    $disk = Get-Disk -Number $DiskNumber
-    $availableSpace = [math]::Floor($disk.Size / 1MB) # Total space in MB
-    $primary_size = $availableSpace - $LocalFilesSizeMB # Space for C drive
-
-    Write-Host "Available space: $availableSpace MB"
-    Write-Host "Primary partition size (C): $primary_size MB"
-    Write-Host "Local Install Partition size (D): $LocalFilesSizeMB MB"
-
-    # Create Diskpart script
-    $diskPartScript = @"
-select disk $DiskNumber
-clean
-convert gpt
-create partition efi size=100
-format fs=fat32 label=EFI quick
-assign letter=S
-create partition msr size=16
-create partition primary size=$primary_size
-format fs=ntfs quick
-assign letter=C
-create partition primary size=$LocalFilesSizeMB
-format fs=ntfs quick
-assign letter=D
-exit
-"@
-
-    # Save the Diskpart script to a temporary file
-    $scriptPath = "$env:TEMP\diskpart_script.txt"
-    $diskPartScript | Out-File -FilePath $scriptPath -Encoding ASCII
-
-    # Run Diskpart with the script
-    Start-Process "diskpart.exe" -ArgumentList "/s $scriptPath" -Wait
-
-    Write-Host "Disk $DiskNumber has been partitioned and formatted with both C and D drives."
-}
-
-# Function to partition and format two disks: Larger disk as C, smaller disk as D
-function PartitionAndFormat-TwoDisks {
-    param (
-        [int]$DiskC,
-        [int]$DiskD
-    )
-
-    # Diskpart script for the larger disk (C)
-    $diskPartScriptC = @"
-select disk $DiskC
-clean
-convert gpt
-create partition efi size=100
-format fs=fat32 label=EFI quick
-assign letter=S
-create partition msr size=16
-create partition primary
-format fs=ntfs quick
-assign letter=C
-exit
-"@
-
-    # Diskpart script for the smaller disk (D)
-    $diskPartScriptD = @"
-select disk $DiskD
-clean
-convert gpt
-create partition primary
-format fs=ntfs quick
-assign letter=D
-exit
-"@
-
-    # Save the Diskpart scripts
-    $scriptPathC = "$env:TEMP\diskpart_script_c.txt"
-    $diskPartScriptC | Out-File -FilePath $scriptPathC -Encoding ASCII
-    $scriptPathD = "$env:TEMP\diskpart_script_d.txt"
-    $diskPartScriptD | Out-File -FilePath $scriptPathD -Encoding ASCII
-
-    # Run Diskpart for both disks
-    Start-Process "diskpart.exe" -ArgumentList "/s $scriptPathC" -Wait
-    Start-Process "diskpart.exe" -ArgumentList "/s $scriptPathD" -Wait
-
-    Write-Host "Disk $DiskC has been partitioned as C drive and Disk $DiskD as D drive."
-}
-
 Write-Host "Preparing local environment."
 Set-Location X:\working
 Import-Module "X:\Windows\System32\WindowsPowerShell\v1.0\Modules\DnsClient"
 Import-Module "X:\Windows\System32\WindowsPowerShell\v1.0\Modules\powershell-yaml"
-$disks = Get-Disk | Where-Object { $_.OperationalStatus -eq 'Online' }
 
+# Get all partitions
+$partitions = Get-Partition
 
-# Main logic for disk selection and formatting
-if ($disks.Count -eq 2) {
-    # Sort disks by size and select larger as C and smaller as D
-    $sortedDisks = $disks | Sort-Object -Property Size -Descending
-    $diskC = $sortedDisks[0].Number
-    $diskD = $sortedDisks[1].Number
+# Check if there are no partitions
+if (($partitions.Count -eq 0) -or ($partitions.driveletter -notcontains "D")) {
+    # Get available disk space if no partitions exist
+    $availableSpace = Get-Disk | Where-Object { $_.OperationalStatus -eq 'Online' } | Measure-Object -Property Size -Sum
+    Write-Host "No partitions found. Partitioning disk."
 
-    Write-Host "Two disks found. Setting up the larger disk as C and the smaller as D."
-    PartitionAndFormat-TwoDisks -DiskC $diskC -DiskD $diskD
-} elseif ($disks.Count -eq 1) {
-    # Only one disk found, use it for both C and D
-    $singleDisk = $disks[0].Number
-    Write-Host "Only one disk found. Setting up C and D partitions on the same disk."
-    PartitionAndFormat-SingleDisk -DiskNumber $singleDisk
-} else {
-    Write-Host "No suitable disks found or more than two disks detected."
+    $local_files_size = 21480
+    $all_space = [math]::Floor($availableSpace.Sum / 1MB)
+    $primary_size = ($all_space - $local_files_size)
+
+    Write-Host "Avilable space $all_space MB"
+    Write-Host "Primary partition size is $primary_size MB"
+    Write-Host "Local Install Partition is $local_files_size MB"
+
+    $diskPartScript = @"
+        select disk 0
+        clean
+        convert gpt
+        create partition efi size=100
+        format fs=fat32 label=EFI
+        assign letter=S
+        create partition msr size=16
+        create partition primary size=$primary_size
+        format fs=ntfs quick
+        assign letter=C
+        create partition primary size=20480
+        format fs=ntfs quick
+        assign letter=D
+        exit
+"@
+
+    $diskPartScript | Out-File -FilePath "$env:TEMP\diskpart_script.txt" -Encoding ASCII
+    Start-Process "diskpart.exe" -ArgumentList "/s $env:TEMP\diskpart_script.txt" -Wait
 }
+## Check labels
+$part1 = Get-Partition -PartitionNumber 3
+$part2 = Get-Partition -PartitionNumber 4
 
-# Pause before label check
-Start-Sleep -Seconds 5
-
-# Label verification and correction
-if ($disks.Count -eq 2) {
-    # Check labels on two disks
-    $partC = Get-Partition | Where-Object { $_.DriveLetter -eq 'C' }
-    $partD = Get-Partition | Where-Object { $_.DriveLetter -eq 'D' }
-
-    if (-not $partC) {
-        Write-Host "OS Disk incorrectly labeled. Relabeling to C."
-        $diskCPartition = Get-Partition -DiskNumber $diskC -PartitionNumber 3
-        Set-Partition -DiskNumber $diskCPartition.DiskNumber -PartitionNumber $diskCPartition.PartitionNumber -NewDriveLetter C
-    }
-
-    if (-not $partD) {
-        Write-Host "Second disk incorrectly labeled. Relabeling to D."
-        $diskDPartition = Get-Partition -DiskNumber $diskD -PartitionNumber 1
-        Set-Partition -DiskNumber $diskDPartition.DiskNumber -PartitionNumber $diskDPartition.PartitionNumber -NewDriveLetter D
-    }
-} elseif ($disks.Count -eq 1) {
-    # Check labels on single disk
-    $partitions = Get-Partition -DiskNumber $singleDisk
-
-    $partC = $partitions | Where-Object { $_.PartitionNumber -eq 3 -and $_.DriveLetter -ne 'C' }
-    $partD = $partitions | Where-Object { $_.PartitionNumber -eq 4 -and $_.DriveLetter -ne 'D' }
-
-    if ($partC) {
-        Write-Host "OS Disk incorrectly labeled. Relabeling partition to C."
-        Set-Partition -DiskNumber $partC.DiskNumber -PartitionNumber $partC.PartitionNumber -NewDriveLetter C
-    }
-
-    if ($partD) {
-        Write-Host "Data partition incorrectly labeled. Relabeling partition to D."
-        Set-Partition -DiskNumber $partD.DiskNumber -PartitionNumber $partD.PartitionNumber -NewDriveLetter D
-    }
+if ($part1.DriveLetter -ne 'C') {
+    write-host “OS Disk incorrectly labeled. Re-labeling to C.”
 }
-
-Write-Host "Partition labeling check and adjustments complete."
-
+if ($part2.DriveLetter -ne 'D') {
+    Set-Partition -DriveLetter $part2.DriveLetter -NewDriveLetter Y
+    Write-Host "Relabeling partition 2 to D."
+}
 ## Show if needed
-#<#
+<#
 foreach ($partition in $partitions) {
     Write-Host "Partition $($partition.DriveLetter):"
     Write-Host "   File System: $($partition.FileSystem)"
@@ -242,35 +140,10 @@ foreach ($partition in $partitions) {
 ## Get node name
 
 $Ethernet = [System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces() | Where-Object { $_.name -match "ethernet" }
-try {
-    $IPAddress = ($Ethernet.GetIPProperties().UnicastAddresses |
-        Where-Object { $_.Address.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork -and $_.Address.IPAddressToString -ne "127.0.0.1" } |
-        Select-Object -ExpandProperty Address).IPAddressToString
-
-    if (-not $IPAddress) {
-        throw "No IP address found using .NET method."
-    }
-} catch {
-    $NetshOutput = netsh interface ip show addresses
-    $IPAddress = ($NetshOutput -match "IP Address" | ForEach-Object {
-        if ($_ -notmatch "127.0.0.1") {
-            $_ -replace ".*?:\s*", ""
-        }
-    }).Trim()
-}
-
-if ($IPAddress) {
-    Write-Host "IP Address: $IPAddress"
-} else {
-    Write-Host "No IP Address could be determined." -ForegroundColor Red
-}
-
-$ResolvedName = ((Resolve-DnsName -Name $IPAddress -Server "10.48.75.120").NameHost)
-write-host $ResolvedName
-pause
+$IPAddress = ($Ethernet.GetIPProperties().UnicastAddresses.Address | Where-object { $_.AddressFamily -eq "InterNetwork" }).IPAddressToString
+$ResolvedName = (Resolve-DnsName -Name $IPAddress -Server "10.48.75.120").NameHost
 
 $index = $ResolvedName.IndexOf('.')
-pause
 $shortname = $ResolvedName.Substring(0, $index)
 
 write-host checking name
@@ -425,5 +298,4 @@ Set-Location -Path $OS_files
 Write-Host "Initializing OS installation."
 Write-Host Running: Start-Process -FilePath $setup -ArgumentList "/unattend:$unattend"
 Write-Host "Have a nice day! :)"
-#Start-Process -FilePath $setup -ArgumentList "/unattend:$unattend"
-Start-Process -FilePath $setup -ArgumentList
+Start-Process -FilePath $setup -ArgumentList "/unattend:$unattend"
