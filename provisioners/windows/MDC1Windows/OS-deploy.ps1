@@ -92,20 +92,20 @@ function PartitionAndFormat-SingleDisk {
 
     # Create Diskpart script
     $diskPartScript = @"
-select disk $DiskNumber
-clean
-convert gpt
-create partition efi size=100
-format fs=fat32 label=EFI quick
-assign letter=S
-create partition msr size=16
-create partition primary size=$primary_size
-format fs=ntfs quick
-assign letter=C
-create partition primary size=$LocalFilesSizeMB
-format fs=ntfs quick
-assign letter=D
-exit
+        select disk 0
+        clean
+        convert gpt
+        create partition efi size=100
+        format fs=fat32 label=EFI
+        assign letter=S
+        create partition msr size=16
+        create partition primary size=$primary_size
+        format fs=ntfs quick
+        assign letter=C
+        create partition primary size=20480
+        format fs=ntfs quick
+        assign letter=D
+        exit
 "@
 
     # Save the Diskpart script to a temporary file
