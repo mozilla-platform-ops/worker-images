@@ -170,6 +170,11 @@ Import-Module "X:\Windows\System32\WindowsPowerShell\v1.0\Modules\DnsClient"
 Import-Module "X:\Windows\System32\WindowsPowerShell\v1.0\Modules\powershell-yaml"
 $disks = Get-Disk | Where-Object { $_.OperationalStatus -eq 'Online' }
 
+Write-Host "Detecting available disks..."
+$disks = Get-Disk | Where-Object { $_.OperationalStatus -eq 'Online' -and $_.MediaType -ne 'Removable' }
+
+Write-Host "Number of online disks detected: $($disks.Count)"
+pause
 $existingC = Get-Partition | Where-Object { $_.DriveLetter -eq 'C' }
 $existingD = Get-Partition | Where-Object { $_.DriveLetter -eq 'D' }
 
