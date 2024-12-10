@@ -76,21 +76,17 @@ function Update-GetBoot {
 
 # Function to partition and format a single disk with both C and D
 function PartitionAndFormat-SingleDisk {
-    param (
-        [int]$DiskNumber,
-        [int]$LocalFilesSizeMB = 20480
-    )
+    $availableSpace = Get-Disk | Where-Object { $_.OperationalStatus -eq 'Online' } | Measure-Object -Property Size -Sum
+    Write-Host "No partitions found. Partitioning disk."
 
-    # Get the available space on the disk
-    $disk = Get-Disk -Number $DiskNumber
-    $availableSpace = [math]::Floor($disk.Size / 1MB) # Total space in MB
-    $primary_size = $availableSpace - $LocalFilesSizeMB # Space for C drive
+    $local_files_size = 21480
+    $all_space = [math]::Floor($availableSpace.Sum / 1MB)
+    $primary_size = ($all_space - $local_files_size)
 
-    Write-Host "Available space: $availableSpace MB"
-    Write-Host "Primary partition size (C): $primary_size MB"
-    Write-Host "Local Install Partition size (D): $LocalFilesSizeMB MB"
+    Write-Host "Avilable space $all_space MB"
+    Write-Host "Primary partition size is $primary_size MB"
+    Write-Host "Local Install Partition is $local_files_size MB"
 
-    # Create Diskpart script
     $diskPartScript = @"
         select disk 0
         clean
@@ -108,14 +104,10 @@ function PartitionAndFormat-SingleDisk {
         exit
 "@
 
-    # Save the Diskpart script to a temporary file
-    $scriptPath = "$env:TEMP\diskpart_script.txt"
-    $diskPartScript | Out-File -FilePath $scriptPath -Encoding ASCII
+    $diskPartScript | Out-File -FilePath "$env:TEMP\diskpart_script.txt" -Encoding ASCII
+    $diskPartScript | Out-File -FilePath "test.txt" -Encoding ASCII
+    Start-Process "diskpart.exe" -ArgumentList "/s $env:TEMP\diskpart_script.txt" -Wait
 
-    # Run Diskpart with the script
-    Start-Process "diskpart.exe" -ArgumentList "/s $scriptPath" -Wait
-
-    Write-Host "Disk $DiskNumber has been partitioned and formatted with both C and D drives."
     pause
 }
 
