@@ -8,9 +8,7 @@ on:
         type: choice
         description: Choose which pool to build
         options:
-        - gw-fxci-gcp-l1-2404-alpha
         - gw-fxci-gcp-l1-2404-gui-alpha
-        - gw-fxci-gcp-l1-2404-x11-alpha
         - gw-fxci-gcp-l1-2404-headless-alpha
 
 permissions:

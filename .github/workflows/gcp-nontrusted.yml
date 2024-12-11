@@ -8,15 +8,8 @@ on:
         type: choice
         description: Choose which pool to build
         options:
-        - gw-fxci-gcp-l1-2404-alpha
-        - gw-fxci-gcp-l1-2404-tc
-        - gw-fxci-gcp-l1-2404-gui
         - gw-fxci-gcp-l1-2404-gui-alpha
-        - gw-fxci-gcp-l1-2404-x11-alpha
         - gw-fxci-gcp-l1-2404-headless-alpha
-        - gw-fxci-gcp-l1-2404-x11
-        - gw-fxci-gcp-l1-arm64
-        - gw-fxci-gcp-l1-arm64-gui
 
 permissions:
   id-token: write
