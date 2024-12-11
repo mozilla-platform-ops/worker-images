@@ -258,6 +258,7 @@ build {
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/01-bootstrap.sh",
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/02-additional-packages.sh",
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/04-wayland.sh",
+      "${path.cwd}/scripts/linux/common/userns.sh",
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/99-additional-talos-reqs.sh"
     ]
   }
@@ -485,6 +486,7 @@ build {
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/01-bootstrap.sh",
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/02-additional-packages.sh",
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/03-aslr.sh",
+      "${path.cwd}/scripts/linux/common/userns.sh",
       "${path.cwd}/scripts/linux/common/v4l2loopback.sh"
     ]
   }
