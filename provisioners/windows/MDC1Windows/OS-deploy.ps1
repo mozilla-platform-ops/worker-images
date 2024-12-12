@@ -98,7 +98,7 @@ function PartitionAndFormat-SingleDisk {
         create partition primary size=$primary_size
         format fs=ntfs quick
         assign letter=C
-        create partition primary size=20480
+        create partition primary $local_files
         format fs=ntfs quick
         assign letter=D
         exit
@@ -431,5 +431,4 @@ Set-Location -Path $OS_files
 Write-Host "Initializing OS installation."
 Write-Host Running: Start-Process -FilePath $setup -ArgumentList "/unattend:$unattend"
 Write-Host "Have a nice day! :)"
-#Start-Process -FilePath $setup -ArgumentList "/unattend:$unattend"
-Start-Process -FilePath $setup -ArgumentList
+Start-Process -FilePath $setup -ArgumentList "/unattend:$unattend"
