@@ -390,8 +390,12 @@ if (!(Test-Path $setup)) {
 
     Write-Host "Updating autounattend.xml."
 
+    $DiskNumber = ((Get-Partition -DriveLetter C).DiskNumber))
+    $install_to = "<DiskID>$DiskNumber</DiskID>
+
     $replacetheses = @(
         @{ OldString = "THIS-IS-A-NAME"; NewString = $shortname },
+        @{ OldString = "<DiskID>0</DiskID>"; NewString = $install_to },
         @{ OldString = "NotARealPassword"; NewString = $secret_YAML.win_adminpw }
     )
 
