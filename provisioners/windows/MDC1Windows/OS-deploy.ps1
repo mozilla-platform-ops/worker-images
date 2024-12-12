@@ -392,10 +392,13 @@ if (!(Test-Path $setup)) {
 
     $DiskNumber = ((Get-Partition -DriveLetter D).DiskNumber)
     $install_to = "<DiskID>$DiskNumber</DiskID>"
+    $PartitionNumber = (Get-Partition -DriveLetter C).PartitionNumber
+    $partition = "<PartitionID>$PartitionNumber</PartitionID>"
 
     $replacetheses = @(
         @{ OldString = "THIS-IS-A-NAME"; NewString = $shortname },
         @{ OldString = "<DiskID>0</DiskID>"; NewString = $install_to },
+        @{ OldString = "<PartitionID>3</PartitionID>"; NewString = $partition },
         @{ OldString = "NotARealPassword"; NewString = $secret_YAML.win_adminpw }
     )
 
