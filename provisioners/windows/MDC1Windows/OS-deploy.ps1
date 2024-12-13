@@ -421,7 +421,7 @@ if (!(Test-Path $setup)) {
 
     Write-Host "Updating autounattend.xml."
 
-    $DiskNumber = ((Get-Partition -DriveLetter D).DiskNumber)
+    $DiskNumber = ((Get-Partition -DriveLetter C).DiskNumber)
     $install_to = "<DiskID>$DiskNumber</DiskID>"
     $PartitionNumber = (Get-Partition -DriveLetter C).PartitionNumber
     $partition = "<PartitionID>$PartitionNumber</PartitionID>"
