@@ -433,6 +433,11 @@ if (!(Test-Path $setup)) {
         @{ OldString = "NotARealPassword"; NewString = $secret_YAML.win_adminpw }
     )
 
+    write-host install to $install_to
+    write-host $partition
+    pause
+
+
     $content2 = Get-Content -Path $unattend
     foreach ($replacethese in $replacetheses) {
         $content2 = $content2 -replace $replacethese.OldString, $replacethese.NewString
