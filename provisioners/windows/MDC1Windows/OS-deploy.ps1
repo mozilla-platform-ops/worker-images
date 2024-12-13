@@ -107,33 +107,63 @@ function PartitionAndFormat-SingleDisk {
     $diskPartScript | Out-File -FilePath "$env:TEMP\diskpart_script.txt" -Encoding ASCII
     $diskPartScript | Out-File -FilePath "test.txt" -Encoding ASCII
     Start-Process "diskpart.exe" -ArgumentList "/s $env:TEMP\diskpart_script.txt" -Wait
-
-    pause
 }
 
-# Function to partition and format two disks: Larger disk as C, smaller disk as D
 function PartitionAndFormat-TwoDisks {
     param (
-        [int]$DiskC,
-        [int]$DiskD
+        [int]$DiskC, # Disk number for the larger disk
+        [int]$DiskD  # Disk number for the smaller disk
     )
 
-    # Diskpart script for the larger disk (C)
+    # Get the sizes of all disks
+    $diskSizes = Get-Disk | Where-Object { $_.OperationalStatus -eq 'Online' } | Select-Object Number, Size
+
+    # Determine the main disk (largest storage) and secondary disk
+    $mainDisk = $diskSizes | Sort-Object -Property Size -Descending | Select-Object -First 1
+    $secondaryDisk = $diskSizes | Where-Object { $_.Number -ne $mainDisk.Number } | Select-Object -First 1
+
+    $DiskC = $mainDisk.Number
+    $DiskD = $secondaryDisk.Number
+
+    Write-Host "Main Disk: Disk $DiskC with size $($mainDisk.Size / 1GB) GB"
+    Write-Host "Secondary Disk: Disk $DiskD with size $($secondaryDisk.Size / 1GB) GB"
+
+    # Define sizes for the EFI, MSR, and local files partitions
+    $efiSize = 100  # EFI partition size in MB
+    $msrSize = 16   # MSR partition size in MB
+    $localFilesSize = 21480  # Local files partition size in MB
+
+    # Calculate the primary partition size for the main disk (DiskC)
+    $totalCSizeMB = [math]::Floor($mainDisk.Size / 1MB)
+    $primaryPartitionSizeC = $totalCSizeMB - ($efiSize + $msrSize + $localFilesSize)
+
+    Write-Host "Partitioning Main Disk (DiskC) with size $totalCSizeMB MB:" -ForegroundColor Green
+    Write-Host "- EFI Partition: $efiSize MB"
+    Write-Host "- MSR Partition: $msrSize MB"
+    Write-Host "- Primary Partition (C): $primaryPartitionSizeC MB"
+    Write-Host "- Local Install Partition: $localFilesSize MB"
+
+    # Diskpart script for the main disk (DiskC)
     $diskPartScriptC = @"
 select disk $DiskC
 clean
 convert gpt
-create partition efi size=100
+create partition efi size=$efiSize
 format fs=fat32 label=EFI quick
 assign letter=S
-create partition msr size=16
-create partition primary
+create partition msr size=$msrSize
+create partition primary size=$primaryPartitionSizeC
 format fs=ntfs quick
 assign letter=C
+create partition primary size=$localFilesSize
+format fs=ntfs quick
+assign letter=D
 exit
 "@
 
-    # Diskpart script for the smaller disk (D)
+    # Diskpart script for the secondary disk (DiskD)
+    Write-Host "Partitioning Secondary Disk (DiskD) as a single partition:" -ForegroundColor Green
+
     $diskPartScriptD = @"
 select disk $DiskD
 clean
@@ -154,8 +184,9 @@ exit
     Start-Process "diskpart.exe" -ArgumentList "/s $scriptPathC" -Wait
     Start-Process "diskpart.exe" -ArgumentList "/s $scriptPathD" -Wait
 
-    Write-Host "Disk $DiskC has been partitioned as C drive and Disk $DiskD as D drive."
+    Write-Host "Partitioning complete. Disk $DiskC has been partitioned as the primary drive with multiple partitions. Disk $DiskD is formatted as a single partition." -ForegroundColor Green
 }
+
 
 Write-Host "Preparing local environment."
 Set-Location X:\working
