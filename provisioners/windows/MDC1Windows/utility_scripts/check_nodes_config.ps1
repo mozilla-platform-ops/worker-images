@@ -10,7 +10,7 @@ param(
 	[string]$domain_suffix = "wintest2.releng.mdc1.mozilla.com",
 	[string]$pxe_script = "C:\management_scripts\force_pxe_install.ps1",
 	[string]$audit_script = "C:\management_scripts\pool_audit.ps1",
-	[string]$yaml_url = "https://raw.githubusercontent.com/mozilla-platform-ops/ronin_puppet/win11hardware/provisioners/windows/MDC1Windows/pools.yml",
+	[string]$yaml_url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/main/provisioners/windows/MDC1Windows/pools.yml",
 	[switch]$help
 )
 
