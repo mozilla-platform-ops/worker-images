@@ -4,8 +4,8 @@ image:
   offer: Windows-11
   sku: win11-22h2-avd
   version: latest
-  gallery_name: "ronin_t_windows11_64_2009_prod"
-  image_name: "win11-64-2009"
+  gallery_name: "win11_64_2009"
+  image_name: "win11_64_2009"
   image_version: 1.0.0
 azure:
   managed_image_resource_group_name: rg-packer-through-cib

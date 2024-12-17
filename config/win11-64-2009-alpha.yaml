@@ -5,8 +5,8 @@ image:
   sku: win11-22h2-avd
   version: latest
 sharedimage:
-  gallery_name: "ronin_t_windows11_64_2009_alpha"
-  image_name: "win11-64-2009-alpha"
+  gallery_name: "win11_64_2009_alpha"
+  image_name: "win11_64_2009_alpha"
   image_version: 1.0.0
 azure:
   managed_image_resource_group_name: rg-packer-through-cib

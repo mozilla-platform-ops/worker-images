@@ -4,8 +4,8 @@ image:
   offer: Windows-10
   sku: win10-22h2-avd
   version: latest
-  gallery_name: "ronin_t_windows10_64_2009_alpha"
-  image_name: "win10-64-2009-alpha"
+  gallery_name: "win10_64_2009_alpha"
+  image_name: "win10_64_2009_alpha"
   image_version: 1.0.0
 azure:
   managed_image_resource_group_name: rg-packer-through-cib
