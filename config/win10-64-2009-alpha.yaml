@@ -2,7 +2,7 @@
 image:
   publisher: MicrosoftWindowsDesktop
   offer: Windows-10
-  sku: win10-22h2-avd
+  sku: win10-22h2-avd-g2
   version: latest
 sharedimage:
   gallery_name: "win10_64_2009_alpha"
