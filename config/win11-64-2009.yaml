@@ -4,6 +4,7 @@ image:
   offer: Windows-11
   sku: win11-22h2-avd
   version: latest
+sharedimage:
   gallery_name: "win11_64_2009"
   image_name: "win11_64_2009"
   image_version: 1.0.0
