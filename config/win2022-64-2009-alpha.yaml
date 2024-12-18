@@ -5,9 +5,9 @@ image:
   sku: 2022-datacenter-azure-edition-core
   version: latest
 sharedimage:
-  gallery_name: ""
-  image_name: ""
-  image_version: ""
+  gallery_name: "win2022_64_2009_alpha"
+  image_name: "win2022_64_2009_alpha"
+  image_version: 1.0.0
 azure:
   managed_image_resource_group_name: rg-packer-through-cib
   managed_image_storage_account_type: Standard_LRS
