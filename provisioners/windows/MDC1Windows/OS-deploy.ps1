@@ -34,7 +34,7 @@ function Mount-ZDrive {
 function Update-GetBoot {
     param(
     )
-    $Get_Bootstrap = $local_scripts + "Get-Bootstrap.ps1"
+    $Get_Bootstrap = "D:\scripts\Get-Bootstrap.ps1"
     $Template_Get_Bootstrap = $local_scripts + "Template_Get-Bootstrap.ps1"
 
     ## Remove existing Get-Bootstrap.ps1 with latest values
