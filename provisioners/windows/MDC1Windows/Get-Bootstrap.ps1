@@ -278,6 +278,8 @@ if ($ps_ver -le 5) {
     wusa.exe $work_dir\$wmf_5_1 /quiet /norestart
     # Wait to allow to allow msu to finish installing
     start-sleep -Seconds 120
+    $currentScript = $MyInvocation.MyCommand.Definition
+    Start-Process -FilePath "powershell.exe" -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$currentScript`"" -Wait
     exit 0
 }
 
