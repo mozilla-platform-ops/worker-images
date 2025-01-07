@@ -265,13 +265,29 @@ function Install-Choco {
     }
 }
 
-## Check until the machine is online
-## Won't work on Win 10 older
-$osVersion = (Get-CimInstance Win32_OperatingSystem).Version
+$ps_ver_maj = $PSVersionTable.PSVersion.Major,
+$ps_ver_min = $PSVersionTable.PSVersion.Minor,
+$ps_ver = ('{0}.{1}' -f $ps_ver_maj,$ps_ver_min),
+$wmf_5_1 ="Win8.1AndW2K12R2-KB3191564-x64.msu",        
 
-if ($osVersion -notmatch '^10\.') {
-    Test-ConnectionUntilOnline
+
+if ($ps_ver -le 5) {
+    Write-Log -message  ('{0} :: Powershell does not meet the minimum version of 5.1' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
+    Write-Log -message  ('{0} :: Updating Powershell from version {1} to 5.1' -f $($MyInvocation.MyCommand.Name), $PSVersionTable.PSVersion.Major) -severity 'DEBUG'
+    Invoke-WebRequest -Uri  $ext_src/$wmf_5_1  -UseBasicParsing -OutFile $work_dir\$wmf_5_1
+    wusa.exe $work_dir\$wmf_5_1 /quiet /norestart
+    # Wait to allow to allow msu to finish installing
+    start-sleep -Seconds 120
+    exit 0
 }
+
+
+
+
+
+
+## Check until the machine is online
+Test-ConnectionUntilOnline
 
 ## Setup WinRM just in case the machine fails so we have credentials to use
 Set-WinRM
