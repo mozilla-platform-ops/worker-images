@@ -278,8 +278,24 @@ if ($ps_ver -le 5) {
     wusa.exe $work_dir\$wmf_5_1 /quiet /norestart
     # Wait to allow to allow msu to finish installing
     start-sleep -Seconds 120
-    $currentScript = $MyInvocation.MyCommand.Definition
-    Start-Process -FilePath "powershell.exe" -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$currentScript`"" -Wait
+    $taskName = "RunBootstrapOnStartup"
+    $scriptPath = "D:\scripts\get-bootstrap.ps1"
+
+    $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`""
+    $trigger = New-ScheduledTaskTrigger -AtStartup -Once
+    $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+
+    try {
+        Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal
+        Write-Output "Scheduled task '$taskName' created successfully to run script '$scriptPath' at startup."
+    } catch {
+        Write-Error "Failed to create the scheduled task: $_"
+        exit 1
+    }
+
+    Write-Output "Rebooting the system to execute the scheduled task..."
+    shutdown.exe /r /t 0
+
     exit 0
 }
 
