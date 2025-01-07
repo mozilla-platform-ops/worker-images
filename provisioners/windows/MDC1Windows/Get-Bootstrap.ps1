@@ -266,7 +266,12 @@ function Install-Choco {
 }
 
 ## Check until the machine is online
-Test-ConnectionUntilOnline
+## Won't work on Win 10 older
+$osVersion = (Get-CimInstance Win32_OperatingSystem).Version
+
+if ($osVersion -notmatch '^10\.') {
+    Test-ConnectionUntilOnline
+}
 
 ## Setup WinRM just in case the machine fails so we have credentials to use
 Set-WinRM
