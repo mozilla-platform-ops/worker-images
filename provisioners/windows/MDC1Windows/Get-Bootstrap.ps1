@@ -113,8 +113,8 @@ function Set-RemoteConnectivity {
     if ($network_category.NetworkCategory -ne "Private") {
         Set-NetConnectionProfile -InterfaceAlias $AdapterName -NetworkCategory "Private"
         Enable-PSRemoting -Force
+        }
     }
-
 }
 
 function Invoke-DownloadWithRetry {
