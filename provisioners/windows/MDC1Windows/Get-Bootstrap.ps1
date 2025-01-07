@@ -101,11 +101,17 @@ function Set-RemoteConnectivity {
     }
     ## WinRM
     Write-Log -message ('{0} :: Enabling WinRM.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-    $adapter = Get-NetAdapter | Where-Object { $psitem.name -match "Ethernet" }
-    $network_category = Get-NetConnectionProfile -InterfaceAlias $adapter.Name
+    if ((Get-CimInstance Win32_OperatingSystem).Version -like "10.*") {
+        $AdapterName = "Embedded LOM 1 Port 1"
+    } else {
+        $adapter = Get-NetAdapter | Where-Object { $psitem.name -match "Ethernet" }
+        $AdapterName = $adapter.Name
+    }
+    if ((Get-CimInstance Win32_OperatingSystem).Version -like "10.*") {
+    $network_category = Get-NetConnectionProfile -InterfaceAlias $AdapterName
     ## WinRM only works on the the active network interface if it is set to private
     if ($network_category.NetworkCategory -ne "Private") {
-        Set-NetConnectionProfile -InterfaceAlias $adapter.name -NetworkCategory "Private"
+        Set-NetConnectionProfile -InterfaceAlias $AdapterName -NetworkCategory "Private"
         Enable-PSRemoting -Force
     }
 
@@ -263,40 +269,6 @@ function Install-Choco {
     if (-Not (Test-Path "C:\ProgramData\Chocolatey\bin\choco.exe")) {
         Set-PXE
     }
-}
-
-$ps_ver_maj = $PSVersionTable.PSVersion.Major
-$ps_ver_min = $PSVersionTable.PSVersion.Minor
-$ps_ver = ('{0}.{1}' -f $ps_ver_maj,$ps_ver_min)
-$wmf_5_1 ="Win8.1AndW2K12R2-KB3191564-x64.msu" 
-$ext_src = "https://roninpuppetassets.blob.core.windows.net/binaries/prerequisites"
-
-if ($ps_ver -le 5) {
-    Write-Log -message  ('{0} :: Powershell does not meet the minimum version of 5.1' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-    Write-Log -message  ('{0} :: Updating Powershell from version {1} to 5.1' -f $($MyInvocation.MyCommand.Name), $PSVersionTable.PSVersion.Major) -severity 'DEBUG'
-    Invoke-WebRequest -Uri  $ext_src/$wmf_5_1  -UseBasicParsing -OutFile $work_dir\$wmf_5_1
-    wusa.exe $work_dir\$wmf_5_1 /quiet /norestart
-    # Wait to allow to allow msu to finish installing
-    start-sleep -Seconds 120
-    $taskName = "RunBootstrapOnStartup"
-    $scriptPath = "D:\scripts\get-bootstrap.ps1"
-
-    $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`""
-    $trigger = New-ScheduledTaskTrigger -AtStartup -Once
-    $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
-
-    try {
-        Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal
-        Write-Output "Scheduled task '$taskName' created successfully to run script '$scriptPath' at startup."
-    } catch {
-        Write-Error "Failed to create the scheduled task: $_"
-        exit 1
-    }
-
-    Write-Output "Rebooting the system to execute the scheduled task..."
-    shutdown.exe /r /t 0
-
-    exit 0
 }
 
 ## Check until the machine is online
