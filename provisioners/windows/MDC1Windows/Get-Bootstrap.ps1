@@ -265,11 +265,11 @@ function Install-Choco {
     }
 }
 
-$ps_ver_maj = $PSVersionTable.PSVersion.Major,
-$ps_ver_min = $PSVersionTable.PSVersion.Minor,
+$ps_ver_maj = $PSVersionTable.PSVersion.Major
+$ps_ver_min = $PSVersionTable.PSVersion.Minor
 $ps_ver = ('{0}.{1}' -f $ps_ver_maj,$ps_ver_min)
-$wmf_5_1 ="Win8.1AndW2K12R2-KB3191564-x64.msu"       
-
+$wmf_5_1 ="Win8.1AndW2K12R2-KB3191564-x64.msu" 
+$ext_src = "https://roninpuppetassets.blob.core.windows.net/binaries/prerequisites"
 
 if ($ps_ver -le 5) {
     Write-Log -message  ('{0} :: Powershell does not meet the minimum version of 5.1' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
