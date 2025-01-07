@@ -101,20 +101,14 @@ function Set-RemoteConnectivity {
     }
     ## WinRM
     Write-Log -message ('{0} :: Enabling WinRM.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-    if ((Get-CimInstance Win32_OperatingSystem).Version -like "10.*") {
-        $AdapterName = "Embedded LOM 1 Port 1"
-    } else {
-        $adapter = Get-NetAdapter | Where-Object { $psitem.name -match "Ethernet" }
-        $AdapterName = $adapter.Name
-    }
-    if ((Get-CimInstance Win32_OperatingSystem).Version -like "10.*") {
-    $network_category = Get-NetConnectionProfile -InterfaceAlias $AdapterName
+    $adapter = Get-NetAdapter | Where-Object { $psitem.name -match "Ethernet" }
+    $network_category = Get-NetConnectionProfile -InterfaceAlias $adapter.Name
     ## WinRM only works on the the active network interface if it is set to private
     if ($network_category.NetworkCategory -ne "Private") {
-        Set-NetConnectionProfile -InterfaceAlias $AdapterName -NetworkCategory "Private"
+        Set-NetConnectionProfile -InterfaceAlias $adapter.name -NetworkCategory "Private"
         Enable-PSRemoting -Force
-        }
     }
+
 }
 
 function Invoke-DownloadWithRetry {
@@ -288,4 +282,3 @@ $local_bootstrap = "C:\bootstrap\bootstrap.ps1"
 Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/main/provisioners/windows/MDC1Windows/bootstrap.ps1" -Path $local_bootstrap
 
 D:\applications\psexec.exe -i -s -d -accepteula powershell.exe -ExecutionPolicy Bypass -file $local_bootstrap -worker_pool_id "WorkerPoolId" -role "1Role"  -src_Organisation "SRCOrganisation" -src_Repository "SRCRepository" -src_Branch "SRCBranch" -hash "1HASH" -secret_date "1secret_date" -puppet_version "1puppet_version"
-
