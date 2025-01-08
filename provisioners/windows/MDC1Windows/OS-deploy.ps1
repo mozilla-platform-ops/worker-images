@@ -213,8 +213,8 @@ if (!($skipPartitioning)) {
     if ($diskCount -eq 2) {
         # Sort disks by size and select larger as C and smaller as D
         $sortedDisks = $disks | Sort-Object -Property Size -Descending
-        $diskC = $sortedDisks[0].Number
-        $diskD = $sortedDisks[1].Number
+        $diskC = $sortedDisks[1].Number
+        $diskD = $sortedDisks[0].Number
 
         Write-Host "Two disks found. Setting up the larger disk as C and the smaller as D."
         PartitionAndFormat-TwoDisks -DiskC $diskC -DiskD $diskD
