@@ -8,7 +8,7 @@ function Deploy-Dev-OS {
     )
 
     $local_dir = "X:\working"
-    $source = "https://raw.githubusercontent.com/mozilla-platform-ops/ronin_puppet/win11hardware/provisioners/windows/MDC1Windows/dev"
+    $source = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/main/provisioners/windows/MDC1Windows/dev/"
     $script = "OS-deploy.ps1"
     $deploy_script = "$local_dir\$script"
 
