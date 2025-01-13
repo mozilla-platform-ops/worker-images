@@ -34,7 +34,7 @@ function Deploy-Dev-OS {
             Invoke-WebRequest -Uri "$source/$script" -OutFile $deploy_script
             break  # Break out of the loop if download is successful
         } catch {
-            Write-Host "Attempt $retryCount: An error occurred - $_"
+            Write-Host "Attempt $retryCount: An error occurred - $Error[0]"
             Write-Host "Retrying in $retryInterval seconds..."
             Start-Sleep -Seconds $retryInterval
         }
