@@ -80,6 +80,8 @@ function Set-RemoteConnectivity {
 
     )
 
+pause
+
     ## OpenSSH
     $sshdService = Get-Service -Name sshd -ErrorAction SilentlyContinue
     if ($null -eq $sshdService) {
