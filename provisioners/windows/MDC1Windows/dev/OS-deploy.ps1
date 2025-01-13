@@ -2,52 +2,6 @@ param(
     [string]$deployuser,
     [string]$deploymentaccess
 )
-function Deploy-Dev-OS {
-    param (
-        [string]$Password
-    )
-
-    $local_dir = "X:\working"
-    $source = "https://raw.githubusercontent.com/mozilla-platform-ops/ronin_puppet/win11hardware/provisioners/windows/MDC1Windows/dev"
-    $script = "OS-deploy.ps1"
-    $deploy_script = "$local_dir\$script"
-
-    Set-ExecutionPolicy Bypass -Scope Process -Force
-
-    Write-Host "Beginning OS deployment."
-
-    # Ensure the local directory exists
-    New-Item -ItemType Directory -Path $local_dir -Force | Out-Null
-
-    $maxRetries = 20  # 20 retries * 30 seconds each = 10 minutes
-    $retryInterval = 30  # seconds
-
-    # Remove existing files if present
-    if (Test-Path -Path $deploy_script) {
-        Remove-Item $deploy_script -Force
-    }
-
-    Write-Host "Downloading OS deploy script."
-
-    for ($retryCount = 1; $retryCount -le $maxRetries; $retryCount++) {
-        try {
-            Invoke-WebRequest -Uri "$source/$script" -OutFile $deploy_script
-            break  # Break out of the loop if download is successful
-        } catch {
-            Write-Host "Attempt $retryCount: An error occurred - $_"
-            Write-Host "Retrying in $retryInterval seconds..."
-            Start-Sleep -Seconds $retryInterval
-        }
-    }
-
-    if ($retryCount -gt $maxRetries) {
-        Write-Host "Download failed after $maxRetries attempts. Exiting function."
-        return
-    }
-
-    Write-Host "Running DEV deployment script..."
-    powershell $deploy_script -deployuser "deployment" -deploymentaccess "$Password"
-}
 
 function Mount-ZDrive {
     param(
@@ -380,9 +334,9 @@ foreach ($pool in $YAML.pools) {
             $puppet_version = $pool.puppet_version
             Write-Output "The associated image for $shortname is: $neededImage"
             if ($pool.dev -eq $true) {
-                Deploy-Dev-OS -Password $deploymentaccess
                 Write-Host "Dev mode is enabled."
-                exit
+                Write-Host "pausing"
+                pause
             }
             $found = $true
             break
