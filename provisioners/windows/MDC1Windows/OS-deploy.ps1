@@ -27,7 +27,7 @@ function Deploy-Dev-OS {
         Remove-Item $deploy_script -Force
     }
 
-    Write-Host "Downloading OS deploy script."
+    Write-Host "DEV Downloading OS deploy script."
 
     for ($retryCount = 1; $retryCount -le $maxRetries; $retryCount++) {
         try {
