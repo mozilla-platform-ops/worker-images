@@ -234,6 +234,7 @@ exit
 }
 
 ## Get node name
+Set-Location X:\working
 
 $Ethernet = [System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces() | Where-Object { $_.name -match "ethernet" }
 try {
