@@ -233,6 +233,86 @@ exit
     Write-Host "Partitioning complete. Disk $DiskC has been partitioned as the primary drive with multiple partitions. Disk $DiskD is formatted as a single partition." -ForegroundColor Green
 }
 
+## Get node name
+
+$Ethernet = [System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces() | Where-Object { $_.name -match "ethernet" }
+try {
+    $IPAddress = ($Ethernet.GetIPProperties().UnicastAddresses |
+        Where-Object { $_.Address.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork -and $_.Address.IPAddressToString -ne "127.0.0.1" } |
+        Select-Object -ExpandProperty Address).IPAddressToString
+
+    if (-not $IPAddress) {
+        throw "No IP address found using .NET method."
+    }
+} catch {
+    $NetshOutput = netsh interface ip show addresses
+    $IPAddress = ($NetshOutput -match "IP Address" | ForEach-Object {
+        if ($_ -notmatch "127.0.0.1") {
+            $_ -replace ".*?:\s*", ""
+        }
+    }).Trim()
+}
+
+if ($IPAddress) {
+    Write-Host "IP Address: $IPAddress"
+} else {
+    Write-Host "No IP Address could be determined." -ForegroundColor Red
+}
+
+$ResolvedName = ((Resolve-DnsName -Name $IPAddress -Server "10.48.75.120").NameHost)
+write-host $ResolvedName
+
+$index = $ResolvedName.IndexOf('.')
+$shortname = $ResolvedName.Substring(0, $index)
+
+write-host checking name
+
+$DomainSuffix = $ResolvedName -replace '^[^.]*\.', ''
+
+Write-Host "Host name set to be $ResolvedName"
+
+## Get data
+## Assumes files is in the same dir
+$YAML = Convertfrom-Yaml (Get-Content "pools.yml" -raw)
+
+foreach ($pool in $YAML.pools) {
+    foreach ($node in $pool.nodes) {
+        if ($node -match $shortname) {
+            $neededImage = $pool.image
+            $WorkerPool = $pool.name
+            $role = $WorkerPool -replace "-", ""
+            $src_Organisation = $pool.src_Organisation
+            $src_Repository = $pool.src_Repository
+            $src_Branch = $pool.src_Branch
+            $hash = $pool.hash
+            $secret_date = $pool.secret_date
+            $puppet_version = $pool.puppet_version
+            Write-Output "The associated image for $shortname is: $neededImage"
+            if ($pool.dev -eq $true) {
+                Write-Host "Dev mode is enabled."
+                Write-Host "pausing"
+                pause
+            }
+            $found = $true
+            break
+        }
+        if ($found) {
+            break
+        }
+        else {
+            $defaultPool = $YAML.pools | Where-Object { $_.name -eq "Default" }
+            $neededImage = $defaultPool.image
+            $WorkerPool = $pool.name
+            $WorkerPool = $pool.name
+            $role = $WorkerPool -replace "-", ""
+            $src_Organisation = $pool.src_Organisation
+            $src_Repository = $pool.src_Repository
+            $src_Branch = $pool.src_Branch
+            $secret_date = $pool.secret_date
+            $puppet_version = "6.28.0"
+        }
+    }
+}
 
 Write-Host "Preparing local environment."
 Set-Location X:\working
@@ -324,86 +404,6 @@ foreach ($partition in $partitions) {
     Write-Host ""
 }
 #>
-## Get node name
-
-$Ethernet = [System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces() | Where-Object { $_.name -match "ethernet" }
-try {
-    $IPAddress = ($Ethernet.GetIPProperties().UnicastAddresses |
-        Where-Object { $_.Address.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork -and $_.Address.IPAddressToString -ne "127.0.0.1" } |
-        Select-Object -ExpandProperty Address).IPAddressToString
-
-    if (-not $IPAddress) {
-        throw "No IP address found using .NET method."
-    }
-} catch {
-    $NetshOutput = netsh interface ip show addresses
-    $IPAddress = ($NetshOutput -match "IP Address" | ForEach-Object {
-        if ($_ -notmatch "127.0.0.1") {
-            $_ -replace ".*?:\s*", ""
-        }
-    }).Trim()
-}
-
-if ($IPAddress) {
-    Write-Host "IP Address: $IPAddress"
-} else {
-    Write-Host "No IP Address could be determined." -ForegroundColor Red
-}
-
-$ResolvedName = ((Resolve-DnsName -Name $IPAddress -Server "10.48.75.120").NameHost)
-write-host $ResolvedName
-
-$index = $ResolvedName.IndexOf('.')
-$shortname = $ResolvedName.Substring(0, $index)
-
-write-host checking name
-
-$DomainSuffix = $ResolvedName -replace '^[^.]*\.', ''
-
-Write-Host "Host name set to be $ResolvedName"
-
-## Get data
-## Assumes files is in the same dir
-$YAML = Convertfrom-Yaml (Get-Content "pools.yml" -raw)
-
-foreach ($pool in $YAML.pools) {
-    foreach ($node in $pool.nodes) {
-        if ($node -match $shortname) {
-            $neededImage = $pool.image
-            $WorkerPool = $pool.name
-            $role = $WorkerPool -replace "-", ""
-            $src_Organisation = $pool.src_Organisation
-            $src_Repository = $pool.src_Repository
-            $src_Branch = $pool.src_Branch
-            $hash = $pool.hash
-            $secret_date = $pool.secret_date
-            $puppet_version = $pool.puppet_version
-            Write-Output "The associated image for $shortname is: $neededImage"
-            if ($pool.dev -eq $true) {
-                Deploy-Dev-OS -Password $deploymentaccess
-                Write-Host "Dev mode is enabled."
-                exit
-            }
-            $found = $true
-            break
-        }
-        if ($found) {
-            break
-        }
-        else {
-            $defaultPool = $YAML.pools | Where-Object { $_.name -eq "Default" }
-            $neededImage = $defaultPool.image
-            $WorkerPool = $pool.name
-            $WorkerPool = $pool.name
-            $role = $WorkerPool -replace "-", ""
-            $src_Organisation = $pool.src_Organisation
-            $src_Repository = $pool.src_Repository
-            $src_Branch = $pool.src_Branch
-            $secret_date = $pool.secret_date
-            $puppet_version = "6.28.0"
-        }
-    }
-}
 
 ## It seems like the Z: drive needs to be access before script exits to presists
 
