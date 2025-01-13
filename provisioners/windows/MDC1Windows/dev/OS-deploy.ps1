@@ -335,8 +335,6 @@ foreach ($pool in $YAML.pools) {
             Write-Output "The associated image for $shortname is: $neededImage"
             if ($pool.dev -eq $true) {
                 Write-Host "Dev mode is enabled."
-                Write-Host "pausing"
-                pause
             }
             $found = $true
             break
