@@ -79,9 +79,6 @@ function Set-RemoteConnectivity {
     param (
 
     )
-
-pause
-
     ## OpenSSH
     $sshdService = Get-Service -Name sshd -ErrorAction SilentlyContinue
     if ($null -eq $sshdService) {
@@ -278,11 +275,12 @@ function Install-Choco {
 
 ## Check until the machine is online
 Test-ConnectionUntilOnline
+write-host Correct script
+pause
 
 ## Setup WinRM just in case the machine fails so we have credentials to use
 Set-WinRM
 
-pause
 
 ## Once we have internet connection, setup ssh and import the keys
 Set-SSH
