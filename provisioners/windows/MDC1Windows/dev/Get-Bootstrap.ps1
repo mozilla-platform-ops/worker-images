@@ -242,18 +242,18 @@ function Set-WinRM {
         
     )
     $osVersion = (Get-CimInstance Win32_OperatingSystem).Version
-    if ($osVersion -like "10.*") {
-        Write-Host "Detected Windows 10. Exiting function."
-        return
-    }
     ## WinRM
     Write-Log -message ('{0} :: Enabling WinRM.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-    $adapter = Get-NetAdapter | Where-Object { $psitem.name -match "Ethernet" }
-    $network_category = Get-NetConnectionProfile -InterfaceAlias $adapter.Name
-    ## WinRM only works on the the active network interface if it is set to private
-    if ($network_category.NetworkCategory -ne "Private") {
-        Set-NetConnectionProfile -InterfaceAlias $adapter.name -NetworkCategory "Private"
-        Enable-PSRemoting -Force
+    if ($osVersion -like "10.*") {
+        Set-NetConnectionProfile -NetworkCategory "Private"
+    } else {
+        $adapter = Get-NetAdapter | Where-Object { $psitem.name -match "Ethernet" }
+        $network_category = Get-NetConnectionProfile -InterfaceAlias $adapter.Name
+        ## WinRM only works on the the active network interface if it is set to private
+        if ($network_category.NetworkCategory -ne "Private") {
+            Set-NetConnectionProfile -InterfaceAlias $adapter.name -NetworkCategory "Private"
+            Enable-PSRemoting -Force
+        }
     }
 }
 
@@ -275,8 +275,6 @@ function Install-Choco {
 
 ## Check until the machine is online
 Test-ConnectionUntilOnline
-write-host Correct script
-pause
 
 ## Setup WinRM just in case the machine fails so we have credentials to use
 Set-WinRM
@@ -284,6 +282,8 @@ Set-WinRM
 
 ## Once we have internet connection, setup ssh and import the keys
 Set-SSH
+
+pause
 
 ## Install chocolatey
 Install-Choco
