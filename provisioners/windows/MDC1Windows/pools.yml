@@ -25,6 +25,7 @@ pools:
     secret_date: "03-22-2024"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
+    - t-nuc12-002
     - t-nuc12-005
     - t-nuc12-006
   - name: "win11-64-2009-hw-ref"
