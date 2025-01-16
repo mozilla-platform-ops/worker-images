@@ -643,19 +643,22 @@ function Set-WinHwRef {
     ## Download the Microsoft Store AV1 Plugin locally
     ## Install microsoft store extension
     If (-Not (Test-Path "$env:systemdrive\RelSRE\Microsoft.AV1VideoExtension_1.1.62361.0_neutral_~_8wekyb3d8bbwe.AppxBundle")) {
-        Write-Log -message  ('{0} :: Ingesting azcopy creds' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-        $creds = ConvertFrom-Yaml -Yaml (Get-Content -Path "D:\secrets\azcredentials.yaml" -Raw)
-        $ENV:AZCOPY_SPA_APPLICATION_ID = $creds.azcopy_app_id
-        $ENV:AZCOPY_SPA_CLIENT_SECRET = $creds.azcopy_app_client_secret
-        $ENV:AZCOPY_TENANT_ID = $creds.azcopy_tenant_id
+        # $creds = ConvertFrom-Yaml -Yaml (Get-Content -Path "D:\secrets\azcredentials.yaml" -Raw)
+        # $ENV:AZCOPY_SPA_APPLICATION_ID = $creds.azcopy_app_id
+        # $ENV:AZCOPY_SPA_CLIENT_SECRET = $creds.azcopy_app_client_secret
+        # $ENV:AZCOPY_TENANT_ID = $creds.azcopy_tenant_id
 
-        Write-Log -Message ('{0} :: Downloading av1 extension' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
+        # Write-Log -Message ('{0} :: Downloading av1 extension' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
 
-        Start-Process -FilePath "D:\applications\azcopy.exe" -ArgumentList @(
-            "copy",
-            "https://roninpuppetassets.blob.core.windows.net/binaries/Microsoft.AV1VideoExtension_1.1.62361.0_neutral_~_8wekyb3d8bbwe.AppxBundle",
-            "$env:systemdrive\RelSRE\Microsoft.AV1VideoExtension_1.1.62361.0_neutral_~_8wekyb3d8bbwe.AppxBundle"
-        ) -Wait -NoNewWindow
+        # Start-Process -FilePath "D:\applications\azcopy.exe" -ArgumentList @(
+        #     "copy",
+        #     "https://roninpuppetassets.blob.core.windows.net/binaries/Microsoft.AV1VideoExtension_1.1.62361.0_neutral_~_8wekyb3d8bbwe.AppxBundle",
+        #     "$env:systemdrive\RelSRE\Microsoft.AV1VideoExtension_1.1.62361.0_neutral_~_8wekyb3d8bbwe.AppxBundle"
+        # ) -Wait -NoNewWindow
+        $srcVideoExtension = "https://roninpuppetassets.blob.core.windows.net/binaries/Microsoft.AV1VideoExtension_1.1.62361.0_neutral_~_8wekyb3d8bbwe.AppxBundle"
+        $dstVideoExtension = "$env:systemdrive\RelSRE\Microsoft.AV1VideoExtension_1.1.62361.0_neutral_~_8wekyb3d8bbwe.AppxBundle"
+        Write-Log -message  ('{0} :: Copying av1 extension from {1}' -f $($MyInvocation.MyCommand.Name), $srcVideoExtension) -severity 'DEBUG'
+        Invoke-DownloadWithRetry $srcVideoExtension  -Path $dstVideoExtension
         Write-Log -Message ('{0} :: Downloaded av1 extension' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
     }
 }
@@ -743,6 +746,14 @@ If ($stage -ne 'complete') {
             Set-WinHwRef
         }
         "win11642009hwrefalpha" {
+            Write-Log -message  ('{0} :: Setting puppet role {1} bootstrap steps' -f $($MyInvocation.MyCommand.Name), $role) -severity 'DEBUG'
+            Set-WinHwRef
+        }
+        "win116424h2hwref" {
+            Write-Log -message  ('{0} :: Setting puppet role {1} bootstrap steps' -f $($MyInvocation.MyCommand.Name), $role) -severity 'DEBUG'
+            Set-WinHwRef
+        }
+        "win116424h2hwrefalpha" {
             Write-Log -message  ('{0} :: Setting puppet role {1} bootstrap steps' -f $($MyInvocation.MyCommand.Name), $role) -severity 'DEBUG'
             Set-WinHwRef
         }
