@@ -282,6 +282,7 @@ Set-WinRM
 
 ## Once we have internet connection, setup ssh and import the keys
 ## Set-SSH
+pause
 
 ## Install chocolatey
 Install-Choco
