@@ -17,17 +17,28 @@ pools:
   - name: "win11-64-2009-hw-ref-alpha"
     puppet_version: "8.5.1"
     Description: "NUC12 Hardware Reference Staging/Testing Pool"
+    image: "win11-2009-NUC-05-06-2024"
+    src_Organisation: "mozilla-platform-ops"
+    src_Repository: "ronin_puppet"
+    src_Branch: "windows"
+    hash: "8614677"
+    secret_date: "03-22-2024"
+    domain_suffix: "wintest2.releng.mdc1.mozilla.com"
+    nodes:
+    - t-nuc12-005
+    - t-nuc12-006
+  - name: "win11-64-24h2-hw-ref-alpha"
+    puppet_version: "8.5.1"
+    Description: "NUC12 Hardware Reference Staging/Testing Pool"
     image: "win11-24H2-NUC-01-16-2025"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "win11hardware_24h2"
     hash: "6d97708"
-    secret_date: "03-22-2024"
+    secret_date: "01-16-2025"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
     - t-nuc12-003
-    - t-nuc12-005
-    - t-nuc12-006
   - name: "win11-64-2009-hw-ref"
     puppet_version: "8.5.1"
     Description: "NUC12 Hardware Reference Pool"
@@ -200,17 +211,14 @@ pools:
   - name: "win11-64-2009-hw-alpha"
     puppet_version: "8.5.1"
     Description: "NUC12 Hardware Performance Staging/Testing Pool"
-    image: "win11-24H2-NUC-01-16-2025"
+    image: "win11-2009-NUC-05-06-2024"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "win11hardware_24h2"
-    hash: "6d97708"
+    src_Branch: "windows"
+    hash: "8614677"
     secret_date: "03-22-2024"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    - nuc13-001
-    - nuc13-002
-    - nuc13-003
     - nuc13-004
     - nuc13-005
     - nuc13-006
@@ -229,6 +237,20 @@ pools:
     - nuc13-019
     - nuc13-020
     - nuc13-160
+  - name: "win11-64-24h2-hw-alpha"
+    puppet_version: "8.5.1"
+    Description: "NUC12 Hardware Performance Staging/Testing Pool"
+    image: "win11-24H2-NUC-01-16-2025"
+    src_Organisation: "mozilla-platform-ops"
+    src_Repository: "ronin_puppet"
+    src_Branch: "win11hardware_24h2"
+    hash: "6d97708"
+    secret_date: "01-16-2025"
+    domain_suffix: "wintest2.releng.mdc1.mozilla.com"
+    nodes:
+    - nuc13-001
+    - nuc13-002
+    - nuc13-003
 defaults:
   NV_domain: "mdc1.mozilla.com"
 Validate:
