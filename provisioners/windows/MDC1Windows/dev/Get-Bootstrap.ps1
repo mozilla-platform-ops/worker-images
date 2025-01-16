@@ -83,7 +83,8 @@ function Set-RemoteConnectivity {
     $sshdService = Get-Service -Name sshd -ErrorAction SilentlyContinue
     if ($null -eq $sshdService) {
         Write-Log -message ('{0} :: Enabling OpenSSH.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-        Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+        write-host Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+        pause
         Start-Service sshd
         Set-Service -Name sshd -StartupType Automatic
         New-NetFirewallRule -Name "AllowSSH" -DisplayName "Allow SSH" -Description "Allow SSH traffic on port 22" -Profile Any -Direction Inbound -Action Allow -Protocol TCP -LocalPort 22
