@@ -100,11 +100,6 @@ function Set-RemoteConnectivity {
         }
     }
     ## WinRM
-    $osVersion = (Get-CimInstance Win32_OperatingSystem).Version
-    if ($osVersion -like "10.*") {
-        Write-Host "Detected Windows 10. Exiting function."
-        return
-    }
     Write-Log -message ('{0} :: Enabling WinRM.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
     $adapter = Get-NetAdapter | Where-Object { $psitem.name -match "Ethernet" }
     $network_category = Get-NetConnectionProfile -InterfaceAlias $adapter.Name
@@ -242,11 +237,6 @@ function Set-WinRM {
     param (
         
     )
-    $osVersion = (Get-CimInstance Win32_OperatingSystem).Version
-    if ($osVersion -like "10.*") {
-        Write-Host "Detected Windows 10. Exiting function."
-        return
-    }
     ## WinRM
     Write-Log -message ('{0} :: Enabling WinRM.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
     $adapter = Get-NetAdapter | Where-Object { $psitem.name -match "Ethernet" }
