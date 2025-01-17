@@ -38,6 +38,7 @@ pools:
     secret_date: "01-16-2025"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
+    - t-nuc12-002
     - t-nuc12-003
   - name: "win11-64-2009-hw-ref"
     puppet_version: "8.5.1"
