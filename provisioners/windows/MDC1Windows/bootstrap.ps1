@@ -285,20 +285,6 @@ function Get-PreRequ {
         Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
     }
     process {
-        $azcopy_exe = "D:\applications\azcopy.exe"
-        If (-Not (Test-Path $azcopy_exe)) {
-            #    New-Item -ItemType Directory -Path "$env:systemdrive\azcopy"
-            #    write-host Invoke-WebRequest https://roninpuppetassets.blob.core.windows.net/binaries/prerequisites/azcopy-amd64_10.23.0.exe -OutFile "$env:systemdrive\azcopy\azcopy.exe"
-            #    write-host Invoke-WebRequest https://roninpuppetassets.blob.core.windows.net/binaries/prerequisites/azcopy-amd64_10.23.0.exe -OutFile "$env:systemdrive\azcopy\azcopy-amd64_10.23.0.exe"
-            #    Invoke-WebRequest https://roninpuppetassets.blob.core.windows.net/binaries/prerequisites/azcopy-amd64_10.23.0.exe -OutFile "$env:systemdrive\azcopy\azcopy.exe"
-            #    Invoke-WebRequest https://roninpuppetassets.blob.core.windows.net/binaries/prerequisites/azcopy-amd64_10.23.0.exe -OutFile "$env:systemdrive\azcopy\azcopy-amd64_10.23.0.exe"
-        }
-        Write-Log -message  ('{0} :: Ingesting azcopy creds' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-        $creds = ConvertFrom-Yaml -Yaml (Get-Content -Path "D:\secrets\azcredentials.yaml" -Raw)
-        $ENV:AZCOPY_SPA_APPLICATION_ID = $creds.azcopy_app_id
-        $ENV:AZCOPY_SPA_CLIENT_SECRET = $creds.azcopy_app_client_secret
-        $ENV:AZCOPY_TENANT_ID = $creds.azcopy_tenant_id
-
         if ([string]::IsNullOrEmpty($puppet_version)) {
             $puppet = "puppet-agent-6.28.0-x64.msi"
         }
@@ -643,18 +629,6 @@ function Set-WinHwRef {
     ## Download the Microsoft Store AV1 Plugin locally
     ## Install microsoft store extension
     If (-Not (Test-Path "$env:systemdrive\RelSRE\Microsoft.AV1VideoExtension_1.1.62361.0_neutral_~_8wekyb3d8bbwe.AppxBundle")) {
-        # $creds = ConvertFrom-Yaml -Yaml (Get-Content -Path "D:\secrets\azcredentials.yaml" -Raw)
-        # $ENV:AZCOPY_SPA_APPLICATION_ID = $creds.azcopy_app_id
-        # $ENV:AZCOPY_SPA_CLIENT_SECRET = $creds.azcopy_app_client_secret
-        # $ENV:AZCOPY_TENANT_ID = $creds.azcopy_tenant_id
-
-        # Write-Log -Message ('{0} :: Downloading av1 extension' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-
-        # Start-Process -FilePath "D:\applications\azcopy.exe" -ArgumentList @(
-        #     "copy",
-        #     "https://roninpuppetassets.blob.core.windows.net/binaries/Microsoft.AV1VideoExtension_1.1.62361.0_neutral_~_8wekyb3d8bbwe.AppxBundle",
-        #     "$env:systemdrive\RelSRE\Microsoft.AV1VideoExtension_1.1.62361.0_neutral_~_8wekyb3d8bbwe.AppxBundle"
-        # ) -Wait -NoNewWindow
         $srcVideoExtension = "https://roninpuppetassets.blob.core.windows.net/binaries/Microsoft.AV1VideoExtension_1.1.62361.0_neutral_~_8wekyb3d8bbwe.AppxBundle"
         $dstVideoExtension = "$env:systemdrive\RelSRE\Microsoft.AV1VideoExtension_1.1.62361.0_neutral_~_8wekyb3d8bbwe.AppxBundle"
         Write-Log -message  ('{0} :: Copying av1 extension from {1}' -f $($MyInvocation.MyCommand.Name), $srcVideoExtension) -severity 'DEBUG'

@@ -18,12 +18,6 @@ function Start-AzRoninPuppet {
         Write-Host ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime())
     }
     process {
-        ## Set azcopy vars
-        $ENV:AZCOPY_AUTO_LOGIN_TYPE = "SPN"
-        $ENV:AZCOPY_SPA_APPLICATION_ID = $ENV:application_id
-        $ENV:AZCOPY_SPA_CLIENT_SECRET = $ENV:client_secret
-        $ENV:AZCOPY_TENANT_ID = $ENV:tenant_id
-
         Set-Location $env:systemdrive\ronin
         If ( -Not (test-path $logdir\old)) {
             New-Item -ItemType Directory -Force -Path $logdir\old
@@ -111,19 +105,6 @@ function Start-AzRoninPuppet {
                     Write-Host ('{0} :: Puppet Line {1}' -f $($MyInvocation.MyCommand.Name), $data.line)
                     Write-Host ('{0} :: Puppet Source {1}' -f $($MyInvocation.MyCommand.Name), $data.source)
                 }
-
-                # ## Authenticate
-                # $ENV:AZCOPY_AUTO_LOGIN_TYPE = "SPN"
-                # $ENV:AZCOPY_SPA_APPLICATION_ID = $ENV:application_id
-                # $ENV:AZCOPY_SPA_CLIENT_SECRET = $ENV:client_secret
-                # $ENV:AZCOPY_TENANT_ID = $ENV:tenant_id
-
-                # Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
-                #     "copy",
-                #     $LogDestination,
-                #     "https://roninpuppetassets.blob.core.windows.net/packer"
-                # ) -Wait -NoNewWindow
-
                 Move-StrapPuppetLogs
                 exit 1
             }
@@ -171,18 +152,6 @@ function Start-AzRoninPuppet {
                     Write-Host ('{0} :: Puppet Source {1}' -f $($MyInvocation.MyCommand.Name), $data.source)
                 }
 
-                # ## Authenticate
-                # $ENV:AZCOPY_AUTO_LOGIN_TYPE = "SPN"
-                # $ENV:AZCOPY_SPA_APPLICATION_ID = $ENV:application_id
-                # $ENV:AZCOPY_SPA_CLIENT_SECRET = $ENV:client_secret
-                # $ENV:AZCOPY_TENANT_ID = $ENV:tenant_id
-
-                # Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
-                #     "copy",
-                #     $LogDestination,
-                #     "https://roninpuppetassets.blob.core.windows.net/packer"
-                # ) -Wait -NoNewWindow
-
                 Move-StrapPuppetLogs
                 exit 4
             }
@@ -208,18 +177,6 @@ function Start-AzRoninPuppet {
                     Write-Host ('{0} :: Puppet Line {1}' -f $($MyInvocation.MyCommand.Name), $data.line)
                     Write-Host ('{0} :: Puppet Source {1}' -f $($MyInvocation.MyCommand.Name), $data.source)
                 }
-
-                # ## Authenticate
-                # $ENV:AZCOPY_AUTO_LOGIN_TYPE = "SPN"
-                # $ENV:AZCOPY_SPA_APPLICATION_ID = $ENV:application_id
-                # $ENV:AZCOPY_SPA_CLIENT_SECRET = $ENV:client_secret
-                # $ENV:AZCOPY_TENANT_ID = $ENV:tenant_id
-
-                # Start-Process -FilePath "$ENV:systemdrive\azcopy.exe" -ArgumentList @(
-                #     "copy",
-                #     $LogDestination,
-                #     "https://roninpuppetassets.blob.core.windows.net/packer"
-                # ) -Wait -NoNewWindow
 
                 Move-StrapPuppetLogs
                 exit 6
