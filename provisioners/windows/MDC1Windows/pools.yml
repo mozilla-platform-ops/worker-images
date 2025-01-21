@@ -220,13 +220,6 @@ pools:
     secret_date: "03-22-2024"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    - nuc13-004
-    - nuc13-005
-    - nuc13-006
-    - nuc13-007
-    - nuc13-008
-    - nuc13-009
-    - nuc13-010
     - nuc13-011
     - nuc13-012
     - nuc13-013
@@ -252,6 +245,13 @@ pools:
     - nuc13-001
     - nuc13-002
     - nuc13-003
+    - nuc13-004
+    - nuc13-005
+    - nuc13-006
+    - nuc13-007
+    - nuc13-008
+    - nuc13-009
+    - nuc13-010
 defaults:
   NV_domain: "mdc1.mozilla.com"
 Validate:
