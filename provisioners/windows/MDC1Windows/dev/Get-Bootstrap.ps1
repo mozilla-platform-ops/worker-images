@@ -217,6 +217,8 @@ function Set-SSH {
         $destinationDirectory = "C:\users\administrator\.ssh"
         $authorized_keys =  $destinationDirectory + "authorized_keys"
         New-Item -ItemType Directory -Path $destinationDirectory -Force
+        Invoke-DownloadWithRetry https://raw.githubusercontent.com/SRCOrganisation/SRCRepository/SRCBranch/provisioners/windows/ImageProvisioner/ssh/authorized_keys -Path $authorized_keys
+        Invoke-DownloadWithRetry https://raw.githubusercontent.com/SRCOrganisation/SRCRepository/SRCBranch/provisioners/windows/ImageProvisioner/ssh/sshd_config -Path C:\programdata\ssh\sshd_config
         write-host "Invoke-DownloadWithRetry https://raw.githubusercontent.com/SRCOrganisation/SRCRepository/SRCBranch/provisioners/windows/ImageProvisioner/ssh/authorized_keys -Path $authorized_keys"
         write-host "Invoke-DownloadWithRetry https://raw.githubusercontent.com/SRCOrganisation/SRCRepository/SRCBranch/provisioners/windows/ImageProvisioner/ssh/sshd_config -Path C:\programdata\ssh\sshd_config"
         write-host "Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0"
@@ -276,8 +278,6 @@ function Install-Choco {
 
 ## Check until the machine is online
 Test-ConnectionUntilOnline
-
-pause
 
 ## Setup WinRM just in case the machine fails so we have credentials to use
 Set-WinRM
