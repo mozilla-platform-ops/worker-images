@@ -84,7 +84,6 @@ function Set-RemoteConnectivity {
     if ($null -eq $sshdService) {
         Write-Log -message ('{0} :: Enabling OpenSSH.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
         write-host Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
-        pause
         Start-Service sshd
         Set-Service -Name sshd -StartupType Automatic
         New-NetFirewallRule -Name "AllowSSH" -DisplayName "Allow SSH" -Description "Allow SSH traffic on port 22" -Profile Any -Direction Inbound -Action Allow -Protocol TCP -LocalPort 22
@@ -283,8 +282,6 @@ Set-WinRM
 
 ## Once we have internet connection, setup ssh and import the keys
 Set-SSH
-
-pause
 
 ## Install chocolatey
 Install-Choco
