@@ -217,9 +217,10 @@ function Set-SSH {
         $destinationDirectory = "C:\users\administrator\.ssh"
         $authorized_keys =  $destinationDirectory + "authorized_keys"
         New-Item -ItemType Directory -Path $destinationDirectory -Force
-        Invoke-DownloadWithRetry https://raw.githubusercontent.com/SRCOrganisation/SRCRepository/SRCBranch/provisioners/windows/ImageProvisioner/ssh/authorized_keys -Path $authorized_keys
-        Invoke-DownloadWithRetry https://raw.githubusercontent.com/SRCOrganisation/SRCRepository/SRCBranch/provisioners/windows/ImageProvisioner/ssh/sshd_config -Path C:\programdata\ssh\sshd_config
-        Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+        write-host "Invoke-DownloadWithRetry https://raw.githubusercontent.com/SRCOrganisation/SRCRepository/SRCBranch/provisioners/windows/ImageProvisioner/ssh/authorized_keys -Path $authorized_keys"
+        write-host "Invoke-DownloadWithRetry https://raw.githubusercontent.com/SRCOrganisation/SRCRepository/SRCBranch/provisioners/windows/ImageProvisioner/ssh/sshd_config -Path C:\programdata\ssh\sshd_config"
+        write-host "Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0"
+pause
         Start-Service sshd
         Set-Service -Name sshd -StartupType Automatic
         New-NetFirewallRule -Name "AllowSSH" -DisplayName "Allow SSH" -Description "Allow SSH traffic on port 22" -Profile Any -Direction Inbound -Action Allow -Protocol TCP -LocalPort 22
