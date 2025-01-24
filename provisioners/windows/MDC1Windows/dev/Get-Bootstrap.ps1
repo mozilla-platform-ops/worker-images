@@ -276,6 +276,8 @@ function Install-Choco {
 ## Check until the machine is online
 Test-ConnectionUntilOnline
 
+pause
+
 ## Setup WinRM just in case the machine fails so we have credentials to use
 Set-WinRM
 
