@@ -632,7 +632,7 @@ function Set-WinHwRef {
         $srcVideoExtension = "https://roninpuppetassets.blob.core.windows.net/binaries/Microsoft.AV1VideoExtension_1.1.62361.0_neutral_~_8wekyb3d8bbwe.AppxBundle"
         $dstVideoExtension = "$env:systemdrive\RelSRE\Microsoft.AV1VideoExtension_1.1.62361.0_neutral_~_8wekyb3d8bbwe.AppxBundle"
         Write-Log -message  ('{0} :: Copying av1 extension from {1}' -f $($MyInvocation.MyCommand.Name), $srcVideoExtension) -severity 'DEBUG'
-        Invoke-DownloadWithRetry $srcVideoExtension  -Path $dstVideoExtension
+        Invoke-DownloadWithRetry $srcVideoExtension -Path $dstVideoExtension
         Write-Log -Message ('{0} :: Downloaded av1 extension' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
     }
 }
