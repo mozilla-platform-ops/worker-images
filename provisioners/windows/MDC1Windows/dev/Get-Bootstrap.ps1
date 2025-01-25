@@ -212,6 +212,7 @@ function Set-SSH {
 
     ## OpenSSH
     $sshdService = Get-Service -Name sshd -ErrorAction SilentlyContinue
+    pause
     if ($null -eq $sshdService) {
         Write-Log -message ('{0} :: Enabling OpenSSH.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
         $destinationDirectory = "C:\users\administrator\.ssh"
