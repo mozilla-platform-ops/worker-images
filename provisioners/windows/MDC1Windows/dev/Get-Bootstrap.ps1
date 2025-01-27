@@ -212,7 +212,6 @@ function Set-SSH {
 
     ## OpenSSH
     $sshdService = Get-Service -Name sshd -ErrorAction SilentlyContinue
-    pause
     if ($null -eq $sshdService) {
         Write-Log -message ('{0} :: Enabling OpenSSH.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
         $destinationDirectory = "C:\users\administrator\.ssh"
@@ -223,7 +222,6 @@ function Set-SSH {
         write-host "Invoke-DownloadWithRetry https://raw.githubusercontent.com/SRCOrganisation/SRCRepository/SRCBranch/provisioners/windows/ImageProvisioner/ssh/authorized_keys -Path $authorized_keys"
         write-host "Invoke-DownloadWithRetry https://raw.githubusercontent.com/SRCOrganisation/SRCRepository/SRCBranch/provisioners/windows/ImageProvisioner/ssh/sshd_config -Path C:\programdata\ssh\sshd_config"
         write-host "Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0"
-pause
         Start-Service sshd
         Set-Service -Name sshd -StartupType Automatic
         New-NetFirewallRule -Name "AllowSSH" -DisplayName "Allow SSH" -Description "Allow SSH traffic on port 22" -Profile Any -Direction Inbound -Action Allow -Protocol TCP -LocalPort 22
@@ -285,7 +283,7 @@ Set-WinRM
 
 
 ## Once we have internet connection, setup ssh and import the keys
-Set-SSH
+#Set-SSH
 
 ## Install chocolatey
 Install-Choco
