@@ -289,13 +289,14 @@ function Set-WinRM {
     switch ($model) {
         "ProLiant m710x Server Cartridge" {
             Set-NetConnectionProfile -NetworkCategory "Private"
-    }
-    Default {
-        $adapter = Get-NetAdapter | Where-Object { $psitem.name -match "Ethernet" }
-        $network_category = Get-NetConnectionProfile -InterfaceAlias $adapter.Name
-        ## WinRM only works on the the active network interface if it is set to private
-        if ($network_category.NetworkCategory -ne "Private") {
-            Set-NetConnectionProfile -InterfaceAlias $adapter.name -NetworkCategory "Private"
+        }
+        Default {
+            $adapter = Get-NetAdapter | Where-Object { $psitem.name -match "Ethernet" }
+            $network_category = Get-NetConnectionProfile -InterfaceAlias $adapter.Name
+            ## WinRM only works on the the active network interface if it is set to private
+            if ($network_category.NetworkCategory -ne "Private") {
+                Set-NetConnectionProfile -InterfaceAlias $adapter.name -NetworkCategory "Private"
+            }
         }
     }
     Enable-PSRemoting -Force
