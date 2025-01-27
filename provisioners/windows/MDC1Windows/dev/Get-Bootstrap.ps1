@@ -280,6 +280,7 @@ Test-ConnectionUntilOnline
 
 ## Setup WinRM just in case the machine fails so we have credentials to use
 Set-WinRM
+pause
 
 
 ## Once we have internet connection, setup ssh and import the keys
