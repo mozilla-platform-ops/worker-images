@@ -45,11 +45,12 @@ jobs:
             Application_ID = "${{ secrets.AZURE_APPLICATION_ID_FXCI_TRUSTED }}"
           }
           New-AzSharedWorkerImage @Vars
+          "sharedimageversion=$ENV:PKR_VAR_sharedimage_version" >> $env:GITHUB_ENV
       - name: Upload Release Notes Artifact
         uses: actions/upload-artifact@v4
         with:
           name: release-notes-${{ github.event.inputs.config }}
-          path: ${{ github.event.inputs.config }}.md
+          path: ${{ github.event.inputs.config }}-${{ env.sharedimageversion }}.md
           overwrite: true
           retention-days: 1
           if-no-files-found: error
