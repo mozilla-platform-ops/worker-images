@@ -285,13 +285,20 @@ function Set-WinRM {
     )
     ## WinRM
     Write-Log -message ('{0} :: Enabling WinRM.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-    $adapter = Get-NetAdapter | Where-Object { $psitem.name -match "Ethernet" }
-    $network_category = Get-NetConnectionProfile -InterfaceAlias $adapter.Name
-    ## WinRM only works on the the active network interface if it is set to private
-    if ($network_category.NetworkCategory -ne "Private") {
-        Set-NetConnectionProfile -InterfaceAlias $adapter.name -NetworkCategory "Private"
-        Enable-PSRemoting -Force
+    $hardware = Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -Property Manufacturer, Model
+    switch ($model) {
+        "ProLiant m710x Server Cartridge" {
+            Set-NetConnectionProfile -NetworkCategory "Private"
     }
+    Default {
+        $adapter = Get-NetAdapter | Where-Object { $psitem.name -match "Ethernet" }
+        $network_category = Get-NetConnectionProfile -InterfaceAlias $adapter.Name
+        ## WinRM only works on the the active network interface if it is set to private
+        if ($network_category.NetworkCategory -ne "Private") {
+            Set-NetConnectionProfile -InterfaceAlias $adapter.name -NetworkCategory "Private"
+        }
+    }
+    Enable-PSRemoting -Force
 }
 
 function Install-Choco {
