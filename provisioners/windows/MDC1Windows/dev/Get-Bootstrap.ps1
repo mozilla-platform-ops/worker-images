@@ -325,9 +325,11 @@ Test-ConnectionUntilOnline
 Get-WinDisplayVersion
 pause
 Set-WinRM
+pause
 
 ## Once we have internet connection, setup ssh and import the keys
 Set-SSH
+pause
 
 ## Install chocolatey
 Install-Choco
