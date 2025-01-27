@@ -286,6 +286,7 @@ function Set-WinRM {
     ## WinRM
     Write-Log -message ('{0} :: Enabling WinRM.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
     $hardware = Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -Property Manufacturer, Model
+    $model = $hardware.Model
     switch ($model) {
         "ProLiant m710x Server Cartridge" {
             Set-NetConnectionProfile -NetworkCategory "Private"
@@ -323,13 +324,10 @@ Test-ConnectionUntilOnline
 
 ## Setup WinRM just in case the machine fails so we have credentials to use
 Get-WinDisplayVersion
-pause
 Set-WinRM
-pause
 
 ## Once we have internet connection, setup ssh and import the keys
 Set-SSH
-pause
 
 ## Install chocolatey
 Install-Choco
