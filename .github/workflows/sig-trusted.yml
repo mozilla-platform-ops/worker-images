@@ -9,6 +9,7 @@ on:
         description: Choose which pool to build
         options:
         - trusted-win11-a64-24h2-builder
+        - trusted-win2022-64-2009
 
 permissions:
   id-token: write
