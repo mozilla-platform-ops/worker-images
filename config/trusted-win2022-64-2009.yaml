@@ -7,7 +7,7 @@ image:
 sharedimage:
   gallery_name: "trusted_win2022_64_2009"
   image_name: "trusted_win2022_64_2009"
-  image_version: 1.0.0
+  image_version: 1.0.1
 azure:
   managed_image_resource_group_name: rg-packer-through-cib
   managed_image_storage_account_type: Standard_LRS
@@ -29,7 +29,7 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: windows
-    deploymentId: "8346140"
+    deploymentId: "1a0441f"
     managed_by: packer
 tests:
   - microsoft_tools_builder.tests.ps1
