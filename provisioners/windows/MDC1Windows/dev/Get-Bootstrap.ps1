@@ -79,11 +79,12 @@ function Set-RemoteConnectivity {
     param (
 
     )
+
     ## OpenSSH
     $sshdService = Get-Service -Name sshd -ErrorAction SilentlyContinue
     if ($null -eq $sshdService) {
         Write-Log -message ('{0} :: Enabling OpenSSH.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-        write-host Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+        Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
         Start-Service sshd
         Set-Service -Name sshd -StartupType Automatic
         New-NetFirewallRule -Name "AllowSSH" -DisplayName "Allow SSH" -Description "Allow SSH traffic on port 22" -Profile Any -Direction Inbound -Action Allow -Protocol TCP -LocalPort 22
@@ -99,11 +100,6 @@ function Set-RemoteConnectivity {
         }
     }
     ## WinRM
-    $osVersion = (Get-CimInstance Win32_OperatingSystem).Version
-    if ($osVersion -like "10.*") {
-        Write-Host "Detected Windows 10. Exiting function."
-        return
-    }
     Write-Log -message ('{0} :: Enabling WinRM.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
     $adapter = Get-NetAdapter | Where-Object { $psitem.name -match "Ethernet" }
     $network_category = Get-NetConnectionProfile -InterfaceAlias $adapter.Name
@@ -203,6 +199,15 @@ function Invoke-DownloadWithRetry {
     return $Path
 }
 
+function Get-WinDisplayVersion {
+    [CmdletBinding()]
+    param (
+        
+    )
+    
+    return (Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion').DisplayVersion
+}
+
 function Set-SSH {
     [CmdletBinding()]
     param (
@@ -214,17 +219,52 @@ function Set-SSH {
     $sshdService = Get-Service -Name sshd -ErrorAction SilentlyContinue
     if ($null -eq $sshdService) {
         Write-Log -message ('{0} :: Enabling OpenSSH.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-        $destinationDirectory = "C:\users\administrator\.ssh"
-        $authorized_keys =  $destinationDirectory + "authorized_keys"
-        New-Item -ItemType Directory -Path $destinationDirectory -Force
-        Invoke-DownloadWithRetry https://raw.githubusercontent.com/SRCOrganisation/SRCRepository/SRCBranch/provisioners/windows/ImageProvisioner/ssh/authorized_keys -Path $authorized_keys
-        Invoke-DownloadWithRetry https://raw.githubusercontent.com/SRCOrganisation/SRCRepository/SRCBranch/provisioners/windows/ImageProvisioner/ssh/sshd_config -Path C:\programdata\ssh\sshd_config
-        write-host "Invoke-DownloadWithRetry https://raw.githubusercontent.com/SRCOrganisation/SRCRepository/SRCBranch/provisioners/windows/ImageProvisioner/ssh/authorized_keys -Path $authorized_keys"
-        write-host "Invoke-DownloadWithRetry https://raw.githubusercontent.com/SRCOrganisation/SRCRepository/SRCBranch/provisioners/windows/ImageProvisioner/ssh/sshd_config -Path C:\programdata\ssh\sshd_config"
-        write-host "Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0"
-        Start-Service sshd
-        Set-Service -Name sshd -StartupType Automatic
-        New-NetFirewallRule -Name "AllowSSH" -DisplayName "Allow SSH" -Description "Allow SSH traffic on port 22" -Profile Any -Direction Inbound -Action Allow -Protocol TCP -LocalPort 22
+        switch (Get-WinDisplayVersion) {
+            "24H2" {
+                ## running this manually on 24h2 didn't need the trailing ~~~~0.0.1.0
+                Add-WindowsCapability -Online -Name OpenSSH.Server
+                ## When adding the open.ssh server capability, it doesn't start the service
+                $destinationDirectory = "C:\users\administrator\.ssh"
+                ## This is the path where the authorized_keys file will be saved
+                $authorized_keys = Join-Path $destinationDirectory -ChildPath "authorized_keys"
+                ## Create the hidden ssh directory
+                New-Item -ItemType Directory -Path $destinationDirectory -Force
+                Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/main/provisioners/windows/MDC1Windows/ssh/authorized_keys" -Path $authorized_keys
+                Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/main/provisioners/windows/MDC1Windows/ssh/sshd_config" -Path "C:\programdata\ssh\sshd_config"
+                $sshdService = Get-Service -Name sshd -ErrorAction SilentlyContinue
+                if ($sshdService.status -ne "Running") {
+                    Start-Service sshd
+                    Set-Service -Name sshd -StartupType Automatic
+                }
+                ## Is sshdservice set to autmatically start?
+                if ((Get-Service -Name sshd -ErrorAction SilentlyContinue).StartType -ne "Automatic") {
+                    Set-Service -Name sshd -StartupType Automatic
+                }
+                $sshfw = @{
+                    Name        = "AllowSSH"
+                    DisplayName = "Allow SSH"
+                    Description = "Allow SSH traffic on port 22"
+                    Profile     = "Any"
+                    Direction   = "Inbound"
+                    Action      = "Allow"
+                    Protocol    = "TCP"
+                    LocalPort   = 22
+                }
+                New-NetFirewallRule @sshfw
+            }
+            default {
+                Write-Log -message ('{0} :: Enabling OpenSSH.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
+                $destinationDirectory = "C:\users\administrator\.ssh"
+                $authorized_keys = $destinationDirectory + "authorized_keys"
+                New-Item -ItemType Directory -Path $destinationDirectory -Force
+                Invoke-DownloadWithRetry https://raw.githubusercontent.com/SRCOrganisation/SRCRepository/SRCBranch/provisioners/windows/ImageProvisioner/ssh/authorized_keys -Path $authorized_keys
+                Invoke-DownloadWithRetry https://raw.githubusercontent.com/SRCOrganisation/SRCRepository/SRCBranch/provisioners/windows/ImageProvisioner/ssh/sshd_config -Path C:\programdata\ssh\sshd_config
+                Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+                Start-Service sshd
+                Set-Service -Name sshd -StartupType Automatic
+                New-NetFirewallRule -Name "AllowSSH" -DisplayName "Allow SSH" -Description "Allow SSH traffic on port 22" -Profile Any -Direction Inbound -Action Allow -Protocol TCP -LocalPort 22
+            }
+        }
     }
     else {
         Write-Log -message ('{0} :: SSHd is running.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
@@ -243,19 +283,14 @@ function Set-WinRM {
     param (
         
     )
-    $osVersion = (Get-CimInstance Win32_OperatingSystem).Version
     ## WinRM
     Write-Log -message ('{0} :: Enabling WinRM.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-    if ($osVersion -like "10.*") {
-        Set-NetConnectionProfile -NetworkCategory "Private"
-    } else {
-        $adapter = Get-NetAdapter | Where-Object { $psitem.name -match "Ethernet" }
-        $network_category = Get-NetConnectionProfile -InterfaceAlias $adapter.Name
-        ## WinRM only works on the the active network interface if it is set to private
-        if ($network_category.NetworkCategory -ne "Private") {
-            Set-NetConnectionProfile -InterfaceAlias $adapter.name -NetworkCategory "Private"
-            Enable-PSRemoting -Force
-        }
+    $adapter = Get-NetAdapter | Where-Object { $psitem.name -match "Ethernet" }
+    $network_category = Get-NetConnectionProfile -InterfaceAlias $adapter.Name
+    ## WinRM only works on the the active network interface if it is set to private
+    if ($network_category.NetworkCategory -ne "Private") {
+        Set-NetConnectionProfile -InterfaceAlias $adapter.name -NetworkCategory "Private"
+        Enable-PSRemoting -Force
     }
 }
 
@@ -280,11 +315,9 @@ Test-ConnectionUntilOnline
 
 ## Setup WinRM just in case the machine fails so we have credentials to use
 Set-WinRM
-pause
-
 
 ## Once we have internet connection, setup ssh and import the keys
-#Set-SSH
+Set-SSH
 
 ## Install chocolatey
 Install-Choco
