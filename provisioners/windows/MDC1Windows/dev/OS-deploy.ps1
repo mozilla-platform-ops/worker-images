@@ -115,18 +115,18 @@ function PartitionAndFormat-TwoDisks {
         [int]$DiskD  # Disk number for the smaller disk
     )
 
-    # Get the sizes of all disks
+    # Get the sizes of all online disks
     $diskSizes = Get-Disk | Where-Object { $_.OperationalStatus -eq 'Online' } | Select-Object Number, Size
 
-    # Determine the main disk (largest storage) and secondary disk
-    $mainDisk = $diskSizes | Sort-Object -Property Size -Descending | Select-Object -First 1
-    $secondaryDisk = $diskSizes | Where-Object { $_.Number -ne $mainDisk.Number } | Select-Object -First 1
+    # Sort disks by size in descending order
+    $sortedDisks = $diskSizes | Sort-Object -Property Size -Descending
 
-    $DiskC = $mainDisk.Number
-    $DiskD = $secondaryDisk.Number
+    # Assign the larger disk to DiskC and the smaller disk to DiskD
+    $DiskC = $sortedDisks[0].Number
+    $DiskD = $sortedDisks[1].Number
 
-    Write-Host "Main Disk: Disk $DiskC with size $($mainDisk.Size / 1GB) GB"
-    Write-Host "Secondary Disk: Disk $DiskD with size $($secondaryDisk.Size / 1GB) GB"
+    Write-Host "Main Disk (DiskC): Disk $DiskC with size $($sortedDisks[0].Size / 1GB) GB" -ForegroundColor Green
+    Write-Host "Secondary Disk (DiskD): Disk $DiskD with size $($sortedDisks[1].Size / 1GB) GB" -ForegroundColor Green
 
     # Define sizes for the EFI, MSR, and local files partitions
     $efiSize = 100  # EFI partition size in MB
@@ -134,7 +134,7 @@ function PartitionAndFormat-TwoDisks {
     $localFilesSize = 21480  # Local files partition size in MB
 
     # Calculate the primary partition size for the main disk (DiskC)
-    $totalCSizeMB = [math]::Floor($mainDisk.Size / 1MB)
+    $totalCSizeMB = [math]::Floor($sortedDisks[0].Size / 1MB)
     $primaryPartitionSizeC = $totalCSizeMB - ($efiSize + $msrSize + $localFilesSize)
 
     Write-Host "Partitioning Main Disk (DiskC) with size $totalCSizeMB MB:" -ForegroundColor Green
@@ -170,7 +170,7 @@ clean
 convert gpt
 create partition primary
 format fs=ntfs quick
-assign letter=D
+assign letter=E
 exit
 "@
 
