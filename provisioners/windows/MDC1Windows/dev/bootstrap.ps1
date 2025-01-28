@@ -532,7 +532,6 @@ function Run-Ronin-Run {
                     Write-Log -message ('{0} :: Puppet Line {1}' -f $($MyInvocation.MyCommand.Name), $data.line) -severity 'DEBUG'
                     Write-Log -message ('{0} :: Puppet Source {1}' -f $($MyInvocation.MyCommand.Name), $data.source) -severity 'DEBUG'
                 }
-                pause
                 Start-sleep -Seconds 300
                 Set-PXE
             }
