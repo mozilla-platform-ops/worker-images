@@ -185,6 +185,7 @@ exit
     Start-Process "diskpart.exe" -ArgumentList "/s $scriptPathD" -Wait
 
     Write-Host "Partitioning complete. Disk $DiskC has been partitioned as the primary drive with multiple partitions. Disk $DiskD is formatted as a single partition." -ForegroundColor Green
+    pause
 }
 
 
