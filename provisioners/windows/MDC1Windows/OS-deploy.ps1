@@ -290,9 +290,9 @@ foreach ($pool in $YAML.pools) {
             $secret_date = $pool.secret_date
             $puppet_version = $pool.puppet_version
             Write-Output "The associated image for $shortname is: $neededImage"
-            if (($pool.dev -eq $true) -and  (!($devlopment_script -eq $true))) {
+            if (($pool.dev) -and  (!($devlopment_script -eq $true))) {
                 Write-Host "Dev mode is enabled."
-                Deploy-Dev-OS -Password $deploymentaccess
+                Deploy-Dev-OS -Password $deploymentaccess -branch $pool.dev
                 exit
             }
             $found = $true
