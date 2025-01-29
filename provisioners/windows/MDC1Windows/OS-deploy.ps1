@@ -7,7 +7,8 @@ function Deploy-Dev-OS {
         [string]$branch,
         [string]$Password
     )
-    Write-host Made it here
+    pause
+    Write-host Broken
     $devlopment_script = $true
     $local_dir = "X:\working"
     $source = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/$branch}/provisioners/windows/MDC1Windows/Get-Bootstrap.ps1"
