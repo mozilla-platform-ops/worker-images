@@ -406,28 +406,26 @@ if (!(Test-Path $setup)) {
     New-Item -ItemType Directory $local_yaml_dir  | Out-Null
 
     Write-host "Copying $source_install to $local_install"
-    pause
     write-host Copy-Item -Path $source_install -Destination $local_install -Recurse -Force
     Copy-Item -Path $source_install -Destination $local_install -Recurse -Force
-    pause
+    Start-Sleep 3
     Write-Host "Copying $source_secrets to $secret_file"
     write-host Copy-Item -Path $source_secrets -Destination $secret_file -Force
     Copy-Item -Path $source_secrets -Destination $secret_file -Force
-    pause
+    Start-Sleep 3
     write-host Copy-Item -Path $source_secrets -Destination $secret_file -Force
-    pause
     Write-Host "Copying $source_AZsecrets to $AZsecret_file"
     write-host Copy-Item -Path $source_AZsecrets -Destination $AZsecret_file -Force
     Copy-Item -Path $source_AZsecrets -Destination $AZsecret_file -Force
-    pause
+    Start-Sleep 3
     Write-host "Copying $source_scripts to $local_scripts"
     write-host Copy-Item -Path $source_scripts $local_scripts -Recurse -Force
     Copy-Item -Path $source_scripts $local_scripts -Recurse -Force
-    pause
+    Start-Sleep 3
     Write-host "Copying $source_app\* to $local_app"
     write-host Copy-Item -Path $source_app\* $local_app -Recurse -Force
     Copy-Item -Path $source_app\* $local_app -Recurse -Force
-    pause
+    Start-Sleep 3
 
     Update-GetBoot
 
@@ -444,11 +442,12 @@ if (!(Test-Path $setup)) {
     $install_to = "<DiskID>$install_drive</DiskID>"
     $PartitionNumber = (Get-Partition -DriveLetter C).PartitionNumber
     $partition = "<PartitionID>$PartitionNumber</PartitionID>"
+    $install_drive = <DiskID>$install_to</DiskID>
 
 
     $replacetheses = @(
         @{ OldString = "THIS-IS-A-NAME"; NewString = $shortname },
-        @{ OldString = "<DiskID>0</DiskID>"; NewString = $install_to },
+        @{ OldString = "<DiskID>0</DiskID>"; NewString = $install_drive },
         @{ OldString = "<PartitionID>3</PartitionID>"; NewString = $partition },
         @{ OldString = "NotARealPassword"; NewString = $secret_YAML.win_adminpw }
     )
