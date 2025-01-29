@@ -164,6 +164,7 @@ exit
 
     # Diskpart script for the secondary disk (DiskD)
     Write-Host "Partitioning Secondary Disk (DiskD) as a single partition:" -ForegroundColor Green
+    pause
 
     $diskPartScriptD = @"
 select disk $DiskD
