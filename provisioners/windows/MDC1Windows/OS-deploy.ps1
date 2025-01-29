@@ -9,7 +9,7 @@ function Deploy-Dev-OS {
     )
     $devlopment_script = $true
     $local_dir = "X:\working"
-    $source = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/${branch}/provisioners/windows/MDC1Windows/OS-deploy.ps1"
+    $source = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/${branch}/provisioners/windows/MDC1Windows/Get-Bootstrap.ps1"
     $script = "OS-deploy.ps1"
     $deploy_script = "$local_dir\$script"
 
