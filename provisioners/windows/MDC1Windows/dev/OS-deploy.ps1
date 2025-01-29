@@ -406,6 +406,8 @@ if (!(Test-Path $setup)) {
     New-Item -ItemType Directory $local_yaml_dir  | Out-Null
 
     Write-host "Copying $source_install to $local_install"
+    pause
+    write-host Copy-Item -Path $source_install -Destination $local_install -Recurse -Force
     Copy-Item -Path $source_install -Destination $local_install -Recurse -Force
     pause
     Write-Host "Copying $source_secrets to $secret_file"
