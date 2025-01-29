@@ -442,7 +442,7 @@ if (!(Test-Path $setup)) {
     $install_to = "<DiskID>$install_drive</DiskID>"
     $PartitionNumber = (Get-Partition -DriveLetter C).PartitionNumber
     $partition = "<PartitionID>$PartitionNumber</PartitionID>"
-    $install_drive = <DiskID>$install_to</DiskID>
+    $install_drive = "<DiskID>$install_to</DiskID>"
 
 
     $replacetheses = @(
