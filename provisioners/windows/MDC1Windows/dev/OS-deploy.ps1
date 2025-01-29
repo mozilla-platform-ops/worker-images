@@ -406,16 +406,16 @@ if (!(Test-Path $setup)) {
     New-Item -ItemType Directory $local_yaml_dir  | Out-Null
 
     Write-host "Copying $source_install to $local_install"
-    write-host Copy-Item -Path $source_install -Destination $local_install -Recurse -Force
+    Copy-Item -Path $source_install -Destination $local_install -Recurse -Force
     pause
     Write-Host "Copying $source_secrets to $secret_file"
-    Copy-Item -Path $source_secrets -Destination $secret_file -Force
+    write-host Copy-Item -Path $source_secrets -Destination $secret_file -Force
     Write-Host "Copying $source_AZsecrets to $AZsecret_file"
-    Copy-Item -Path $source_AZsecrets -Destination $AZsecret_file -Force
+    write-host Copy-Item -Path $source_AZsecrets -Destination $AZsecret_file -Force
     Write-host "Copying $source_scripts to $local_scripts"
-    Copy-Item -Path $source_scripts $local_scripts -Recurse -Force
+    write-host Copy-Item -Path $source_scripts $local_scripts -Recurse -Force
     Write-host "Copying $source_app\* to $local_app"
-    Copy-Item -Path $source_app\* $local_app -Recurse -Force
+    write-host Copy-Item -Path $source_app\* $local_app -Recurse -Force
 
     Update-GetBoot
 
