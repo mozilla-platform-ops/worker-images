@@ -412,12 +412,20 @@ if (!(Test-Path $setup)) {
     pause
     Write-Host "Copying $source_secrets to $secret_file"
     write-host Copy-Item -Path $source_secrets -Destination $secret_file -Force
+    Copy-Item -Path $source_secrets -Destination $secret_file -Force
+    pause
     Write-Host "Copying $source_AZsecrets to $AZsecret_file"
     write-host Copy-Item -Path $source_AZsecrets -Destination $AZsecret_file -Force
+    Copy-Item -Path $source_AZsecrets -Destination $AZsecret_file -Force
+    pause
     Write-host "Copying $source_scripts to $local_scripts"
     write-host Copy-Item -Path $source_scripts $local_scripts -Recurse -Force
+    Copy-Item -Path $source_scripts $local_scripts -Recurse -Force
+    pause
     Write-host "Copying $source_app\* to $local_app"
     write-host Copy-Item -Path $source_app\* $local_app -Recurse -Force
+    Copy-Item -Path $source_app\* $local_app -Recurse -Force
+    pause
 
     Update-GetBoot
 
