@@ -185,7 +185,6 @@ exit
     Start-Process "diskpart.exe" -ArgumentList "/s $scriptPathD" -Wait
 
     Write-Host "Partitioning complete. Disk $DiskC has been partitioned as the primary drive with multiple partitions. Disk $DiskD is formatted as a single partition." -ForegroundColor Green
-    pause
 }
 
 
@@ -473,4 +472,4 @@ Set-Location -Path $OS_files
 Write-Host "Initializing OS installation."
 Write-Host Running: Start-Process -FilePath $setup -ArgumentList "/unattend:$unattend"
 Write-Host "Have a nice day! :)"
-Start-Process -FilePath $setup -ArgumentList "/unattend:$unattend"
+write-host Start-Process -FilePath $setup -ArgumentList "/unattend:$unattend"
