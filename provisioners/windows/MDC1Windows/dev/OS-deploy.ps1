@@ -107,6 +107,7 @@ function PartitionAndFormat-SingleDisk {
     $diskPartScript | Out-File -FilePath "$env:TEMP\diskpart_script.txt" -Encoding ASCII
     $diskPartScript | Out-File -FilePath "test.txt" -Encoding ASCII
     Start-Process "diskpart.exe" -ArgumentList "/s $env:TEMP\diskpart_script.txt" -Wait
+    $install_drive = 1
 }
 
 function PartitionAndFormat-TwoDisks {
@@ -183,6 +184,8 @@ exit
     # Run Diskpart for both disks
     Start-Process "diskpart.exe" -ArgumentList "/s $scriptPathC" -Wait
     Start-Process "diskpart.exe" -ArgumentList "/s $scriptPathD" -Wait
+
+    $install_drive = $DiskC
 
     Write-Host "Partitioning complete. Disk $DiskC has been partitioned as the primary drive with multiple partitions. Disk $DiskD is formatted as a single partition." -ForegroundColor Green
 }
@@ -425,9 +428,10 @@ if (!(Test-Path $setup)) {
     Write-Host "Updating autounattend.xml."
 
     $DiskNumber = ((Get-Partition -DriveLetter C).DiskNumber)
-    $install_to = "<DiskID>$DiskNumber</DiskID>"
+    $install_to = "<DiskID>$install_drive</DiskID>"
     $PartitionNumber = (Get-Partition -DriveLetter C).PartitionNumber
     $partition = "<PartitionID>$PartitionNumber</PartitionID>"
+
 
     $replacetheses = @(
         @{ OldString = "THIS-IS-A-NAME"; NewString = $shortname },
@@ -472,4 +476,4 @@ Set-Location -Path $OS_files
 Write-Host "Initializing OS installation."
 Write-Host Running: Start-Process -FilePath $setup -ArgumentList "/unattend:$unattend"
 Write-Host "Have a nice day! :)"
-write-host Start-Process -FilePath $setup -ArgumentList "/unattend:$unattend"
+Start-Process -FilePath $setup -ArgumentList "/unattend:$unattend"
