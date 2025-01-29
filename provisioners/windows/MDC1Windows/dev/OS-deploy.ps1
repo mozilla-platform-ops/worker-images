@@ -414,6 +414,8 @@ if (!(Test-Path $setup)) {
     write-host Copy-Item -Path $source_secrets -Destination $secret_file -Force
     Copy-Item -Path $source_secrets -Destination $secret_file -Force
     pause
+    write-host Copy-Item -Path $source_secrets -Destination $secret_file -Force
+    pause
     Write-Host "Copying $source_AZsecrets to $AZsecret_file"
     write-host Copy-Item -Path $source_AZsecrets -Destination $AZsecret_file -Force
     Copy-Item -Path $source_AZsecrets -Destination $AZsecret_file -Force
