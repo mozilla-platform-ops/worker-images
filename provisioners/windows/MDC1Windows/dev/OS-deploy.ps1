@@ -158,13 +158,12 @@ format fs=ntfs quick
 assign letter=C
 create partition primary size=$localFilesSize
 format fs=ntfs quick
-assign letter=D
+assign letter=E
 exit
 "@
 
     # Diskpart script for the secondary disk (DiskD)
     Write-Host "Partitioning Secondary Disk (DiskD) as a single partition:" -ForegroundColor Green
-    pause
 
     $diskPartScriptD = @"
 select disk $DiskD
@@ -172,7 +171,7 @@ clean
 convert gpt
 create partition primary
 format fs=ntfs quick
-assign letter=E
+assign letter=D
 exit
 "@
 
