@@ -4,11 +4,12 @@ param(
 )
 function Deploy-Dev-OS {
     param (
+        [string]$branch,
         [string]$Password
     )
-
+    $devlopment_script = $true
     $local_dir = "X:\working"
-    $source = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/main/provisioners/windows/MDC1Windows/dev/"
+    $source = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/$branch}/provisioners/windows/MDC1Windows/Get-Bootstrap.ps1"
     $script = "OS-deploy.ps1"
     $deploy_script = "$local_dir\$script"
 
@@ -289,7 +290,7 @@ foreach ($pool in $YAML.pools) {
             $secret_date = $pool.secret_date
             $puppet_version = $pool.puppet_version
             Write-Output "The associated image for $shortname is: $neededImage"
-            if ($pool.dev -eq $true) {
+            if (($pool.dev -eq $true) -and  (!($devlopment_script -eq $true))) {
                 Write-Host "Dev mode is enabled."
                 Deploy-Dev-OS -Password $deploymentaccess
                 exit
