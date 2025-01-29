@@ -9,7 +9,7 @@ function Deploy-Dev-OS {
     )
     $devlopment_script = $true
     $local_dir = "X:\working"
-    $source = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/${branch}/provisioners/windows/MDC1Windows/Get-Bootstrap.ps1"
+    $source = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/${branch}/provisioners/windows/MDC1Windows"
     $script = "OS-deploy.ps1"
     $deploy_script = "$local_dir\$script"
 
@@ -32,8 +32,7 @@ function Deploy-Dev-OS {
 
     for ($retryCount = 1; $retryCount -le $maxRetries; $retryCount++) {
         try {
-            write-host "Invoke-WebRequest -Uri "$source/$script" -OutFile $deploy_script"
-            pause
+            Invoke-WebRequest -Uri "$source/$script" -OutFile $deploy_script
             break  # Break out of the loop if download is successful
         } catch {
             Write-Host "Attempt ${retryCount}: An error occurred - $Error[0]"
