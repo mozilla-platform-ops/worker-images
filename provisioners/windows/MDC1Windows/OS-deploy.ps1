@@ -32,7 +32,8 @@ function Deploy-Dev-OS {
 
     for ($retryCount = 1; $retryCount -le $maxRetries; $retryCount++) {
         try {
-            Invoke-WebRequest -Uri "$source/$script" -OutFile $deploy_script
+            write-host "Invoke-WebRequest -Uri "$source/$script" -OutFile $deploy_script"
+            pause
             break  # Break out of the loop if download is successful
         } catch {
             Write-Host "Attempt ${retryCount}: An error occurred - $Error[0]"
