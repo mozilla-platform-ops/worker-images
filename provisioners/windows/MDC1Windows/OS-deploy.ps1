@@ -206,7 +206,7 @@ format fs=ntfs quick
 assign letter=C
 create partition primary size=$localFilesSize
 format fs=ntfs quick
-assign letter=D
+assign letter=E
 exit
 "@
 
