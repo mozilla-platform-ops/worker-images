@@ -219,6 +219,7 @@ pools:
     hash: "8614677"
     secret_date: "03-22-2024"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
+    dev: "deploy_moonshots"
     nodes:
     - nuc13-011
     - nuc13-012
