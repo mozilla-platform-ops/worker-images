@@ -49,7 +49,7 @@ function Deploy-Dev-OS {
     }
 
     Write-Host "Running DEV deployment script..."
-    powershell $deploy_script -deployuser "deployment" -deploymentaccess "$Password" -devlopment_script $true
+    powershell $deploy_script -deployuser "deployment" -deploymentaccess "$Password" -devlopment_script
 }
 
 function Mount-ZDrive {
