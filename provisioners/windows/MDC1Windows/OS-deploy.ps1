@@ -1,6 +1,8 @@
 param(
     [string]$deployuser,
-    [string]$deploymentaccess
+    [string]$deploymentaccess,
+    [bool]$devlopment_script = $false
+
 )
 function Deploy-Dev-OS {
     param (
@@ -32,7 +34,7 @@ function Deploy-Dev-OS {
 
     for ($retryCount = 1; $retryCount -le $maxRetries; $retryCount++) {
         try {
-            Invoke-WebRequest -Uri "$source/$script" -OutFile $deploy_script
+            Invoke-WebRequest -Uri "$source/$script" -OutFile $deploy_script -devlopment_script $true
             break  # Break out of the loop if download is successful
         } catch {
             Write-Host "Attempt ${retryCount}: An error occurred - $Error[0]"
