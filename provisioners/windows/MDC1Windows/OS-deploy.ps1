@@ -1,6 +1,8 @@
 param(
     [string]$deployuser,
-    [string]$deploymentaccess
+    [string]$deploymentaccess,
+    [switch]$devlopment_script = $false
+
 )
 function Deploy-Dev-OS {
     param (
@@ -47,7 +49,7 @@ function Deploy-Dev-OS {
     }
 
     Write-Host "Running DEV deployment script..."
-    powershell $deploy_script -deployuser "deployment" -deploymentaccess "$Password"
+    powershell $deploy_script -deployuser "deployment" -deploymentaccess "$Password" -devlopment_script
 }
 
 function Mount-ZDrive {
@@ -204,7 +206,7 @@ format fs=ntfs quick
 assign letter=C
 create partition primary size=$localFilesSize
 format fs=ntfs quick
-assign letter=D
+assign letter=E
 exit
 "@
 
