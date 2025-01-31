@@ -1,7 +1,7 @@
 param(
     [string]$deployuser,
     [string]$deploymentaccess,
-    [bool]$devlopment_script = $false
+    [switch]$devlopment_script = $false
 
 )
 function Deploy-Dev-OS {
