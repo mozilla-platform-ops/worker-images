@@ -34,7 +34,7 @@ function Deploy-Dev-OS {
 
     for ($retryCount = 1; $retryCount -le $maxRetries; $retryCount++) {
         try {
-            Invoke-WebRequest -Uri "$source/$script" -OutFile $deploy_script -devlopment_script $true
+            Invoke-WebRequest -Uri "$source/$script" -OutFile $deploy_script
             break  # Break out of the loop if download is successful
         } catch {
             Write-Host "Attempt ${retryCount}: An error occurred - $Error[0]"
@@ -49,7 +49,7 @@ function Deploy-Dev-OS {
     }
 
     Write-Host "Running DEV deployment script..."
-    powershell $deploy_script -deployuser "deployment" -deploymentaccess "$Password"
+    powershell $deploy_script -deployuser "deployment" -deploymentaccess "$Password" -devlopment_script $true
 }
 
 function Mount-ZDrive {
