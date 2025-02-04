@@ -301,7 +301,7 @@ foreach ($pool in $YAML.pools) {
             Write-Output "The associated image for $shortname is: $neededImage"
             write-host check again 
             write-host $pool.dev
-            write-host $development_script
+            write-host $devlopment_script
             pause
             if ($pool.dev -and (-not $devlopment_script)) {
                 Write-Host "Dev mode is enabled."
