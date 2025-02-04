@@ -9,6 +9,9 @@ function Deploy-Dev-OS {
         [string]$branch,
         [string]$Password
     )
+    if ($development_script) {
+        return
+    }
     $devlopment_script = $true
     $local_dir = "X:\working"
     $source = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/${branch}/provisioners/windows/MDC1Windows"
