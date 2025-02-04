@@ -4,7 +4,7 @@ param(
     [switch]$devlopment_script = $false
 
 )
-function Deploy-Dev-OS {
+function Deploy-OS-Dev {
     param (
         [string]$branch,
         [string]$Password
@@ -98,11 +98,12 @@ function Update-GetBoot {
         Remove-Item $Template_Get_Bootstrap -Force
     }
 
+    $branch = if ($devlopment_script) { $pool.dev } else { "main" }
+
     $bootstrapSplat = @{
-        URI     = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/main/provisioners/windows/MDC1Windows/Get-Bootstrap.ps1"
+        URI     = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/$branch/provisioners/windows/MDC1Windows/Get-Bootstrap.ps1"
         OutFile = $Template_Get_Bootstrap
     }
-
     Invoke-WebRequest @bootstrapSplat
 
     Write-Host "Updating Get-Bootstrap.ps1"
@@ -297,7 +298,7 @@ foreach ($pool in $YAML.pools) {
             Write-Output "The associated image for $shortname is: $neededImage"
             if ($pool.dev -and (-not $devlopment_script)) {
                 Write-Host "Dev mode is enabled."
-                Deploy-Dev-OS -Password $deploymentaccess -branch $pool.dev
+                Deploy-OS-Dev -Password $deploymentaccess -branch $pool.dev
                 exit
             }
             $found = $true
