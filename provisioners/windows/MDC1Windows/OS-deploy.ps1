@@ -105,7 +105,7 @@ function Update-GetBoot {
         OutFile = $Template_Get_Bootstrap
     }
     write-host checking 
-    write-hots  $bootstrapSplat
+    write-host  $bootstrapSplat
     pause
     Invoke-WebRequest @bootstrapSplat
 
