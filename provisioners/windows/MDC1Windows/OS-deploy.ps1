@@ -105,6 +105,7 @@ function Update-GetBoot {
         OutFile = $Template_Get_Bootstrap
     }
     write-host checking
+    write-host $pool.dev
     write-host "Invoke-WebRequest @bootstrapSplat"
     write-host  $bootstrapSplat.URI
     pause
