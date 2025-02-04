@@ -106,7 +106,7 @@ function Update-GetBoot {
     }
     write-host checking
     write-host "Invoke-WebRequest @bootstrapSplat"
-    write-host  $bootstrapSplat
+    write-host  $bootstrapSplat.URI
     pause
     Invoke-WebRequest @bootstrapSplat
 
