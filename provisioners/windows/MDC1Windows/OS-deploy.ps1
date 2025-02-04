@@ -303,7 +303,7 @@ foreach ($pool in $YAML.pools) {
             write-host $pool.dev
             write-host $development_script
             pause
-            if ($pool.dev -and (-not $development_script)) {
+            if ($pool.dev -and (-not $devlopment_script)) {
                 Write-Host "Dev mode is enabled."
                 Deploy-Dev-OS -Password $deploymentaccess -branch $pool.dev
                 exit
