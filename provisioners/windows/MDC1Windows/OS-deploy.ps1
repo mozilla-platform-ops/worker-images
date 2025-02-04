@@ -266,6 +266,10 @@ if ($IPAddress) {
     Write-Host "No IP Address could be determined." -ForegroundColor Red
 }
 
+write-host checking
+write-host $devlopment_script
+pause
+
 $ResolvedName = ((Resolve-DnsName -Name $IPAddress -Server "10.48.75.120").NameHost)
 write-host $ResolvedName
 
