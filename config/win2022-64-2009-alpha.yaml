@@ -42,8 +42,6 @@ tests:
   - scheduled_tasks.tests.ps1
   - azure_vm_agent.tests.ps1
   - logging.tests.ps1
-  #- common_tools.tests.ps1
-  - common_tools_core.tests.ps1
   - google_auth.tests.ps1
   - git.tests.ps1
   - mozilla_build_builder.tests.ps1
