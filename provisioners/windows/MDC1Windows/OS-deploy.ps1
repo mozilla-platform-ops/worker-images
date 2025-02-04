@@ -104,7 +104,8 @@ function Update-GetBoot {
         URI     = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/$branch/provisioners/windows/MDC1Windows/Get-Bootstrap.ps1"
         OutFile = $Template_Get_Bootstrap
     }
-    write-host checking 
+    write-host checking
+    write-host "Invoke-WebRequest @bootstrapSplat"
     write-host  $bootstrapSplat
     pause
     Invoke-WebRequest @bootstrapSplat
