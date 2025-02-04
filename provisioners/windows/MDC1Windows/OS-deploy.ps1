@@ -1,12 +1,17 @@
 param(
     [string]$deployuser,
-    [string]$deploymentaccess
+    [string]$deploymentaccess,
+    [switch]$devlopment_script = $false
+
 )
 function Deploy-Dev-OS {
     param (
         [string]$branch,
         [string]$Password
     )
+    if ($development_script) {
+        return
+    }
     $devlopment_script = $true
     $local_dir = "X:\working"
     $source = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/${branch}/provisioners/windows/MDC1Windows"
@@ -47,7 +52,7 @@ function Deploy-Dev-OS {
     }
 
     Write-Host "Running DEV deployment script..."
-    powershell $deploy_script -deployuser "deployment" -deploymentaccess "$Password"
+    powershell $deploy_script -deployuser "deployment" -deploymentaccess "$Password" -devlopment_script
 }
 
 function Mount-ZDrive {
@@ -204,7 +209,7 @@ format fs=ntfs quick
 assign letter=C
 create partition primary size=$localFilesSize
 format fs=ntfs quick
-assign letter=D
+assign letter=E
 exit
 "@
 
@@ -261,6 +266,10 @@ if ($IPAddress) {
     Write-Host "No IP Address could be determined." -ForegroundColor Red
 }
 
+write-host checking
+write-host $devlopment_script
+pause
+
 $ResolvedName = ((Resolve-DnsName -Name $IPAddress -Server "10.48.75.120").NameHost)
 write-host $ResolvedName
 
@@ -290,7 +299,7 @@ foreach ($pool in $YAML.pools) {
             $secret_date = $pool.secret_date
             $puppet_version = $pool.puppet_version
             Write-Output "The associated image for $shortname is: $neededImage"
-            if ($pool.dev -and (-not $development_script -or $development_script -ne $true)) {
+            if ($pool.dev -and (-not $development_script)) {
                 Write-Host "Dev mode is enabled."
                 Deploy-Dev-OS -Password $deploymentaccess -branch $pool.dev
                 exit
