@@ -2,7 +2,7 @@ param(
     [string]$deployuser,
     [string]$deploymentaccess
 )
-function Deploy-Dev-OS {
+function Deploy-OS-Dev {
     param (
         [string]$branch,
         [string]$Password
@@ -291,7 +291,7 @@ foreach ($pool in $YAML.pools) {
             Write-Output "The associated image for $shortname is: $neededImage"
             if ($pool.dev -and (-not $development_script -or $development_script -ne $true)) {
                 Write-Host "Dev mode is enabled."
-                Deploy-Dev-OS -Password $deploymentaccess -branch $pool.dev
+                Deploy-OS-Dev -Password $deploymentaccess -branch $pool.dev
                 exit
             }
             $found = $true
