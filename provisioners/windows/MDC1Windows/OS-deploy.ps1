@@ -1,6 +1,7 @@
 param(
     [string]$deployuser,
     [string]$deploymentaccess,
+    [string]$branch = "main",
     [switch]$devlopment_script = $false
 
 )
@@ -52,7 +53,7 @@ function Deploy-OS-Dev {
     }
 
     Write-Host "Running DEV deployment script..."
-    powershell $deploy_script -deployuser "deployment" -deploymentaccess "$Password" -devlopment_script
+    powershell $deploy_script -deployuser "deployment" -deploymentaccess "$Password" -devlopment_script -branch "$pool.dev"
 }
 
 function Mount-ZDrive {
@@ -97,8 +98,6 @@ function Update-GetBoot {
     if (Test-Path $Template_Get_Bootstrap) {
         Remove-Item $Template_Get_Bootstrap -Force
     }
-
-    $branch = if ($devlopment_script) { $pool.dev } else { "main" }
 
     $bootstrapSplat = @{
         URI     = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/$branch/provisioners/windows/MDC1Windows/Get-Bootstrap.ps1"
