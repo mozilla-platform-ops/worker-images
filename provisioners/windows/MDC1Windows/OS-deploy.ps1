@@ -249,6 +249,8 @@ exit
 ## Get node name
 Set-Location X:\working
 
+Write-Host branch is $branch
+
 $Ethernet = [System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces() | Where-Object { $_.name -match "ethernet" }
 try {
     $IPAddress = ($Ethernet.GetIPProperties().UnicastAddresses |
