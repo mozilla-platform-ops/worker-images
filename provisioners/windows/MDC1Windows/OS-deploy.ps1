@@ -86,6 +86,7 @@ function Mount-ZDrive {
 }
 function Update-GetBoot {
     param(
+        [string]$branch = "main"
     )
     $Get_Bootstrap = "D:\scripts\Get-Bootstrap.ps1"
     $Template_Get_Bootstrap = $local_scripts + "Template_Get-Bootstrap.ps1"
