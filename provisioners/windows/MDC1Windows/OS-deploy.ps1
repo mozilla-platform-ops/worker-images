@@ -475,7 +475,7 @@ if (!(Test-Path $setup)) {
     Write-host "Copying $source_app\* to $local_app"
     Copy-Item -Path $source_app\* $local_app -Recurse -Force
 
-    Update-GetBoot
+    Update-GetBoot -branch "$branch"
 
     Write-Host "Disconecting Deployment Share."
     net use Z: /delete
