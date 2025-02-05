@@ -28,6 +28,7 @@ pools:
     - t-nuc12-004
     - t-nuc12-005
     - t-nuc12-006
+    - t-nuc12-007
     - t-nuc12-013
     - t-nuc12-014
     - t-nuc12-015
