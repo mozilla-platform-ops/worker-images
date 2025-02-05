@@ -212,28 +212,6 @@ pools:
     - nuc13-157
     - nuc13-158
     - nuc13-159
-  - name: "win11-64-2009-hw-alpha"
-    puppet_version: "8.5.1"
-    Description: "NUC12 Hardware Performance Staging/Testing Pool"
-    image: "win11-2009-NUC-05-06-2024"
-    src_Organisation: "mozilla-platform-ops"
-    src_Repository: "ronin_puppet"
-    src_Branch: "windows"
-    hash: "8614677"
-    secret_date: "03-22-2024"
-    domain_suffix: "wintest2.releng.mdc1.mozilla.com"
-    nodes:
-    - nuc13-011
-    - nuc13-012
-    - nuc13-013
-    - nuc13-014
-    - nuc13-015
-    - nuc13-016
-    - nuc13-017
-    - nuc13-018
-    - nuc13-019
-    - nuc13-020
-    - nuc13-160
   - name: "win11-64-24h2-hw-alpha"
     puppet_version: "8.5.1"
     Description: "NUC12 Hardware Performance Staging/Testing Pool"
@@ -255,6 +233,17 @@ pools:
     - nuc13-008
     - nuc13-009
     - nuc13-010
+    - nuc13-011
+    - nuc13-012
+    - nuc13-013
+    - nuc13-014
+    - nuc13-015
+    - nuc13-016
+    - nuc13-017
+    - nuc13-018
+    - nuc13-019
+    - nuc13-020
+    - nuc13-160
 defaults:
   NV_domain: "mdc1.mozilla.com"
 Validate:
