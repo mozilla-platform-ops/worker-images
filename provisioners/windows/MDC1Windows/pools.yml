@@ -59,6 +59,7 @@ pools:
     - t-nuc12-008
     - t-nuc12-009
     - t-nuc12-010
+    - t-nuc12-011
     - t-nuc12-012
   - name: "win11-64-2009-hw"
     puppet_version: "8.5.1"
