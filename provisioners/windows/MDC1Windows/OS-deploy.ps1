@@ -477,9 +477,7 @@ if (!(Test-Path $setup)) {
     Write-host "Copying $source_app\* to $local_app"
     Copy-Item -Path $source_app\* $local_app -Recurse -Force
 
-    Update-GetBoot -branch $branch
-    Write-Host "Update-GetBoot -branch $branch"
-    pause
+    Update-GetBoot -branch "$branch"
 
     Write-Host "Disconecting Deployment Share."
     net use Z: /delete
@@ -518,7 +516,9 @@ elseif (!(Test-Path $secret_file)) {
     #Copy-Item -Path $source_scripts\Get-Bootstrap.ps1 $local_scripts\Get-Bootstrap.ps1 -Recurse -Force
     Write-Host "Disconecting Deployment Share."
     net use Z: /delete
-    Update-GetBoot
+    Update-GetBoot -branch "$branch"
+    Write_host  -branch "$branch"
+    pause
 }
 else {
     Write-Host "Local installation files are good. No further action needed."
