@@ -246,8 +246,7 @@ exit
 ## Get node name
 Set-Location X:\working
 
-Write-Host "branch is "$branch""
-pause
+Write-Host "Working from branch "$branch"."
 
 $Ethernet = [System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces() | Where-Object { $_.name -match "ethernet" }
 try {
