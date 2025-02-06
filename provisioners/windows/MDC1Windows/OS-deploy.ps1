@@ -109,10 +109,7 @@ function Update-GetBoot {
     write-host $pool.dev
     write-host "Invoke-WebRequest @bootstrapSplat"
     write-host  $bootstrapSplat.URI
-    pause
     Invoke-WebRequest @bootstrapSplat
-
-    Write-Host "Updating Get-Bootstrap.ps1"
 
     $replacements = @(
         @{ OldString = "WorkerPoolId"; NewString = $WorkerPool },
@@ -481,7 +478,7 @@ if (!(Test-Path $setup)) {
     Write-Host "Disconecting Deployment Share."
     net use Z: /delete
 
-    Invoke-WebRequest -Uri "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/main/provisioners/windows/MDC1Windows/base-autounattend.xml"  -OutFile $unattend
+    Invoke-WebRequest -Uri "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$branch/provisioners/windows/MDC1Windows/base-autounattend.xml"  -OutFile $unattend
 
     $secret_YAML = Convertfrom-Yaml (Get-Content $secret_file -raw)
 
