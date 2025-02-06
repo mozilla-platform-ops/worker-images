@@ -478,12 +478,6 @@ if (!(Test-Path $setup)) {
     Write-host "Copying $source_app\* to $local_app"
     Copy-Item -Path $source_app\* $local_app -Recurse -Force
 
-    write-host CHECK1
-    write-host "$branch"
-    pause
-
-    Update-GetBoot -branch "$branch"
-
     Write-Host "Disconecting Deployment Share."
     net use Z: /delete
 
@@ -521,24 +515,16 @@ elseif (!(Test-Path $secret_file)) {
     #Copy-Item -Path $source_scripts\Get-Bootstrap.ps1 $local_scripts\Get-Bootstrap.ps1 -Recurse -Force
     Write-Host "Disconecting Deployment Share."
     net use Z: /delete
-    CHECK2
-    Write_host  -branch "$branch"
-    pause
-    Update-GetBoot -branch "$branch"
 }
 else {
     Write-Host "Local installation files are good. No further action needed."
-    CHECK3
-    Write_host  -branch "$branch"
-    pause
-    Update-GetBoot -branch "$branch"
 }
 if ((Get-ChildItem -Path C:\ -Force) -ne $null) {
     write-host "Previous installation detected. Formatting OS disk."
     Format-Volume -DriveLetter C -FileSystem NTFS -Force -ErrorAction Inquire | Out-Null
 }
 
-
+Update-GetBoot -branch "$branch"
 
 ## Update yaml files with recent changes
 Copy-Item -Path pools.yml  $local_yaml -Force
