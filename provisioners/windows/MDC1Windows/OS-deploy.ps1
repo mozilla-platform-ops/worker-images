@@ -478,6 +478,10 @@ if (!(Test-Path $setup)) {
     Write-host "Copying $source_app\* to $local_app"
     Copy-Item -Path $source_app\* $local_app -Recurse -Force
 
+    write-host CHECK
+    write-host "$branch"
+    pause
+
     Update-GetBoot -branch "$branch"
 
     Write-Host "Disconecting Deployment Share."
