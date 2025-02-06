@@ -323,7 +323,6 @@ function Install-Choco {
 Test-ConnectionUntilOnline
 
 ## Setup WinRM just in case the machine fails so we have credentials to use
-Get-WinDisplayVersion
 Set-WinRM
 
 ## Once we have internet connection, setup ssh and import the keys

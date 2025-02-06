@@ -518,6 +518,11 @@ else {
 if ((Get-ChildItem -Path C:\ -Force) -ne $null) {
     write-host "Previous installation detected. Formatting OS disk."
     Format-Volume -DriveLetter C -FileSystem NTFS -Force -ErrorAction Inquire | Out-Null
+    Write-Host "Cleaning up bootloader."
+    bootrec /fixmbr
+    bootrec /fixboot
+    bootrec /scanos
+    bootrec /rebuildbcd
 }
 
 Update-GetBoot -branch "$branch"
