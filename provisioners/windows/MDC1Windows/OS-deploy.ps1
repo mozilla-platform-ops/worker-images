@@ -478,7 +478,7 @@ if (!(Test-Path $setup)) {
     Write-host "Copying $source_app\* to $local_app"
     Copy-Item -Path $source_app\* $local_app -Recurse -Force
 
-    write-host CHECK
+    write-host CHECK1
     write-host "$branch"
     pause
 
@@ -521,13 +521,17 @@ elseif (!(Test-Path $secret_file)) {
     #Copy-Item -Path $source_scripts\Get-Bootstrap.ps1 $local_scripts\Get-Bootstrap.ps1 -Recurse -Force
     Write-Host "Disconecting Deployment Share."
     net use Z: /delete
-    Update-GetBoot -branch "$branch"
+    CHECK2
     Write_host  -branch "$branch"
     pause
+    Update-GetBoot -branch "$branch"
 }
 else {
     Write-Host "Local installation files are good. No further action needed."
-    Update-GetBoot
+    CHECK3
+    Write_host  -branch "$branch"
+    pause
+    Update-GetBoot -branch "$branch"
 }
 if ((Get-ChildItem -Path C:\ -Force) -ne $null) {
     write-host "Previous installation detected. Formatting OS disk."
