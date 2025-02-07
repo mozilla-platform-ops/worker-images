@@ -1,6 +1,9 @@
 param(
     [string]$deployuser,
-    [string]$deploymentaccess
+    [string]$deploymentaccess,
+    [string]$branch = "main",
+    [switch]$devlopment_script = $false
+
 )
 function Deploy-OS-Dev {
     param (
@@ -80,6 +83,7 @@ function Mount-ZDrive {
 }
 function Update-GetBoot {
     param(
+        [string]$branch = "main"
     )
     $Get_Bootstrap = "D:\scripts\Get-Bootstrap.ps1"
     $Template_Get_Bootstrap = $local_scripts + "Template_Get-Bootstrap.ps1"
@@ -94,13 +98,15 @@ function Update-GetBoot {
     }
 
     $bootstrapSplat = @{
-        URI     = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/main/provisioners/windows/MDC1Windows/Get-Bootstrap.ps1"
+        URI     = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/$branch/provisioners/windows/MDC1Windows/Get-Bootstrap.ps1"
         OutFile = $Template_Get_Bootstrap
     }
-
+    write-host checking
+    write-host $branch
+    write-host $pool.dev
+    write-host "Invoke-WebRequest @bootstrapSplat"
+    write-host  $bootstrapSplat.URI
     Invoke-WebRequest @bootstrapSplat
-
-    Write-Host "Updating Get-Bootstrap.ps1"
 
     $replacements = @(
         @{ OldString = "WorkerPoolId"; NewString = $WorkerPool },
@@ -204,7 +210,7 @@ format fs=ntfs quick
 assign letter=C
 create partition primary size=$localFilesSize
 format fs=ntfs quick
-assign letter=D
+assign letter=E
 exit
 "@
 
@@ -236,6 +242,8 @@ exit
 
 ## Get node name
 Set-Location X:\working
+
+Write-Host "Working from branch "$branch"."
 
 $Ethernet = [System.Net.NetworkInformation.NetworkInterface]::GetAllNetworkInterfaces() | Where-Object { $_.name -match "ethernet" }
 try {
@@ -290,7 +298,7 @@ foreach ($pool in $YAML.pools) {
             $secret_date = $pool.secret_date
             $puppet_version = $pool.puppet_version
             Write-Output "The associated image for $shortname is: $neededImage"
-            if ($pool.dev -and (-not $development_script -or $development_script -ne $true)) {
+            if ($pool.dev -and (-not $devlopment_script)) {
                 Write-Host "Dev mode is enabled."
                 Deploy-OS-Dev -Password $deploymentaccess -branch $pool.dev
                 exit
@@ -463,12 +471,10 @@ if (!(Test-Path $setup)) {
     Write-host "Copying $source_app\* to $local_app"
     Copy-Item -Path $source_app\* $local_app -Recurse -Force
 
-    Update-GetBoot
-
     Write-Host "Disconecting Deployment Share."
     net use Z: /delete
 
-    Invoke-WebRequest -Uri "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/main/provisioners/windows/MDC1Windows/base-autounattend.xml"  -OutFile $unattend
+    Invoke-WebRequest -Uri "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$branch/provisioners/windows/MDC1Windows/base-autounattend.xml"  -OutFile $unattend
 
     $secret_YAML = Convertfrom-Yaml (Get-Content $secret_file -raw)
 
@@ -502,18 +508,16 @@ elseif (!(Test-Path $secret_file)) {
     #Copy-Item -Path $source_scripts\Get-Bootstrap.ps1 $local_scripts\Get-Bootstrap.ps1 -Recurse -Force
     Write-Host "Disconecting Deployment Share."
     net use Z: /delete
-    Update-GetBoot
 }
 else {
     Write-Host "Local installation files are good. No further action needed."
-    Update-GetBoot
 }
 if ((Get-ChildItem -Path C:\ -Force) -ne $null) {
     write-host "Previous installation detected. Formatting OS disk."
     Format-Volume -DriveLetter C -FileSystem NTFS -Force -ErrorAction Inquire | Out-Null
 }
 
-
+Update-GetBoot -branch "$branch"
 
 ## Update yaml files with recent changes
 Copy-Item -Path pools.yml  $local_yaml -Force
