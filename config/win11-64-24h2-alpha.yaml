@@ -27,8 +27,8 @@ vm:
     worker_pool_id: win11-64-24h2
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "windows"
-    deploymentId: "189d045"
+    sourceBranch: "gamebar"
+    deploymentId: "7da911e"
     managed_by: packer
 tests:
   - microsoft_tools_tester.tests.ps1
@@ -45,7 +45,7 @@ tests:
   - azure_vm_agent.tests.ps1
   - virtual_drivers.tests.ps1
   - logging.tests.ps1
-  - common_tools.tests.ps1
+  - mercurial.tests.ps1
   - git.tests.ps1
   - mozilla_build_tester.tests.ps1
   - mozilla_maintenance_service.tests.ps1

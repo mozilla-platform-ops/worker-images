@@ -24,8 +24,8 @@ vm:
     worker_pool_id: win2022-64-2009
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: windows
-    deploymentId: "189d045"
+    sourceBranch: "remove_common_tools"
+    deploymentId: "9dde408"
     managed_by: packer
 tests:
   #- microsoft_tools_builder.tests.ps1
@@ -42,8 +42,6 @@ tests:
   - scheduled_tasks.tests.ps1
   - azure_vm_agent.tests.ps1
   - logging.tests.ps1
-  #- common_tools.tests.ps1
-  - common_tools_core.tests.ps1
   - google_auth.tests.ps1
   - git.tests.ps1
   - mozilla_build_builder.tests.ps1

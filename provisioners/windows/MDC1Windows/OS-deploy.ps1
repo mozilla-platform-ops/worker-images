@@ -10,10 +10,6 @@ function Deploy-OS-Dev {
         [string]$branch,
         [string]$Password
     )
-    if ($development_script) {
-        return
-    }
-    $devlopment_script = $true
     $local_dir = "X:\working"
     $source = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/${branch}/provisioners/windows/MDC1Windows"
     $script = "OS-deploy.ps1"
@@ -53,7 +49,8 @@ function Deploy-OS-Dev {
     }
 
     Write-Host "Running DEV deployment script..."
-    powershell $deploy_script -deployuser "deployment" -deploymentaccess "$Password" -devlopment_script -branch "$pool.dev"
+    $branch = "$($pool.dev)"
+    powershell $deploy_script -deployuser "deployment" -deploymentaccess "$Password" -devlopment_script -branch "$branch"
 }
 
 function Mount-ZDrive {
