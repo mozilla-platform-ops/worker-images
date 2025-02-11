@@ -15,6 +15,7 @@ azure:
   locations:
     - centralus
     - northcentralus
+    - eastus
 vm:
   puppet_version: 8.5.1
   git_version: 2.46.0
