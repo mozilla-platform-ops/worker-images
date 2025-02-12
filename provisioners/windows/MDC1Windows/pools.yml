@@ -14,6 +14,9 @@ pools:
     nodes:
     - t-w1064-ms-151
     - t-w1064-ms-152
+    - t-w1064-ms-153
+    - t-w1064-ms-154
+    - t-w1064-ms-155
   - name: "win11-64-24h2-hw-ref"
     puppet_version: "8.5.1"
     Description: "NUC12 Hardware Reference Staging/Testing Pool"
