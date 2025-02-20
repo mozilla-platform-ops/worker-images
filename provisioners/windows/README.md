@@ -1,4 +1,5 @@
-# Ronin Windows Bootstrapping
+# OUTDATED
+## Ronin Windows Bootstrapping
 
 There should be a bootstrap script for each workerType.
 
