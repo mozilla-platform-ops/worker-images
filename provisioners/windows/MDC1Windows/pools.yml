@@ -7,7 +7,7 @@ pools:
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "moonshots_deploy"
-    hash: "5a8a9c1"
+    hash: "9a64a07"
     secret_date: "11-07-2024"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
