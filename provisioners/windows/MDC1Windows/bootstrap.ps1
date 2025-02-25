@@ -701,6 +701,8 @@ powercfg.exe -x -monitor-timeout-ac 0
 ## It works here, but ultimately should be done through Puppet.
 Set-RemoteConnectivity
 
+pause
+
 ## This is not being set yet, so it won't find the ronin_puppet registry entry
 $stage = (Get-ItemProperty -path "HKLM:\SOFTWARE\Mozilla\ronin_puppet").bootstrap_stage
 
