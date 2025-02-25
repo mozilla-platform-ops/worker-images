@@ -17,8 +17,8 @@ azure:
     - northcentralus
     - eastus
 vm:
-  puppet_version: 8.5.1
-  git_version: 2.46.0
+  puppet_version: 8.10.0
+  git_version: 2.48.1
   size: Standard_F32s_v2
   tags:
     base_image: win2022642009azure
