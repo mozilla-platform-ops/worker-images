@@ -418,7 +418,7 @@ build {
     inline = [
       "Import-Module BootStrap -Force",
       "Set-MarkdownPSModule",
-      "Set-ReleaseNotes -Config $ENV:config -Version $ENV:sharedimage_version"
+      "Set-ReleaseNotes -Config $ENV:config -Version $ENV:sharedimage_version -Organization $ENV:src_organisation -Branch $ENV:src_Branch -Repository $ENV:src_Repository -DeploymentId $ENV:deploymentId" 
     ]
   }
 
