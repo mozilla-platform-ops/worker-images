@@ -20,7 +20,7 @@ function Start-AzRoninPuppet {
     process {
         Set-Location $env:systemdrive\ronin
         If ( -Not (test-path $logdir\old)) {
-            New-Item -ItemType Directory -Force -Path $logdir\old
+            $null = New-Item -ItemType Directory -Force -Path $logdir\old
         }
         Write-Log -message ('{0} :: Ronin Puppet HEAD is set to {1}' -f $($MyInvocation.MyCommand.Name), $deploymentID) -severity 'DEBUG'
         Write-host ('{0} :: Ronin Puppet HEAD is set to {1}' -f $($MyInvocation.MyCommand.Name), $deploymentID)
