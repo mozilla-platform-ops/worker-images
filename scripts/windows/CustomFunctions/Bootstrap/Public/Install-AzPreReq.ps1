@@ -51,24 +51,24 @@ function Install-AzPreReq {
         ## Git Version
         if ([string]::IsNullOrEmpty($data.vm.git_version)) {
             $git = "Git-2.46.0-64-bit.exe"
-            $git_url = "https://github.com/git-for-windows/git/releases/download/v2.46.0.windows.1/Git-2.46.0-64-bit.exe"
+            $git_url = "https://github.com/git-for-windows/git/releases/download/v2.46.0.windows.1/$($git)"
         }
         else {
-            $git = ("Git-{0}-64-bit.exe") -f $data.vm.git_version
             switch ($env:PROCESSOR_ARCHITECTURE) {
                 "AMD64" {
-                    $git_url = "https://github.com/git-for-windows/git/releases/download/v{0}.windows.1/Git-{1}-64-bit.exe" -f $data.vm.git_version, $data.vm.git_version
+                    $git = ("Git-{0}-64-bit.exe") -f $data.vm.git_version
                 }
                 "ARM64" {
-                    $git_url = "https://github.com/git-for-windows/git/releases/download/v{0}.windows.1/Git-{1}-arm64.exe" -f $data.vm.git_version, $data.vm.git_version
+                    $git = ("Git-{0}-arm64.exe") -f $data.vm.git_version
                 }
                 Default {}
             }
+            $git_url = "https://github.com/git-for-windows/git/releases/download/v{0}.windows.1/{1}" -f $data.vm.git_version, $git
         }
 
         Write-Log -message ('Puppet version: {0} :: - {1:o}' -f $puppet, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
         Write-Host ('Puppet version: {0} :: - {1:o}' -f $puppet, (Get-Date).ToUniversalTime())
-
+        
         ## Download puppet, git, and nodes.pp
         Invoke-DownloadWithRetry -Url "$ext_src/$puppet" -Path "$env:systemdrive\$puppet"
         Invoke-DownloadWithRetry -Url $git_url -Path "$env:systemdrive\$git"
