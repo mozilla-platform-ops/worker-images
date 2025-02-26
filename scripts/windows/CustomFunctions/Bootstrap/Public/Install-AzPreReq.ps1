@@ -55,7 +55,15 @@ function Install-AzPreReq {
         }
         else {
             $git = ("Git-{0}-64-bit.exe") -f $data.vm.git_version
-            $git_url = "https://github.com/git-for-windows/git/releases/download/v{0}.windows.1/Git-{1}-64-bit.exe" -f $data.vm.git_version, $data.vm.git_version
+            switch ($env:PROCESSOR_ARCHITECTURE) {
+                "AMD64" {
+                    $git_url = "https://github.com/git-for-windows/git/releases/download/v{0}.windows.1/Git-{1}-64-bit.exe" -f $data.vm.git_version, $data.vm.git_version
+                }
+                "ARM64" {
+                    $git_url = "https://github.com/git-for-windows/git/releases/download/v{0}.windows.1/Git-{1}-arm64.exe" -f $data.vm.git_version, $data.vm.git_version
+                }
+                Default {}
+            }
         }
 
         Write-Log -message ('Puppet version: {0} :: - {1:o}' -f $puppet, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
