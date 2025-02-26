@@ -1,9 +1,9 @@
 ---
 pools:
   - name: "win10-64-2009-hw"
+    dev: "win10hw_activate"
     puppet_version: "8.5.1"
     Description: "Moonshot Win 10 hardware"
-    dev: "win10hw_activate"
     image: "win10-2009-MS-11-05-2024"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
