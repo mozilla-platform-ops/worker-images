@@ -15,16 +15,16 @@ azure:
   locations:
     - centralus
 vm:
-  puppet_version: 8.5.1
-  git_version: 2.46.0
+  puppet_version: 8.10.0
+  git_version: 2.48.1
   size: Standard_E8pds_v5
   tags:
     base_image: win11a6424h2azurebuilder
     worker_pool_id: win11-a64-24h2-builder-alpha
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: windows
-    deploymentId: "189d045"
+    sourceBranch: "windows"
+    deploymentId: "7cbbd66"
     managed_by: packer
 tests:
   - microsoft_tools_builder-a64.tests.ps1
