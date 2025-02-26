@@ -15,7 +15,7 @@ function Install-AzPreReq {
     }
     process { 
         ## Create bootstrap
-        New-Item -Path $local_dir -ItemType Directory -Force
+        $null = New-Item -Path $local_dir -ItemType Directory -Force
 
         ## Setup azcopy
         Write-host "Downloading azcopy to $ENV:systemdrive\"
