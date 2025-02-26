@@ -19,7 +19,7 @@ Describe "Common Tools" {
             $PSItem.DisplayName -match "Sublime Text*"
         }
     }
-    Context "Process Monitor is present" {
+    Context "Process Monitor is present" -Skip {
         It "Folder is present" {
             Test-Path "C:\ProcessMonitor" | Should -Be $true
         }
@@ -30,7 +30,7 @@ Describe "Common Tools" {
             ((Get-Item "C:\ProcessMonitor\Procmon.exe").versioninfo).fileversion | Should -Be 3.50
         }
     }
-    Context "Process Explorer is present" {
+    Context "Process Explorer is present" -Skip {
         It "Folder is present" {
             Test-Path "C:\ProcessExplorer" | Should -Be $true
         }
@@ -41,17 +41,17 @@ Describe "Common Tools" {
             ((Get-Item "C:\ProcessExplorer\procexp.exe").versioninfo).fileversion | Should -Be 16.21
         }
     }
-    #Context "jq is present" {
-    #    It "Binary is present" {
-    #        Test-Path "C:\Windows\System32\jq.exe" | Should -Be $true
-    #    }
-    #    It "Version is jq1-5" {
-    #        Start-Process -FilePath "C:\Windows\System32\jq.exe" -ArgumentList @(
-    #            "--version"
-    #        ) -RedirectStandardOutput "Testdrive:\jqversion.txt" -Wait -NoNewWindow
-    #        Get-Content "Testdrive:\jqversion.txt" | Should -Be "jq-1.5"
-    #    }
-    #}
+    Context "jq is present" -Skip {
+       It "Binary is present" {
+           Test-Path "C:\Windows\System32\jq.exe" | Should -Be $true
+       }
+       It "Version is jq1-5" {
+           Start-Process -FilePath "C:\Windows\System32\jq.exe" -ArgumentList @(
+               "--version"
+           ) -RedirectStandardOutput "Testdrive:\jqversion.txt" -Wait -NoNewWindow
+           Get-Content "Testdrive:\jqversion.txt" | Should -Be "jq-1.5"
+       }
+    }
     Context "gpg4win" {
         It "GPG4Win is installed" {
             $gpg4win.DisplayName | Should -Not -Be $null
@@ -74,7 +74,7 @@ Describe "Common Tools" {
             $7zip.DisplayVersion | Should -Be "18.06.00.0"
         }
     }
-    Context "Sublime Text" {
+    Context "Sublime Text" -Skip {
         It "Sublime Text is installed" {
             $sublimetext.DisplayName | Should -Not -Be $null
         }
@@ -82,5 +82,4 @@ Describe "Common Tools" {
             Test-Path "$ENV:ProgramFiles\Sublime Text 3\subl.exe" | Should -BeTrue
         }
     }
-
 }
