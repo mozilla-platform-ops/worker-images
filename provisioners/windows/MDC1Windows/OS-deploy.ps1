@@ -298,9 +298,6 @@ foreach ($pool in $YAML.pools) {
             $secret_date = $pool.secret_date
             $puppet_version = $pool.puppet_version
             Write-Output "The associated image for $shortname is: $neededImage"
-            write-host CHECKING
-            write-host $pool.dev
-            write-host $devlopment_script
             pause
             if ($pool.dev -and (-not $devlopment_script)) {
                 Write-Host "Dev mode is enabled."
