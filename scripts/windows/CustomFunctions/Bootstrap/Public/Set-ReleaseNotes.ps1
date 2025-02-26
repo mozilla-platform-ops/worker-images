@@ -5,7 +5,19 @@ function Set-ReleaseNotes {
         $Config,
 
         [String]
-        $Version
+        $Version,
+
+        [String]
+        $Branch,
+
+        [String]
+        $Organization,
+
+        [String]
+        $Repository,
+
+        [String]
+        $DeploymentId
     )
 
     ## The config will be the name of the configuration file (win11-64-2009) without the extension
@@ -68,7 +80,7 @@ function Set-ReleaseNotes {
             Name    = $PSItem.DisplayName
             Version = $PSItem.DisplayVersion
         }
-    } | Sort-Object -Property Name
+    } | Sort-Object -Property Name | Sort-Object Name, Version | Group-Object Name, Version | ForEach-Object { $_.Group[0] }
 
     ## And now all software that is published by Microsoft
     $InstalledSoftware_Microsoft = $InstalledSoftware | Where-Object {
@@ -78,7 +90,7 @@ function Set-ReleaseNotes {
             Name    = $PSItem.DisplayName
             Version = $PSItem.DisplayVersion
         }
-    } | Sort-Object -Property Name
+    } | Sort-Object -Property Name | Sort-Object Name, Version | Group-Object Name, Version | ForEach-Object { $_.Group[0] }
 
     ## Let's create the markdown file
     $markdown = ""
@@ -109,7 +121,11 @@ function Set-ReleaseNotes {
     $lines = @(
         "Config: $($Config)",
         "OS Name: $($Header) $($OSVersionExtended.DisplayVersion)",
-        "OS Version: $($OSBuild)"
+        "OS Version: $($OSBuild)",
+        "Organization: $($Organization)",
+        "Repository: $($Repository)"
+        "Branch: $($Branch)",
+        "DeploymentId: $($DeploymentId)"
     )
     
     $markdown += New-MDList -Lines $lines -Style Unordered
