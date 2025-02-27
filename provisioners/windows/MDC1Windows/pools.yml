@@ -36,7 +36,7 @@ pools:
     - t-nuc12-014
     - t-nuc12-015
   - name: "win11-64-24h2-hw-ref-alpha"
-    puppet_version: "8.5.1"
+    puppet_version: "8.10.0"
     Description: "NUC12 Hardware Reference Staging/Testing Pool"
     image: "win11-24H2-NUC-01-16-2025"
     src_Organisation: "mozilla-platform-ops"
@@ -166,7 +166,7 @@ pools:
     - nuc13-158
     - nuc13-159
   - name: "win11-64-24h2-hw-alpha"
-    puppet_version: "8.5.1"
+    puppet_version: "8.10.0"
     Description: "NUC12 Hardware Performance Staging/Testing Pool"
     image: "win11-24H2-NUC-01-16-2025"
     src_Organisation: "mozilla-platform-ops"
