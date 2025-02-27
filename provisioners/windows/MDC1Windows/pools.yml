@@ -28,10 +28,13 @@ pools:
     secret_date: "01-16-2025"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
+    - t-nuc12-003
     - t-nuc12-004
     - t-nuc12-005
     - t-nuc12-006
     - t-nuc12-007
+    - t-nuc12-008
+    - t-nuc12-009
     - t-nuc12-013
     - t-nuc12-014
     - t-nuc12-015
@@ -59,9 +62,6 @@ pools:
     secret_date: "05-13-2024"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    - t-nuc12-003
-    - t-nuc12-008
-    - t-nuc12-009
     - t-nuc12-010
     - t-nuc12-011
     - t-nuc12-012
@@ -103,68 +103,6 @@ pools:
     - nuc13-095
     - nuc13-096
     - nuc13-097
-    - nuc13-098
-    - nuc13-099
-    - nuc13-100
-    - nuc13-101
-    - nuc13-102
-    - nuc13-103
-    - nuc13-104
-    - nuc13-105
-    - nuc13-106
-    - nuc13-107
-    - nuc13-108
-    - nuc13-109
-    - nuc13-110
-    - nuc13-111
-    - nuc13-112
-    - nuc13-113
-    - nuc13-114
-    - nuc13-115
-    - nuc13-116
-    - nuc13-117
-    - nuc13-118
-    - nuc13-119
-    - nuc13-120
-    - nuc13-121
-    - nuc13-122
-    - nuc13-123
-    - nuc13-124
-    - nuc13-125
-    - nuc13-126
-    - nuc13-127
-    - nuc13-128
-    - nuc13-129
-    - nuc13-130
-    - nuc13-131
-    - nuc13-132
-    - nuc13-133
-    - nuc13-134
-    - nuc13-135
-    - nuc13-136
-    - nuc13-137
-    - nuc13-138
-    - nuc13-139
-    - nuc13-140
-    - nuc13-141
-    - nuc13-142
-    - nuc13-143
-    - nuc13-144
-    - nuc13-145
-    - nuc13-146
-    - nuc13-147
-    - nuc13-148
-    - nuc13-149
-    - nuc13-150
-    - nuc13-151
-    - nuc13-152
-    - nuc13-153
-    - nuc13-154
-    - nuc13-155
-    - nuc13-156
-    - nuc13-157
-    - nuc13-158
-    - nuc13-159
   - name: "win11-64-24h2-hw-alpha"
     puppet_version: "8.10.0"
     Description: "NUC12 Hardware Performance Staging/Testing Pool"
@@ -269,6 +207,68 @@ pools:
     - nuc13-068
     - nuc13-069
     - nuc13-070
+    - nuc13-098
+    - nuc13-099
+    - nuc13-100
+    - nuc13-101
+    - nuc13-102
+    - nuc13-103
+    - nuc13-104
+    - nuc13-105
+    - nuc13-106
+    - nuc13-107
+    - nuc13-108
+    - nuc13-109
+    - nuc13-110
+    - nuc13-111
+    - nuc13-112
+    - nuc13-113
+    - nuc13-114
+    - nuc13-115
+    - nuc13-116
+    - nuc13-117
+    - nuc13-118
+    - nuc13-119
+    - nuc13-120
+    - nuc13-121
+    - nuc13-122
+    - nuc13-123
+    - nuc13-124
+    - nuc13-125
+    - nuc13-126
+    - nuc13-127
+    - nuc13-128
+    - nuc13-129
+    - nuc13-130
+    - nuc13-131
+    - nuc13-132
+    - nuc13-133
+    - nuc13-134
+    - nuc13-135
+    - nuc13-136
+    - nuc13-137
+    - nuc13-138
+    - nuc13-139
+    - nuc13-140
+    - nuc13-141
+    - nuc13-142
+    - nuc13-143
+    - nuc13-144
+    - nuc13-145
+    - nuc13-146
+    - nuc13-147
+    - nuc13-148
+    - nuc13-149
+    - nuc13-150
+    - nuc13-151
+    - nuc13-152
+    - nuc13-153
+    - nuc13-154
+    - nuc13-155
+    - nuc13-156
+    - nuc13-157
+    - nuc13-158
+    - nuc13-159
 defaults:
   NV_domain: "mdc1.mozilla.com"
 Validate:
