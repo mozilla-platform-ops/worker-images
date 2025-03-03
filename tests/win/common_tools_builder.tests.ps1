@@ -19,40 +19,7 @@ Describe "Common Tools" {
             $PSItem.DisplayName -match "Sublime Text*"
         }
     }
-    Context "Process Monitor is present" -Skip {
-        It "Folder is present" {
-            Test-Path "C:\ProcessMonitor" | Should -Be $true
-        }
-        It "Binary is present" {
-            Test-Path "C:\ProcessMonitor\Procmon.exe" | Should -Be $true
-        }
-        It "Version is 3.50" {
-            ((Get-Item "C:\ProcessMonitor\Procmon.exe").versioninfo).fileversion | Should -Be 3.50
-        }
-    }
-    Context "Process Explorer is present" -Skip {
-        It "Folder is present" {
-            Test-Path "C:\ProcessExplorer" | Should -Be $true
-        }
-        It "Binary is present" {
-            Test-Path "C:\ProcessExplorer\procexp.exe" | Should -Be $true
-        }
-        It "Version is 16.21" {
-            ((Get-Item "C:\ProcessExplorer\procexp.exe").versioninfo).fileversion | Should -Be 16.21
-        }
-    }
-    Context "jq is present" -Skip {
-       It "Binary is present" {
-           Test-Path "C:\Windows\System32\jq.exe" | Should -Be $true
-       }
-       It "Version is jq1-5" {
-           Start-Process -FilePath "C:\Windows\System32\jq.exe" -ArgumentList @(
-               "--version"
-           ) -RedirectStandardOutput "Testdrive:\jqversion.txt" -Wait -NoNewWindow
-           Get-Content "Testdrive:\jqversion.txt" | Should -Be "jq-1.5"
-       }
-    }
-    Context "gpg4win" -Skip {
+    Context "gpg4win" {
         It "GPG4Win is installed" {
             $gpg4win.DisplayName | Should -Not -Be $null
         }
