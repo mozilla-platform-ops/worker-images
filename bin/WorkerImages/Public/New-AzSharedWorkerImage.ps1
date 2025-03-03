@@ -56,22 +56,32 @@ function New-AzSharedWorkerImage {
     $ENV:PKR_VAR_worker_pool_id = $YAML.vm.tags["worker_pool_id"]
     switch -Wildcard ($key) {
         "*alpha2*" {
+            $PackerForceBuild = $true
             $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-alpha2' -f $YAML.vm.tags["worker_pool_id"], $ENV:PKR_VAR_image_sku)
         }
         "*alpha*" {
+            $PackerForceBuild = $true
             $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-alpha' -f $YAML.vm.tags["worker_pool_id"], $ENV:PKR_VAR_image_sku)
         }
         "*beta*" {
+            $PackerForceBuild = $true
             $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-beta' -f $YAML.vm.tags["worker_pool_id"], $ENV:PKR_VAR_image_sku)
         }
         "*next*" {
+            $PackerForceBuild = $true
             $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-next' -f $YAML.vm.tags["worker_pool_id"],  $ENV:PKR_VAR_image_sku)
         } 
         Default {
+            $PackerForceBuild = $false
             $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}' -f $YAML.vm.tags["worker_pool_id"], $ENV:PKR_VAR_image_sku, $YAML.vm.tags["deploymentId"])
         }
     }
     Write-Host "Building $($ENV:PKR_VAR_managed_image_name) in $($ENV:PKR_VAR_temp_resource_group_name)"
     packer init azure.pkr.hcl
-    packer build --only azure-arm.sig -force azure.pkr.hcl
+    if ($PackerForceBuild) {
+        packer build --only azure-arm.sig -force azure.pkr.hcl
+    }
+    else {
+        packer build --only azure-arm.sig azure.pkr.hcl
+    }
 }
