@@ -134,6 +134,10 @@ pools:
     - nuc13-018
     - nuc13-019
     - nuc13-020
+    - nuc13-022
+    - nuc13-023
+    - nuc13-024
+    - nuc13-025
     - nuc13-160
   - name: "win11-64-24h2-hw-perf-sheriff"
     puppet_version: "8.5.1"
@@ -158,10 +162,6 @@ pools:
     secret_date: "01-16-2025"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    - nuc13-022
-    - nuc13-023
-    - nuc13-024
-    - nuc13-025
     - nuc13-026
     - nuc13-027
     - nuc13-028
