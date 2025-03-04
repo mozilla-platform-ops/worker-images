@@ -7,7 +7,7 @@ image:
 sharedimage:
   gallery_name: "trusted_win2022_64_2009"
   image_name: "trusted_win2022_64_2009"
-  image_version: 1.0.1
+  image_version: 1.0.2
 azure:
   managed_image_resource_group_name: rg-packer-worker-images
   managed_image_storage_account_type: Standard_LRS
@@ -20,8 +20,8 @@ azure:
     - westus
     - westus2
 vm:
-  puppet_version: 8.5.1
-  git_version: 2.46.0
+  puppet_version: 8.10.0
+  git_version: 2.48.1
   size: Standard_F32s_v2
   tags:
     base_image: win2022642009azure
@@ -29,7 +29,7 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: windows
-    deploymentId: "1a0441f"
+    deploymentId: "b1f4165"
     managed_by: packer
 tests:
   - microsoft_tools_builder.tests.ps1
@@ -44,7 +44,7 @@ tests:
   - scheduled_tasks.tests.ps1
   - azure_vm_agent.tests.ps1
   - logging.tests.ps1
-  - common_tools.tests.ps1
+  - common_tools_builder.tests.ps1
   - google_auth.tests.ps1
   - git.tests.ps1
   - mozilla_build_builder.tests.ps1
