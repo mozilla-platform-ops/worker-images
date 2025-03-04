@@ -27,8 +27,8 @@ vm:
     worker_pool_id: win11-64-24h2
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "tc81.0.3"
-    deploymentId: "d82e36d"
+    sourceBranch: windows
+    deploymentId: "b1f4165"
     managed_by: packer
 tests:
   - microsoft_tools_tester.tests.ps1
