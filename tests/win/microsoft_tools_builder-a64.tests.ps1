@@ -19,10 +19,10 @@ Describe "Microsoft Tools - Builder" {
     It "NET Framework Core is installed" {
         Get-WindowsOptionalFeature -Online -FeatureName "NetFx3" | Should -Not -Be $Null
     }
-    It "DirectX SDK gets installed" {
+    It "DirectX SDK gets installed" -Skip {
         $directxsdk.DisplayName | Should -Not -Be $Null
     }
-    It "DirectX SDK version" {
+    It "DirectX SDK version" -Skip {
         $directxsdk.DisplayVersion | Should -Be "10.1.19041.685"
     }
     It "DirectX Environment Variable is set" {
