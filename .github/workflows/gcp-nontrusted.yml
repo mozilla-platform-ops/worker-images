@@ -16,7 +16,28 @@ permissions:
   contents: read
 
 jobs:
+  check-access:
+    name: "Permission Check"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if user is in relsre team
+        run: |
+          TEAM="relops"
+          ORG="mozilla-platform-ops"
+          USER="${{ github.actor }}"
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/orgs/$ORG/teams/$TEAM/members/$USER")
+
+          if [ "$RESPONSE" != "204" ]; then
+            echo "User $USER is not a member of $TEAM team in $ORG organization."
+            exit 1
+          else
+            echo "User $USER is authorized."
+          fi
   config:
+    needs: check-access
     name: "Get Project ID from Config"
     runs-on: ubuntu-latest
     steps:
