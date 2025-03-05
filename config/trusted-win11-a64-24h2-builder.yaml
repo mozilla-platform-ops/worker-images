@@ -23,8 +23,8 @@ vm:
     worker_pool_id: trusted-win11-a64-24h2-builder
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: windows
-    deploymentId: "b1f4165"
+    sourceBranch: "windows"
+    deploymentId: "6d72e0c"
     managed_by: packer
 tests:
   - microsoft_tools_builder-a64.tests.ps1
