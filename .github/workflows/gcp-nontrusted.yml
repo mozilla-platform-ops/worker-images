@@ -17,25 +17,21 @@ permissions:
 
 jobs:
   check-access:
-    name: "Permission Check"
+    name: "Verify User Access"
     runs-on: ubuntu-latest
     steps:
-      - name: Check if user is in relsre team
+      - uses: actions/checkout@v4
+      - name: Load Authorized Users and Check Access
+        shell: pwsh
         run: |
-          TEAM="relops"
-          ORG="mozilla-platform-ops"
-          USER="${{ github.actor }}"
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/orgs/$ORG/teams/$TEAM/members/$USER")
-
-          if [ "$RESPONSE" != "204" ]; then
-            echo "User $USER is not a member of $TEAM team in $ORG organization."
+          $AUTHORIZED_USERS=$(Get-Content .github/relsre.json | Convertfrom-Json)
+          if ($authorized_users -contains "${{ github.actor }}") {
+            Write-host "User ${{ github.actor }} is authorized."
+          }
+          else {
+            Write-Host "User ${{ github.actor }} is unauthorized."
             exit 1
-          else
-            echo "User $USER is authorized."
-          fi
+          }
   config:
     needs: check-access
     name: "Get Project ID from Config"
