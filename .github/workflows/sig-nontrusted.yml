@@ -26,7 +26,24 @@ permissions:
   contents: read
 
 jobs:
+  check-access:
+    name: "Verify User Access"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Load Authorized Users and Check Access
+        shell: pwsh
+        run: |
+          $AUTHORIZED_USERS=$(Get-Content .github/relsre.json | Convertfrom-Json)
+          if ($authorized_users -contains "${{ github.actor }}") {
+            Write-host "User ${{ github.actor }} is authorized."
+          }
+          else {
+            Write-Host "User ${{ github.actor }} is unauthorized."
+            exit 1
+          }
   packer:
+    needs: check-access
     name: "Build ${{ github.event.inputs.config }}"
     runs-on: ubuntu-latest
     permissions:

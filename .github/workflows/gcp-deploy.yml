@@ -16,7 +16,24 @@ permissions:
   contents: read
 
 jobs:
-  job1:
+  check-access:
+    name: "Verify User Access"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Load Authorized Users and Check Access
+        shell: pwsh
+        run: |
+          $AUTHORIZED_USERS=$(Get-Content .github/relsre.json | Convertfrom-Json)
+          if ($authorized_users -contains "${{ github.actor }}") {
+            Write-host "User ${{ github.actor }} is authorized."
+          }
+          else {
+            Write-Host "User ${{ github.actor }} is unauthorized."
+            exit 1
+          }
+  setproject:
+    needs: check-access
     name: "Get Project ID & ImageName from Config"
     runs-on: ubuntu-latest
     steps:
@@ -30,8 +47,8 @@ jobs:
     outputs:
       IMAGENAME: ${{ steps.set-matrix.outputs.IMAGENAME }}
       PROJECT: ${{ steps.set-matrix.outputs.PROJECT }}
-  job2:
-    needs: job1
+  prodimage:
+    needs: setproject
     name: "GCP ${{ github.event.inputs.config }}"
     runs-on: ubuntu-latest
     environment: prod
@@ -44,20 +61,20 @@ jobs:
         id: auth
         with:
           workload_identity_provider: "projects/324168772199/locations/global/workloadIdentityPools/github-actions/providers/github-actions"
-          service_account: "deploy-prod@${{ needs.job1.outputs.PROJECT }}.iam.gserviceaccount.com"
+          service_account: "deploy-prod@${{ needs.setproject.outputs.PROJECT }}.iam.gserviceaccount.com"
       - name: 'Set up Cloud SDK'
         uses: 'google-github-actions/setup-gcloud@v2'
       - name: 'Build Production Image'
         shell: pwsh
         run: |
           $date = Get-Date -Format "yyyy-MM-dd"
-          $ProdImageName = -join(('${{ needs.job1.outputs.IMAGENAME }}' -Replace "alpha"),$date)
+          $ProdImageName = -join(('${{ needs.setproject.outputs.IMAGENAME }}' -Replace "alpha"),$date)
           $exists = gcloud compute images describe $ProdImageName
           if ($exists) {
             gcloud compute images delete $ProdImageName --quiet
           }
           Write-Output "Creating image $ProdImageName"
           gcloud compute images create $ProdImageName `
-          --source-image ${{ needs.job1.outputs.IMAGENAME }} `
-          --source-image-project ${{ needs.job1.outputs.PROJECT }} `
+          --source-image ${{ needs.setproject.outputs.IMAGENAME }} `
+          --source-image-project ${{ needs.setproject.outputs.PROJECT }} `
           --force 
