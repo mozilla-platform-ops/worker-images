@@ -218,7 +218,7 @@ build {
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/bootstrap.sh",
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/additional-packages.sh",
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/aslr.sh",
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/docker-config.sh",
+      #"${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/docker-config.sh",
       "${path.cwd}/scripts/linux/common/ephemeral-disks.sh",
       "${path.cwd}/scripts/linux/common/userns.sh",
       "${path.cwd}/scripts/linux/common/v4l2loopback.sh"
