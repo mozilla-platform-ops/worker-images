@@ -15,7 +15,7 @@ else
 
     # Detect all nvme0n* devices using lsblk and filter their names
     NVME_DEVICES=\$(lsblk -dn -o NAME | grep nvme0n)
-    NVME_COUNT=\$(echo "$NVME_DEVICES" | wc -l)
+    NVME_COUNT=\$(echo "\$NVME_DEVICES" | wc -l)
 
     if [ "\$NVME_COUNT" -lt 1 ]; then
         echo "No nvme0n* devices found! Exiting..."
@@ -24,30 +24,43 @@ else
 
     echo "Found \$NVME_COUNT nvme0n* devices: \$NVME_DEVICES"
 
-    # Create a RAID 0 array with all available nvme0n* devices
-    DEVICE_LIST=\$(echo \$NVME_DEVICES | sed 's/ / \/dev\//g')
-    mdadm --create /dev/md0 --level=0 --raid-devices=\$NVME_COUNT /dev/\$DEVICE_LIST
+    if [ "\$NVME_COUNT" -eq 1 ]; then
+        # Single disk setup
+        echo "Setting up single disk configuration"
+        DEVICE="/dev/\$NVME_DEVICES"
+        
+        # Create a physical volume directly on the device
+        pvcreate "\$DEVICE"
+        
+        # Create a volume group
+        vgcreate instance_storage "\$DEVICE"
+    else
+        # Multiple disk setup with RAID 0
+        echo "Setting up RAID 0 configuration"
+        DEVICE_LIST=\$(echo \$NVME_DEVICES | sed 's/ / \/dev\//g')
+        mdadm --create /dev/md0 --level=0 --raid-devices=\$NVME_COUNT /dev/\$DEVICE_LIST
+        
+        # Create a physical volume on the RAID array
+        pvcreate /dev/md0
+        
+        # Create a volume group
+        vgcreate instance_storage /dev/md0
+    fi
 
-    # Step 2: Create a physical volume
-    pvcreate /dev/md0
-
-    # Step 3: Create a volume group
-    vgcreate instance_storage /dev/md0
-
-    # Step 4: Create a logical volume
+    # Create a logical volume
     lvcreate -l 100%VG -n lv_instance_storage instance_storage
 
-    # Step 5: Format the logical volume with ext4 filesystem
+    # Format the logical volume with ext4 filesystem
     mkfs.ext4 /dev/instance_storage/lv_instance_storage
 
-    # Step 6: Unmount the current /mnt if mounted
-    umount /mnt
+    # Unmount the current /mnt if mounted
+    umount /mnt || true
 
-    # Step 7: Mount the new logical volume to /mnt
+    # Mount the new logical volume to /mnt
     mount -o 'rw,relatime,errors=panic,data=writeback,nobarrier,commit=60' /dev/instance_storage/lv_instance_storage /mnt
 
-    # Step 8: Add the mount to /etc/fstab for persistence
-    if ! cat /etc/fstab | grep "/mnt "; then
+    # Add the mount to /etc/fstab for persistence
+    if ! grep -q "/mnt " /etc/fstab; then
         echo "/dev/instance_storage/lv_instance_storage /mnt ext4 rw,relatime,errors=panic,data=writeback,nobarrier,commit=60" | tee -a /etc/fstab
     fi
 
