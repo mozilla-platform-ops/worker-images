@@ -5,6 +5,7 @@ set -exv
 disk_setup_script="/usr/local/bin/configure-generic-worker-disks"
 
 cat << EOF > "${disk_setup_script}"
+#!/bin/sh
 # Main script logic
 if mount | grep "instance_storage"; then
     echo "/mnt is already using an nvme0n* device."
