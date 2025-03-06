@@ -123,13 +123,13 @@ build {
     expect_disconnect = true
     scripts = [
       "${path.cwd}/scripts/linux/common/papertrail.sh",
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/01-bootstrap.sh",
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/02-additional-packages.sh",
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/04-wayland.sh",
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/05-pipewire.sh",
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/bootstrap.sh",
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/additional-packages.sh",
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/wayland.sh",
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/pipewire.sh",
       "${path.cwd}/scripts/linux/common/v4l2loopback.sh",
       "${path.cwd}/scripts/linux/common/userns.sh",
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/99-additional-talos-reqs.sh"
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/additional-talos-reqs.sh"
     ]
   }
 
@@ -171,8 +171,8 @@ build {
     expect_disconnect = true
     pause_before = "10s"
     scripts = [
-      "${path.cwd}/scripts/linux/common/01-install-ops-agent.sh",
-      "${path.cwd}/scripts/linux/common/99-clean.sh",
+      "${path.cwd}/scripts/linux/common/install-ops-agent.sh",
+      "${path.cwd}/scripts/linux/common/clean.sh",
     ]
     start_retry_timeout = "30m"
   }
@@ -215,11 +215,11 @@ build {
     ]
     scripts = [
       "${path.cwd}/scripts/linux/common/papertrail.sh",
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/01-bootstrap.sh",
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/02-additional-packages.sh",
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/03-aslr.sh",
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/07-docker-config.sh",
-      "${path.cwd}/scripts/linux/common/80-ephemeral-disks.sh",
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/bootstrap.sh",
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/additional-packages.sh",
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/aslr.sh",
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/docker-config.sh",
+      "${path.cwd}/scripts/linux/common/ephemeral-disks.sh",
       "${path.cwd}/scripts/linux/common/userns.sh",
       "${path.cwd}/scripts/linux/common/v4l2loopback.sh"
     ]
@@ -229,7 +229,7 @@ build {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect = true
     scripts = [
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/05-nvidia-gcp-driver-cudnn.sh"
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/nvidia-gcp-driver-cudnn.sh"
     ]
   }
 
@@ -247,7 +247,7 @@ build {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect = true
     scripts = [
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/06-nvidia-container-toolkit.sh"
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/nvidia-container-toolkit.sh"
     ]
   }
 
@@ -271,8 +271,8 @@ build {
       "TASKCLUSTER_VERSION=${var.taskcluster_version}",
     ]
     scripts = [
-      "${path.cwd}/tests/linux/01_prep.sh",
-      "${path.cwd}/tests/linux/02_install_pester.sh",
+      "${path.cwd}/tests/linux/prep.sh",
+      "${path.cwd}/tests/linux/install_pester.sh",
       "${path.cwd}/tests/linux/test_docker.sh",
       "${path.cwd}/tests/linux/run_all_tests.sh"
     ]
@@ -286,8 +286,8 @@ build {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect = true
     scripts = [
-      "${path.cwd}/scripts/linux/common/01-install-ops-agent.sh",
-      "${path.cwd}/scripts/linux/common/99-clean.sh",
+      "${path.cwd}/scripts/linux/common/install-ops-agent.sh",
+      "${path.cwd}/scripts/linux/common/clean.sh",
     ]
     start_retry_timeout = "30m"
   }
