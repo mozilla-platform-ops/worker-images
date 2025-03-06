@@ -131,10 +131,10 @@ systemctl enable worker
 systemctl disable systemd-networkd-wait-online.service
 
 # set podman registries conf
-(
-  echo '[registries.search]'
-  echo 'registries=["docker.io"]'
-) >> /etc/containers/registries.conf
+#(
+#  echo '[registries.search]'
+#  echo 'registries=["docker.io"]'
+#) >> /etc/containers/registries.conf
 
 # Installs the v4l2loopback kernel module
 # used for the video device, and vkms
