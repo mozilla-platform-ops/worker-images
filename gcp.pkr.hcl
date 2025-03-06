@@ -80,6 +80,7 @@ source "googlecompute" "gw-fxci-gcp-l1-2404-gui-alpha" {
 
 source "googlecompute" "gw-fxci-gcp-l1-2404-headless-alpha" {
   disk_size           = var.disk_size
+  disk_type           = "pd-ssd"
   image_licenses      = ["projects/vm-options/global/licenses/enable-vmx"]
   image_name          = var.image_name
   machine_type        = null
