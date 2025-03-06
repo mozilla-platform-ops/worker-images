@@ -67,17 +67,17 @@ else
     echo "/mnt is now using nvme0n* devices."
 fi
 
-echo "Creating directories for generic-worker"
+### echo "Creating directories for generic-worker"
 # tasksDir (/home)
-mkdir -p /mnt/home
-mount -o bind /mnt/home /home
+### mkdir -p /mnt/home
+### mount -o bind /mnt/home /home
 # cachesDir
-mkdir -p /mnt/generic-worker/caches
+### mkdir -p /mnt/generic-worker/caches
 # downloadsDir
-mkdir -p /mnt/generic-worker/downloads
+### mkdir -p /mnt/generic-worker/downloads
 
-echo "Creating docker specific directories"
-mkdir -p /mnt/var/lib/docker
+### echo "Creating docker specific directories"
+### mkdir -p /mnt/var/lib/docker
 
 EOF
 
