@@ -36,3 +36,5 @@ apt-get install -y nvidia-container-toolkit
 nvidia-ctk runtime configure --runtime=docker
 ## Restart docker daemon to take effect
 systemctl restart docker
+## export the docker daemon config
+cat /etc/docker/daemon.json
