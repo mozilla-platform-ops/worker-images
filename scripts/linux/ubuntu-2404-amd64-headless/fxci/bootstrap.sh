@@ -123,7 +123,7 @@ EOF
 systemctl enable worker
 
 # Don't install ubuntu-desktop ubuntu-gnome-desktop on headless image but install podman
-retry apt-get install -y podman
+#retry apt-get install -y podman
 #retry apt-get install -y ubuntu-desktop ubuntu-gnome-desktop podman
 
 # this is neccessary in GCP because after installing gnome desktop both NetworkManager and systemd-networkd are enabled
