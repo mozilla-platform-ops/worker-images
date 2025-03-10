@@ -31,7 +31,7 @@ export DEBIAN_FRONTEND=noninteractive
 
 MISC_PACKAGES=()
 # essentials
-MISC_PACKAGES+=(build-essential curl git gnupg-agent jq mercurial)
+MISC_PACKAGES+=(build-essential curl git gnupg-agent jq mercurial lvm2)
 # python things
 MISC_PACKAGES+=(python3-pip python3-certifi python3-psutil)
 # zstd packages
