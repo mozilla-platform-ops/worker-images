@@ -10,7 +10,7 @@ set -exv
 
 cat << EOF > /etc/docker/daemon.json
 {
-  "data-root": "/var/lib/docker",
+  "data-root": "/mnt/var/lib/docker",
   "storage-driver": "overlay2",
   "ipv6": true,
   "fixed-cidr-v6": "fd15:4ba5:5a2b:100a::/64",
