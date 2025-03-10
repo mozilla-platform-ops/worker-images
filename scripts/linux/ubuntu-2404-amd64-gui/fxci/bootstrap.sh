@@ -95,7 +95,7 @@ cat > /lib/systemd/system/worker.service << EOF
 Description=Start TC worker
 # start once networking is online
 Wants=network-online.target
-After=network-online.target
+After=network-online.target docker.service
 
 [Service]
 Type=simple
