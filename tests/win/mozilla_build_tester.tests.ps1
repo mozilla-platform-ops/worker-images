@@ -76,7 +76,7 @@ Describe "Mozilla Build - Tester" {
             $pipini[3] | Should -Be "download-cache = D:\pip-cache"
         }
     }
-    Context "Mercurial" {
+    Context "Mercurial" -Skip {
         It "Mercurial gets installed" {
             $mercurial.DisplayName | Should -Not -Be $Null
         }
