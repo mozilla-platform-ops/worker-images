@@ -9,16 +9,13 @@ BeforeDiscovery {
 
 Describe "Mercurial" {
     BeforeAll {
-        $Hg = Get-InstalledSoftware | Where-Object {
-            $PSItem.DisplayName -match "Mercurial"
-        }
+        $HgInfo = Get-Command "hg.exe"
         $ExpectedSoftwareVersion = [Version]($Hiera["win-worker"].hg.version)
     }
     It "Hg is installed" {
-        $Hg.DisplayName | Should -Not -Be $null
+        $HgInfo.source | Should -Be "C:\Program Files\Mercurial\hg.exe"
     }
-
-    It "Hg Version matches hiera" {
-        $Hg.DisplayVersion | Should -Be $ExpectedSoftwareVersion
+    It "Hg version matches hiera" {
+        $HgInfo.FileVersionInfo.ProductVersion | Should -Be $ExpectedSoftwareVersion
     }
 }
