@@ -66,7 +66,7 @@ Describe "Mozilla Build - Builder" {
             $py3pip[1] | Should -Be $py3pip_ExpectedSoftwareVersion
         }
     }
-    Context "Mercurial" -Skip -Because "It gets tested in mercurial.tests.ps1" {
+    Context "Mercurial" -Skip {
         It "Mercurial gets installed" {
             $mercurial.DisplayName | Should -Not -Be $Null
         }
