@@ -66,7 +66,7 @@ Describe "Mozilla Build - Builder" {
             $py3pip[1] | Should -Be $py3pip_ExpectedSoftwareVersion
         }
     }
-    Context "Mercurial" {
+    Context "Mercurial" -Skip -Because "It gets tested in mercurial.tests.ps1" {
         It "Mercurial gets installed" {
             $mercurial.DisplayName | Should -Not -Be $Null
         }
@@ -111,6 +111,21 @@ Describe "Mozilla Build - Builder" {
         }
     }
     Context "Modifications" {
+        It "MozMake directory exists" {
+            Test-Path "C:\mozilla-build\mozmake" | Should -Be $true
+        }
+        It "Mozmake.exe exists" {
+            Test-Path "C:\mozilla-build\mozmake\mozmake.exe" | Should -Be $true
+        }
+        It "Builds directory exists" {
+            Test-Path "C:\builds" | Should -Be $true
+        }
+        It "Mozilla Build hg directory is empty" {
+            Test-Path "$Install_Path\python\Scripts\hg" | Should -Be $false
+        }
+        It "Mozilla Build hg.exe does not exist" {
+            Test-Path "$Install_Path\\python\Scripts\hg.exe" | Should -Be $false
+        }
         It "hg removed from mozbuild path" {
             Test-Path "$Install_Path\python3\Scripts\hg" | Should -Be $false
         }
