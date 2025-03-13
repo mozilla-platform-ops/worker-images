@@ -109,6 +109,9 @@ Describe "Mozilla Build - Builder" {
             Where-Object { $PSItem.IdentityReference -eq "Everyone" }).FileSystemRights |
             Should -Be "FullControl"
         }
+        it "Tooltool.py exists" {
+            Test-Path "C:\mozilla-build\tooltool.py" | Should -Be $true
+        }
     }
     Context "Modifications" {
         It "MozMake directory exists" {
