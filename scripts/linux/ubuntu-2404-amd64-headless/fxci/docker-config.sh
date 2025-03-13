@@ -8,6 +8,7 @@ set -exv
 # 2) turn on ipv6
 # 3) disable direct communication between containers
 # 4) allow `unshare` syscall (bug 1938410)
+# 5) allow `clone` syscall with CLONE_NEWIPC|CLONE_NEWUSER|CLONE_NEWNET
 
 cat << EOF > /etc/docker/daemon.json
 {
@@ -23,8 +24,8 @@ EOF
 
 curl -f -L --retry 5 -o /etc/docker/seccomp.json https://github.com/moby/moby/raw/8701ff684fcb420751e8a018d4542a582295dd69/profiles/seccomp/default.json
 patch /etc/docker/seccomp.json <<EOF
---- default.json.orig	2025-03-13 10:38:57.624371088 +0100
-+++ default.json	2025-03-13 10:39:36.060907381 +0100
+--- seccomp.json.orig	2025-03-13 10:38:57.624371088 +0100
++++ seccomp.json	2025-03-13 17:38:31.108879920 +0100
 @@ -398,6 +398,7 @@
  				"uname",
  				"unlink",
@@ -43,4 +44,22 @@ patch /etc/docker/seccomp.json <<EOF
  			],
  			"action": "SCMP_ACT_ALLOW",
  			"includes": {
+@@ -632,7 +632,7 @@
+ 			"args": [
+ 				{
+ 					"index": 0,
+-					"value": 2114060288,
++					"value": 637665280,
+ 					"op": "SCMP_CMP_MASKED_EQ"
+ 				}
+ 			],
+@@ -654,7 +654,7 @@
+ 			"args": [
+ 				{
+ 					"index": 1,
+-					"value": 2114060288,
++					"value": 637665280,
+ 					"op": "SCMP_CMP_MASKED_EQ"
+ 				}
+ 			],
 EOF
