@@ -9,6 +9,7 @@ set -exv
 # 3) disable direct communication between containers
 # 4) allow `unshare` syscall (bug 1938410)
 # 5) allow `clone` syscall with CLONE_NEWIPC|CLONE_NEWUSER|CLONE_NEWNET
+# 6) allow `get_mempolicy` syscall without CAP_SYS_NICE
 
 cat << EOF > /etc/docker/daemon.json
 {
@@ -26,7 +27,15 @@ curl -f -L --retry 5 -o /etc/docker/seccomp.json https://github.com/moby/moby/ra
 patch /etc/docker/seccomp.json <<EOF
 --- seccomp.json.orig	2025-03-13 10:38:57.624371088 +0100
 +++ seccomp.json	2025-03-13 17:38:31.108879920 +0100
-@@ -398,6 +398,7 @@
+@@ -163,6 +163,7 @@
+ 				"getresuid",
+ 				"getresuid32",
+ 				"getrlimit",
++				"get_mempolicy",
+ 				"get_robust_list",
+ 				"getrusage",
+ 				"getsid",
+@@ -398,6 +399,7 @@
  				"uname",
  				"unlink",
  				"unlinkat",
@@ -34,7 +43,7 @@ patch /etc/docker/seccomp.json <<EOF
  				"utime",
  				"utimensat",
  				"utimensat_time64",
-@@ -614,8 +615,7 @@
+@@ -614,8 +616,7 @@
  				"setns",
  				"syslog",
  				"umount",
@@ -44,7 +53,7 @@ patch /etc/docker/seccomp.json <<EOF
  			],
  			"action": "SCMP_ACT_ALLOW",
  			"includes": {
-@@ -632,7 +632,7 @@
+@@ -632,7 +633,7 @@
  			"args": [
  				{
  					"index": 0,
@@ -53,7 +62,7 @@ patch /etc/docker/seccomp.json <<EOF
  					"op": "SCMP_CMP_MASKED_EQ"
  				}
  			],
-@@ -654,7 +654,7 @@
+@@ -654,7 +655,7 @@
  			"args": [
  				{
  					"index": 1,
@@ -62,4 +71,12 @@ patch /etc/docker/seccomp.json <<EOF
  					"op": "SCMP_CMP_MASKED_EQ"
  				}
  			],
+@@ -784,7 +785,6 @@
+ 		},
+ 		{
+ 			"names": [
+-				"get_mempolicy",
+ 				"mbind",
+ 				"set_mempolicy",
+ 				"set_mempolicy_home_node"
 EOF
