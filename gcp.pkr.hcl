@@ -103,6 +103,8 @@ source "googlecompute" "gw-fxci-gcp-l1-2404-arm64-headless-alpha" {
   zone                = var.zone
   use_iap             = true
   ssh_timeout         = "10m"
+  wait_to_add_ssh_keys = "5m"
+  iap_tunnel_launch_wait  = 120
 }
 
 build {
