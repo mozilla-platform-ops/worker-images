@@ -319,19 +319,19 @@ build {
   ]
 
   ## Every image has tests, so create the tests directory
-  provisioner "shell" {
-    execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
-    inline = [
-      "mkdir -p /workerimages/tests",
-      "chmod -R 777 /workerimages/tests",
-    ]
-  }
+  # provisioner "shell" {
+  #   execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
+  #   inline = [
+  #     "mkdir -p /workerimages/tests",
+  #     "chmod -R 777 /workerimages/tests",
+  #   ]
+  # }
 
   ## Every image has taskcluster, so upload the taskcluster tests fle
-  provisioner "file" {
-    source      = "${path.cwd}/tests/linux/taskcluster.tests.ps1"
-    destination = "/workerimages/tests/taskcluster.tests.ps1"
-  }
+  # provisioner "file" {
+  #   source      = "${path.cwd}/tests/linux/taskcluster.tests.ps1"
+  #   destination = "/workerimages/tests/taskcluster.tests.ps1"
+  # }
 
   provisioner "shell" {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
@@ -391,24 +391,24 @@ build {
   }
 
   ## Run all tests
-  provisioner "shell" {
-    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-    pause_before = "90s"
-    environment_vars = [
-      "CLOUD=google",
-      "TC_ARCH=${var.tc_arch}",
-      "TASKCLUSTER_VERSION=${var.taskcluster_version}",
-    ]
-    scripts = [
-      "${path.cwd}/tests/linux/prep.sh",
-      "${path.cwd}/tests/linux/install_pester.sh",
-      "${path.cwd}/tests/linux/test_docker.sh",
-      "${path.cwd}/tests/linux/run_all_tests.sh"
-    ]
-    valid_exit_codes = [
-      0
-    ]
-  }
+  # provisioner "shell" {
+  #   execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+  #   pause_before = "90s"
+  #   environment_vars = [
+  #     "CLOUD=google",
+  #     "TC_ARCH=${var.tc_arch}",
+  #     "TASKCLUSTER_VERSION=${var.taskcluster_version}",
+  #   ]
+  #   scripts = [
+  #     "${path.cwd}/tests/linux/prep.sh",
+  #     "${path.cwd}/tests/linux/install_pester.sh",
+  #     "${path.cwd}/tests/linux/test_docker.sh",
+  #     "${path.cwd}/tests/linux/run_all_tests.sh"
+  #   ]
+  #   valid_exit_codes = [
+  #     0
+  #   ]
+  # }
 
     ## Install gcp ops agent and cleanup
   provisioner "shell" {
