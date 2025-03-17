@@ -358,7 +358,7 @@ build {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect = true
     scripts = [
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/nvidia-gcp-driver-cudnn.sh"
+      "${path.cwd}/scripts/linux/ubuntu-2404-arm64-headless/nvidia-gcp-driver-cudnn.sh"
     ]
   }
 
