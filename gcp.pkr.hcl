@@ -103,6 +103,7 @@ source "googlecompute" "gw-fxci-gcp-l1-2404-arm64-headless-alpha" {
   zone                = var.zone
   use_iap             = true
   use_internal_ip     = true
+  ssh_timeout         = "10m"
 }
 
 build {
