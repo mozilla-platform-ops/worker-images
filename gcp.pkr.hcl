@@ -102,7 +102,6 @@ source "googlecompute" "gw-fxci-gcp-l1-2404-arm64-headless-alpha" {
   ssh_username        = "ubuntu"
   zone                = var.zone
   use_iap             = true
-  iap_tunnel_launch_wait = 180
 }
 
 build {
