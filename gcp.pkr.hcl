@@ -96,15 +96,15 @@ source "googlecompute" "gw-fxci-gcp-l1-2404-arm64-headless-alpha" {
   #disk_type           = "pd-ssd"
   image_licenses      = ["projects/vm-options/global/licenses/enable-vmx"]
   image_name          = var.image_name
-  machine_type        = null
+  machine_type        = "t2a-standard-4"
   project_id          = var.project_id
   source_image_family = var.source_image_family
   ssh_username        = "ubuntu"
   zone                = var.zone
   use_iap             = true
-  ssh_timeout         = "10m"
-  wait_to_add_ssh_keys = "5m"
-  iap_tunnel_launch_wait  = 120
+  # ssh_timeout         = "10m"
+  # wait_to_add_ssh_keys = "5m"
+  # iap_tunnel_launch_wait  = 120
 }
 
 build {
