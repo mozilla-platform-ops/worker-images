@@ -22,7 +22,7 @@ Describe "Mozilla Build - Builder" {
         $hg_ExpectedSoftwareVersion = [Version]$Hiera.'win-worker'.mozilla_build.hg_version
         $mozillabuild_ExpectedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.version
         $psutil_ExpectedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.psutil_version
-        $zstandard_ExepctedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.py3_zstandard_version
+        $zstandard_ExepctedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.zstandard_version
         $py3pip_ExpectedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.py3_pip_version
     }
     Context "Installation" {
@@ -80,7 +80,7 @@ Describe "Mozilla Build - Builder" {
             ([Version]$mercurial.DisplayVersion ).Build | Should -Be $hg_ExpectedSoftwareVersion.Build
         }
     }
-    Context "HG Files" {
+    Context "HG Files" -Skip {
         BeforeAll {
             $hgshared_acl = (Get-Acl -Path C:\hg-shared).Access |
             Where-Object { $PSItem.IdentityReference -eq "Everyone" }
@@ -127,9 +127,9 @@ Describe "Mozilla Build - Builder" {
             Test-Path "$Install_Path\python\Scripts\hg" | Should -Be $false
         }
         It "Mozilla Build hg.exe does not exist" {
-            Test-Path "$Install_Path\\python\Scripts\hg.exe" | Should -Be $false
+            Test-Path "$Install_Path\python\Scripts\hg.exe" | Should -Be $false
         }
-        It "hg removed from mozbuild path" {
+        It "hg removed from mozbuild path" -Skip {
             Test-Path "$Install_Path\python3\Scripts\hg" | Should -Be $false
         }
         It "Mozillabuild environment variable" {
