@@ -73,5 +73,4 @@ jobs:
             TC_worker_cert = "${{ secrets.TC_WORKER_CERT }}"
             TC_worker_key = "${{ secrets.TC_WORKER_KEY }}"
           }
-          $env:PACKER_LOG = "1"
           New-GCPWorkerImage @Vars
