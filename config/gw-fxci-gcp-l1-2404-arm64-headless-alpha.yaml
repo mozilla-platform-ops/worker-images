@@ -4,7 +4,7 @@ image:
   project_id: "taskcluster-imaging"
   workload_identity_provider_project_number: 324168772199
   image_name: gw-fxci-gcp-l1-2404-arm64-headless-googlecompute-alpha
-  zone: us-west1-a
+  zone: us-central1-a
 vm:
   disk_size: 60
   taskcluster_version: 83.2.4
