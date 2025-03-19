@@ -111,23 +111,6 @@ pools:
     - nuc13-078
     - nuc13-079
     - nuc13-080
-    - nuc13-081
-    - nuc13-082
-    - nuc13-083
-    - nuc13-084
-    - nuc13-085
-    - nuc13-086
-    - nuc13-087
-    - nuc13-088
-    - nuc13-089
-    - nuc13-090
-    - nuc13-091
-    - nuc13-092
-    - nuc13-093
-    - nuc13-094
-    - nuc13-095
-    - nuc13-096
-    - nuc13-097
   - name: "win11-64-24h2-hw-alpha"
     puppet_version: "8.10.0"
     Description: "NUC12 Hardware Performance Staging/Testing Pool"
@@ -232,6 +215,23 @@ pools:
     - nuc13-068
     - nuc13-069
     - nuc13-070
+    - nuc13-081
+    - nuc13-082
+    - nuc13-083
+    - nuc13-084
+    - nuc13-085
+    - nuc13-086
+    - nuc13-087
+    - nuc13-088
+    - nuc13-089
+    - nuc13-090
+    - nuc13-091
+    - nuc13-092
+    - nuc13-093
+    - nuc13-094
+    - nuc13-095
+    - nuc13-096
+    - nuc13-097
     - nuc13-098
     - nuc13-099
     - nuc13-100
