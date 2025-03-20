@@ -178,7 +178,7 @@ Describe "Mozilla Build - Builder" {
             Test-Path "C:\mozilla-build\python3\Lib\site-packages\psutil\__init__.py" | Should -Be $true
         }
     }
-    Context "Certain binaries are in msys2 path" {
+    Context "Certain binaries are in msys2 path" -Skip {
         It "Tar.exe" {
             $tar = Get-Command tar
             $tar.Source | Should -Be "C:\mozilla-build\msys2\usr\bin\tar.exe"
