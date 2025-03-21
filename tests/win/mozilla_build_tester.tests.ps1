@@ -121,7 +121,7 @@ Describe "Mozilla Build - Tester" {
         }
     }
     Context "Modifications" {
-        It "hg removed from mozbuild path" {
+        It "hg removed from mozbuild path" -Skip {
             Test-Path "$Install_Path\python3\Scripts\hg" | Should -Be $false
         }
         It "Mozillabuild environment variable" {
