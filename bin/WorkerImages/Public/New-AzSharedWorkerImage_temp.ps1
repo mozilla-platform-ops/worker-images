@@ -64,6 +64,10 @@ function New-AzSharedWorkerImage_temp {
             $PackerForceBuild = $true
             $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-alpha' -f $YAML.vm.tags["worker_pool_id"], $ENV:PKR_VAR_image_sku)
         }
+        "*notes*" {
+            $PackerForceBuild = $true
+            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-alpha' -f $YAML.vm.tags["worker_pool_id"], $ENV:PKR_VAR_image_sku)
+        }        
         "*beta*" {
             $PackerForceBuild = $true
             $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-beta' -f $YAML.vm.tags["worker_pool_id"], $ENV:PKR_VAR_image_sku)
