@@ -60,7 +60,7 @@ jobs:
             Tenant_ID = "${{ secrets.AZURE_TENANT_ID }}"
             Application_ID = "${{ secrets.AZURE_APPLICATION_ID_FXCI }}"
           }
-          New-AzSharedWorkerImage2 @Vars
+          New-AzSharedWorkerImage_temp @Vars
           "sharedimageversion=$ENV:PKR_VAR_sharedimage_version" >> $env:GITHUB_ENV
       - name: Upload Release Notes Artifact
         uses: actions/upload-artifact@v4
