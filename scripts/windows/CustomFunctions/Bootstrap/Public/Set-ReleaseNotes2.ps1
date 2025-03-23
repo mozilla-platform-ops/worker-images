@@ -1,4 +1,4 @@
-function Set-ReleaseNotes {
+function  Set-ReleaseNotes2 {
     [CmdletBinding()]
     param (
         [String]
