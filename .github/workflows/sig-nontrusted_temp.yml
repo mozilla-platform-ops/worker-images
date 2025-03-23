@@ -1,5 +1,5 @@
 run-name: SIG - ${{ github.event.inputs.config }}
-name: SIG Deployment - FXCI
+name: SIG Deployment TEMP - FXCI
 
 on:
   workflow_dispatch:
