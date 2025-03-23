@@ -1,0 +1,153 @@
+run-name: SIG - ${{ github.event.inputs.config }}
+name: SIG Deployment - FXCI
+
+on:
+  workflow_dispatch:
+    inputs:
+      config:
+        type: choice
+        description: Choose which pool to build
+        options:
+        - win11-64-2009-notes
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  check-access:
+    name: "Verify User Access"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Load Authorized Users and Check Access
+        shell: pwsh
+        run: |
+          $AUTHORIZED_USERS=$(Get-Content .github/relsre.json | Convertfrom-Json)
+          if ($authorized_users -contains "${{ github.actor }}") {
+            Write-host "User ${{ github.actor }} is authorized."
+          }
+          else {
+            Write-Host "User ${{ github.actor }} is unauthorized."
+            exit 1
+          }
+  packer:
+    needs: check-access
+    name: "Build ${{ github.event.inputs.config }}"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID_FXCI }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}
+          enable-AzPSSession: true
+      - name: 'Run Packer'
+        shell: pwsh
+        run: |
+          Import-Module .\bin\WorkerImages\WorkerImages.psm1
+          $Vars = @{
+            Key = '${{ github.event.inputs.config }}'
+            Client_ID = "${{ secrets.AZURE_CLIENT_ID_FXCI }}"
+            oidc_request_url = "${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}"
+            oidc_request_token = "${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}"
+            Subscription_ID = "${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}"
+            Tenant_ID = "${{ secrets.AZURE_TENANT_ID }}"
+            Application_ID = "${{ secrets.AZURE_APPLICATION_ID_FXCI }}"
+          }
+          New-AzSharedWorkerImagei_temp @Vars
+          "sharedimageversion=$ENV:PKR_VAR_sharedimage_version" >> $env:GITHUB_ENV
+      - name: Upload Release Notes Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes-${{ github.event.inputs.config }}
+          path: ${{ github.event.inputs.config }}-${{ env.sharedimageversion }}.md
+          overwrite: true
+          retention-days: 1
+          if-no-files-found: error
+  sbom:
+    needs: packer
+    name: "Upload release notes"
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: sboms
+          name: release-notes-${{ github.event.inputs.config }}
+          merge-multiple: true
+      - name: "Test SBOM Exists & Create PR"
+        shell: pwsh  
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CONFIG: ${{ github.event.inputs.config }}
+        run: |
+          ## Install powershell-yaml module
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module powershell-yaml -ErrorAction Stop
+          
+          Get-ChildItem "sboms" -Recurse
+          
+          Get-ChildItem
+
+          ## Get the shared image version from the config file
+          $YAML = Convertfrom-Yaml (Get-Content "config/${{ env.CONFIG }}.yaml" -raw)
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          
+          ## Confirm it's there
+          Get-ChildItem "sboms" -Recurse
+
+          ## Store the file in a variable
+          $SBOM_PATH = "sboms\${{ github.event.inputs.config }}-$($Yaml.sharedimage.image_version).md"
+          $SBOM_NAME = "${{ github.event.inputs.config }}-$($Yaml.sharedimage.image_version).md"
+
+          Write-host "SBOM Path: $SBOM_PATH"
+          Write-host "SBOM Name: $SBOM_NAME"
+
+          ## Create a new branch for the release notes
+          $Date = Get-Date -Format "yyyyMMddTHHmm"
+          $Repo = "${{ github.repository }}"
+
+          if ($ENV:CONFIG -match "win10") {
+            $ReleaseBranch = "releases/win10/$Date-docs"
+          }
+          elseif ($ENV:CONFIG -match "win11") {
+            $ReleaseBranch = "releases/win11/$Date-docs"
+          }
+          elseif ($ENV:CONFIG -match "win2022") {
+            $ReleaseBranch = "releases/win2022/$Date-docs"
+          }
+          else {
+            $ReleaseBranch = $null
+          }
+          
+          $branchExists = (gh api "/repos/$Repo/branches/$releaseBranch" | ConvertFrom-Json).Name
+          
+          if ($null -eq $branchExists) {
+            git checkout -b $ReleaseBranch
+            git push origin $ReleaseBranch
+          } else {
+            git checkout $ReleaseBranch
+          }
+        
+          $PR_Body = @"
+          # Release Notes for $($ENV:CONFIG).md
+
+          Automatically generated PR for $($ENV:CONFIG).md
+          "@
+
+          $PR_Title = "$ENV:CONFIG ($Date) Image Update"
+          Write-host "Using git add $SBOM_PATH"
+          git add $SBOM_PATH
+          Write-Host "Using git add ."
+          git add .
+          git commit -m "$($ENV:CONFIG) - Release Notes for $($ENV:CONFIG).md"
+          git push -u origin $ReleaseBranch
+          gh pr create --base main --head $ReleaseBranch --title $PR_Title --body $PR_Body
