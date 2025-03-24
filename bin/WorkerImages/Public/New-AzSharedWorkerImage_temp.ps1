@@ -83,6 +83,8 @@ function New-AzSharedWorkerImage_temp {
     }
     Write-Host "Building $($ENV:PKR_VAR_managed_image_name) in $($ENV:PKR_VAR_temp_resource_group_name)"
     packer init azure.pkr.hcl
+    Write-Host CHECK
+    Write-Host $ENV:PKR_VAR_lastdeploy_id
     if ($PackerForceBuild) {
         packer build --only azure-arm.sig -force azure_temp.pkr.hcl
     }
