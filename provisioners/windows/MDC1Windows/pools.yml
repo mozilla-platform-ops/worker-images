@@ -1,5 +1,17 @@
 ---
 pools:
+  - name: "win10-64-2009-hw-alpha"
+    puppet_version: "8.5.1"
+    Description: "Moonshot Win 10 hardware"
+    image: "win10-2009-MS-11-05-2024"
+    src_Organisation: "mozilla-platform-ops"
+    src_Repository: "ronin_puppet"
+    src_Branch: "windows"
+    hash: "b47bde8"
+    secret_date: "11-07-2024"
+    domain_suffix: "wintest2.releng.mdc1.mozilla.com"
+    nodes:
+    - t-w1064-ms-151
   - name: "win10-64-2009-hw"
     #dev: "win10hw_activate"
     puppet_version: "8.5.1"
@@ -12,7 +24,6 @@ pools:
     secret_date: "11-07-2024"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    - t-w1064-ms-151
     - t-w1064-ms-152
     - t-w1064-ms-153
     - t-w1064-ms-154
