@@ -1,20 +1,20 @@
 ---
 pools:
   - name: "win10-64-2009-hw-alpha"
-    puppet_version: "8.5.1"
+    puppet_version: "8.10.0"
     Description: "Moonshot Win 10 hardware"
     image: "win10-2009-MS-11-05-2024"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "windows"
-    hash: "214505e"
+    src_Branch: "RELOPS-1385"
+    hash: "c6af132"
     secret_date: "11-07-2024"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
     - t-w1064-ms-151
   - name: "win10-64-2009-hw"
     #dev: "win10hw_activate"
-    puppet_version: "8.5.1"
+    puppet_version: "8.10.0"
     Description: "Moonshot Win 10 hardware"
     image: "win10-2009-MS-11-05-2024"
     src_Organisation: "mozilla-platform-ops"
@@ -66,7 +66,7 @@ pools:
     nodes:
     - t-nuc12-012
   - name: "win11-64-24h2-hw-ref"
-    puppet_version: "8.5.1"
+    puppet_version: "8.10.0"
     Description: "NUC12 Hardware Reference Staging/Testing Pool"
     image: "win11-24H2-NUC-01-16-2025"
     src_Organisation: "mozilla-platform-ops"
@@ -94,8 +94,8 @@ pools:
     image: "win11-24H2-NUC-01-16-2025"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "RELOPS-1365"
-    hash: "f5d1d10"
+    src_Branch: "RELOPS-1385"
+    hash: "c6af132"
     secret_date: "01-16-2025"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -128,8 +128,8 @@ pools:
     image: "win11-24H2-NUC-01-16-2025"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "RELOPS-1365"
-    hash: "f5d1d10"
+    src_Branch: "RELOPS-1385"
+    hash: "c6af132"
     secret_date: "01-16-2025"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -164,7 +164,7 @@ pools:
     - nuc13-030
     - nuc13-160
   - name: "win11-64-24h2-hw-perf-sheriff"
-    puppet_version: "8.5.1"
+    puppet_version: "8.10.0"
     Description: "Tracking metric variability with performance sheriffing. Tracking in RELOPS-1288"
     image: "win11-24H2-NUC-01-16-2025"
     src_Organisation: "mozilla-platform-ops"
@@ -176,7 +176,7 @@ pools:
     nodes:
     - nuc13-021
   - name: "win11-64-24h2-hw"
-    puppet_version: "8.5.1"
+    puppet_version: "8.10.0"
     Description: "NUC12 Hardware Performance Staging/Testing Pool"
     image: "win11-24H2-NUC-01-16-2025"
     src_Organisation: "mozilla-platform-ops"
