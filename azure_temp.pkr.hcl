@@ -43,12 +43,7 @@ variable "deployment_id" {
 
 variable "lastdeploy_id" {
   type    = string
-  default = "${env("lastdeploy_id")}"
-}
-
-variable "lastId" {
-  type    = string
-  default = "${env("LastId")}"
+  default = "${env("lastdeployId")}"
 }
 
 variable "disk_additional_size" {
