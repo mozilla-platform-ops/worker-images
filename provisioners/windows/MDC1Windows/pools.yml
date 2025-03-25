@@ -66,7 +66,7 @@ pools:
     nodes:
     - t-nuc12-012
   - name: "win11-64-24h2-hw-ref"
-    puppet_version: "8.5.1"
+    puppet_version: "8.10.0"
     Description: "NUC12 Hardware Reference Staging/Testing Pool"
     image: "win11-24H2-NUC-01-16-2025"
     src_Organisation: "mozilla-platform-ops"
