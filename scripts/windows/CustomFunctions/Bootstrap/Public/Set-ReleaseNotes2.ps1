@@ -56,12 +56,15 @@ function  Set-ReleaseNotes2 {
     # Initialize an array to store commit objects
     $commitObjects = @()
     $currentCommit = $null
+    Write-Host CHECKING commitEntries
+    Write-Host $commitEntries
 
     foreach ($entry in $commitEntries) {
         # Trim whitespace and skip empty entries
         $entry = $entry.Trim()
         if ($entry -eq "") { continue }
-
+        Write-Host CHECKING entry
+        Write-Host $entry
         # If the entry contains a commit hash, start a new structured object
         if ($entry -match "^Commit: (?<Hash>\w{40})") {
             # If there's an existing commit being processed, store it first
@@ -242,10 +245,14 @@ function  Set-ReleaseNotes2 {
         "Branch: $($Branch)",
         "DeploymentId: $($DeploymentId)"
     )
+    Write-Host CHECKING commitObjects
+    Write-Host $commitObjects
 	$markdown += New-MDList -Lines $lines -Style Unordered
     $markdown += New-MDHeader "Change Log" -Level 2
 	## Not using MD commands for correct variable interpolation
-    foreach ($commit in $commitObjects) { 
+    foreach ($commit in $commitObjects) {
+        Write-Host CHECKING Commits
+        Write-Host $commit
         #$markdown += "#### [$($commit.Details.Message)]($($commit.URL))`n"
 		$markdown += "[$($commit.Details.Message)]($($commit.URL))`n"
         if ($commit.Details.Jira -ne "No Ticket") {
