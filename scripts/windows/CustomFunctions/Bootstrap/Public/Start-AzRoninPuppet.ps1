@@ -53,6 +53,8 @@ function Start-AzRoninPuppet {
         $stopWatch = New-Object -TypeName System.Diagnostics.Stopwatch
         ## start the timer
         $stopWatch.Start()
+        Write-host ('{0} :: Beginning Puppet apply' -f $($MyInvocation.MyCommand.Name))
+        Write-Log -message ('{0} :: Beginning Puppet apply' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
         puppet apply manifests\nodes.pp --onetime --verbose --no-daemonize --no-usecacheonfailure --detailed-exitcodes --no-splay --show_diff --modulepath=modules`;r10k_modules --hiera_config=hiera.yaml --logdest $LogDestination --debug
         [int]$puppet_exit = $LastExitCode
         ## stop the timer
