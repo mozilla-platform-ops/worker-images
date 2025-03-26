@@ -427,6 +427,7 @@ build {
       "Write-Host CHECK2",
       "Write-Host $ENV:lastdeploy_id",
       "Write-Host $ENV:deploymentId",
+      "Get-ChildItem Env:",
       "write-host Set-ReleaseNotes2 -Config $ENV:config -Version $ENV:sharedimage_version -Organization $ENV:src_organisation -Branch $ENV:src_Branch -Repository $ENV:src_Repository -DeploymentId $ENV:deploymentId -LastDeployID $ENV:lastdeploy_id",
       "Set-ReleaseNotes2 -Config $ENV:config -Version $ENV:sharedimage_version -Organization $ENV:src_organisation -Branch $ENV:src_Branch -Repository $ENV:src_Repository -DeploymentId $ENV:deploymentId -LastDeployID $ENV:lastdeploy_id" 
     ]
