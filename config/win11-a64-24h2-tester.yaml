@@ -7,7 +7,7 @@ image:
 sharedimage:
   gallery_name: "win11_a64_24h2_tester"
   image_name: "win11_a64_24h2_tester"
-  image_version: 1.0.2
+  image_version: 1.0.3
 azure:
   managed_image_resource_group_name: rg-packer-worker-images
   managed_image_storage_account_type: Standard_LRS
@@ -16,7 +16,7 @@ azure:
     - centralus
 vm:
   puppet_version: 8.10.0
-  git_version: 2.48.1
+  git_version: 2.49.0
   size: Standard_E8pds_v5
   tags:
     base_image: win11a6424h2azuretester
@@ -24,7 +24,7 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: windows
-    deploymentId: "b1f4165"
+    deploymentId: "7769a4b"
     managed_by: packer
 tests:
   - microsoft_tools_tester.tests.ps1
