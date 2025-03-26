@@ -58,7 +58,7 @@ jobs:
           WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
           WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
 
-      - name: Run wiz-cli docker image scan
+      - name: Run wiz-cli scan
         run: |
           ./wizcli vm-image scan \
           --id ${{ needs.setproject.outputs.IMAGENAME }} \
