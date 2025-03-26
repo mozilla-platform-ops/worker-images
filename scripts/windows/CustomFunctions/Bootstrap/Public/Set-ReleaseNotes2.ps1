@@ -25,8 +25,8 @@ function  Set-ReleaseNotes2 {
 
 	## Gather change log entries
     $repoUrl = "https://github.com/$Organization/$Repository"
-    #$repoPath = "C:\Ronin"
-	$repoPath = "C:\Ronin2"
+    $repoPath = "C:\Ronin"
+	#$repoPath = "C:\Ronin2"
 
     if (!(Test-Path $repoPath)) {
         git clone -q --single-branch --branch $Branch $repoUrl $repoPath
@@ -49,6 +49,8 @@ function  Set-ReleaseNotes2 {
     # Retrieve Git log of commits **between** SinceHash and NewHash
 
 	$commitLog = git log "$LastId..$DeploymentId" --pretty=format:"Commit: %H`nAuthor: %an`nDate: %ad`n`n%s`n%b`n---" --all --since="$sinceDate"
+    Write-Host CHECKING commitLog
+    Write-Host $commitLog 
 
     # Split commits by "Commit:"
     $commitEntries = $commitLog -split "(?=Commit: )"
