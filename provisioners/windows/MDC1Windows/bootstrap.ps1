@@ -301,15 +301,14 @@ function Get-PreRequ {
                 Write-Log -Message ('{0} :: Puppet failed to download' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
             }
         }
-        If (-Not (Test-Path "$env:systemdrive\Git-2.37.3-64-bit.exe")) {
+        If (-Not (Test-Path "$env:systemdrive\Git-2.49.0-64-bit.exe")) {
             Write-Log -Message ('{0} :: Downloading Git' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-
-            Invoke-DownloadWithRetry "$ext_src/Git-2.37.3-64-bit.exe" -Path "$env:systemdrive\Git-2.37.3-64-bit.exe"
-
+            $gitUrl = "https://github.com/git-for-windows/git/releases/download/v2.49.0.windows.1/Git-2.49.0-64-bit.exe"
+            Invoke-DownloadWithRetry $giturl -Path "$env:systemdrive\Git-2.49.0-64-bit.exe"
         }
         if (-Not (Test-Path "$env:programfiles\git\bin\git.exe")) {
             Write-Log -Message ('{0} :: Installing git.exe' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-            Start-Process -FilePath "$env:systemdrive\Git-2.37.3-64-bit.exe" -ArgumentList @(
+            Start-Process -FilePath "$env:systemdrive\Git-2.49.0-64-bit.exe" -ArgumentList @(
                 "/verysilent"
             ) -Wait #-NoNewWindow
             $env:PATH += ";C:\Program Files\git\bin"

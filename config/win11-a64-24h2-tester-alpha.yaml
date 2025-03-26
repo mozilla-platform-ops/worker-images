@@ -16,7 +16,7 @@ azure:
     - centralus
 vm:
   puppet_version: 8.10.0
-  git_version: 2.48.1
+  git_version: 2.49.0
   size: Standard_E8pds_v5
   tags:
     base_image: win11a6424h2azuretester
