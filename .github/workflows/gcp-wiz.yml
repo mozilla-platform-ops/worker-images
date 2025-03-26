@@ -1,5 +1,5 @@
-run-name: GCP Production - ${{ github.event.inputs.config }}
-name: FXCI - GCP Production
+run-name: Wiz Scan - ${{ github.event.inputs.config }}
+name: FXCI - Wiz Scan
 
 on:
   workflow_dispatch:
@@ -11,10 +11,6 @@ on:
         - gw-fxci-gcp-l1-2404-gui-alpha
         - gw-fxci-gcp-l1-2404-headless-alpha
         - gw-fxci-gcp-l1-2404-arm64-headless-alpha
-
-permissions:
-  id-token: write
-  contents: read
 
 jobs:
   check-access:
