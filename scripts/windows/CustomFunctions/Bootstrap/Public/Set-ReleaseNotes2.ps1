@@ -44,7 +44,7 @@ function  Set-ReleaseNotes2 {
     $bugUrlBase = "https://bugzilla.mozilla.org/show_bug.cgi?id="
 
     # Get the date of the SinceHash commit
-    $sinceDate = git show -s --format="%ad" $LastId --date=format:"%Y-%m-%d"
+    $sinceDate = git show -s --format="%ad" $LastDeployID --date=format:"%Y-%m-%d"
 
     # Retrieve Git log of commits **between** SinceHash and NewHash
 
