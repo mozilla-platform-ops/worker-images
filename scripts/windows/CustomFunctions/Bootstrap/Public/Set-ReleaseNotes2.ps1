@@ -38,6 +38,9 @@ function  Set-ReleaseNotes2 {
     Set-Location -Path $repoPath
     git checkout $DeploymentId
 
+    Write-Host IS THERE A GIT LOG?
+    git log
+
     # Define URLs for GitHub, Jira, and Bugzilla
     $commitUrlBase = "https://github.com/$Org/$Repo/commit/"
     $jiraUrlBase = "https://mozilla-hub.atlassian.net/browse/"
@@ -45,7 +48,9 @@ function  Set-ReleaseNotes2 {
 
     # Get the date of the SinceHash commit
     $sinceDate = git show -s --format="%ad" $LastDeployID --date=format:"%Y-%m-%d"
-
+    Write-Host Maybe it's the date!!!
+    Write-Host $sinceDate
+    Write-Host "$sinceDate = git show -s --format="%ad" $LastDeployID --date=format:"%Y-%m-%d""
     # Retrieve Git log of commits **between** SinceHash and NewHash
 
 	$commitLog = git log "$LastId..$DeploymentId" --pretty=format:"Commit: %H`nAuthor: %an`nDate: %ad`n`n%s`n%b`n---" --all --since="$sinceDate"
