@@ -319,6 +319,42 @@ function Install-Choco {
     }
 }
 
+function Set-PXEWin10 {
+    param ()
+    begin {
+        Write-Log -message ('{0} :: begin - {1:o}' -f $MyInvocation.MyCommand.Name, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+    }
+    process {
+        $tempPath = "C:\\temp\\"
+        New-Item -ItemType Directory -Force -Path $tempPath -ErrorAction SilentlyContinue
+
+        bcdedit /enum firmware > "$tempPath\\firmware.txt"
+
+        $fwBootMgr = Select-String -Path "$tempPath\\firmware.txt" -Pattern "{fwbootmgr}"
+        if (!$fwBootMgr){
+            Write-Log -message  ('{0} :: Device is configured for Legacy Boot. Exiting!' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'
+            Exit 999
+        }
+        Try {
+            $pxeGUID = (( Get-Content $tempPath\\firmware.txt | Select-String "IPV4|EFI Network" -Context 1 -ErrorAction Stop ).context.precontext)[0]
+
+            $pxeGUID = '{' + $pxeGUID.split('{')[1]
+
+            bcdedit /set "{fwbootmgr}" bootsequence "$pxeGUID"
+
+            Write-Log -message  ('{0} :: Device will PXE boot. Restarting' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'
+            Restart-Computer -Force
+        }
+        Catch {
+            Write-Log -message  ('{0} :: Unable to set next boot to PXE. Exiting!' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'
+            Exit 888
+        }
+    }
+    end {
+        Write-Log -message ('{0} :: end - {1:o}' -f $MyInvocation.MyCommand.Name, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+    }
+}
+
 ## Check until the machine is online
 Test-ConnectionUntilOnline
 
@@ -334,5 +370,16 @@ Install-Choco
 $local_bootstrap = "C:\bootstrap\bootstrap.ps1"
 
 Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/main/provisioners/windows/MDC1Windows/bootstrap.ps1" -Path $local_bootstrap
+
+if (-Not (Test-Path -Path $local_bootstrap)) {
+    switch (Get-WinDisplayVersion) {
+        "24H2" {
+            Set-PXE
+        }
+        default {
+            Set-PXEWin10
+        }
+    }
+}
 
 D:\applications\psexec.exe -i -s -d -accepteula powershell.exe -ExecutionPolicy Bypass -file $local_bootstrap -worker_pool_id "WorkerPoolId" -role "1Role"  -src_Organisation "SRCOrganisation" -src_Repository "SRCRepository" -src_Branch "SRCBranch" -hash "1HASH" -secret_date "1secret_date" -puppet_version "1puppet_version"
