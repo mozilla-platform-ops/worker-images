@@ -37,9 +37,6 @@ function  Set-ReleaseNotes2 {
     Set-Location -Path $repoPath
     git checkout $DeploymentId
 
-    Write-Host "IS THERE A GIT LOG?"
-    git log
-
     # Define URLs for GitHub, Jira, and Bugzilla
     $commitUrlBase = "https://github.com/$Organization/$Repository/commit/"
     $jiraUrlBase = "https://mozilla-hub.atlassian.net/browse/"
@@ -47,14 +44,10 @@ function  Set-ReleaseNotes2 {
 
     # Get the date of the SinceHash commit
     $sinceDate = git show -s --format="%ad" $LastDeployID --date=format:"%Y-%m-%d"
-    Write-Host "Maybe it's the date!!!"
-    Write-Host $sinceDate
-    Write-Host "$sinceDate = git show -s --format="%ad" $LastDeployID --date=format:"%Y-%m-%d""
+
     # Retrieve Git log of commits **between** SinceHash and NewHash
 
 	$commitLog = git log "$$LastDeployID..$DeploymentId" --pretty=format:"Commit: %H`nAuthor: %an`nDate: %ad`n`n%s`n%b`n---" --all --since="$sinceDate"
-    Write-Host CHECKING commitLog
-    Write-Host $commitLog 
 
     # Split commits by "Commit:"
     $commitEntries = $commitLog -split "(?=Commit: )"
@@ -62,8 +55,6 @@ function  Set-ReleaseNotes2 {
     # Initialize an array to store commit objects
     $commitObjects = @()
     $currentCommit = $null
-    Write-Host CHECKING commitEntries
-    Write-Host $commitEntries
 
     foreach ($entry in $commitEntries) {
         # Trim whitespace and skip empty entries
@@ -251,14 +242,12 @@ function  Set-ReleaseNotes2 {
         "Branch: $($Branch)",
         "DeploymentId: $($DeploymentId)"
     )
-    Write-Host CHECKING commitObjects
-    Write-Host $commitObjects
+
 	$markdown += New-MDList -Lines $lines -Style Unordered
     $markdown += New-MDHeader "Change Log" -Level 2
+
 	## Not using MD commands for correct variable interpolation
     foreach ($commit in $commitObjects) {
-        Write-Host CHECKING Commits
-        Write-Host $commit
         #$markdown += "#### [$($commit.Details.Message)]($($commit.URL))`n"
 		$markdown += "[$($commit.Details.Message)]($($commit.URL))`n"
         if ($commit.Details.Jira -ne "No Ticket") {
