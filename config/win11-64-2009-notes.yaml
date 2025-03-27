@@ -31,6 +31,9 @@ vm:
     deploymentId: "01d5eac"
     lastdeployId: "5c6aefb"
     managed_by: packer
+notes:
+  - "No Previous Roll Backs"
+  - "This is a TEST for previous notes"
 tests:
   - microsoft_tools_tester.tests.ps1
   - disable_services.tests.ps1

@@ -20,7 +20,10 @@ function  Set-ReleaseNotes2 {
 		$LastDeployID,
 
         [String]
-        $DeploymentId
+        $DeploymentId,
+
+        [string[]]
+        $Notes
     )
 
 	## Gather change log entries
@@ -48,7 +51,8 @@ function  Set-ReleaseNotes2 {
     # Retrieve Git log of commits **between** SinceHash and NewHash
 
 	#$commitLog = git log "$LastDeployID..$DeploymentId" --pretty=format:"Commit: %H`nAuthor: %an`nDate: %ad`n`n%s`n%b`n---" --all --since="$sinceDate"
-    $commitLog = git log "$LastDeployID^..$DeploymentId" --pretty=format:"Commit: %H`nAuthor: %an`nDate: %ad`n`n%s`n%b`n---" --all --since="$sinceDate"
+    #$commitLog = git log "$LastDeployID^..$DeploymentId" --pretty=format:"Commit: %H`nAuthor: %an`nDate: %ad`n`n%s`n%b`n---" --all --since="$sinceDate"
+    $commitLog = git log "$LastDeployID...$DeploymentId" --ancestry-path --pretty=format:"Commit: %H`nAuthor: %an`nDate: %ad`n`n%s`n%b`n---" --all
 
     # Split commits by "Commit:"
     $commitEntries = $commitLog -split "(?=Commit: )"
@@ -241,7 +245,11 @@ function  Set-ReleaseNotes2 {
         "Branch: $($Branch)",
         "DeploymentId: $($DeploymentId)"
     )
-
+    $markdown += New-MDHeader "Previous Version Notes" -Level 2
+    foreach ($note in $Notes) {
+        $markdown += "* $note`n"
+    }
+    $markdown += "`n"
 	$markdown += New-MDList -Lines $lines -Style Unordered
     $markdown += New-MDHeader "Change Log" -Level 2
 

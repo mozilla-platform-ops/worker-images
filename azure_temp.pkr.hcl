@@ -45,7 +45,10 @@ variable "lastdeploy_id" {
   type    = string
   default = "${env("lastdeploy_id")}"
 }
-
+variable "notes" {
+  type    = string
+  default = "${env("notes")}"
+}
 variable "disk_additional_size" {
   type    = string
   default = "${env("disk_additional_size")}"
@@ -415,6 +418,7 @@ build {
       "src_Branch=${var.source_branch}",
       "deploymentId=${var.deployment_id}",
       "lastdeployId=${var.lastdeploy_id}",
+      "notes=${var.notes}",
       "config=${var.config}",
       "client_id=${var.client_id}",
       "tenant_id=${var.tenant_id}",
@@ -424,8 +428,7 @@ build {
     inline = [
       "Import-Module BootStrap -Force",
       "Set-MarkdownPSModule",
-      "write-host Set-ReleaseNotes2 -Config $ENV:config -Version $ENV:sharedimage_version -Organization $ENV:src_organisation -Branch $ENV:src_Branch -Repository $ENV:src_Repository -DeploymentId $ENV:deploymentId -LastDeployID $ENV:lastdeployId",
-      "Set-ReleaseNotes2 -Config $ENV:config -Version $ENV:sharedimage_version -Organization $ENV:src_organisation -Branch $ENV:src_Branch -Repository $ENV:src_Repository -DeploymentId $ENV:deploymentId -LastDeployID $ENV:lastdeployId" 
+      "Set-ReleaseNotes2 -Config $ENV:config -Version $ENV:sharedimage_version -Organization $ENV:src_organisation -Branch $ENV:src_Branch -Repository $ENV:src_Repository -DeploymentId $ENV:deploymentId -LastDeployID $ENV:lastdeployId -Notes $notes" 
     ]
   }
 
