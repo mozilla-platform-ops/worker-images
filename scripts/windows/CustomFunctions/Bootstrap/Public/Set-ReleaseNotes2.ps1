@@ -34,7 +34,6 @@ function  Set-ReleaseNotes2 {
 		git config --global --add safe.directory C:/ronin
 	}
 
-    git clone -b $Branch --single-branch $repoUrl $repoPath
     Set-Location -Path $repoPath
     git checkout $DeploymentId
 
@@ -42,18 +41,18 @@ function  Set-ReleaseNotes2 {
     git log
 
     # Define URLs for GitHub, Jira, and Bugzilla
-    $commitUrlBase = "https://github.com/$Org/$Repo/commit/"
+    $commitUrlBase = "https://github.com/$Organization/$Repository/commit/"
     $jiraUrlBase = "https://mozilla-hub.atlassian.net/browse/"
     $bugUrlBase = "https://bugzilla.mozilla.org/show_bug.cgi?id="
 
     # Get the date of the SinceHash commit
     $sinceDate = git show -s --format="%ad" $LastDeployID --date=format:"%Y-%m-%d"
-    Write-Host Maybe it's the date!!!
+    Write-Host "Maybe it's the date!!!"
     Write-Host $sinceDate
     Write-Host "$sinceDate = git show -s --format="%ad" $LastDeployID --date=format:"%Y-%m-%d""
     # Retrieve Git log of commits **between** SinceHash and NewHash
 
-	$commitLog = git log "$LastId..$DeploymentId" --pretty=format:"Commit: %H`nAuthor: %an`nDate: %ad`n`n%s`n%b`n---" --all --since="$sinceDate"
+	$commitLog = git log "$$LastDeployID..$DeploymentId" --pretty=format:"Commit: %H`nAuthor: %an`nDate: %ad`n`n%s`n%b`n---" --all --since="$sinceDate"
     Write-Host CHECKING commitLog
     Write-Host $commitLog 
 
