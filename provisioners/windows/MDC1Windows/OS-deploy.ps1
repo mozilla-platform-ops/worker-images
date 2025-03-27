@@ -106,7 +106,8 @@ function Update-GetBoot {
     write-host $pool.dev
     write-host "Invoke-WebRequest @bootstrapSplat"
     write-host  $bootstrapSplat.URI
-    Invoke-WebRequest @bootstrapSplat
+    Invoke-DownloadWithRetry -Url $bootstrapSplat.URI -Path $bootstrapSplat.OutFile
+    #Invoke-WebRequest @bootstrapSplat
 
     $replacements = @(
         @{ OldString = "WorkerPoolId"; NewString = $WorkerPool },
@@ -238,6 +239,94 @@ exit
     Start-Process "diskpart.exe" -ArgumentList "/s $scriptPathD" -Wait
 
     Write-Host "Partitioning complete. Disk $DiskC has been partitioned as the primary drive with multiple partitions. Disk $DiskD is formatted as a single partition." -ForegroundColor Green
+}
+
+function Invoke-DownloadWithRetry {
+    <#
+    .SYNOPSIS
+        Downloads a file from a given URL with retry functionality.
+
+    .DESCRIPTION
+        The Invoke-DownloadWithRetry function downloads a file from the specified URL
+        to the specified path. It includes retry functionality in case the download fails.
+
+    .PARAMETER Url
+        The URL of the file to download.
+
+    .PARAMETER Path
+        The path where the downloaded file will be saved. If not provided, a temporary path
+        will be used.
+
+    .EXAMPLE
+        Invoke-DownloadWithRetry -Url "https://example.com/file.zip" -Path "C:\Downloads\file.zip"
+        Downloads the file from the specified URL and saves it to the specified path.
+
+    .EXAMPLE
+        Invoke-DownloadWithRetry -Url "https://example.com/file.zip"
+        Downloads the file from the specified URL and saves it to a temporary path.
+
+    .OUTPUTS
+        The path where the downloaded file is saved.
+    #>
+
+    Param
+    (
+        [Parameter(Mandatory)]
+        [string] $Url,
+        [Alias("Destination")]
+        [string] $Path
+    )
+
+    if (-not $Path) {
+        $invalidChars = [IO.Path]::GetInvalidFileNameChars() -join ''
+        $re = "[{0}]" -f [RegEx]::Escape($invalidChars)
+        $fileName = [IO.Path]::GetFileName($Url) -replace $re
+
+        if ([String]::IsNullOrEmpty($fileName)) {
+            $fileName = [System.IO.Path]::GetRandomFileName()
+        }
+        $Path = Join-Path -Path "${env:Temp}" -ChildPath $fileName
+    }
+
+    Write-Host "Downloading package from $Url to $Path..."
+    Write-Log -message ('{0} :: Downloading {1} to {2} - {3:o}' -f $($MyInvocation.MyCommand.Name), $url, $path, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+
+    $interval = 30
+    $downloadStartTime = Get-Date
+    for ($retries = 20; $retries -gt 0; $retries--) {
+        try {
+            $attemptStartTime = Get-Date
+            (New-Object System.Net.WebClient).DownloadFile($Url, $Path)
+            $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
+            Write-Host "Package downloaded in $attemptSeconds seconds"
+            Write-Log -message ('{0} :: Package downloaded in {1} seconds - {2:o}' -f $($MyInvocation.MyCommand.Name), $attemptSeconds, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+            break
+        }
+        catch {
+            $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
+            Write-Warning "Package download failed in $attemptSeconds seconds"
+            Write-Log -message ('{0} :: Package download failed in {1} seconds - {2:o}' -f $($MyInvocation.MyCommand.Name), $attemptSeconds, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+
+            Write-Warning $_.Exception.Message
+
+            if ($_.Exception.InnerException.Response.StatusCode -eq [System.Net.HttpStatusCode]::NotFound) {
+                Write-Warning "Request returned 404 Not Found. Aborting download."
+                Write-Log -message ('{0} :: Request returned 404 Not Found. Aborting download. - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+                $retries = 0
+            }
+        }
+
+        if ($retries -eq 0) {
+            $totalSeconds = [math]::Round(($(Get-Date) - $downloadStartTime).TotalSeconds, 2)
+            throw "Package download failed after $totalSeconds seconds"
+        }
+
+        Write-Warning "Waiting $interval seconds before retrying (retries left: $retries)..."
+        Write-Log -message ('{0} :: Waiting {1} seconds before retrying (retries left: {2})... - {3:o}' -f $($MyInvocation.MyCommand.Name), $interval, $retries, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+        Start-Sleep -Seconds $interval
+    }
+
+    return $Path
 }
 
 ## Get node name
@@ -474,7 +563,7 @@ if (!(Test-Path $setup)) {
     Write-Host "Disconecting Deployment Share."
     net use Z: /delete
 
-    Invoke-WebRequest -Uri "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$branch/provisioners/windows/MDC1Windows/base-autounattend.xml"  -OutFile $unattend
+    Invoke-DownloadWithRetry -Url "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$branch/provisioners/windows/MDC1Windows/base-autounattend.xml" -Path $unattend
 
     $secret_YAML = Convertfrom-Yaml (Get-Content $secret_file -raw)
 
