@@ -60,8 +60,6 @@ function  Set-ReleaseNotes2 {
         # Trim whitespace and skip empty entries
         $entry = $entry.Trim()
         if ($entry -eq "") { continue }
-        Write-Host CHECKING entry
-        Write-Host $entry
         # If the entry contains a commit hash, start a new structured object
         if ($entry -match "^Commit: (?<Hash>\w{40})") {
             # If there's an existing commit being processed, store it first
