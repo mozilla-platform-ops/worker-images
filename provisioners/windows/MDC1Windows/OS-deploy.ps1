@@ -289,7 +289,7 @@ function Invoke-DownloadWithRetry {
     }
 
     Write-Host "Downloading package from $Url to $Path..."
-    Write-Log -message ('{0} :: Downloading {1} to {2} - {3:o}' -f $($MyInvocation.MyCommand.Name), $url, $path, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+    #Write-Log -message ('{0} :: Downloading {1} to {2} - {3:o}' -f $($MyInvocation.MyCommand.Name), $url, $path, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
 
     $interval = 30
     $downloadStartTime = Get-Date
@@ -299,19 +299,19 @@ function Invoke-DownloadWithRetry {
             (New-Object System.Net.WebClient).DownloadFile($Url, $Path)
             $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
             Write-Host "Package downloaded in $attemptSeconds seconds"
-            Write-Log -message ('{0} :: Package downloaded in {1} seconds - {2:o}' -f $($MyInvocation.MyCommand.Name), $attemptSeconds, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+            #Write-Log -message ('{0} :: Package downloaded in {1} seconds - {2:o}' -f $($MyInvocation.MyCommand.Name), $attemptSeconds, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
             break
         }
         catch {
             $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
             Write-Warning "Package download failed in $attemptSeconds seconds"
-            Write-Log -message ('{0} :: Package download failed in {1} seconds - {2:o}' -f $($MyInvocation.MyCommand.Name), $attemptSeconds, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+            #Write-Log -message ('{0} :: Package download failed in {1} seconds - {2:o}' -f $($MyInvocation.MyCommand.Name), $attemptSeconds, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
 
             Write-Warning $_.Exception.Message
 
             if ($_.Exception.InnerException.Response.StatusCode -eq [System.Net.HttpStatusCode]::NotFound) {
                 Write-Warning "Request returned 404 Not Found. Aborting download."
-                Write-Log -message ('{0} :: Request returned 404 Not Found. Aborting download. - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+                #Write-Log -message ('{0} :: Request returned 404 Not Found. Aborting download. - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
                 $retries = 0
             }
         }
@@ -322,50 +322,11 @@ function Invoke-DownloadWithRetry {
         }
 
         Write-Warning "Waiting $interval seconds before retrying (retries left: $retries)..."
-        Write-Log -message ('{0} :: Waiting {1} seconds before retrying (retries left: {2})... - {3:o}' -f $($MyInvocation.MyCommand.Name), $interval, $retries, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+        #Write-Log -message ('{0} :: Waiting {1} seconds before retrying (retries left: {2})... - {3:o}' -f $($MyInvocation.MyCommand.Name), $interval, $retries, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
         Start-Sleep -Seconds $interval
     }
 
     return $Path
-}
-
-function Write-Log {
-    param (
-        [string] $message,
-        [string] $severity = 'INFO',
-        [string] $source = 'BootStrap',
-        [string] $logName = 'Application'
-    )
-    if (!([Diagnostics.EventLog]::Exists($logName)) -or !([Diagnostics.EventLog]::SourceExists($source))) {
-        New-EventLog -LogName $logName -Source $source
-    }
-    switch ($severity) {
-        'DEBUG' {
-            $entryType = 'SuccessAudit'
-            $eventId = 2
-            break
-        }
-        'WARN' {
-            $entryType = 'Warning'
-            $eventId = 3
-            break
-        }
-        'ERROR' {
-            $entryType = 'Error'
-            $eventId = 4
-            break
-        }
-        default {
-            $entryType = 'Information'
-            $eventId = 1
-            break
-        }
-    }
-    Write-EventLog -LogName $logName -Source $source -EntryType $entryType -Category 0 -EventID $eventId -Message $message
-    if ([Environment]::UserInteractive) {
-        $fc = @{ 'Information' = 'White'; 'Error' = 'Red'; 'Warning' = 'DarkYellow'; 'SuccessAudit' = 'DarkGray' }[$entryType]
-        Write-Host  -object $message -ForegroundColor $fc
-    }
 }
 
 ## Get node name
