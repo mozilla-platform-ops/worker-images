@@ -38,7 +38,7 @@ function  Set-ReleaseNotes2 {
     Set-Location -Path $repoPath
     git checkout $DeploymentId
 
-    Write-Host IS THERE A GIT LOG?
+    Write-Host "IS THERE A GIT LOG?"
     git log
 
     # Define URLs for GitHub, Jira, and Bugzilla
