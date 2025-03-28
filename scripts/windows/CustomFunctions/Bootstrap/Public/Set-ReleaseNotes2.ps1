@@ -113,7 +113,7 @@ function  Set-ReleaseNotes2 {
             else {
 		        if ($entry -match "(?im)^\s*roles?:?\s*(?<Roles>[^\r\n]+)") {
 			        # Strip off anything after "Location:" or similar extra fields
-			        $rawRoles = $matches["Roles"] -split "Location:" | Select-Object -First 1
+			        $rawRoles = ($matches["Roles"] -split "(?i)location:")[0]
 			        $currentCommit.Details.Roles = ($rawRoles -split ",") | ForEach-Object { $_.Trim() }
 			        Write-Host "Parsed roles: $($currentCommit.Details.Roles -join ', ')"
 		        }
@@ -139,10 +139,18 @@ function  Set-ReleaseNotes2 {
     }
 
     # Add the last processed commit object if it contains the role
-    if ($null -ne $currentCommit -and ($Config -eq "" -or $currentCommit.Details.Roles -contains $Config)) {
+    if (
+        $null -ne $currentCommit -and (
+            $Config -eq "" -or 
+            $Config.ToLower() -eq "all" -or 
+            $currentCommit.Details.Roles -contains $Config
+        )
+    ) {
         $commitObjects += $currentCommit
+        Write-Host "Keeping commit with roles: $($currentCommit.Details.Roles -join ', ')"
+    } else {
+        Write-Host "Skipping commit - roles: $($currentCommit.Details.Roles -join ', '), config: $Config"
     }
-
     ## The config will be the name of the configuration file (win11-64-2009) without the extension
     ## We'll use this to generate release notes for each OS
 
