@@ -55,7 +55,8 @@ function New-AzSharedWorkerImage_temp {
     $ENV:PKR_VAR_oidc_request_url = $oidc_request_url
     $ENV:PKR_VAR_oidc_request_token = $oidc_request_token
     $ENV:PKR_VAR_worker_pool_id = $YAML.vm.tags["worker_pool_id"]
-    $ENV:PKR_VAR_notes = $YAML.notes
+    #$ENV:PKR_VAR_notes = $YAML.notes
+    $ENV:PKR_VAR_notes = $YAML.notes -join "`n"
     switch -Wildcard ($key) {
         "*alpha2*" {
             $PackerForceBuild = $true
