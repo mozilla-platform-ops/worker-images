@@ -23,8 +23,8 @@ vm:
     worker_pool_id: win11-a64-24h2-builder-alpha
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "windows"
-    deploymentId: "6d72e0c"
+    sourceBranch: "RELOPS-1400"
+    deploymentId: "7dc7313"
     managed_by: packer
 tests:
   - microsoft_tools_builder-a64.tests.ps1
@@ -38,6 +38,7 @@ tests:
   - power_management.tests.ps1
   - scheduled_tasks.tests.ps1
   - azure_vm_agent.tests.ps1
+  - mercurial.tests.ps1
   - logging.tests.ps1
   - common_tools.tests.ps1
   - google_auth.tests.ps1
