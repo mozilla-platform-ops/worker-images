@@ -28,7 +28,7 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: "rel_notes_testing"
-    deploymentId: "01d5eac"
+    deploymentId: "898006e"
     lastdeployId: "5c6aefb"
     managed_by: packer
 notes:
