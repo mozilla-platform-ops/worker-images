@@ -66,91 +66,83 @@ function  Set-ReleaseNotes2 {
     $commitObjects = @()
     $currentCommit = $null
 
+foreach ($entry in $commitEntries) {
+    $entry = $entry.Trim()
+    if ($entry -eq "") { continue }
 
-    foreach ($entry in $commitEntries) {
-        $entry = $entry.Trim()
-        if ($entry -eq "") { continue }
-
-        if ($entry -match "^Commit: (?<Hash>\w{40})") {
+    if ($entry -match "^Commit: (?<Hash>\w{40})") {
         # Save previous commit
-            if ($null -ne $currentCommit -and ($Config -eq "" -or $currentCommit.Details.Roles -contains $Config)) {
-                $commitObjects += $currentCommit
-            }
-
-            $commitHash = $matches["Hash"]
-            $commitUrl = "$commitUrlBase$commitHash"
-
-            # Start new commit object
-            $currentCommit = [PSCustomObject]@{
-                URL     = $commitUrl
-                Details = @{
-                    Jira    = "No Ticket"
-                    JiraURL = ""
-                    Bug     = ""
-                    BugURL  = ""
-                    Date    = ""
-                    Message = ""
-                    Roles   = @()
-                    Type    = "Uncategorized"
-                }
-            }
-            continue
+        if ($null -ne $currentCommit -and ($Config -eq "" -or $currentCommit.Details.Roles -contains $Config)) {
+            $commitObjects += $currentCommit
         }
 
-        # Parse current commit fields
-        if ($null -ne $currentCommit) {
-            if ($entry -match "^Author: (?<Author>.+)") {
-                $author = $matches["Author"]
+        $commitHash = $matches["Hash"]
+        $commitUrl = "$commitUrlBase$commitHash"
+
+        # Start new commit object
+        $currentCommit = [PSCustomObject]@{
+            URL     = $commitUrl
+            Details = @{
+                Jira    = "No Ticket"
+                JiraURL = ""
+                Bug     = ""
+                BugURL  = ""
+                Date    = ""
+                Message = ""
+                Roles   = @()
+                Type    = "Uncategorized"
             }
-            elseif ($entry -match "^Date: (?<Date>.+)") {
-                $dateParts = $matches["Date"] -split "\s+"
-                $formattedDate = "$($dateParts[0]) $($dateParts[1]) $($dateParts[2]) $($dateParts[4])"
-                if ($author) {
-                    $formattedDate += " by $author"
-                }
-                $currentCommit.Details.Date = $formattedDate
+        }
+        continue
+    }
+
+    # Parse current commit fields
+    if ($null -ne $currentCommit) {
+        if ($entry -match "^Author: (?<Author>.+)") {
+            $author = $matches["Author"]
+        }
+        elseif ($entry -match "^Date: (?<Date>.+)") {
+            $dateParts = $matches["Date"] -split "\s+"
+            $formattedDate = "$($dateParts[0]) $($dateParts[1]) $($dateParts[2]) $($dateParts[4])"
+            if ($author) {
+                $formattedDate += " by $author"
             }
-            else {
-		        if ($entry -match "(?im)^\s*roles?:?\s*(?<Roles>[^\r\n]+)") {
-			        # Strip off anything after "Location:" or similar extra fields
-			        $rawRoles = ($matches["Roles"] -split "(?i)location:")[0]
-			        $currentCommit.Details.Roles = ($rawRoles -split ",") | ForEach-Object { $_.Trim() }
-			        Write-Host "Parsed roles: $($currentCommit.Details.Roles -join ', ')"
-		        }
-                if ($entry -match "^(?<Type>[A-Z]+):?\s") {
-                    $currentCommit.Details.Type = $matches["Type"]
-                }
-                if ($entry -match "(?i)Jira:?\s*(?<Jira>[A-Za-z0-9-]+)") {
-                    $jira = $matches["Jira"]
-                    $currentCommit.Details.Jira = $jira
-                    $currentCommit.Details.JiraURL = "$jiraUrlBase$jira"
-                }
-                if ($entry -match "(?i)Bug:?\s*(?<Bug>\d{5,})") {
-                    $bug = $matches["Bug"]
-                    $currentCommit.Details.Bug = $bug
-                    $currentCommit.Details.BugURL = "$bugUrlBase$bug"
-                }
-                if ($entry -match "(?i)MSG:?\s*(?<Message>.+)$") {
-                    $message = $matches["Message"].Trim()
-                    $currentCommit.Details.Message = "$($currentCommit.Details.Type) - $message"
-                }
+            $currentCommit.Details.Date = $formattedDate
+        }
+        else {
+		if ($entry -match "(?im)^\s*roles?:?\s*(?<Roles>[^\r\n]+)") {
+			# Strip off anything after "Location:" or similar extra fields
+			$rawRoles = $matches["Roles"] -split "Location:" | Select-Object -First 1
+			$currentCommit.Details.Roles = ($rawRoles -split ",") | ForEach-Object { $_.Trim() }
+			Write-Host "Parsed roles: $($currentCommit.Details.Roles -join ', ')"
+		}
+            if ($entry -match "^(?<Type>[A-Z]+):?\s") {
+                $currentCommit.Details.Type = $matches["Type"]
+            }
+            if ($entry -match "(?i)Jira:?\s*(?<Jira>[A-Za-z0-9-]+)") {
+                $jira = $matches["Jira"]
+                $currentCommit.Details.Jira = $jira
+                $currentCommit.Details.JiraURL = "$jiraUrlBase$jira"
+            }
+            if ($entry -match "(?i)Bug:?\s*(?<Bug>\d{5,})") {
+                $bug = $matches["Bug"]
+                $currentCommit.Details.Bug = $bug
+                $currentCommit.Details.BugURL = "$bugUrlBase$bug"
+            }
+            if ($entry -match "(?i)MSG:?\s*(?<Message>.+)$") {
+                $message = $matches["Message"].Trim()
+                $currentCommit.Details.Message = "$($currentCommit.Details.Type) - $message"
             }
         }
     }
+}
 
-    # Add the last processed commit object if it contains the role
-    if (
-        $null -ne $currentCommit -and (
-            $Config -eq "" -or 
-            $Config.ToLower() -eq "all" -or 
-            $currentCommit.Details.Roles -contains $Config
-        )
-    ) {
-        $commitObjects += $currentCommit
-        Write-Host "Keeping commit with roles: $($currentCommit.Details.Roles -join ', ')"
-    } else {
-        Write-Host "Skipping commit - roles: $($currentCommit.Details.Roles -join ', '), config: $Config"
-    }
+# Don't forget the last commit
+if ($null -ne $currentCommit -and ($Config -eq "" -or $currentCommit.Details.Roles -contains $Config)) {
+    $commitObjects += $currentCommit
+}
+
+
     ## The config will be the name of the configuration file (win11-64-2009) without the extension
     ## We'll use this to generate release notes for each OS
 
@@ -256,7 +248,7 @@ function  Set-ReleaseNotes2 {
         "OS Name: $($Header) $($OSVersionExtended.DisplayVersion)",
         "OS Version: $($OSBuild)",
         "Organization: $($Organization)",
-        "Repository: $($Repository)"
+        "Repository: $($Repository)",
         "Branch: $($Branch)",
         "DeploymentId: $($DeploymentId)"
     )
