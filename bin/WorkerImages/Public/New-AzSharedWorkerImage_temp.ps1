@@ -86,6 +86,8 @@ function New-AzSharedWorkerImage_temp {
     packer init azure.pkr.hcl
     Write-Host CHECK
     Write-Host $ENV:PKR_VAR_lastdeploy_id
+    Write-Host Are there notes
+    Write-Host  $ENV:PKR_VAR_notes
     if ($PackerForceBuild) {
         packer build --only azure-arm.sig -force azure_temp.pkr.hcl
     }

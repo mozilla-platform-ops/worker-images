@@ -111,7 +111,8 @@ function  Set-ReleaseNotes2 {
                 $currentCommit.Details.Date = $formattedDate
             }
             # Extract Jira ticket and generate Jira URL separately
-            if ($entry -match "(?m)^(?<FullMessage>[A-Z]+: Jira:[A-Za-z0-9-]+ MSG: .+)$") {
+            #if ($entry -match "(?m)^(?<FullMessage>[A-Z]+: Jira:[A-Za-z0-9-]+ MSG: .+)$") {
+            if ($entry -match "(?m)^(?<FullMessage>[A-Z]+: Jira:[A-Za-z0-9-]+(?: Bug\d+)? MSG: .+)$") {
                 $fullMessage = $matches["FullMessage"]
                 if ($fullMessage -match "^(?<Type>[A-Z]+): Jira:(?<Jira>[A-Za-z0-9-]+) MSG: (?<Message>.+)") {
                     $currentCommit.Details.Type = $matches["Type"]
