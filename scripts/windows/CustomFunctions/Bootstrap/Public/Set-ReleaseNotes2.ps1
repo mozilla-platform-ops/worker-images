@@ -25,6 +25,8 @@ function  Set-ReleaseNotes2 {
         [string[]]
         $Notes
     )
+    Write-Host Are there notes
+    Write-Host $Notes
 
 	## Gather change log entries
     $repoUrl = "https://github.com/$Organization/$Repository"
@@ -53,6 +55,7 @@ function  Set-ReleaseNotes2 {
 	#$commitLog = git log "$LastDeployID..$DeploymentId" --pretty=format:"Commit: %H`nAuthor: %an`nDate: %ad`n`n%s`n%b`n---" --all --since="$sinceDate"
     #$commitLog = git log "$LastDeployID^..$DeploymentId" --pretty=format:"Commit: %H`nAuthor: %an`nDate: %ad`n`n%s`n%b`n---" --all --since="$sinceDate"
     $commitLog = git log "$LastDeployID...$DeploymentId" --ancestry-path --pretty=format:"Commit: %H`nAuthor: %an`nDate: %ad`n`n%s`n%b`n---" --all
+    write-host "$commitLog = git log "$LastDeployID...$DeploymentId" --ancestry-path --pretty=format:"Commit: %H`nAuthor: %an`nDate: %ad`n`n%s`n%b`n---" --all"
 
     # Split commits by "Commit:"
     $commitEntries = $commitLog -split "(?=Commit: )"
