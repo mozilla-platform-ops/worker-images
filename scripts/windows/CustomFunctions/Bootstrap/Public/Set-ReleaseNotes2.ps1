@@ -111,16 +111,23 @@ function  Set-ReleaseNotes2 {
                 $currentCommit.Details.Date = $formattedDate
             }
             # Extract Jira ticket and generate Jira URL separately
-            #if ($entry -match "(?m)^(?<FullMessage>[A-Z]+: Jira:[A-Za-z0-9-]+ MSG: .+)$") {
-            if ($entry -match "(?m)^(?<FullMessage>[A-Z]+: Jira:[A-Za-z0-9-]+(?: Bug\d+)? MSG: .+)$") {
-                $fullMessage = $matches["FullMessage"]
-                if ($fullMessage -match "^(?<Type>[A-Z]+): Jira:(?<Jira>[A-Za-z0-9-]+) MSG: (?<Message>.+)") {
-                    $currentCommit.Details.Type = $matches["Type"]
-                    $currentCommit.Details.Jira = $matches["Jira"]
-                    $currentCommit.Details.JiraURL = "$jiraUrlBase$($matches["Jira"])"
-                    $currentCommit.Details.Message = "$($currentCommit.Details.Type) - $($matches["Message"])"
+            if ($entry -match "(?m)^\s*(?<FullMessage>[A-Z]+: Jira:[A-Za-z0-9-]+(?: Bug\d+)? MSG:?.+)$") {
+            $fullMessage = $matches["FullMessage"]
+            if ($fullMessage -match "^(?<Type>[A-Z]+): Jira:(?<Jira>[A-Za-z0-9-]+)(?: Bug(?<Bug>\d+))? MSG:?\s*(?<Message>.+)") {
+                $currentCommit.Details.Type = $matches["Type"]
+                $currentCommit.Details.Jira = $matches["Jira"]
+                $currentCommit.Details.JiraURL = "$jiraUrlBase$($matches["Jira"])"
+                $currentCommit.Details.Message = "$($currentCommit.Details.Type) - $($matches["Message"])"
+                if ($matches["Bug"]) {
+                    $bugNumber = $matches["Bug"]
+                    $currentCommit.Details.Bug = $bugNumber
+                    $currentCommit.Details.BugURL = "$bugUrlBase$bugNumber"
                 }
             }
+        }
+        elseif ($entry -match "(?im)^roles: (?<Roles>.+)") {
+            $currentCommit.Details.Roles = ($matches["Roles"] -split ", ") | ForEach-Object { $_.Trim() }
+        }            
             # Extract bug number from message and generate Bugzilla URL
             if ($currentCommit.Details.Message -match "\(Bug(?<Bug>\d+)\)") {
                 $bugNumber = $matches["Bug"]

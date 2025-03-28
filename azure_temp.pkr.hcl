@@ -428,6 +428,8 @@ build {
     inline = [
       "Import-Module BootStrap -Force",
       "Set-MarkdownPSModule",
+      "Write-Host  $notes",
+      "Write-Host Set-ReleaseNotes2 -Config $ENV:config -Version $ENV:sharedimage_version -Organization $ENV:src_organisation -Branch $ENV:src_Branch -Repository $ENV:src_Repository -DeploymentId $ENV:deploymentId -LastDeployID $ENV:lastdeployId -Notes $notes",
       "Set-ReleaseNotes2 -Config $ENV:config -Version $ENV:sharedimage_version -Organization $ENV:src_organisation -Branch $ENV:src_Branch -Repository $ENV:src_Repository -DeploymentId $ENV:deploymentId -LastDeployID $ENV:lastdeployId -Notes $notes" 
     ]
   }
