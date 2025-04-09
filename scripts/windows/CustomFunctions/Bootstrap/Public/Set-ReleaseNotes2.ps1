@@ -20,13 +20,8 @@ function  Set-ReleaseNotes2 {
 		$LastDeployID,
 
         [String]
-        $DeploymentId,
-
-        [string[]]
-        $Notes
+        $DeploymentId
     )
-    Write-Host Are there notes
-    Write-Host $Notes
 
 	## Gather change log entries
     $repoUrl = "https://github.com/$Organization/$Repository"
@@ -53,11 +48,7 @@ function  Set-ReleaseNotes2 {
     # Retrieve Git log of commits **between** SinceHash and NewHash
 
 	#$commitLog = git log "$LastDeployID..$DeploymentId" --pretty=format:"Commit: %H`nAuthor: %an`nDate: %ad`n`n%s`n%b`n---" --all --since="$sinceDate"
-    #$commitLog = git log "$LastDeployID^..$DeploymentId" --pretty=format:"Commit: %H`nAuthor: %an`nDate: %ad`n`n%s`n%b`n---" --all --since="$sinceDate"
-    #$commitLog = git log "$LastDeployID...$DeploymentId" --ancestry-path --pretty=format:"Commit: %H`nAuthor: %an`nDate: %ad`n`n%s`n%b`n---" --all
-    #write-host "$commitLog = git log "$LastDeployID...$DeploymentId" --ancestry-path --pretty=format:"Commit: %H`nAuthor: %an`nDate: %ad`n`n%s`n%b`n---" --all"
-
-    $commitLog = (git log "$LastDeployID...$DeploymentId" --ancestry-path --pretty=format:"Commit: %H`nAuthor: %an`nDate: %ad`n`n%s`n%b`n---" --all) -join "`n"
+    $commitLog = git log "$LastDeployID^..$DeploymentId" --pretty=format:"Commit: %H`nAuthor: %an`nDate: %ad`n`n%s`n%b`n---" --all --since="$sinceDate"
 
     # Split commits by "Commit:"
     $commitEntries = $commitLog -split "(?=Commit: )"
@@ -66,82 +57,80 @@ function  Set-ReleaseNotes2 {
     $commitObjects = @()
     $currentCommit = $null
 
-foreach ($entry in $commitEntries) {
-    $entry = $entry.Trim()
-    if ($entry -eq "") { continue }
+    foreach ($entry in $commitEntries) {
+        # Trim whitespace and skip empty entries
+        $entry = $entry.Trim()
+        if ($entry -eq "") { continue }
+        # If the entry contains a commit hash, start a new structured object
+        if ($entry -match "^Commit: (?<Hash>\w{40})") {
+            # If there's an existing commit being processed, store it first
+            if ($null -ne $currentCommit -and ($Config -eq "" -or $currentCommit.Details.Roles -contains $Config)) {
+                $commitObjects += $currentCommit
+            }
 
-    if ($entry -match "^Commit: (?<Hash>\w{40})") {
-        # Save previous commit
-        if ($null -ne $currentCommit -and ($Config -eq "" -or $currentCommit.Details.Roles -contains $Config)) {
-            $commitObjects += $currentCommit
+            # Construct the GitHub commit URL
+            $commitHash = $matches["Hash"]
+            $commitUrl = "$commitUrlBase$commitHash"
+
+            # Create a new commit object
+            $currentCommit = [PSCustomObject]@{
+                URL     = $commitUrl
+                Details = @{
+                    Jira    = "No Ticket"
+                    JiraURL = ""
+                    Bug     = ""
+                    BugURL  = ""
+                    Date    = ""
+                    Message = ""
+                    Roles   = @()
+                    Type    = "Uncategorized"
+                }
+            }
+            continue
         }
 
-        $commitHash = $matches["Hash"]
-        $commitUrl = "$commitUrlBase$commitHash"
-
-        # Start new commit object
-        $currentCommit = [PSCustomObject]@{
-            URL     = $commitUrl
-            Details = @{
-                Jira    = "No Ticket"
-                JiraURL = ""
-                Bug     = ""
-                BugURL  = ""
-                Date    = ""
-                Message = ""
-                Roles   = @()
-                Type    = "Uncategorized"
+        # If the currentCommit is set, populate its fields
+        if ($null -ne $currentCommit) {
+            if ($entry -match "^Author: (?<Author>.+)") {
+                $author = $matches["Author"]
+            }
+            elseif ($entry -match "^Date: (?<Date>.+)") {
+                # Extract date without time and append author
+                $dateParts = $matches["Date"] -split "\s+"
+                $formattedDate = "$($dateParts[0]) $($dateParts[1]) $($dateParts[2]) $($dateParts[4])"
+                if ($author) {
+                    $formattedDate += " by $author"
+                }
+                $currentCommit.Details.Date = $formattedDate
+            }
+            # Extract Jira ticket and generate Jira URL separately
+            if ($entry -match "(?m)^(?<FullMessage>[A-Z]+: Jira:[A-Za-z0-9-]+ MSG: .+)$") {
+                $fullMessage = $matches["FullMessage"]
+                if ($fullMessage -match "^(?<Type>[A-Z]+): Jira:(?<Jira>[A-Za-z0-9-]+) MSG: (?<Message>.+)") {
+                    $currentCommit.Details.Type = $matches["Type"]
+                    $currentCommit.Details.Jira = $matches["Jira"]
+                    $currentCommit.Details.JiraURL = "$jiraUrlBase$($matches["Jira"])"
+                    $currentCommit.Details.Message = "$($currentCommit.Details.Type) - $($matches["Message"])"
+                }
+            }
+            # Extract bug number from message and generate Bugzilla URL
+            if ($currentCommit.Details.Message -match "\(Bug(?<Bug>\d+)\)") {
+                $bugNumber = $matches["Bug"]
+                $currentCommit.Details.Bug = $bugNumber
+                $currentCommit.Details.BugURL = "$bugUrlBase$bugNumber"
+                # Remove the Bug ID from the message itself
+                $currentCommit.Details.Message = $currentCommit.Details.Message -replace "\(Bug\d+\)", ""
+            }
+            elseif ($entry -match "(?m)^Roles: (?<Roles>.+)") {
+                $currentCommit.Details.Roles = ($matches["Roles"] -split ", ") | ForEach-Object { $_.Trim() }
             }
         }
-        continue
     }
 
-    # Parse current commit fields
-    if ($null -ne $currentCommit) {
-        if ($entry -match "^Author: (?<Author>.+)") {
-            $author = $matches["Author"]
-        }
-        elseif ($entry -match "^Date: (?<Date>.+)") {
-            $dateParts = $matches["Date"] -split "\s+"
-            $formattedDate = "$($dateParts[0]) $($dateParts[1]) $($dateParts[2]) $($dateParts[4])"
-            if ($author) {
-                $formattedDate += " by $author"
-            }
-            $currentCommit.Details.Date = $formattedDate
-        }
-        else {
-		if ($entry -match "(?im)^\s*roles?:?\s*(?<Roles>[^\r\n]+)") {
-			# Strip off anything after "Location:" or similar extra fields
-			$rawRoles = $matches["Roles"] -split "Location:" | Select-Object -First 1
-			$currentCommit.Details.Roles = ($rawRoles -split ",") | ForEach-Object { $_.Trim() }
-			Write-Host "Parsed roles: $($currentCommit.Details.Roles -join ', ')"
-		}
-            if ($entry -match "^(?<Type>[A-Z]+):?\s") {
-                $currentCommit.Details.Type = $matches["Type"]
-            }
-            if ($entry -match "(?i)Jira:?\s*(?<Jira>[A-Za-z0-9-]+)") {
-                $jira = $matches["Jira"]
-                $currentCommit.Details.Jira = $jira
-                $currentCommit.Details.JiraURL = "$jiraUrlBase$jira"
-            }
-            if ($entry -match "(?i)Bug:?\s*(?<Bug>\d{5,})") {
-                $bug = $matches["Bug"]
-                $currentCommit.Details.Bug = $bug
-                $currentCommit.Details.BugURL = "$bugUrlBase$bug"
-            }
-            if ($entry -match "(?i)MSG:?\s*(?<Message>.+)$") {
-                $message = $matches["Message"].Trim()
-                $currentCommit.Details.Message = "$($currentCommit.Details.Type) - $message"
-            }
-        }
+    # Add the last processed commit object if it contains the role
+    if ($null -ne $currentCommit -and ($Config -eq "" -or $currentCommit.Details.Roles -contains $Config)) {
+        $commitObjects += $currentCommit
     }
-}
-
-# Don't forget the last commit
-if ($null -ne $currentCommit -and ($Config -eq "" -or $currentCommit.Details.Roles -contains $Config)) {
-    $commitObjects += $currentCommit
-}
-
 
     ## The config will be the name of the configuration file (win11-64-2009) without the extension
     ## We'll use this to generate release notes for each OS
@@ -248,15 +237,11 @@ if ($null -ne $currentCommit -and ($Config -eq "" -or $currentCommit.Details.Rol
         "OS Name: $($Header) $($OSVersionExtended.DisplayVersion)",
         "OS Version: $($OSBuild)",
         "Organization: $($Organization)",
-        "Repository: $($Repository)",
+        "Repository: $($Repository)"
         "Branch: $($Branch)",
         "DeploymentId: $($DeploymentId)"
     )
-    $markdown += New-MDHeader "Previous Version Notes" -Level 2
-    foreach ($note in $Notes) {
-        $markdown += "* $note`n"
-    }
-    $markdown += "`n"
+
 	$markdown += New-MDList -Lines $lines -Style Unordered
     $markdown += New-MDHeader "Change Log" -Level 2
 
@@ -336,3 +321,4 @@ if ($null -ne $currentCommit -and ($Config -eq "" -or $currentCommit.Details.Rol
     }
 
 }
+
