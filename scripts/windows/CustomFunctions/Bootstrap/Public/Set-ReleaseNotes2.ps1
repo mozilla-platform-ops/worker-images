@@ -73,16 +73,17 @@ function Set-ReleaseNotes2 {
                 $currentCommit.Details.Date = $formattedDate
             }
 
-            # Robust Jira + MSG + Bug parsing from subject/body line
+            # Match Jira and MSG line
             if ($entry -match "(?im)^(?<Line>[A-Z]+:\s*Jira:[A-Za-z0-9-]+.*?MSG[:\s]+.+)$") {
                 $line = $matches["Line"]
-                if ($line -match "^(?i)(?<Type>[A-Z]+):\s*Jira:(?<Jira>[A-Za-z0-9-]+).*?(Bug(?<Bug>\d+))?.*?MSG[:\s]+(?<Message>.+)$") {
+                if ($line -match "^(?i)(?<Type>[A-Z]+):\s*Jira:(?<Jira>[A-Za-z0-9-]+).*?MSG[:\s]+(?<Message>.+)$") {
                     $currentCommit.Details.Type = $matches["Type"]
                     $currentCommit.Details.Jira = $matches["Jira"]
                     $currentCommit.Details.JiraURL = "$jiraUrlBase$($matches["Jira"])"
                     $currentCommit.Details.Message = "$($currentCommit.Details.Type) - $($matches["Message"])"
 
-                    if ($matches["Bug"]) {
+                    # NEW: Extract bug from anywhere in the line
+                    if ($line -match "(?i)Bug(?<Bug>\d{4,})") {
                         $bugNumber = $matches["Bug"]
                         $currentCommit.Details.Bug = $bugNumber
                         $currentCommit.Details.BugURL = "$bugUrlBase$bugNumber"
@@ -90,7 +91,7 @@ function Set-ReleaseNotes2 {
                 }
             }
 
-            # Match (BugXXXX)
+            # Inline bug like "(Bug12345)"
             if ($currentCommit.Details.Message -match "(?i)\(Bug(?<Bug>\d+)\)") {
                 $bugNumber = $matches["Bug"]
                 $currentCommit.Details.Bug = $bugNumber
@@ -98,7 +99,7 @@ function Set-ReleaseNotes2 {
                 $currentCommit.Details.Message = $currentCommit.Details.Message -replace "(?i)\(Bug\d+\)", ""
             }
 
-            # NEW: Match roles anywhere in the text (e.g., "roles: xyz Location: abc")
+            # Match roles anywhere in the entry
             elseif ($entry -match "(?im)\broles?\s*:\s*(?<Roles>[^\n\r]+)") {
                 $currentCommit.Details.Roles = ($matches["Roles"] -split "[,\s]+" | Where-Object { $_ -ne "" }) | ForEach-Object { $_.Trim() }
             }
@@ -201,4 +202,3 @@ function Set-ReleaseNotes2 {
         Copy-Item -Path "C:\software_report.md" -Destination "C:\$($Config).md"
     }
 }
-
