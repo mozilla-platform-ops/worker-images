@@ -73,9 +73,10 @@ function Set-ReleaseNotes2 {
                 $currentCommit.Details.Date = $formattedDate
             }
 
-            if ($entry -match "(?mi)^(?<FullMessage>[A-Z]+: Jira:[A-Za-z0-9-]+(?: Bug\d+)? MSG[:\s]+.+)$") {
-                $fullMessage = $matches["FullMessage"]
-                if ($fullMessage -match "^(?i)(?<Type>[A-Z]+): Jira:(?<Jira>[A-Za-z0-9-]+)(?: Bug(?<Bug>\d+))?\s+MSG[:\s]+(?<Message>.+)") {
+            # Robust Jira + MSG + Bug parsing from subject/body line
+            if ($entry -match "(?im)^(?<Line>[A-Z]+:\s*Jira:[A-Za-z0-9-]+.*?MSG[:\s]+.+)$") {
+                $line = $matches["Line"]
+                if ($line -match "^(?i)(?<Type>[A-Z]+):\s*Jira:(?<Jira>[A-Za-z0-9-]+).*?(Bug(?<Bug>\d+))?.*?MSG[:\s]+(?<Message>.+)$") {
                     $currentCommit.Details.Type = $matches["Type"]
                     $currentCommit.Details.Jira = $matches["Jira"]
                     $currentCommit.Details.JiraURL = "$jiraUrlBase$($matches["Jira"])"
@@ -89,6 +90,7 @@ function Set-ReleaseNotes2 {
                 }
             }
 
+            # Match inline (BugXXXX) at the end of the message
             if ($currentCommit.Details.Message -match "(?i)\(Bug(?<Bug>\d+)\)") {
                 $bugNumber = $matches["Bug"]
                 $currentCommit.Details.Bug = $bugNumber
@@ -96,7 +98,7 @@ function Set-ReleaseNotes2 {
                 $currentCommit.Details.Message = $currentCommit.Details.Message -replace "(?i)\(Bug\d+\)", ""
             }
 
-            # Match 'Roles:' or 'roles:' with flexible spacing
+            # Case-insensitive role parsing with flexible spacing
             elseif ($entry -match "(?im)^roles?\s*:\s*(?<Roles>.+)") {
                 $currentCommit.Details.Roles = ($matches["Roles"] -split ",") | ForEach-Object { $_.Trim() }
             }
