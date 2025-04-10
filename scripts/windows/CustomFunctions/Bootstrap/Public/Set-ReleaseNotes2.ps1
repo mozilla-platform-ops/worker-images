@@ -73,13 +73,19 @@ function Set-ReleaseNotes2 {
                 $currentCommit.Details.Date = $formattedDate
             }
 
-            if ($entry -match "(?mi)^(?<FullMessage>[A-Z]+: Jira:[A-Za-z0-9-]+ MSG: .+)$") {
+            if ($entry -match "(?mi)^(?<FullMessage>[A-Z]+: Jira:[A-Za-z0-9-]+(?: Bug\d+)? MSG[:\s]+.+)$") {
                 $fullMessage = $matches["FullMessage"]
-                if ($fullMessage -match "^(?i)(?<Type>[A-Z]+): Jira:(?<Jira>[A-Za-z0-9-]+) MSG: (?<Message>.+)") {
+                if ($fullMessage -match "^(?i)(?<Type>[A-Z]+): Jira:(?<Jira>[A-Za-z0-9-]+)(?: Bug(?<Bug>\d+))?\s+MSG[:\s]+(?<Message>.+)") {
                     $currentCommit.Details.Type = $matches["Type"]
                     $currentCommit.Details.Jira = $matches["Jira"]
                     $currentCommit.Details.JiraURL = "$jiraUrlBase$($matches["Jira"])"
                     $currentCommit.Details.Message = "$($currentCommit.Details.Type) - $($matches["Message"])"
+
+                    if ($matches["Bug"]) {
+                        $bugNumber = $matches["Bug"]
+                        $currentCommit.Details.Bug = $bugNumber
+                        $currentCommit.Details.BugURL = "$bugUrlBase$bugNumber"
+                    }
                 }
             }
 
@@ -88,8 +94,11 @@ function Set-ReleaseNotes2 {
                 $currentCommit.Details.Bug = $bugNumber
                 $currentCommit.Details.BugURL = "$bugUrlBase$bugNumber"
                 $currentCommit.Details.Message = $currentCommit.Details.Message -replace "(?i)\(Bug\d+\)", ""
-            } elseif ($entry -match "(?i)^Roles: (?<Roles>.+)") {
-                $currentCommit.Details.Roles = ($matches["Roles"] -split ", ") | ForEach-Object { $_.Trim() }
+            }
+
+            # Match 'Roles:' or 'roles:' with flexible spacing
+            elseif ($entry -match "(?im)^roles?\s*:\s*(?<Roles>.+)") {
+                $currentCommit.Details.Roles = ($matches["Roles"] -split ",") | ForEach-Object { $_.Trim() }
             }
         }
     }
@@ -102,20 +111,8 @@ function Set-ReleaseNotes2 {
     Set-MarkdownPSModule
 
     $OSBuild = Get-OSVersionMarkDown
-    if ($null -eq $OSBuild) {
-        Write-Log -message ('{0} :: Unable to find OSBuild - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
-    }
-
     $OSVersionExtended = Get-OSVersionExtended
-    if ($null -eq $OSVersionExtended) {
-        Write-Log -message ('{0} :: Unable to find OSVersionExtended - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
-    }
-
     $OSVersion = Get-OSVersion
-    if ($null -eq $OSVersion) {
-        Write-Log -message ('{0} :: Unable to find OSVersion - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
-    }
-
     $InstalledSoftware = Get-InstalledSoftware | Where-Object {
         ($psitem.DisplayName -match "\D") -and ($null -ne $psitem.DisplayVersion)
     }
@@ -126,31 +123,24 @@ function Set-ReleaseNotes2 {
     $InstalledSoftware_NotMicrosoft = $InstalledSoftware | Where-Object {
         $PSItem.Publisher -notmatch "Microsoft"
     } | ForEach-Object {
-        [PSCustomObject]@{
-            Name    = $PSItem.DisplayName
-            Version = $PSItem.DisplayVersion
-        }
-    } | Sort-Object -Property Name | Sort-Object Name, Version | Group-Object Name, Version | ForEach-Object { $_.Group[0] }
+        [PSCustomObject]@{ Name = $PSItem.DisplayName; Version = $PSItem.DisplayVersion }
+    } | Sort-Object Name, Version | Group-Object Name, Version | ForEach-Object { $_.Group[0] }
 
     $InstalledSoftware_Microsoft = $InstalledSoftware | Where-Object {
         $PSItem.Publisher -match "Microsoft"
     } | ForEach-Object {
-        [PSCustomObject]@{
-            Name    = $PSItem.DisplayName
-            Version = $PSItem.DisplayVersion
-        }
-    } | Sort-Object -Property Name | Sort-Object Name, Version | Group-Object Name, Version | ForEach-Object { $_.Group[0] }
+        [PSCustomObject]@{ Name = $PSItem.DisplayName; Version = $PSItem.DisplayVersion }
+    } | Sort-Object Name, Version | Group-Object Name, Version | ForEach-Object { $_.Group[0] }
 
     $markdown = ""
-
     switch -Wildcard ($OSVersion) {
-        "*win_10_*" { $OSHeader = "Windows 10" }
-        "*win_11_*" { $OSHeader = "Windows 11" }
-        "*win_2022_*" { $OSHeader = "Windows 2022" }
-        default { $null }
+        "*win_10_*"  { $OSHeader = "Windows 10" }
+        "*win_11_*"  { $OSHeader = "Windows 11" }
+        "*win_2022_*"{ $OSHeader = "Windows 2022" }
+        default      { $null }
     }
 
-    $Header = $OSHeader + " Image Build " + $Version
+    $Header = "$OSHeader Image Build $Version"
     $markdown += New-MDHeader -Text $Header -Level 1
     $markdown += "`n"
 
@@ -175,54 +165,35 @@ function Set-ReleaseNotes2 {
         if ($commit.Details.Bug -ne "") {
             $markdown += "	**Bug:** [$($commit.Details.Bug)]($($commit.Details.BugURL))`n"
         }
-        $markdown += "	**Date:** $($commit.Details.Date)`n"
-        $markdown += "`n`n"
+        $markdown += "	**Date:** $($commit.Details.Date)`n`n"
     }
 
     $markdown += New-MDHeader "Software Bill of Materials" -Level 2
     $markdown += New-MDHeader "Mozilla Build" -Level 2
     $markdown += "`n"
-
-    $lines2 = @("Find more information about Mozilla Build on [Wiki](https://wiki.mozilla.org/MozillaBuild#Technical_Details)")
-    $markdown += New-MDAlert -Lines $lines2 -Style Important
-
-    $lines3 = @("Mozilla Build: $($mozillabuild.custom_win_mozbld_version)")
-    $markdown += New-MDList -Lines $lines3 -Style Unordered
-
+    $markdown += New-MDAlert -Lines @("Find more information about Mozilla Build on [Wiki](https://wiki.mozilla.org/MozillaBuild#Technical_Details)") -Style Important
+    $markdown += New-MDList -Lines @("Mozilla Build: $($mozillabuild.custom_win_mozbld_version)") -Style Unordered
     $markdown += New-MDHeader "Taskcluster Packages Installed" -Level 3
     $markdown += "`n"
     $markdown += Show-TaskclusterBinaries | New-MDTable
     $markdown += "`n"
-
     $markdown += New-MDHeader "Python Packages" -Level 3
     $markdown += "`n"
     $markdown += $pythonPackages | New-MDTable
     $markdown += "`n"
-
     $markdown += New-MDHeader "Installed Software (Not Microsoft)" -Level 2
     $markdown += "`n"
     $markdown += $InstalledSoftware_NotMicrosoft | New-MDTable
     $markdown += "`n"
-
     $markdown += New-MDHeader "Installed Software (Microsoft)" -Level 2
     $markdown += "`n"
     $markdown += $InstalledSoftware_Microsoft | New-MDTable
 
     $markdown | Out-File "C:\software_report.md"
 
-    $markdown_content = Get-Content -Path "C:\software_report.md"
-    if ($null -eq $markdown_content) {
-        Write-Log -message ('{0} :: Unable to find software_report.md - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
-    }
-
     Get-Content -Path "C:\software_report.md"
 
-    if (-Not (Test-Path "C:\software_report.md")) {
-        Write-Log -message ('{0} :: Unable to find software_report.md after copy-item - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
-    }
-
     if ($Version) {
-        Write-Log -message ('{0} :: Copying software_report.md to {1} - {2:o}' -f $($MyInvocation.MyCommand.Name), "(C:\$($Config)-$($Version).md)", (Get-Date).ToUniversalTime()) -severity 'DEBUG'
         Copy-Item -Path "C:\software_report.md" -Destination "C:\$($Config)-$($Version).md"
     } else {
         Copy-Item -Path "C:\software_report.md" -Destination "C:\$($Config).md"
