@@ -27,7 +27,7 @@ function Set-ReleaseNotes2 {
     $bugUrlBase = "https://bugzilla.mozilla.org/show_bug.cgi?id="
 
     $sinceDate = git show -s --format="%ad" $LastDeployID --date=format:"%Y-%m-%d"
-    $commitLog = git log "$LastDeployID^..$DeploymentId" --pretty=format:"Commit: %H`nAuthor: %an`nDate: %ad`n`n%s`n%b`n---" --all --since="$sinceDate"
+    $commitLog = git log --pretty=format:"Commit: %H`nAuthor: %an`nDate: %ad`n`n%s`n%b`n---" --all --since="$sinceDate"
 
     $commitEntries = $commitLog -split "(?=Commit: )"
     $commitObjects = @()
@@ -90,7 +90,7 @@ function Set-ReleaseNotes2 {
                 }
             }
 
-            # Match inline (BugXXXX) at the end of the message
+            # Match (BugXXXX)
             if ($currentCommit.Details.Message -match "(?i)\(Bug(?<Bug>\d+)\)") {
                 $bugNumber = $matches["Bug"]
                 $currentCommit.Details.Bug = $bugNumber
@@ -98,9 +98,9 @@ function Set-ReleaseNotes2 {
                 $currentCommit.Details.Message = $currentCommit.Details.Message -replace "(?i)\(Bug\d+\)", ""
             }
 
-            # Case-insensitive role parsing with flexible spacing
-            elseif ($entry -match "(?im)^roles?\s*:\s*(?<Roles>.+)") {
-                $currentCommit.Details.Roles = ($matches["Roles"] -split ",") | ForEach-Object { $_.Trim() }
+            # NEW: Match roles anywhere in the text (e.g., "roles: xyz Location: abc")
+            elseif ($entry -match "(?im)\broles?\s*:\s*(?<Roles>[^\n\r]+)") {
+                $currentCommit.Details.Roles = ($matches["Roles"] -split "[,\s]+" | Where-Object { $_ -ne "" }) | ForEach-Object { $_.Trim() }
             }
         }
     }
