@@ -419,7 +419,7 @@ build {
       "client_id=${var.client_id}",
       "tenant_id=${var.tenant_id}",
       "application_id=${var.application_id}",
-      "notes=${env("PKR_VAR_notes")}"
+      "notes=${env("PKR_VAR_notes")}",
       "sharedimage_version=${var.sharedimage_version}"
     ]
     inline = [
