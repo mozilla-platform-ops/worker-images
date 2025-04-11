@@ -29,7 +29,7 @@ vm:
     sourceRepository: ronin_puppet
     sourceBranch: "rel_notes_testing"
     deploymentId: "898006e"
-    lastdeployId: "9fe56ce"
+    lastdeployId: "0511fe5"
     managed_by: packer
 notes:
   - "No Previous Roll Backs"
