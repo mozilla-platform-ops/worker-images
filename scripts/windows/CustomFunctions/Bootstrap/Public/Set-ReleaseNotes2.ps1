@@ -38,7 +38,11 @@ function Set-ReleaseNotes2 {
         if ($entry -eq "") { continue }
 
         if ($entry -match "(?i)^Commit: (?<Hash>\w{40})") {
-            if ($null -ne $currentCommit -and ($Config -eq "" -or $currentCommit.Details.Roles -icontains $Config)) {
+            if ($null -ne $currentCommit -and (
+                $Config -eq "" -or 
+                $currentCommit.Details.Roles -icontains $Config -or
+                ($Config -match "win" -and $currentCommit.Details.Roles -icontains "all-win")
+            )) {
                 $commitObjects += $currentCommit
             }
 
@@ -73,7 +77,6 @@ function Set-ReleaseNotes2 {
                 $currentCommit.Details.Date = $formattedDate
             }
 
-            # Match Jira and MSG line
             if ($entry -match "(?im)^(?<Line>[A-Z]+:\s*Jira:[A-Za-z0-9-]+.*?MSG[:\s]+.+)$") {
                 $line = $matches["Line"]
                 if ($line -match "^(?i)(?<Type>[A-Z]+):\s*Jira:(?<Jira>[A-Za-z0-9-]+).*?MSG[:\s]+(?<Message>.+)$") {
@@ -82,7 +85,6 @@ function Set-ReleaseNotes2 {
                     $currentCommit.Details.JiraURL = "$jiraUrlBase$($matches["Jira"])"
                     $currentCommit.Details.Message = "$($currentCommit.Details.Type) - $($matches["Message"])"
 
-                    # NEW: Extract bug from anywhere in the line
                     if ($line -match "(?i)Bug(?<Bug>\d{4,})") {
                         $bugNumber = $matches["Bug"]
                         $currentCommit.Details.Bug = $bugNumber
@@ -91,7 +93,6 @@ function Set-ReleaseNotes2 {
                 }
             }
 
-            # Inline bug like "(Bug12345)"
             if ($currentCommit.Details.Message -match "(?i)\(Bug(?<Bug>\d+)\)") {
                 $bugNumber = $matches["Bug"]
                 $currentCommit.Details.Bug = $bugNumber
@@ -99,14 +100,17 @@ function Set-ReleaseNotes2 {
                 $currentCommit.Details.Message = $currentCommit.Details.Message -replace "(?i)\(Bug\d+\)", ""
             }
 
-            # Match roles anywhere in the entry
             elseif ($entry -match "(?im)\broles?\s*:\s*(?<Roles>[^\n\r]+)") {
                 $currentCommit.Details.Roles = ($matches["Roles"] -split "[,\s]+" | Where-Object { $_ -ne "" }) | ForEach-Object { $_.Trim() }
             }
         }
     }
 
-    if ($null -ne $currentCommit -and ($Config -eq "" -or $currentCommit.Details.Roles -icontains $Config)) {
+    if ($null -ne $currentCommit -and (
+        $Config -eq "" -or 
+        $currentCommit.Details.Roles -icontains $Config -or
+        ($Config -match "win" -and $currentCommit.Details.Roles -icontains "all-win")
+    )) {
         $commitObjects += $currentCommit
     }
 
