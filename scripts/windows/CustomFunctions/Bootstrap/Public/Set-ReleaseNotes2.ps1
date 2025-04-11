@@ -26,8 +26,7 @@ function Set-ReleaseNotes2 {
     $jiraUrlBase = "https://mozilla-hub.atlassian.net/browse/"
     $bugUrlBase = "https://bugzilla.mozilla.org/show_bug.cgi?id="
 
-    $sinceDate = git show -s --format="%ad" $LastDeployID --date=format:"%Y-%m-%d"
-    $commitLog = git log --pretty=format:"Commit: %H`nAuthor: %an`nDate: %ad`n`n%s`n%b`n---" --all --since="$sinceDate"
+    $commitLog = git log "$LastDeployID..$DeploymentId" --pretty=format:"Commit: %H`nAuthor: %an`nDate: %ad`n`n%s`n%b`n---"
 
     $commitEntries = $commitLog -split "(?=Commit: )"
     $commitObjects = @()
