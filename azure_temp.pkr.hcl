@@ -419,12 +419,13 @@ build {
       "client_id=${var.client_id}",
       "tenant_id=${var.tenant_id}",
       "application_id=${var.application_id}",
+      "notes=${env("PKR_VAR_notes")}"
       "sharedimage_version=${var.sharedimage_version}"
     ]
     inline = [
       "Import-Module BootStrap -Force",
       "Set-MarkdownPSModule",
-      "write-host Set-ReleaseNotes2 -Config $ENV:config -Version $ENV:sharedimage_version -Organization $ENV:src_organisation -Branch $ENV:src_Branch -Repository $ENV:src_Repository -DeploymentId $ENV:deploymentId -LastDeployID $ENV:lastdeployId",
+      "write-host Set-ReleaseNotes2 -Config $ENV:config -Version $ENV:sharedimage_version -Organization $ENV:src_organisation -Branch $ENV:src_Branch -Repository $ENV:src_Repository -DeploymentId $ENV:deploymentId -LastDeployID $ENV:lastdeployId -Notes @($env:notes -split \"``n\")",
       "Set-ReleaseNotes2 -Config $ENV:config -Version $ENV:sharedimage_version -Organization $ENV:src_organisation -Branch $ENV:src_Branch -Repository $ENV:src_Repository -DeploymentId $ENV:deploymentId -LastDeployID $ENV:lastdeployId" 
     ]
   }

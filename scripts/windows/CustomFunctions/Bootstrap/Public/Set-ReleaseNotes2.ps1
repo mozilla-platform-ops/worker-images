@@ -7,7 +7,8 @@ function Set-ReleaseNotes2 {
         [String] $Organization,
         [String] $Repository,
         [String] $LastDeployID,
-        [String] $DeploymentId
+        [String] $DeploymentIid,
+        [String[]] $Notes
     )
 
     $repoUrl = "https://github.com/$Organization/$Repository"
@@ -159,6 +160,13 @@ function Set-ReleaseNotes2 {
         "Branch: $($Branch)",
         "DeploymentId: $($DeploymentId)"
     )
+
+    if ($Notes -and $Notes.Count -gt 0) {
+        $markdown += New-MDHeader "Notes" -Level 2
+        $markdown += "`n"
+        $markdown += New-MDList -Lines $Notes -Style Unordered
+        $markdown += "`n"
+    }
 
     $markdown += New-MDList -Lines $lines -Style Unordered
     $markdown += New-MDHeader "Change Log" -Level 2
