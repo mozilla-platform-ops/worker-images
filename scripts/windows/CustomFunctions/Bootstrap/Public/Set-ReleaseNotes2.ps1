@@ -7,7 +7,7 @@ function Set-ReleaseNotes2 {
         [String] $Organization,
         [String] $Repository,
         [String] $LastDeployID,
-        [String] $DeploymentIid,
+        [String] $DeploymentId,
         [String[]] $Notes
     )
 
