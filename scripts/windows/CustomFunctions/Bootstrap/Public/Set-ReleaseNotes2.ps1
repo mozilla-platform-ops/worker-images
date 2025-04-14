@@ -161,14 +161,17 @@ function Set-ReleaseNotes2 {
         "DeploymentId: $($DeploymentId)"
     )
 
+    $markdown += New-MDList -Lines $lines -Style Unordered
+
+    # ✅ Notes section goes AFTER metadata
     if ($Notes -and $Notes.Count -gt 0) {
         $markdown += New-MDHeader "Notes" -Level 2
         $markdown += "`n"
-        $markdown += New-MDList -Lines $Notes -Style Unordered
+        $cleanNotes = $Notes | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" }
+        $markdown += New-MDList -Lines $cleanNotes -Style Unordered
         $markdown += "`n"
     }
 
-    $markdown += New-MDList -Lines $lines -Style Unordered
     $markdown += New-MDHeader "Change Log" -Level 2
 
     foreach ($commit in $commitObjects) {
