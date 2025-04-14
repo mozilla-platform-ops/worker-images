@@ -11,6 +11,24 @@ function Set-ReleaseNotes2 {
         [String[]] $Notes
     )
 
+    function Convert-NoteReferencesToLinks {
+        param (
+            [string] $Note,
+            [string] $JiraUrlBase,
+            [string] $BugUrlBase
+        )
+
+        $noteProcessed = $Note
+
+        # Replace Jira:ABC-123 with a link
+        $noteProcessed = $noteProcessed -replace "(?i)Jira:([A-Za-z0-9-]+)", 'Jira: [${1}](' + $JiraUrlBase + '${1})'
+
+        # Replace Bug:123456 or Bug123456 with a link
+        $noteProcessed = $noteProcessed -replace "(?i)Bug[:]?(\d+)", 'Bug: [${1}](' + $BugUrlBase + '${1})'
+
+        return $noteProcessed
+    }
+
     $repoUrl = "https://github.com/$Organization/$Repository"
     $repoPath = "C:\Ronin"
 
@@ -28,7 +46,6 @@ function Set-ReleaseNotes2 {
     $bugUrlBase = "https://bugzilla.mozilla.org/show_bug.cgi?id="
 
     $commitLog = git log "$LastDeployID..$DeploymentId" --pretty=format:"Commit: %H`nAuthor: %an`nDate: %ad`n`n%s`n%b`n---"
-
     $commitEntries = $commitLog -split "(?=Commit: )"
     $commitObjects = @()
     $currentCommit = $null
@@ -163,11 +180,16 @@ function Set-ReleaseNotes2 {
 
     $markdown += New-MDList -Lines $lines -Style Unordered
 
-    # ✅ Notes section goes AFTER metadata
+    # NOTES
     if ($Notes -and $Notes.Count -gt 0) {
         $markdown += New-MDHeader "Notes" -Level 2
         $markdown += "`n"
-        $cleanNotes = $Notes | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" }
+
+        $cleanNotes = $Notes -join "`n" -split "`r?\n" |
+            ForEach-Object { $_.Trim() } |
+            Where-Object { $_ -ne "" } |
+            ForEach-Object { Convert-NoteReferencesToLinks -Note $_ -JiraUrlBase $jiraUrlBase -BugUrlBase $bugUrlBase }
+
         $markdown += New-MDList -Lines $cleanNotes -Style Unordered
         $markdown += "`n"
     }

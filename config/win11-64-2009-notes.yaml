@@ -33,7 +33,8 @@ vm:
     managed_by: packer
 notes:
   - "No Previous Roll Backs"
-  - "This is a TEST for previous notes"
+  - "This is a TEST for previous notes Bug:1953982"
+  - "Another Test. Jira:RELOPS-1266" 
 tests:
   - microsoft_tools_tester.tests.ps1
   - disable_services.tests.ps1
