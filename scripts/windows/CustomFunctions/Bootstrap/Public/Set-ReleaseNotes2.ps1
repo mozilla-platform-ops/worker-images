@@ -20,11 +20,15 @@ function Set-ReleaseNotes2 {
 
         $noteProcessed = $Note
 
-        # Replace Jira:ABC-123 with a link
-        $noteProcessed = $noteProcessed -replace "(?i)Jira:([A-Za-z0-9-]+)", 'Jira: [${1}](' + $JiraUrlBase + '${1})'
+        # Replace Jira:RELOPS-1234
+        $noteProcessed = [regex]::Replace($noteProcessed, "(?i)Jira:([A-Za-z0-9-]+)", {
+            "Jira: [$($args[0].Groups[1].Value)]($JiraUrlBase$($args[0].Groups[1].Value))"
+        })
 
-        # Replace Bug:123456 or Bug123456 with a link
-        $noteProcessed = $noteProcessed -replace "(?i)Bug[:]?(\d+)", 'Bug: [${1}](' + $BugUrlBase + '${1})'
+        # Replace Bug:123456 or Bug123456
+        $noteProcessed = [regex]::Replace($noteProcessed, "(?i)Bug:?\s?(\d+)", {
+            "Bug: [$($args[0].Groups[1].Value)]($BugUrlBase$($args[0].Groups[1].Value))"
+        })
 
         return $noteProcessed
     }
