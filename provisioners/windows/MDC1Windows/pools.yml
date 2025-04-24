@@ -129,12 +129,13 @@ pools:
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "RELOPS-1213"
-    hash: "cfeb125"
+    hash: "eee07cf"
     secret_date: "03-26-2025"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
     - nuc13-001
     - nuc13-002
+    - nuc13-003
   - name: "win11-64-24h2-hw-alpha"
     puppet_version: "8.10.0"
     Description: "NUC12 Hardware Performance Staging/Testing Pool"
@@ -146,7 +147,6 @@ pools:
     secret_date: "01-16-2025"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    - nuc13-003
     - nuc13-004
     - nuc13-005
     - nuc13-006
