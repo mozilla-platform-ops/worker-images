@@ -1,4 +1,4 @@
-function Set-ReleaseNotes2 {
+function Set-ReleaseNotes {
     [CmdletBinding()]
     param (
         [String] $Config,
