@@ -43,6 +43,7 @@ function New-AzSharedWorkerImage {
     $ENV:PKR_VAR_source_organization = $YAML.vm.tags["sourceOrganization"]
     $ENV:PKR_VAR_deployment_id = $YAML.vm.tags["deploymentId"]
     $ENV:PKR_VAR_bootstrap_script = $YAML.azure["bootstrapscript"]
+    $ENV:PKR_VAR_lastdeploy_id = $YAML.vm.tags["lastdeployId"]
     $ENV:PKR_VAR_gallery_name = $YAML.sharedimage["gallery_name"]
     $ENV:PKR_VAR_image_name = $YAML.sharedimage["image_name"]
     $ENV:PKR_VAR_sharedimage_version = $YAML.sharedimage["image_version"]
@@ -54,6 +55,8 @@ function New-AzSharedWorkerImage {
     $ENV:PKR_VAR_oidc_request_url = $oidc_request_url
     $ENV:PKR_VAR_oidc_request_token = $oidc_request_token
     $ENV:PKR_VAR_worker_pool_id = $YAML.vm.tags["worker_pool_id"]
+    #$ENV:PKR_VAR_notes = $YAML.notes
+    $ENV:PKR_VAR_notes = $YAML.notes -join "`n"
     switch -Wildcard ($key) {
         "*alpha2*" {
             $PackerForceBuild = $true
@@ -63,6 +66,10 @@ function New-AzSharedWorkerImage {
             $PackerForceBuild = $true
             $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-alpha' -f $YAML.vm.tags["worker_pool_id"], $ENV:PKR_VAR_image_sku)
         }
+        "*notes*" {
+            $PackerForceBuild = $true
+            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-alpha' -f $YAML.vm.tags["worker_pool_id"], $ENV:PKR_VAR_image_sku)
+        }        
         "*beta*" {
             $PackerForceBuild = $true
             $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-beta' -f $YAML.vm.tags["worker_pool_id"], $ENV:PKR_VAR_image_sku)
@@ -78,10 +85,14 @@ function New-AzSharedWorkerImage {
     }
     Write-Host "Building $($ENV:PKR_VAR_managed_image_name) in $($ENV:PKR_VAR_temp_resource_group_name)"
     packer init azure.pkr.hcl
+    Write-Host CHECK
+    Write-Host $ENV:PKR_VAR_lastdeploy_id
+    Write-Host Are there notes
+    Write-Host  $ENV:PKR_VAR_notes
     if ($PackerForceBuild) {
         packer build --only azure-arm.sig -force azure.pkr.hcl
     }
     else {
-        packer build --only azure-arm.sig azure.pkr.hcl
+        packer build --only azure-arm.sig azure_temp.pkr.hcl
     }
 }
