@@ -7,7 +7,7 @@ image:
 sharedimage:
   gallery_name: "win11_a64_24h2_tester"
   image_name: "win11_a64_24h2_tester"
-  image_version: 1.0.3
+  image_version: 1.0.4
 azure:
   managed_image_resource_group_name: rg-packer-worker-images
   managed_image_storage_account_type: Standard_LRS
@@ -24,7 +24,7 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: windows
-    deploymentId: "7769a4b"
+    deploymentId: "389b2fc"
     managed_by: packer
 tests:
   - microsoft_tools_tester.tests.ps1
