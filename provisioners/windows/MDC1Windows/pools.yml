@@ -53,18 +53,6 @@ pools:
     - t-w1064-ms-178
     - t-w1064-ms-179
     - t-w1064-ms-180
-  - name: "win11-64-2009-hw-ref"
-    puppet_version: "8.5.1"
-    Description: "NUC12 Hardware Reference Pool"
-    image: "win11-2009-NUC-05-06-2024"
-    src_Organisation: "mozilla-platform-ops"
-    src_Repository: "ronin_puppet"
-    src_Branch: "windows"
-    hash: "6a02131"
-    secret_date: "05-13-2024"
-    domain_suffix: "wintest2.releng.mdc1.mozilla.com"
-    nodes:
-    - t-nuc12-012
   - name: "win11-64-24h2-hw-ref"
     puppet_version: "8.10.0"
     Description: "NUC12 Hardware Reference Staging/Testing Pool"
@@ -85,6 +73,7 @@ pools:
     - t-nuc12-009
     - t-nuc12-010
     - t-nuc12-011
+    - t-nuc12-012
     - t-nuc12-013
     - t-nuc12-014
     - t-nuc12-015
