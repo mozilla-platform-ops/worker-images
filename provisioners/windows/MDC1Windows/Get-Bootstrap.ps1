@@ -5,35 +5,35 @@ function Write-Log {
         [string] $source = 'BootStrap',
         [string] $logName = 'Application'
     )
+
+    # Ensure log folder exists
+    $logFolder = "C:\logs"
+    if (-not (Test-Path $logFolder)) {
+        New-Item -Path $logFolder -ItemType Directory -Force
+    }
+
+    $logFile = "$logFolder\get-bootstrap.log"
+    $timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+    $logEntry = "$timestamp [$severity] $message"
+
+    Add-Content -Path $logFile -Value $logEntry
+
     if (!([Diagnostics.EventLog]::Exists($logName)) -or !([Diagnostics.EventLog]::SourceExists($source))) {
         New-EventLog -LogName $logName -Source $source
     }
+
     switch ($severity) {
-        'DEBUG' {
-            $entryType = 'SuccessAudit'
-            $eventId = 2
-            break
-        }
-        'WARN' {
-            $entryType = 'Warning'
-            $eventId = 3
-            break
-        }
-        'ERROR' {
-            $entryType = 'Error'
-            $eventId = 4
-            break
-        }
-        default {
-            $entryType = 'Information'
-            $eventId = 1
-            break
-        }
+        'DEBUG' { $entryType = 'SuccessAudit'; $eventId = 2 }
+        'WARN'  { $entryType = 'Warning';      $eventId = 3 }
+        'ERROR' { $entryType = 'Error';        $eventId = 4 }
+        default { $entryType = 'Information';  $eventId = 1 }
     }
+
     Write-EventLog -LogName $logName -Source $source -EntryType $entryType -Category 0 -EventID $eventId -Message $message
+
     if ([Environment]::UserInteractive) {
         $fc = @{ 'Information' = 'White'; 'Error' = 'Red'; 'Warning' = 'DarkYellow'; 'SuccessAudit' = 'DarkGray' }[$entryType]
-        Write-Host  -object $message -ForegroundColor $fc
+        Write-Host -Object $message -ForegroundColor $fc
     }
 }
 
@@ -274,7 +274,9 @@ function Set-SSH {
 
         if (-not $success) {
             Write-Log -message ('{0} :: OpenSSH installation failed after 3 attempts. Setting PXE boot.' -f $($MyInvocation.MyCommand.Name)) -severity 'ERROR'
-            Set-PxeBoot
+            #Set-PxeBoot
+            ## Can be removed after troubleshooting
+            Pause
         }
     } else {
         Write-Log -message ('{0} :: SSHd is already installed.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
