@@ -365,7 +365,8 @@ Set-WinRM
 Set-SSH
 
 ## Install chocolatey
-Install-Choco
+## Commented out for Troubleshooting
+## Install-Choco
 
 $local_bootstrap = "C:\bootstrap\bootstrap.ps1"
 
