@@ -1,6 +1,7 @@
 ---
 pools:
   - name: "win10-64-2009-hw-alpha"
+    dev: "RELOPS-1469"
     puppet_version: "8.10.0"
     Description: "Moonshot Win 10 hardware"
     image: "win10-2009-MS-11-05-2024"

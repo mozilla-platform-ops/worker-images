@@ -308,14 +308,73 @@ function Install-Choco {
     param (
         
     )
+
+    if (-not $env:TEMP) {
+        $env:TEMP = Join-Path $env:SystemDrive -ChildPath 'temp'
+    }
     
-    ## Install chocolatey here
-    Set-ExecutionPolicy Unrestricted -Force -ErrorAction SilentlyContinue
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+    $chocoTempDir = Join-Path $env:TEMP -ChildPath "chocolatey"
+    $tempDir = Join-Path $chocoTempDir -ChildPath "chocoInstall"
+    
+    if (-not (Test-Path $tempDir -PathType Container)) {
+        $null = New-Item -Path $tempDir -ItemType Directory
+    }
+    
+    #endregion Setup
+    
+    #region Download & Extract Chocolatey
+    
+    $file = Join-Path $tempDir "chocolatey.zip"
+    $ChocolateyDownloadUrl = "https://ronin-puppet-package-repo.s3.us-west-2.amazonaws.com/Windows/chocolatey.zip"
+    # If we are passed a valid local path, we do not need to download it.
+    Write-Host "Getting Chocolatey from $ChocolateyDownloadUrl."
+    Invoke-DownloadWithRetry -Url $ChocolateyDownloadUrl -Path $file
+    
+    Write-Host "Extracting $file to $tempDir"
+    Expand-Archive -Path $file -DestinationPath $tempDir -Force
+
+    #endregion Download & Extract Chocolatey
+    
+    #region Install Chocolatey
+    
+    Write-Host "Installing Chocolatey on the local machine"
+    $toolsFolder = Join-Path $tempDir -ChildPath "tools"
+    $chocoInstallPS1 = Join-Path $toolsFolder -ChildPath "chocolateyInstall.ps1"
+    
+    & $chocoInstallPS1
+    
+    Write-Host 'Ensuring Chocolatey commands are on the path'
+    $chocoInstallVariableName = "ChocolateyInstall"
+    $chocoPath = [Environment]::GetEnvironmentVariable($chocoInstallVariableName)
+    
+    if (-not $chocoPath) {
+        $chocoPath = "$env:ALLUSERSPROFILE\Chocolatey"
+    }
+    
+    if (-not (Test-Path ($chocoPath))) {
+        $chocoPath = "$env:PROGRAMDATA\chocolatey"
+    }
+    
+    $chocoExePath = Join-Path $chocoPath -ChildPath 'bin'
+    
+    # Update current process PATH environment variable if it needs updating.
+    if ($env:Path -notlike "*$chocoExePath*") {
+        $env:Path = [Environment]::GetEnvironmentVariable('Path', [System.EnvironmentVariableTarget]::Machine);
+    }
+    
+    Write-Host 'Ensuring chocolatey.nupkg is in the lib folder'
+    $chocoPkgDir = Join-Path $chocoPath -ChildPath 'lib\chocolatey'
+    $nupkg = Join-Path $chocoPkgDir -ChildPath 'chocolatey.nupkg'
+    
+    if (-not (Test-Path $chocoPkgDir -PathType Container)) {
+        $null = New-Item -ItemType Directory -Path $chocoPkgDir
+    }
+    
+    Copy-Item -Path $file -Destination $nupkg -Force -ErrorAction SilentlyContinue
     
     if (-Not (Test-Path "C:\ProgramData\Chocolatey\bin\choco.exe")) {
-        Set-PXE
+        Write-Host "Chocolatey installation failed. Exiting."
+        pause
     }
 }
 
@@ -331,7 +390,7 @@ function Set-PXEWin10 {
         bcdedit /enum firmware > "$tempPath\\firmware.txt"
 
         $fwBootMgr = Select-String -Path "$tempPath\\firmware.txt" -Pattern "{fwbootmgr}"
-        if (!$fwBootMgr){
+        if (!$fwBootMgr) {
             Write-Log -message  ('{0} :: Device is configured for Legacy Boot. Exiting!' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'
             Exit 999
         }
@@ -365,7 +424,6 @@ Set-WinRM
 Set-SSH
 
 ## Install chocolatey
-## Commented out for Troubleshooting
 Install-Choco
 
 $local_bootstrap = "C:\bootstrap\bootstrap.ps1"
