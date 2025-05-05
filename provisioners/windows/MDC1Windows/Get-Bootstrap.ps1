@@ -259,26 +259,10 @@ function Set-SSH {
                 New-Item -ItemType Directory -Path $destinationDirectory -Force
                 Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/main/provisioners/windows/MDC1Windows/ssh/authorized_keys" -Path $authorized_keys
                 Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/main/provisioners/windows/MDC1Windows/ssh/sshd_config" -Path "C:\programdata\ssh\sshd_config"
-                ## Download win32-openssh
-                $win32_openssh = Invoke-DownloadWithRetry "https://github.com/PowerShell/Win32-OpenSSH/releases/download/v9.8.3.0p2-Preview/OpenSSH-Win64-v9.8.3.0.msi"
-                ## Install the server component
-                $install = Start-Process -FilePath msiexec.exe -ArgumentList "/i $win32_openssh /quiet /norestart ADDLOCAL=Server" -Wait -PassThru -NoNewWindow
-                Write-host "win32_openssh install exit code: $($install.ExitCode)"
-                #Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
-                $sshdService = Get-Service -Name ssh* -ErrorAction SilentlyContinue
-                ## Refresh env variable for ssh to work
-                [Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path",[System.EnvironmentVariableTarget]::Machine) + ';' + ${Env:ProgramFiles} + '\OpenSSH', [System.EnvironmentVariableTarget]::Machine)
-                $sshfw = @{
-                    Name        = "AllowSSH"
-                    DisplayName = "Allow SSH"
-                    Description = "Allow SSH traffic on port 22"
-                    Profile     = "Any"
-                    Direction   = "Inbound"
-                    Action      = "Allow"
-                    Protocol    = "TCP"
-                    LocalPort   = 22
-                }
-                New-NetFirewallRule @sshfw
+                Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+                Start-Service sshd
+                Set-Service -Name sshd -StartupType Automatic
+                New-NetFirewallRule -Name "AllowSSH" -DisplayName "Allow SSH" -Description "Allow SSH traffic on port 22" -Profile Any -Direction Inbound -Action Allow -Protocol TCP -LocalPort 22
             }
         }
     }
