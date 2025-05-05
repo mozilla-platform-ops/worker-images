@@ -366,7 +366,7 @@ Set-SSH
 
 ## Install chocolatey
 ## Commented out for Troubleshooting
-## Install-Choco
+Install-Choco
 
 $local_bootstrap = "C:\bootstrap\bootstrap.ps1"
 
