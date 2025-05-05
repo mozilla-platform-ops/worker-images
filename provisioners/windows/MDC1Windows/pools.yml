@@ -2,13 +2,13 @@
 pools:
   - name: "win10-64-2009-hw-alpha"
     puppet_version: "8.10.0"
-    dev: RELOPS-1469
+    dev: RELOPS-1470
     Description: "Moonshot Win 10 hardware"
     image: "win10-2009-MS-11-05-2024"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "windows"
-    hash: "ec82b8a"
+    hash: "6067e68"
     secret_date: "11-07-2024"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
