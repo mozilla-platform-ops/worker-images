@@ -217,17 +217,21 @@ function Set-SSH {
             }
             default {
                 Write-Log -message ('{0} :: Enabling OpenSSH.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
+                $install = Start-Process -FilePath msiexec.exe -ArgumentList "/i $win32_openssh /quiet /norestart ADDLOCAL=Server" -Wait -PassThru -NoNewWindow
+                Write-host "win32_openssh install exit code: $($install.ExitCode)"
                 $destinationDirectory = "C:\users\administrator\.ssh"
                 $authorized_keys = $destinationDirectory + "authorized_keys"
                 New-Item -ItemType Directory -Path $destinationDirectory -Force
                 Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/main/provisioners/windows/MDC1Windows/ssh/authorized_keys" -Path $authorized_keys
-                Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/main/provisioners/windows/MDC1Windows/ssh/sshd_config" -Path "C:\programdata\ssh\sshd_config"
+                ## remove the default sshd_config file
+                $sshd_default_config = Get-ChildItem "$ENV:ProgramFiles\OpenSSH" -ErrorAction SilentlyContinue | Where-Object {$PSItem.Name -match "sshd_config_default"}
+                if ($sshd_default_config) {
+                    Remove-Item -Path $sshd_default_config.FullName -Force -ErrorAction SilentlyContinue
+                }
+                Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/main/provisioners/windows/MDC1Windows/ssh/sshd_config" -Path "$ENV:ProgramFiles\OpenSSH\sshd_config"
                 ## Download win32-openssh
                 $win32_openssh = Invoke-DownloadWithRetry "https://github.com/PowerShell/Win32-OpenSSH/releases/download/v9.8.3.0p2-Preview/OpenSSH-Win64-v9.8.3.0.msi"
                 ## Install the server component
-                $install = Start-Process -FilePath msiexec.exe -ArgumentList "/i $win32_openssh /quiet /norestart ADDLOCAL=Server" -Wait -PassThru -NoNewWindow
-                Write-host "win32_openssh install exit code: $($install.ExitCode)"
-                #Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
                 $sshdService = Get-Service -Name ssh* -ErrorAction SilentlyContinue
                 Write-host "sshdService status: $($sshdService.status)"
                 ## Refresh env variable for ssh to work
