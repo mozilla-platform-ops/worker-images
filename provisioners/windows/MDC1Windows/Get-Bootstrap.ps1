@@ -216,6 +216,13 @@ function Set-SSH {
                 New-NetFirewallRule @sshfw
             }
             default {
+                $sshCapability = Get-WindowsCapability -Online | Where-Object { $_.Name -match "OpenSSH"}
+                foreach ($ssh in $sshCapability) {
+                    if ($ssh.State -eq "Present") {
+                        Write-Log -message ('{0} :: Uninstalling {1}.' -f $($MyInvocation.MyCommand.Name),$ssh.name) -severity 'DEBUG'
+                        Remove-WindowsCapability -Online -Name $ssh.name
+                    }
+                }
                 Write-Log -message ('{0} :: Enabling OpenSSH.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
                 $destinationDirectory = "C:\users\administrator\.ssh"
                 $authorized_keys = $destinationDirectory + "authorized_keys"
