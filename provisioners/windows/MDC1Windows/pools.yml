@@ -98,7 +98,7 @@ pools:
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "RELOPS-1264"
-    hash: "27075fe"
+    hash: "61d1b65"
     secret_date: "03-26-2025"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
