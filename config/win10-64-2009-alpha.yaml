@@ -25,7 +25,7 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: "RELOPS-1264"
-    deploymentId: "c53b171"
+    deploymentId: "966febc"
     managed_by: packer
 tests:
   - microsoft_tools_tester.tests.ps1
