@@ -1,9 +1,7 @@
 Describe "Windows Azure VM Agent" {
     BeforeDiscovery {
-        Write-Host "`n[DEBUG] Loading Hiera from: $($Data.File), WindowsFile: $($Data.WindowsFile)"
-        
-        $Hiera = Get-HieraRoleData -Path $Data.File
-        $WindowsHira = Get-HieraRoleData -Path $Data.WindowsFile
+        $Hiera = $Data.Hiera
+        $WindowsHira = $Data.WindowsHiera
     }
 
     BeforeAll {
@@ -11,7 +9,6 @@ Describe "Windows Azure VM Agent" {
             $_.DisplayName -like "Windows Azure VM Agent*"
         }
 
-        # Determine version with fallback logic
         $VmAgentVersionRaw = $null
 
         if ($Hiera.'win-worker'.azure.vm_agent.version) {
@@ -49,4 +46,3 @@ Describe "Windows Azure VM Agent" {
         ([Version]$Software.DisplayVersion).Revision | Should -Be $ExpectedSoftwareVersion.Revision
     }
 }
-
