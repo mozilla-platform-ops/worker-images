@@ -13,7 +13,6 @@ Function Invoke-RoninTest {
 
     ## Set path to role yaml
     $RolePath = "C:\ronin\data\roles\$Role.yaml"
-    $WinPath = "C:\ronin\data\os\Windows.yaml"
 
     if (-Not (Test-Path $RolePath)) {
         Write-Host "Unable to find $rolePath"
@@ -56,7 +55,6 @@ Function Invoke-RoninTest {
     ## Build the container and pass in the hiera key, and pass in just the test names, not the full path(s)
     $Container = New-PesterContainer -Path $tests.FullName -Data @{
         File = $RolePath
-        WindowsFile = $WinPath
     }
     $Configuration = New-PesterConfiguration
     $Configuration.Run.Exit = $true
