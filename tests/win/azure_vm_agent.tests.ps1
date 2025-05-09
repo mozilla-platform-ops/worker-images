@@ -1,11 +1,3 @@
-Param(
-    [String]
-    $File,
-
-    [String]
-    $WindowsFile
-)
-
 BeforeDiscovery {
     $Hiera = Get-HieraRoleData -Path $Data.File
     $WindowsHira = Get-HieraRoleData -Path $Data.WindowsFile
