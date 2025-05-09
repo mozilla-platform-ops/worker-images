@@ -18,7 +18,7 @@ Describe "Windows Azure VM Agent" {
         } elseif ($Hiera.'win-worker'.variant.azure.vm_agent.version) {
             $VmAgentVersionRaw = $Hiera.'win-worker'.variant.azure.vm_agent.version
         } elseif ($Hiera.azure.vm_agent.version) {
-            $VmAgentVersionRaw = $Hiera.azure.vm_agent.version
+            $VmAgentVersionRaw = $Hiera.'windows'.azure.vm_agent.version
         }
 
         if (-not $VmAgentVersionRaw) {
