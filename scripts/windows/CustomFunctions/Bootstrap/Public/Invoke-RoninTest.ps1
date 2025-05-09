@@ -1,19 +1,15 @@
 Function Invoke-RoninTest {
     [CmdletBinding()]
     param (
-        [String]
-        $Role,
-
-        [String]
-        $Config,
-
-        [Switch]
-        $PassThru
+        [String] $Role,
+        [String] $Config,
+        [Switch] $PassThru
     )
 
-    # Read and parse the role and Windows Hiera files
+    # Load role and OS YAML files
     $RolePath = "C:\ronin\data\roles\$Role.yaml"
     $WinPath = "C:\ronin\data\os\Windows.yaml"
+    $ConfigPath = "C:\Config\$Config.yaml"
 
     if (-not (Test-Path $RolePath)) {
         Write-Host "Unable to find $RolePath"
@@ -23,20 +19,17 @@ Function Invoke-RoninTest {
         Write-Host "Unable to find $WinPath"
         exit 1
     }
-
-    $Hiera = ConvertFrom-Yaml (Get-Content -Path $RolePath -Raw)
-    $WindowsHiera = ConvertFrom-Yaml (Get-Content -Path $WinPath -Raw)
-
-    $ConfigPath = "C:\Config\$Config.yaml"
     if (-not (Test-Path $ConfigPath)) {
         Write-Host "Unable to find config: $ConfigPath"
         exit 1
     }
 
+    $Hiera = ConvertFrom-Yaml (Get-Content -Path $RolePath -Raw)
+    $WindowsHiera = ConvertFrom-Yaml (Get-Content -Path $WinPath -Raw)
     $Config_tests = ConvertFrom-Yaml (Get-Content -Path $ConfigPath -Raw)
 
     if ($null -eq $Hiera) {
-        Write-Host "Parsed Hiera data from role is null."
+        Write-Host "Parsed role Hiera is null."
         exit 1
     }
 
@@ -45,11 +38,10 @@ Function Invoke-RoninTest {
         exit 1
     }
 
-    # Load test files
+    # Validate test files
     $tests = foreach ($t in $Config_tests.tests) {
         Get-ChildItem -Path "C:/Tests/$t"
     }
-
     if ($null -eq $tests -or $tests.FullName -contains $null) {
         Write-Host "One or more test files could not be found."
         exit 1
@@ -59,14 +51,35 @@ Function Invoke-RoninTest {
         Write-Host ("Processing tests: {0}" -f $thing)
     }
 
-    # Combine the parsed YAML data into a single hashtable
-    $PesterData = @{
-        Hiera = $Hiera
-        WindowsHiera = $WindowsHiera
+    # Merge: Base = WindowsHiera (fallback), Overlay = Hiera (primary)
+    Function Merge-HashTables {
+        param (
+            [hashtable]$Base,
+            [hashtable]$Overlay
+        )
+        $Result = @{}
+
+        foreach ($key in $Base.Keys) {
+            if ($Base[$key] -is [hashtable] -and $Overlay.ContainsKey($key) -and $Overlay[$key] -is [hashtable]) {
+                $Result[$key] = Merge-HashTables -Base $Base[$key] -Overlay $Overlay[$key]
+            } else {
+                $Result[$key] = $Base[$key]
+            }
+        }
+
+        foreach ($key in $Overlay.Keys) {
+            if (-not $Result.ContainsKey($key)) {
+                $Result[$key] = $Overlay[$key]
+            }
+        }
+
+        return $Result
     }
 
-    # Build and run Pester
-    $Container = New-PesterContainer -Path $tests.FullName -Data $PesterData
+    $CombinedHiera = Merge-HashTables -Base $WindowsHiera -Overlay $Hiera
+
+    # Run Pester
+    $Container = New-PesterContainer -Path $tests.FullName -Data @{ Hiera = $CombinedHiera }
     $Configuration = New-PesterConfiguration
     $Configuration.Run.Exit = $true
     $Configuration.Run.Container = $Container
@@ -74,3 +87,4 @@ Function Invoke-RoninTest {
     $Configuration.Output.Verbosity = "Detailed"
     Invoke-Pester -Configuration $Configuration
 }
+

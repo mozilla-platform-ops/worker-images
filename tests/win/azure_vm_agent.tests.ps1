@@ -1,7 +1,9 @@
 Describe "Windows Azure VM Agent" {
     BeforeDiscovery {
         $Hiera = $Data.Hiera
-        $WindowsHira = $Data.WindowsHiera
+
+        Write-Host "`n[DEBUG] Combined Hiera structure:"
+        $Hiera | ConvertTo-Json -Depth 10 | Write-Host
     }
 
     BeforeAll {
@@ -15,8 +17,8 @@ Describe "Windows Azure VM Agent" {
             $VmAgentVersionRaw = $Hiera.'win-worker'.azure.vm_agent.version
         } elseif ($Hiera.'win-worker'.variant.azure.vm_agent.version) {
             $VmAgentVersionRaw = $Hiera.'win-worker'.variant.azure.vm_agent.version
-        } elseif ($WindowsHira.azure.vm_agent.version) {
-            $VmAgentVersionRaw = $WindowsHira.azure.vm_agent.version
+        } elseif ($Hiera.azure.vm_agent.version) {
+            $VmAgentVersionRaw = $Hiera.azure.vm_agent.version
         }
 
         if (-not $VmAgentVersionRaw) {
@@ -24,6 +26,8 @@ Describe "Windows Azure VM Agent" {
         }
 
         $ExpectedSoftwareVersion = [Version]($VmAgentVersionRaw -split "_")[0]
+
+        Write-Host "Resolved Azure VM Agent version: $VmAgentVersionRaw"
     }
 
     It "Windows Azure VM Agent is installed" {
