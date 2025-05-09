@@ -1,12 +1,14 @@
-BeforeDiscovery {
-    $Hiera = Get-HieraRoleData -Path $Data.File
-    $WindowsHira = Get-HieraRoleData -Path $Data.WindowsFile
-}
-
 Describe "Windows Azure VM Agent" {
+    BeforeDiscovery {
+        Write-Host "`n[DEBUG] Loading Hiera from: $($Data.File), WindowsFile: $($Data.WindowsFile)"
+        
+        $Hiera = Get-HieraRoleData -Path $Data.File
+        $WindowsHira = Get-HieraRoleData -Path $Data.WindowsFile
+    }
+
     BeforeAll {
         $Software = Get-InstalledSoftware | Where-Object {
-            $PSItem.DisplayName -like "Windows Azure VM Agent*"
+            $_.DisplayName -like "Windows Azure VM Agent*"
         }
 
         # Determine version with fallback logic
@@ -21,7 +23,7 @@ Describe "Windows Azure VM Agent" {
         }
 
         if (-not $VmAgentVersionRaw) {
-            throw "Azure VM Agent version could not be found in any provided hiera source."
+            throw "Azure VM Agent version could not be found in any provided Hiera source."
         }
 
         $ExpectedSoftwareVersion = [Version]($VmAgentVersionRaw -split "_")[0]
@@ -47,3 +49,4 @@ Describe "Windows Azure VM Agent" {
         ([Version]$Software.DisplayVersion).Revision | Should -Be $ExpectedSoftwareVersion.Revision
     }
 }
+
