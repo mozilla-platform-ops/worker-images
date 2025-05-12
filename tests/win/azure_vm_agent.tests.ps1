@@ -1,9 +1,6 @@
 Describe "Windows Azure VM Agent" {
     BeforeDiscovery {
         $Hiera = $Data.Hiera
-
-        Write-Host "`n[DEBUG] Combined Hiera structure (truncated):"
-        $Hiera | ConvertTo-Json -Depth 5 | Write-Host
     }
 
     BeforeAll {
@@ -13,7 +10,6 @@ Describe "Windows Azure VM Agent" {
 
         $VmAgentVersionRaw = $null
 
-        # Safely attempt each fallback level
         try {
             $VmAgentVersionRaw = $Hiera.'win-worker'.azure.vm_agent.version
         } catch {}
@@ -33,8 +29,6 @@ Describe "Windows Azure VM Agent" {
         if (-not $VmAgentVersionRaw) {
             throw "Azure VM Agent version could not be found in any provided Hiera source."
         }
-
-        Write-Host "✅ Resolved VM Agent version: $VmAgentVersionRaw"
 
         $ExpectedSoftwareVersion = [Version]($VmAgentVersionRaw -split "_")[0]
     }
