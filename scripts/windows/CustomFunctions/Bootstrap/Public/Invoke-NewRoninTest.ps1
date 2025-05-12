@@ -1,4 +1,4 @@
-Function Invoke-RoninTest {
+Function Invoke-NewRoninTest {
     [CmdletBinding()]
     param (
         [String] $Role,
