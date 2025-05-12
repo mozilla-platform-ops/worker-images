@@ -188,8 +188,8 @@ build {
     expect_disconnect = true
     pause_before = "10s"
     scripts = [
-      "${path.cwd}/scripts/linux/common/install-ops-agent.sh",
-      "${path.cwd}/scripts/linux/common/clean.sh",
+      #"${path.cwd}/scripts/linux/common/install-ops-agent.sh",
+      "${path.cwd}/scripts/linux/common/clean.sh"
     ]
     start_retry_timeout = "30m"
   }
@@ -303,7 +303,7 @@ build {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect = true
     scripts = [
-      "${path.cwd}/scripts/linux/common/install-ops-agent.sh",
+      #"${path.cwd}/scripts/linux/common/install-ops-agent.sh"
       "${path.cwd}/scripts/linux/common/clean.sh",
     ]
     start_retry_timeout = "30m"
@@ -392,8 +392,8 @@ build {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect = true
     scripts = [
-      "${path.cwd}/scripts/linux/common/install-ops-agent.sh",
-      "${path.cwd}/scripts/linux/common/clean.sh",
+      #"${path.cwd}/scripts/linux/common/install-ops-agent.sh",
+      "${path.cwd}/scripts/linux/common/clean.sh"
     ]
     start_retry_timeout = "30m"
   }
