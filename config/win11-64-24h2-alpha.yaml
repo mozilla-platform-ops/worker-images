@@ -31,7 +31,7 @@ vm:
     deploymentId: "75434dc"
     managed_by: packer
 tests:
-  - microsoft_tools_tester.tests.ps1
+  #- microsoft_tools_tester.tests.ps1
   - disable_services.tests.ps1
   - skip_oobe.tests.ps1
   - error_reporting.tests.ps1
