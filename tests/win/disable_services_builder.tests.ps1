@@ -1,13 +1,8 @@
-Param(
-    [String]
-    $File
-)
-
-BeforeDiscovery {
-    $Hiera = Get-HieraRoleData -Path $File
-}
-
 Describe "Disable Services" {
+    BeforeDiscovery {
+        $Hiera = $Data.Hiera
+    }
+
     Context "<_> service" -ForEach @(
         "wsearch",
         "puppet"
