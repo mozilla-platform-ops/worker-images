@@ -39,7 +39,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ env.TARGET_BRANCH }
+          ref: ${{ env.TARGET_BRANCH }}
       - name: Load Authorized Users and Check Access
         shell: pwsh
         run: |
@@ -61,7 +61,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ env.TARGET_BRANCH }
+          ref: ${{ env.TARGET_BRANCH }}
       - name: Azure Login
         uses: azure/login@v2
         with:
@@ -100,7 +100,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ env.TARGET_BRANCH }
+          ref: ${{ env.TARGET_BRANCH }}
       - uses: actions/download-artifact@v4
         with:
           path: sboms
