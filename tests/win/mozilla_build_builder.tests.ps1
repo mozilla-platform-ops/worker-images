@@ -1,14 +1,8 @@
-Param(
-    [String]
-    $File
-)
-
-BeforeDiscovery {
-    $Hiera = Get-HieraRoleData -Path $File
-    C:\mozilla-build\python3\python.exe -m pip freeze --all > C:\requirements.txt
-}
-
 Describe "Mozilla Build - Builder" {
+    BeforeDiscovery {
+        $Hiera = $Data.Hiera
+    }
+
     BeforeAll {
         $software = Get-InstalledSoftware
         $mercurial = $software | Where-Object {
@@ -19,11 +13,115 @@ Describe "Mozilla Build - Builder" {
         }
         $pip_packages = Get-Content C:\requirements.txt
         $Install_Path = "C:\mozilla-build"
-        $hg_ExpectedSoftwareVersion = [Version]$Hiera.'win-worker'.mozilla_build.hg_version
-        $mozillabuild_ExpectedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.version
-        $psutil_ExpectedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.psutil_version
-        $zstandard_ExepctedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.zstandard_version
-        $py3pip_ExpectedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.py3_pip_version
+
+        $hg_ExpectedSoftwareVersion = $null
+
+        try {
+            $hg_ExpectedSoftwareVersion = $Hiera.'win-worker'.hg.version
+        } catch {}
+
+        if (-not $hg_ExpectedSoftwareVersion) {
+            try {
+                $hg_ExpectedSoftwareVersion = $Hiera.'win-worker'.variant.hg.version
+            } catch {}
+        }
+
+        if (-not $hg_ExpectedSoftwareVersion) {
+            try {
+                $hg_ExpectedSoftwareVersion = $Hiera.windows.hg.version
+            } catch {}
+        }
+
+        if (-not $hg_ExpectedSoftwareVersion) {
+            throw "HG version could not be found in any provided Hiera source."
+        }
+                $mozillabuild_ExpectedSoftwareVersion = $null
+
+        try {
+            $mozillabuild_ExpectedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.version
+        } catch {}
+
+        if (-not $mozillabuild_ExpectedSoftwareVersion) {
+            try {
+                $mozillabuild_ExpectedSoftwareVersion = $Hiera.'win-worker'.variant.mozilla_build.version
+            } catch {}
+        }
+
+        if (-not $mozillabuild_ExpectedSoftwareVersion) {
+            try {
+                $mozillabuild_ExpectedSoftwareVersion = $Hiera.windows.mozilla_build.version
+            } catch {}
+        }
+
+        if (-not $mozillabuild_ExpectedSoftwareVersion) {
+            throw "MozillaBuild version could not be found in any provided Hiera source."
+        }
+
+        $psutil_ExpectedSoftwareVersion = $null
+
+        try {
+            $psutil_ExpectedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.psutil_version
+        } catch {}
+
+        if (-not $psutil_ExpectedSoftwareVersion) {
+            try {
+                $psutil_ExpectedSoftwareVersion = $Hiera.'win-worker'.variant.mozilla_build.psutil_version
+            } catch {}
+        }
+
+        if (-not $psutil_ExpectedSoftwareVersion) {
+            try {
+                $psutil_ExpectedSoftwareVersion = $Hiera.windows.mozilla_build.psutil_version
+            } catch {}
+        }
+
+        if (-not $mozilla_build.psutil_version) {
+            throw "Psutil version could not be found in any provided Hiera source."
+        }
+
+        $zstandard_ExepctedSoftwareVersion = $null
+
+        try {
+            $zstandard_ExepctedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.zstandard_version
+        } catch {}
+
+        if (-not $zstandard_ExepctedSoftwareVersion) {
+            try {
+                $zstandard_ExepctedSoftwareVersion = $Hiera.'win-worker'.variant.mozilla_build.zstandard_version
+            } catch {}
+        }
+
+        if (-not $zstandard_ExepctedSoftwareVersion) {
+            try {
+                $zstandard_ExepctedSoftwareVersion = $Hiera.windows.mozilla_build.zstandard_version
+            } catch {}
+        }
+
+        if (-not $mozilla_build.psutil_version) {
+            throw "Zstandard version could not be found in any provided Hiera source."
+        }
+
+        $py3pip_ExpectedSoftwareVersion = $null
+
+        try {
+            $py3pip_ExpectedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.py3_pip_version
+        } catch {}
+
+        if (-not $py3pip_ExpectedSoftwareVersion) {
+            try {
+                $py3pip_ExpectedSoftwareVersion = $Hiera.'win-worker'.variant.mozilla_build.py3_pip_version
+            } catch {}
+        }
+
+        if (-not $py3pip_ExpectedSoftwareVersion) {
+            try {
+                $py3pip_ExpectedSoftwareVersion = $Hiera.windows.mozilla_build.py3_pip_version
+            } catch {}
+        }
+
+        if (-not $py3pip_ExpectedSoftwareVersion) {
+            throw "Py3 pip version could not be found in any provided Hiera source."
+        }
     }
     Context "Installation" {
         It "Mozilla-Build Folder exists" {
