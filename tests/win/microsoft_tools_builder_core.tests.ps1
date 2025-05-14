@@ -1,4 +1,4 @@
-CLEAN-UP Software versions should be in Hiera
+## CLEAN-UP Software versions should be in Hiera
 
 Describe "Microsoft Tools - Builder" {
     BeforeAll {

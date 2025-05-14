@@ -1,7 +1,7 @@
 Describe "Mozilla Build - Tester" {
     BeforeDiscovery {
         $Hiera = $Data.Hiera
-    
+    }    
 
     BeforeAll {
         $software = Get-InstalledSoftware

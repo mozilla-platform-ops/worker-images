@@ -97,7 +97,7 @@ Describe "Mozilla Build - Builder" {
             } catch {}
         }
 
-        if (-not $mozilla_build.psutil_version) {
+        if (-not $zstandard_ExepctedSoftwareVersion) {
             throw "Zstandard version could not be found in any provided Hiera source."
         }
 

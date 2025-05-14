@@ -19,7 +19,7 @@ Describe "Mercurial" {
 
         if (-not $ExpectedSoftwareVersion) {
             try {
-                $ExpectedSoftwareVersion = $Hiera.windows.azure.hg.version
+                $ExpectedSoftwareVersion = $Hiera.windows.hg.version
             } catch {}
         }
 

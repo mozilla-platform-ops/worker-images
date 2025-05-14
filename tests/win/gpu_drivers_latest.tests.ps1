@@ -23,7 +23,7 @@ Describe "Nvidia GPU Downloaded" {
             } catch {}
         }
 
-        if (-not $VGPU) {
+        if (-not $GPU) {
             throw "Azure VM Agent version could not be found in any provided Hiera source."
         }
     }

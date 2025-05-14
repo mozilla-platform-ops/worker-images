@@ -5,6 +5,29 @@ Describe "Taskcluster" {
 
     BeforeAll {
 
+        $nssm = ($Hiera.'win-worker'.nssm.version)
+        $nssm = $null
+
+        try {
+            $nssm = $Hiera.'win-worker'.nssm.version
+        } catch {}
+
+        if (-not $nssm) {
+            try {
+                $nssm = $Hiera.'win-worker'.variant.nssm.version
+            } catch {}
+        }
+
+        if (-not $nssm) {
+            try {
+                $nssm = $Hiera.windows.taskcluster.nssm.version
+            } catch {}
+        }
+
+        if (-not $nssm) {
+            throw "NSSM version could not be found in any provided Hiera source."
+        }
+
         $taskcluster_ExpectedSoftwareVersion = $null
 
         try {
@@ -26,6 +49,7 @@ Describe "Taskcluster" {
         if (-not $taskcluster_ExpectedSoftwareVersion) {
             throw "HG version could not be found in any provided Hiera source."
         }
+
     }
     Context "Non-Sucking Service Manager" {
         It "NSSM is installed" {

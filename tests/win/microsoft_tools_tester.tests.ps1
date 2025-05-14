@@ -1,4 +1,4 @@
-CLEAN-UP Software versions should be in Hiera
+## CLEAN-UP Software versions should be in Hiera
 
 ## Skip if this is run on a builder
 Describe "Microsoft Tools - Tester" {
