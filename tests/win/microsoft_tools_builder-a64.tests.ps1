@@ -1,3 +1,5 @@
+CLEAN-UP Software values should be in Hiera
+
 Describe "Microsoft Tools - Builder" {
     BeforeAll {
         $Directories = Get-WinFactsDirectories

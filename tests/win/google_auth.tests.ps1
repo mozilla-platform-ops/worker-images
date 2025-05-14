@@ -1,14 +1,7 @@
-Param(
-    [String]
-    $File
-)
-
-BeforeDiscovery {
-    $Hiera = Get-HieraRoleData -Path $File
-    #$Directories = Get-WinFactsDirectories
-}
-
 Describe "Google Auth" {
+    BeforeDiscovery {
+        $Hiera = $Data.Hiera
+    }
     BeforeAll {
         $Directories = Get-WinFactsDirectories
     }
