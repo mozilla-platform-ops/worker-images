@@ -20,7 +20,7 @@ Describe "Taskcluster" {
 
         if (-not $nssm) {
             try {
-                $nssm = $Hiera.windows.taskcluster.nssm.version
+                $nssm = $Hiera.windows.nssm.version
             } catch {}
         }
 
