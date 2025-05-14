@@ -1,13 +1,8 @@
-Param(
-    [String]
-    $File
-)
-
-BeforeDiscovery {
-    $Hiera = Get-HieraRoleData -Path $File
-}
-
 Describe "Network" {
+    BeforeDiscovery {
+        $Hiera = $Data.Hiera
+    }
+
     It "Network Category is private" {
         (Get-NetConnectionProfile).NetworkCategory | Should -Be "Private"
     }

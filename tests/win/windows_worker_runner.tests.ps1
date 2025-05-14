@@ -1,19 +1,31 @@
-Param(
-    [String]
-    $File
-)
-
-BeforeDiscovery {
-    $Hiera = Get-HieraRoleData -Path $File
-}
-
 Describe "Taskcluster" {
+    BeforeDiscovery {
+        $Hiera = $Data.Hiera
+    }
+
     BeforeAll {
-        $nssm = ($Hiera.'win-worker'.nssm.version)
-        $generic_worker_version = ($Hiera.'win-worker'.generic_worker.version)
-        $worker_runner_version = ($Hiera.'win-worker'.taskcluster.worker_runner.version)
-        $proxy_version = ($Hiera.'win-worker'.taskcluster.proxy.version)
-        $livelog_version = ($Hiera.'win-worker'.taskcluster.livelog.version)
+
+        $taskcluster_ExpectedSoftwareVersion = $null
+
+        try {
+            $taskcluster_ExpectedSoftwareVersion = $Hiera.'win-worker'.generic_worker.version
+        } catch {}
+
+        if (-not $taskcluster_ExpectedSoftwareVersion) {
+            try {
+                $taskcluster_ExpectedSoftwareVersion = $Hiera.'win-worker'.variant.taskcluster.version
+            } catch {}
+        }
+
+        if (-not $taskcluster_ExpectedSoftwareVersion) {
+            try {
+                $taskcluster_ExpectedSoftwareVersion = $Hiera.windows.taskcluster.version
+            } catch {}
+        }
+
+        if (-not $taskcluster_ExpectedSoftwareVersion) {
+            throw "HG version could not be found in any provided Hiera source."
+        }
     }
     Context "Non-Sucking Service Manager" {
         It "NSSM is installed" {
@@ -37,7 +49,7 @@ Describe "Taskcluster" {
         }
         It "Generic Worker Version is correct" {
             Start-Process -FilePath "C:\generic-worker\generic-worker.exe" -ArgumentList "--short-version" -RedirectStandardOutput "Testdrive:\gwversion.txt" -Wait -NoNewWindow
-            Get-Content "Testdrive:\gwversion.txt" | Should -be $generic_worker_version
+            Get-Content "Testdrive:\gwversion.txt" | Should -be $taskcluster_ExpectedSoftwareVersion
         }
     }
     Context "Worker Runner" {
@@ -46,7 +58,7 @@ Describe "Taskcluster" {
         }
         It "Worker Runner Version is correct" {
             Start-Process -FilePath "C:\worker-runner\start-worker.exe" -ArgumentList "--short-version" -RedirectStandardOutput "Testdrive:\startworkerversion.txt" -Wait -NoNewWindow
-            Get-Content "Testdrive:\startworkerversion.txt" | Should -be $worker_runner_version
+            Get-Content "Testdrive:\startworkerversion.txt" | Should -be $taskcluster_ExpectedSoftwareVersion
         }
     }
     Context "Proxy" {
@@ -55,7 +67,7 @@ Describe "Taskcluster" {
         }
         It "Proxy version is correct" {
             Start-Process -FilePath "C:\generic-worker\taskcluster-proxy.exe" -ArgumentList "--short-version" -RedirectStandardOutput "Testdrive:\proxyversion.txt" -Wait -NoNewWindow
-            Get-Content "Testdrive:\proxyversion.txt" | Should -be $proxy_version
+            Get-Content "Testdrive:\proxyversion.txt" | Should -be $taskcluster_ExpectedSoftwareVersion
         }
     }
     Context "Livelog" {
@@ -64,7 +76,7 @@ Describe "Taskcluster" {
         }
         It "Livelog version is correct" {
             Start-Process -FilePath "C:\generic-worker\livelog.exe" -ArgumentList "--short-version" -RedirectStandardOutput "Testdrive:\livelogversion.txt" -Wait -NoNewWindow
-            Get-Content "Testdrive:\livelogversion.txt" | Should -be $livelog_version
+            Get-Content "Testdrive:\livelogversion.txt" | Should -be $taskcluster_ExpectedSoftwareVersion
         }
     }
 }

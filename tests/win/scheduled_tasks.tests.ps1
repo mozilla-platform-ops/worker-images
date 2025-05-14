@@ -1,13 +1,8 @@
-Param(
-    [String]
-    $File
-)
-
-BeforeDiscovery {
-    $Hiera = Get-HieraRoleData -Path $File
-}
-
 Describe "Scheduled Tasks" {
+    BeforeDiscovery {
+        $Hiera = $Data.Hiera
+    }
+
     Context "Azure Maintain System" {
         BeforeAll {
             if (Test-Path "$ENV:ProgramData\PuppetLabs\ronin\maintainsystem.ps1") {
