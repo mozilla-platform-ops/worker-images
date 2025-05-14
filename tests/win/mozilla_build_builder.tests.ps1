@@ -75,7 +75,7 @@ Describe "Mozilla Build - Builder" {
             } catch {}
         }
 
-        if (-not $psutil_build.psutil_version) {
+        if (-not $psutil_ExpectedSoftwareVersion) {
             throw "Psutil version could not be found in any provided Hiera source."
         }
 
