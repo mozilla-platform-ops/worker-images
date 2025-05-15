@@ -19,7 +19,7 @@ Describe "Nvidia GPU Downloaded" {
 
         if (-not $GPU) {
             try {
-                $GPU = $Hiera.windows.azure.'gpu-latest'.name
+                $GPU = $Hiera.windows.'gpu-latest'.name
             } catch {}
         }
 
