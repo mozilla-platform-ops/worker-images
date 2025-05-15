@@ -1,13 +1,8 @@
-Param(
-    [String]
-    $File
-)
-
-BeforeDiscovery {
-    $Hiera = Get-HieraRoleData -Path $File
-}
-
 Describe "Microsoft Tools" {
+    BeforeDiscovery {
+        $Hiera = $Data.Hiera
+    }
+
     It "<_.DisplayName> is installed" -ForEach @(
         Show-Win11SDK
     ) {
