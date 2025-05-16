@@ -43,7 +43,7 @@ retry apt-get update
 DEBIAN_FRONTEND=noninteractive retry apt-get upgrade -yq
 retry apt-get -y remove docker docker.io containerd runc
 # build-essential is needed for running `go test -race` with the -vet=off flag as of go1.19
-retry apt-get install -y apt-transport-https ca-certificates curl software-properties-common gzip python3-venv build-essential snapd
+retry apt-get install -y apt-transport-https ca-certificates curl software-properties-common gzip python3-venv build-essential
 
 # needed for kvm, see https://help.ubuntu.com/community/KVM/Installation
 #retry apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
