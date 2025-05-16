@@ -1,13 +1,8 @@
-Param(
-    [String]
-    $File
-)
-
-BeforeDiscovery {
-    $Hiera = Get-HieraRoleData -Path $File
-}
-
 Describe "NTP" {
+    BeforeDiscovery {
+        $Hiera = $Data.Hiera
+    }
+
     It "Windows NTP Datacenter" -Skip {
         ((Get-ItemPropertyValue "HKLM:\SYSTEM\CurrentControlSet\Services\W32Time\Parameters" -Name "NtpServer") -split ",")[0] | Should -be "windows.datacenter.ntp"
     }

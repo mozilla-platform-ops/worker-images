@@ -1,16 +1,12 @@
-Param(
-    [String]
-    $File
-)
-
-BeforeDiscovery {
-    $Hiera = Get-HieraRoleData -Path $File
-}
 <#
 HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\OOBE
 #>
 
 Describe "OOBE Registry values are set" {
+    BeforeDiscovery {
+        $Hiera = $Data.Hiera
+    }
+
     It "HideEULAPage is set to 1" {
         Get-ItemPropertyValue "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE" -Name "HideEULAPage" -ErrorAction "SilentlyContinue" | Should -Be 1
     }
