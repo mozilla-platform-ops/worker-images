@@ -34,6 +34,12 @@ apt-get update
 apt-get install -y nvidia-container-toolkit
 ## Configure docker to use nvidia container runtime
 nvidia-ctk runtime configure --runtime=docker
+
+# For https://github.com/mozilla/translations/issues/1117
+# This will create /dev/char symlinks to all device nodes
+# See Workarounds section in https://github.com/NVIDIA/nvidia-container-toolkit/issues/48
+echo 'ACTION=="add", DEVPATH=="/bus/pci/drivers/nvidia", RUN+="/usr/bin/nvidia-ctk system create-dev-char-symlinks --create-all"' >> /etc/udev/rules.d/71-nvidia-dev-char.rules
+
 ## Restart docker daemon to take effect
 systemctl restart docker
 ## export the docker daemon config
