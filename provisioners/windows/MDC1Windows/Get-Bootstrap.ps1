@@ -470,20 +470,22 @@ function Invoke-DownloadWithRetryGithub {
     for ($retries = 20; $retries -gt 0; $retries--) {
         try {
             $attemptStartTime = Get-Date
-            ##
-            $webClient = New-Object System.Net.WebClient
-            $webClient.Headers.Add("Accept", "application/vnd.github+json")
-            $webClient.Headers.Add("Authorization", "Bearer $($PAT)")
-            $webClient.Headers.Add("X-GitHub-Api-Version", "2022-11-28")
-            $webClient.DownloadFile($Url, $Path)
+            $Headers = @{
+                Accept = "application/vnd.github+json"
+                Authorization = "Bearer $($PAT)"
+                "X-GitHub-Api-Version" = "2022-11-28"
+            }
+            $response = Invoke-WebRequest -Uri $Url -Headers $Headers -OutFile $Path
             $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
             Write-Host "Package downloaded in $attemptSeconds seconds"
+            Write-host "Status: $($response.statuscode)"
             #Write-Log -message ('{0} :: Package downloaded in {1} seconds - {2:o}' -f $($MyInvocation.MyCommand.Name), $attemptSeconds, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
             break
         }
         catch {
             $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
             Write-Warning "Package download failed in $attemptSeconds seconds"
+            Write-host "Status: $($response.statuscode)"
             #Write-Log -message ('{0} :: Package download failed in {1} seconds - {2:o}' -f $($MyInvocation.MyCommand.Name), $attemptSeconds, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
 
             Write-Warning $_.Exception.Message

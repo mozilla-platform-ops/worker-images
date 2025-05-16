@@ -386,7 +386,6 @@ function Invoke-DownloadWithRetryGithub {
     for ($retries = 20; $retries -gt 0; $retries--) {
         try {
             $attemptStartTime = Get-Date
-            ##
             $webClient = New-Object System.Net.WebClient
             $webClient.Headers.Add("Accept", "application/vnd.github+json")
             $webClient.Headers.Add("Authorization", "Bearer $($PAT)")
