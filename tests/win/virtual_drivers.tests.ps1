@@ -1,13 +1,10 @@
-Param(
-    [String]
-    $File
-)
-
-BeforeDiscovery {
-    $Hiera = Get-HieraRoleData -Path $File
-}
+## CLEAN-UP Version should be in Hiera
 
 Describe "Virtual Audio Cable" {
+    BeforeDiscovery {
+        $Hiera = $Data.Hiera
+    }
+
     BeforeAll {
         $Software = Get-InstalledSoftware | Where-Object {
             $PSItem.DisplayName -like "Virtual Audio Cable*"

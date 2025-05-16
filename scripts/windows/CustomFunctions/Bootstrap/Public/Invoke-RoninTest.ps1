@@ -1,65 +1,73 @@
 Function Invoke-RoninTest {
     [CmdletBinding()]
     param (
-        [String]
-        $Role,
-
-        [String]
-        $Config,
-
-        [Switch]
-        $PassThru
+        [String] $Role,
+        [String] $Config,
+        [Switch] $PassThru
     )
 
-    ## Set path to role yaml
     $RolePath = "C:\ronin\data\roles\$Role.yaml"
+    $WinPath = "C:\ronin\data\os\Windows.yaml"
+    $ConfigPath = "C:\Config\$Config.yaml"
 
-    if (-Not (Test-Path $RolePath)) {
-        Write-Host "Unable to find $rolePath"
-        Exit 1
-    }
+    if (-not (Test-Path $RolePath)) { Write-Host "Unable to find $RolePath"; exit 1 }
+    if (-not (Test-Path $WinPath)) { Write-Host "Unable to find $WinPath"; exit 1 }
+    if (-not (Test-Path $ConfigPath)) { Write-Host "Unable to find config: $ConfigPath"; exit 1 }
 
-    ## Output what we're working with
-    Write-host "Processing Role: $Role"
-    Write-host "Processing Config: $Config"
+    $Hiera = ConvertFrom-Yaml (Get-Content -Path $RolePath -Raw)
+    $WindowsHiera = ConvertFrom-Yaml (Get-Content -Path $WinPath -Raw)
+    $Config_tests = ConvertFrom-Yaml (Get-Content -Path $ConfigPath -Raw)
 
-    Write-Log -message ('{0} :: Processing Role: {1}' -f $($MyInvocation.MyCommand.Name), $Role) -severity 'DEBUG'
-    Write-Log -message ('{0} :: Processing Config: {1}' -f $($MyInvocation.MyCommand.Name), $Config) -severity 'DEBUG'
-    Write-Log -message ('{0} :: Processing RolePath: {1}' -f $($MyInvocation.MyCommand.Name), $RolePath) -severity 'DEBUG'
-
-    ## Grab the tests from hiera
-    $Hiera = Convertfrom-Yaml (Get-Content -Path $RolePath -Raw)
-    $Config_tests = Convertfrom-Yaml (Get-Content -Path "C:\Config\$Config.yaml" -Raw)
-    if ($null -eq $Hiera) {
-        Write-host "Unable to find hiera key lookup $Role"
+    if ($null -eq $Hiera) { Write-Host "Parsed Role Hiera is null."; exit 1 }
+    if ($null -eq $Config_tests -or -not $Config_tests.tests) {
+        Write-Host "No tests found in $ConfigPath"
         exit 1
     }
-    if ($null -eq $Config_tests) {
-        Write-host "Unable to find hiera key lookup $Config"
-        exit 1
+
+    Function Merge-HashTables {
+        param (
+            [hashtable]$Base,
+            [hashtable]$Overlay
+        )
+        $Result = @{}
+
+        foreach ($key in $Base.Keys) {
+            if ($Base[$key] -is [hashtable] -and $Overlay.ContainsKey($key) -and $Overlay[$key] -is [hashtable]) {
+                $Result[$key] = Merge-HashTables -Base $Base[$key] -Overlay $Overlay[$key]
+            } else {
+                $Result[$key] = $Base[$key]
+            }
+        }
+
+        foreach ($key in $Overlay.Keys) {
+            if (-not $Result.ContainsKey($key)) {
+                $Result[$key] = $Overlay[$key]
+            }
+        }
+
+        return $Result
     }
-    ## Select the tests and pass through to pester
+
+    $CombinedHiera = Merge-HashTables -Base $WindowsHiera -Overlay $Hiera
+
     $tests = foreach ($t in $Config_tests.tests) {
         Get-ChildItem -Path "C:/Tests/$t"
     }
-    ## Check the output of $tests to make sure the contents are there
-    if ($null -eq $tests) {
-        Write-host "Unable to select tests based on $config lookup"
+
+    if ($null -eq $tests -or $tests.FullName -contains $null) {
+        Write-Host "One or more test files could not be found."
         exit 1
     }
-    ## Output the Fullname paths
-    Foreach ($thing in $tests.fullname) {
-        Write-host ("Processing tests: {0}" -f $thing)
-        Write-Log -message ('{0} :: Processing tests: {1}' -f $($MyInvocation.MyCommand.Name), $thing) -severity 'DEBUG'
-    }
-    ## Build the container and pass in the hiera key, and pass in just the test names, not the full path(s)
-    $Container = New-PesterContainer -Path $tests.FullName -Data @{
-        File = $RolePath
-    }
+
+    ## DEBUG
+    Write-Debug "Combined Hiera:`n$(ConvertTo-Yaml $CombinedHiera)"
+
+    $Container = New-PesterContainer -Path $tests.FullName -Data @{ Hiera = $CombinedHiera }
     $Configuration = New-PesterConfiguration
     $Configuration.Run.Exit = $true
     $Configuration.Run.Container = $Container
     $Configuration.TestResult.Enabled = $true
     $Configuration.Output.Verbosity = "Detailed"
+
     Invoke-Pester -Configuration $Configuration
 }

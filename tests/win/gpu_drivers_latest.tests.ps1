@@ -1,17 +1,33 @@
-Param(
-    [String]
-    $File
-)
-
-BeforeDiscovery {
-    $Hiera = Get-HieraRoleData -Path $File
-}
-
 Describe "Nvidia GPU Downloaded" {
+    BeforeDiscovery {
+        $Hiera = $Data.Hiera
+    }
+
     BeforeAll {
-        $gpu = ($Hiera.'win-worker'.'gpu-latest'.name)
+
+        $GPU = $null
+
+        try {
+            $GPU = $Hiera.'win-worker'.'gpu-latest'.name
+        } catch {}
+
+        if (-not $GPU) {
+            try {
+                $GPU = $Hiera.'win-worker'.'gpu-latest'.name
+            } catch {}
+        }
+
+        if (-not $GPU) {
+            try {
+                $GPU = $Hiera.windows.'gpu-latest'.name
+            } catch {}
+        }
+
+        if (-not $GPU) {
+            throw "Azure VM Agent version could not be found in any provided Hiera source."
+        }
     }
     It "Nvidia GPU Drivers are downloaded" {
-        Test-Path "$systemdrive\Windows\Temp\$($gpu).exe" | Should -Be $true
+        Test-Path "$systemdrive\Windows\Temp\$($GPU).exe" | Should -Be $true
     }
 }
