@@ -59,6 +59,9 @@ Function Invoke-RoninTest {
         exit 1
     }
 
+    ## DEBUG
+    Write-Debug "Combined Hiera:`n$(ConvertTo-Yaml $CombinedHiera)"
+
     $Container = New-PesterContainer -Path $tests.FullName -Data @{ Hiera = $CombinedHiera }
     $Configuration = New-PesterConfiguration
     $Configuration.Run.Exit = $true
