@@ -36,7 +36,8 @@ function Deploy-OS-Dev {
         try {
             Invoke-WebRequest -Uri "$source/$script" -OutFile $deploy_script
             break  # Break out of the loop if download is successful
-        } catch {
+        }
+        catch {
             Write-Host "Attempt ${retryCount}: An error occurred - $Error[0]"
             Write-Host "Retrying in $retryInterval seconds..."
             Start-Sleep -Seconds $retryInterval
@@ -329,6 +330,99 @@ function Invoke-DownloadWithRetry {
     return $Path
 }
 
+function Invoke-DownloadWithRetryGithub {
+    <#
+    .SYNOPSIS
+        Downloads a file from a given URL with retry functionality.
+
+    .DESCRIPTION
+        The Invoke-DownloadWithRetry function downloads a file from the specified URL
+        to the specified path. It includes retry functionality in case the download fails.
+
+    .PARAMETER Url
+        The URL of the file to download.
+
+    .PARAMETER Path
+        The path where the downloaded file will be saved. If not provided, a temporary path
+        will be used.
+
+    .EXAMPLE
+        Invoke-DownloadWithRetry -Url "https://example.com/file.zip" -Path "C:\Downloads\file.zip"
+        Downloads the file from the specified URL and saves it to the specified path.
+
+    .EXAMPLE
+        Invoke-DownloadWithRetry -Url "https://example.com/file.zip"
+        Downloads the file from the specified URL and saves it to a temporary path.
+
+    .OUTPUTS
+        The path where the downloaded file is saved.
+    #>
+
+    Param
+    (
+        [Parameter(Mandatory)]
+        [string] $Url,
+        [Alias("Destination")]
+        [string] $Path,
+        [string] $PAT
+    )
+
+    if (-not $Path) {
+        $invalidChars = [IO.Path]::GetInvalidFileNameChars() -join ''
+        $re = "[{0}]" -f [RegEx]::Escape($invalidChars)
+        $fileName = [IO.Path]::GetFileName($Url) -replace $re
+
+        if ([String]::IsNullOrEmpty($fileName)) {
+            $fileName = [System.IO.Path]::GetRandomFileName()
+        }
+        $Path = Join-Path -Path "${env:Temp}" -ChildPath $fileName
+    }
+
+    Write-Host "Downloading package from $Url to $Path..."
+    #Write-Log -message ('{0} :: Downloading {1} to {2} - {3:o}' -f $($MyInvocation.MyCommand.Name), $url, $path, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+
+    $interval = 30
+    $downloadStartTime = Get-Date
+    for ($retries = 20; $retries -gt 0; $retries--) {
+        try {
+            $attemptStartTime = Get-Date
+            $webClient = New-Object System.Net.WebClient
+            $webClient.Headers.Add("Accept", "application/vnd.github+json")
+            $webClient.Headers.Add("Authorization", "Bearer $($PAT)")
+            $webClient.Headers.Add("X-GitHub-Api-Version", "2022-11-28")
+            $webClient.DownloadFile($Url, $Path)
+            $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
+            Write-Host "Package downloaded in $attemptSeconds seconds"
+            #Write-Log -message ('{0} :: Package downloaded in {1} seconds - {2:o}' -f $($MyInvocation.MyCommand.Name), $attemptSeconds, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+            break
+        }
+        catch {
+            $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
+            Write-Warning "Package download failed in $attemptSeconds seconds"
+            #Write-Log -message ('{0} :: Package download failed in {1} seconds - {2:o}' -f $($MyInvocation.MyCommand.Name), $attemptSeconds, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+
+            Write-Warning $_.Exception.Message
+
+            if ($_.Exception.InnerException.Response.StatusCode -eq [System.Net.HttpStatusCode]::NotFound) {
+                Write-Warning "Request returned 404 Not Found. Aborting download."
+                #Write-Log -message ('{0} :: Request returned 404 Not Found. Aborting download. - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+                $retries = 0
+            }
+        }
+
+        if ($retries -eq 0) {
+            $totalSeconds = [math]::Round(($(Get-Date) - $downloadStartTime).TotalSeconds, 2)
+            throw "Package download failed after $totalSeconds seconds"
+        }
+
+        Write-Warning "Waiting $interval seconds before retrying (retries left: $retries)..."
+        #Write-Log -message ('{0} :: Waiting {1} seconds before retrying (retries left: {2})... - {3:o}' -f $($MyInvocation.MyCommand.Name), $interval, $retries, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+        Start-Sleep -Seconds $interval
+    }
+
+    return $Path
+}
+
 ## Get node name
 Set-Location X:\working
 
@@ -343,18 +437,20 @@ try {
     if (-not $IPAddress) {
         throw "No IP address found using .NET method."
     }
-} catch {
+}
+catch {
     $NetshOutput = netsh interface ip show addresses
     $IPAddress = ($NetshOutput -match "IP Address" | ForEach-Object {
-        if ($_ -notmatch "127.0.0.1") {
-            $_ -replace ".*?:\s*", ""
-        }
-    }).Trim()
+            if ($_ -notmatch "127.0.0.1") {
+                $_ -replace ".*?:\s*", ""
+            }
+        }).Trim()
 }
 
 if ($IPAddress) {
     Write-Host "IP Address: $IPAddress"
-} else {
+}
+else {
     Write-Host "No IP Address could be determined." -ForegroundColor Red
 }
 
@@ -428,7 +524,8 @@ $existingD = Get-Partition | Where-Object { $_.DriveLetter -eq 'D' }
 if ($existingC -and $existingD) {
     Write-Host "Drives C and D are already labeled and configured. Skipping partitioning."
     $skipPartitioning = $true
-} else {
+}
+else {
     Write-Host "Partitioning required. Drives are not properly configured."
     $skipPartitioning = $false
 }
@@ -443,14 +540,16 @@ if (!($skipPartitioning)) {
 
         Write-Host "Two disks found. Setting up the larger disk as C and the smaller as D."
         PartitionAndFormat-TwoDisks -DiskC $diskC -DiskD $diskD
-    } elseif ($diskCount -eq 1) {
+    }
+    elseif ($diskCount -eq 1) {
         # Only one disk found, use it for both C and D
         $singleDisk = $disks[0].Number
         Write-Host "Only one disk found. Setting up C and D partitions on the same disk."
         PartitionAndFormat-SingleDisk -DiskNumber $singleDisk
-    } else {
+    }
+    else {
         Write-Host "No suitable disks found or more than two disks detected."
-   }
+    }
 }
 
 # Pause before label check
@@ -473,7 +572,8 @@ if ($disks.Count -eq 2) {
         $diskDPartition = Get-Partition -DiskNumber $diskD -PartitionNumber 1
         Set-Partition -DiskNumber $diskDPartition.DiskNumber -PartitionNumber $diskDPartition.PartitionNumber -NewDriveLetter D
     }
-} elseif ($disks.Count -eq 1) {
+}
+elseif ($disks.Count -eq 1) {
     # Check labels on single disk
     $partitions = Get-Partition -DiskNumber $singleDisk
 
@@ -519,9 +619,11 @@ $secret_file_name = $WorkerPool + "-" + $secret_date + ".yaml"
 Write-Host "Secret file name is $secret_file_name"
 $secret_file = $secret_dir + "\" + $secret_file_name
 $source_secrets = $source_dir + "secrets\" + $secret_file_name
+$source_secrets_pat = $source_dir + "secrets\pat.txt"
 Write-host "Source secrets is $source_secrets"
 $source_AZsecrets = $source_dir + "secrets\" + "azcredentials.yaml"
 $AZsecret_file = $secret_dir + "\azcredentials.yaml"
+$PATsecret_file = $secret_dir + "\pat.txt"
 $source_scripts = $source_dir + "scripts\"
 $local_scripts = $local_install + "scripts\"
 $local_yaml_dir = $local_install + "yaml"
@@ -553,6 +655,8 @@ if (!(Test-Path $setup)) {
     Copy-Item -Path $source_install -Destination $local_install -Recurse -Force
     Write-Host "Copying $source_secrets to $secret_file"
     Copy-Item -Path $source_secrets -Destination $secret_file -Force
+    Write-host "Copying $source_secrets_pat to $PATsecret_file"
+    Copy-Item -Path $source_secrets_pat -Destination $PATsecret_file -Force
     Write-Host "Copying $source_AZsecrets to $AZsecret_file"
     Copy-Item -Path $source_AZsecrets -Destination $AZsecret_file -Force
     Write-host "Copying $source_scripts to $local_scripts"
@@ -562,8 +666,14 @@ if (!(Test-Path $setup)) {
 
     Write-Host "Disconecting Deployment Share."
     net use Z: /delete
+    
+    $splat = @{
+        Url  = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$branch/provisioners/windows/MDC1Windows/base-autounattend.xml"
+        Path = $unattend
+        PAT  = Get-Content $PATsecret_file
+    }
 
-    Invoke-DownloadWithRetry -Url "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$branch/provisioners/windows/MDC1Windows/base-autounattend.xml" -Path $unattend
+    Invoke-DownloadWithRetryGithub @splat
 
     $secret_YAML = Convertfrom-Yaml (Get-Content $secret_file -raw)
 
