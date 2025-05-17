@@ -1,13 +1,8 @@
-Param(
-    [String]
-    $File
-)
-
-BeforeDiscovery {
-    $Hiera = Get-HieraRoleData -Path $File
-}
-
 Describe "Common Tools" {
+    BeforeDiscovery {
+        $Hiera = $Data.Hiera
+    }
+
     BeforeAll {
         $gpg4win = Get-InstalledSoftware | Where-Object {
             $PSItem.DisplayName -like "Gpg4win (2.3.0)"

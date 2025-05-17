@@ -1,13 +1,8 @@
-Param(
-    [String]
-    $File
-)
-
-BeforeDiscovery {
-    $Hiera = Get-HieraRoleData -Path $File
-}
-
 Describe "Mozilla Maintenance Service" {
+    BeforeDiscovery {
+        $Hiera = $Data.Hiera
+    }
+
     BeforeAll {
         $MozillaCerts = @(
             "FA056CEBEFF3B1D0500A1FB37C2BD2F9CE4FB5D8",
