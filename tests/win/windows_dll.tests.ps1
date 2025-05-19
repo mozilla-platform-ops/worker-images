@@ -12,10 +12,10 @@ Describe "Taskcluster" {
         It "DLL Path exists" {
             Test-Path "C:\ProgramData\PuppetLabs\ronin\IAccessible2proxy.dll" | Should -Be $true
         }
-        It "NSSM Windows Service Exists" {
+        It "IAccessible2 DLL path is registered" {
             Get-ChildItem -Path Registry::HKEY_CLASSES_ROOT\CLSID -Recurse -ErrorAction SilentlyContinue | Where-Object {
             (Get-ItemProperty -Path $_.PSPath -ErrorAction Stop)."(default)" -eq "C:\ProgramData\PuppetLabs\ronin\IAccessible2proxy.dll"
-        } | Should -Not -Be $null
+            } | Should -Not -Be $null
         }
     }
 }
