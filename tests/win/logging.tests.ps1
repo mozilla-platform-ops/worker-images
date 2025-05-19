@@ -1,13 +1,9 @@
-Param(
-    [String]
-    $File
-)
-
-BeforeDiscovery {
-    $Hiera = Get-HieraRoleData -Path $File
-}
-
+## CLEAN-UP Version should be moved into Hiera
 Describe "Logging" {
+    BeforeDiscovery {
+        $Hiera = $Data.Hiera
+    }
+
     BeforeAll {
         $Software = Get-InstalledSoftware | Where-Object {
             $PSItem.DisplayName -like "NXLog-CE*"
