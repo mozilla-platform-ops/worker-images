@@ -25,15 +25,15 @@ function retry {
 }
 
 ## Install nvidia driver
-retry curl -sSO https://developer.download.nvidia.com/compute/nvidia-driver/565.57.01/local_installers/nvidia-driver-local-repo-ubuntu2404-565.57.01_1.0-1_amd64.deb
-dpkg -i nvidia-driver-local-repo-ubuntu2404-565.57.01_1.0-1_amd64.deb
-cp /var/nvidia-driver-local-repo-ubuntu2404-565.57.01/nvidia-driver-*-keyring.gpg /usr/share/keyrings/
+retry curl -sSO https://developer.download.nvidia.com/compute/nvidia-driver/570.148.08/local_installers/nvidia-driver-local-repo-ubuntu2404-570.148.08_1.0-1_amd64.deb
+dpkg -i nvidia-driver-local-repo-ubuntu2404-570.148.08_1.0-1_amd64.deb
+cp /var/nvidia-driver-local-repo-ubuntu2404-570.148.08/nvidia-driver-*-keyring.gpg /usr/share/keyrings/
 apt-get update
-apt-get install -y cuda-drivers-565
+apt-get install -y cuda-drivers-570
 
 # Install cudnn
-retry curl -sSO https://developer.download.nvidia.com/compute/cudnn/9.6.0/local_installers/cudnn-local-repo-ubuntu2404-9.6.0_1.0-1_amd64.deb
-dpkg -i cudnn-local-repo-ubuntu2404-9.6.0_1.0-1_amd64.deb
-cp /var/cudnn-local-repo-ubuntu2404-9.6.0/cudnn-*-keyring.gpg /usr/share/keyrings/
+retry curl -sSO https://developer.download.nvidia.com/compute/cudnn/9.10.1/local_installers/cudnn-local-repo-ubuntu2404-9.10.1_1.0-1_amd64.deb
+dpkg -i cudnn-local-repo-ubuntu2404-9.10.1_1.0-1_amd64.deb
+cp /var/cudnn-local-repo-ubuntu2404-9.10.1/cudnn-*-keyring.gpg /usr/share/keyrings/
 apt-get update
 apt-get -y install cudnn
