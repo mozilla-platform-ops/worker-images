@@ -303,6 +303,7 @@ build {
     expect_disconnect = true
     scripts = [
       #"${path.cwd}/scripts/linux/common/install-ops-agent.sh"
+      "${path.cwd}/scripts/linux/common/nvidia-gpu-container-fix.sh",
       "${path.cwd}/scripts/linux/common/clean.sh",
     ]
     start_retry_timeout = "30m"
@@ -392,6 +393,7 @@ build {
     expect_disconnect = true
     scripts = [
       #"${path.cwd}/scripts/linux/common/install-ops-agent.sh",
+      "${path.cwd}/scripts/linux/common/nvidia-gpu-container-fix.sh",
       "${path.cwd}/scripts/linux/common/clean.sh"
     ]
     start_retry_timeout = "30m"
