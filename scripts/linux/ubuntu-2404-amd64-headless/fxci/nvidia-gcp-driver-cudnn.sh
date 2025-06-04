@@ -31,6 +31,10 @@ cp /var/nvidia-driver-local-repo-ubuntu2404-570.148.08/nvidia-driver-*-keyring.g
 apt-get update
 apt-get install -y cuda-drivers-570
 
+# run nvidia-smi to ensure the driver is loaded
+# and create the nvidia-uvm devices
+nvidia-smi
+
 # Install cudnn
 retry curl -sSO https://developer.download.nvidia.com/compute/cudnn/9.10.1/local_installers/cudnn-local-repo-ubuntu2404-9.10.1_1.0-1_amd64.deb
 dpkg -i cudnn-local-repo-ubuntu2404-9.10.1_1.0-1_amd64.deb
