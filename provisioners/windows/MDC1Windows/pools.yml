@@ -2,13 +2,13 @@
 pools:
   - name: "win10-64-2009-hw-alpha"
     puppet_version: "8.10.0"
-    dev: RELOPS-1469
+    dev: RELOPS-1470
     Description: "Moonshot Win 10 hardware"
     image: "win10-2009-MS-11-05-2024"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "windows"
-    hash: "ec82b8a"
+    hash: "241a6da"
     secret_date: "11-07-2024"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -80,6 +80,7 @@ pools:
     - t-nuc12-015
   - name: "win11-64-24h2-hw-ref-alpha"
     puppet_version: "8.10.0"
+    dev: RELOPS-1470
     Description: "NUC12 Hardware Reference Staging/Testing Pool"
     image: "win11-24H2-NUC-01-16-2025"
     src_Organisation: "mozilla-platform-ops"
@@ -91,35 +92,14 @@ pools:
     nodes:
     - t-nuc12-001
     - t-nuc12-002
-  - name: "win11-64-2009-hw"
-    puppet_version: "8.5.1"
-    Description: "NUC13 Hardware Performance"
-    image: "win11-2009-NUC-05-06-2024"
-    src_Organisation: "mozilla-platform-ops"
-    src_Repository: "ronin_puppet"
-    src_Branch: "windows"
-    hash: "83ad25f"
-    secret_date: "03-22-2024"
-    domain_suffix: "wintest2.releng.mdc1.mozilla.com"
-    nodes:
-    - nuc13-071
-    - nuc13-072
-    - nuc13-073
-    - nuc13-074
-    - nuc13-075
-    - nuc13-076
-    - nuc13-077
-    - nuc13-078
-    - nuc13-079
-    - nuc13-080
   - name: "win11-64-24h2-hw-relops1213"
     puppet_version: "8.10.0"
     Description: "NUC12 Hardware Performance Staging/Testing Pool"
     image: "win11-24H2-NUC-01-16-2025"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "RELOPS-1213"
-    hash: "3bc12b5"
+    src_Branch: "RELOPS-1264"
+    hash: "61d1b65"
     secret_date: "03-26-2025"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -227,6 +207,16 @@ pools:
     - nuc13-068
     - nuc13-069
     - nuc13-070
+    - nuc13-071
+    - nuc13-072
+    - nuc13-073
+    - nuc13-074
+    - nuc13-075
+    - nuc13-076
+    - nuc13-077
+    - nuc13-078
+    - nuc13-079
+    - nuc13-080
     - nuc13-081
     - nuc13-082
     - nuc13-083

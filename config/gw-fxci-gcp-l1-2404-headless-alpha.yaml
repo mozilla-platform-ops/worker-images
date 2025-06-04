@@ -7,7 +7,7 @@ image:
   zone: us-west1-a
 vm:
   disk_size: 60
-  taskcluster_version: 83.5.8
+  taskcluster_version: 84.0.1
   tc_arch: AMD64
   script_paths: 
   - "scripts/linux/ubuntu-2404-headless-amd64-headless"

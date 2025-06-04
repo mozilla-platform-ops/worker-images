@@ -89,6 +89,7 @@ source "googlecompute" "gw-fxci-gcp-l1-2404-headless-alpha" {
   ssh_username        = "ubuntu"
   zone                = var.zone
   use_iap             = true
+  image_guest_os_features = ["GVNIC"]
 }
 
 source "googlecompute" "gw-fxci-gcp-l1-2404-arm64-headless-alpha" {
@@ -102,9 +103,7 @@ source "googlecompute" "gw-fxci-gcp-l1-2404-arm64-headless-alpha" {
   ssh_username        = "ubuntu"
   zone                = var.zone
   use_iap             = true
-  # ssh_timeout         = "10m"
-  # wait_to_add_ssh_keys = "5m"
-  # iap_tunnel_launch_wait  = 120
+  image_guest_os_features = ["GVNIC"]
 }
 
 build {
@@ -188,8 +187,8 @@ build {
     expect_disconnect = true
     pause_before = "10s"
     scripts = [
-      "${path.cwd}/scripts/linux/common/install-ops-agent.sh",
-      "${path.cwd}/scripts/linux/common/clean.sh",
+      #"${path.cwd}/scripts/linux/common/install-ops-agent.sh",
+      "${path.cwd}/scripts/linux/common/clean.sh"
     ]
     start_retry_timeout = "30m"
   }
@@ -303,7 +302,7 @@ build {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect = true
     scripts = [
-      "${path.cwd}/scripts/linux/common/install-ops-agent.sh",
+      #"${path.cwd}/scripts/linux/common/install-ops-agent.sh"
       "${path.cwd}/scripts/linux/common/clean.sh",
     ]
     start_retry_timeout = "30m"
@@ -392,8 +391,8 @@ build {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect = true
     scripts = [
-      "${path.cwd}/scripts/linux/common/install-ops-agent.sh",
-      "${path.cwd}/scripts/linux/common/clean.sh",
+      #"${path.cwd}/scripts/linux/common/install-ops-agent.sh",
+      "${path.cwd}/scripts/linux/common/clean.sh"
     ]
     start_retry_timeout = "30m"
   }

@@ -294,14 +294,73 @@ function Install-Choco {
     param (
         
     )
+
+    if (-not $env:TEMP) {
+        $env:TEMP = Join-Path $env:SystemDrive -ChildPath 'temp'
+    }
     
-    ## Install chocolatey here
-    Set-ExecutionPolicy Unrestricted -Force -ErrorAction SilentlyContinue
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+    $chocoTempDir = Join-Path $env:TEMP -ChildPath "chocolatey"
+    $tempDir = Join-Path $chocoTempDir -ChildPath "chocoInstall"
+    
+    if (-not (Test-Path $tempDir -PathType Container)) {
+        $null = New-Item -Path $tempDir -ItemType Directory
+    }
+    
+    #endregion Setup
+    
+    #region Download & Extract Chocolatey
+    
+    $file = Join-Path $tempDir "chocolatey.zip"
+    $ChocolateyDownloadUrl = "https://ronin-puppet-package-repo.s3.us-west-2.amazonaws.com/Windows/chocolatey.zip"
+    # If we are passed a valid local path, we do not need to download it.
+    Write-Host "Getting Chocolatey from $ChocolateyDownloadUrl."
+    Invoke-DownloadWithRetry -Url $ChocolateyDownloadUrl -Path $file
+    
+    Write-Host "Extracting $file to $tempDir"
+    Expand-Archive -Path $file -DestinationPath $tempDir -Force
+
+    #endregion Download & Extract Chocolatey
+    
+    #region Install Chocolatey
+    
+    Write-Host "Installing Chocolatey on the local machine"
+    $toolsFolder = Join-Path $tempDir -ChildPath "tools"
+    $chocoInstallPS1 = Join-Path $toolsFolder -ChildPath "chocolateyInstall.ps1"
+    
+    & $chocoInstallPS1
+    
+    Write-Host 'Ensuring Chocolatey commands are on the path'
+    $chocoInstallVariableName = "ChocolateyInstall"
+    $chocoPath = [Environment]::GetEnvironmentVariable($chocoInstallVariableName)
+    
+    if (-not $chocoPath) {
+        $chocoPath = "$env:ALLUSERSPROFILE\Chocolatey"
+    }
+    
+    if (-not (Test-Path ($chocoPath))) {
+        $chocoPath = "$env:PROGRAMDATA\chocolatey"
+    }
+    
+    $chocoExePath = Join-Path $chocoPath -ChildPath 'bin'
+    
+    # Update current process PATH environment variable if it needs updating.
+    if ($env:Path -notlike "*$chocoExePath*") {
+        $env:Path = [Environment]::GetEnvironmentVariable('Path', [System.EnvironmentVariableTarget]::Machine);
+    }
+    
+    Write-Host 'Ensuring chocolatey.nupkg is in the lib folder'
+    $chocoPkgDir = Join-Path $chocoPath -ChildPath 'lib\chocolatey'
+    $nupkg = Join-Path $chocoPkgDir -ChildPath 'chocolatey.nupkg'
+    
+    if (-not (Test-Path $chocoPkgDir -PathType Container)) {
+        $null = New-Item -ItemType Directory -Path $chocoPkgDir
+    }
+    
+    Copy-Item -Path $file -Destination $nupkg -Force -ErrorAction SilentlyContinue
     
     if (-Not (Test-Path "C:\ProgramData\Chocolatey\bin\choco.exe")) {
-        Set-PXE
+        Write-Host "Chocolatey installation failed. Exiting."
+        pause
     }
 }
 
@@ -317,7 +376,7 @@ function Set-PXEWin10 {
         bcdedit /enum firmware > "$tempPath\\firmware.txt"
 
         $fwBootMgr = Select-String -Path "$tempPath\\firmware.txt" -Pattern "{fwbootmgr}"
-        if (!$fwBootMgr){
+        if (!$fwBootMgr) {
             Write-Log -message  ('{0} :: Device is configured for Legacy Boot. Exiting!' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'
             Exit 999
         }
@@ -341,6 +400,102 @@ function Set-PXEWin10 {
     }
 }
 
+function Invoke-DownloadWithRetryGithub {
+    <#
+    .SYNOPSIS
+        Downloads a file from a given URL with retry functionality.
+
+    .DESCRIPTION
+        The Invoke-DownloadWithRetry function downloads a file from the specified URL
+        to the specified path. It includes retry functionality in case the download fails.
+
+    .PARAMETER Url
+        The URL of the file to download.
+
+    .PARAMETER Path
+        The path where the downloaded file will be saved. If not provided, a temporary path
+        will be used.
+
+    .EXAMPLE
+        Invoke-DownloadWithRetry -Url "https://example.com/file.zip" -Path "C:\Downloads\file.zip"
+        Downloads the file from the specified URL and saves it to the specified path.
+
+    .EXAMPLE
+        Invoke-DownloadWithRetry -Url "https://example.com/file.zip"
+        Downloads the file from the specified URL and saves it to a temporary path.
+
+    .OUTPUTS
+        The path where the downloaded file is saved.
+    #>
+
+    Param
+    (
+        [Parameter(Mandatory)]
+        [string] $Url,
+        [Alias("Destination")]
+        [string] $Path,
+        [string] $PAT
+    )
+
+    if (-not $Path) {
+        $invalidChars = [IO.Path]::GetInvalidFileNameChars() -join ''
+        $re = "[{0}]" -f [RegEx]::Escape($invalidChars)
+        $fileName = [IO.Path]::GetFileName($Url) -replace $re
+
+        if ([String]::IsNullOrEmpty($fileName)) {
+            $fileName = [System.IO.Path]::GetRandomFileName()
+        }
+        $Path = Join-Path -Path "${env:Temp}" -ChildPath $fileName
+    }
+
+    Write-Host "Downloading package from $Url to $Path..."
+    #Write-Log -message ('{0} :: Downloading {1} to {2} - {3:o}' -f $($MyInvocation.MyCommand.Name), $url, $path, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+
+    $interval = 30
+    $downloadStartTime = Get-Date
+    for ($retries = 20; $retries -gt 0; $retries--) {
+        try {
+            $attemptStartTime = Get-Date
+            $Headers = @{
+                Accept                 = "application/vnd.github+json"
+                Authorization          = "Bearer $($PAT)"
+                "X-GitHub-Api-Version" = "2022-11-28"
+            }
+            $response = Invoke-WebRequest -Uri $Url -Headers $Headers -OutFile $Path
+            $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
+            Write-Host "Package downloaded in $attemptSeconds seconds"
+            Write-host "Status: $($response.statuscode)"
+            #Write-Log -message ('{0} :: Package downloaded in {1} seconds - {2:o}' -f $($MyInvocation.MyCommand.Name), $attemptSeconds, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+            break
+        }
+        catch {
+            $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
+            Write-Warning "Package download failed in $attemptSeconds seconds"
+            Write-host "Status: $($response.statuscode)"
+            #Write-Log -message ('{0} :: Package download failed in {1} seconds - {2:o}' -f $($MyInvocation.MyCommand.Name), $attemptSeconds, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+
+            Write-Warning $_.Exception.Message
+
+            if ($_.Exception.InnerException.Response.StatusCode -eq [System.Net.HttpStatusCode]::NotFound) {
+                Write-Warning "Request returned 404 Not Found. Aborting download."
+                #Write-Log -message ('{0} :: Request returned 404 Not Found. Aborting download. - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+                $retries = 0
+            }
+        }
+
+        if ($retries -eq 0) {
+            $totalSeconds = [math]::Round(($(Get-Date) - $downloadStartTime).TotalSeconds, 2)
+            throw "Package download failed after $totalSeconds seconds"
+        }
+
+        Write-Warning "Waiting $interval seconds before retrying (retries left: $retries)..."
+        #Write-Log -message ('{0} :: Waiting {1} seconds before retrying (retries left: {2})... - {3:o}' -f $($MyInvocation.MyCommand.Name), $interval, $retries, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+        Start-Sleep -Seconds $interval
+    }
+
+    return $Path
+}
+
 ## Check until the machine is online
 Test-ConnectionUntilOnline
 
@@ -351,12 +506,28 @@ Set-WinRM
 Set-SSH
 
 ## Install chocolatey
-## Commented out for Troubleshooting
 Install-Choco
 
 $local_bootstrap = "C:\bootstrap\bootstrap.ps1"
 
-Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/main/provisioners/windows/MDC1Windows/bootstrap.ps1" -Path $local_bootstrap
+if (-Not (Test-Path "D:\Secrets\pat.txt")) {
+    $splat = @{
+        Url  = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/main/provisioners/windows/MDC1Windows/bootstrap.ps1"
+        Path = $local_bootstrap
+    }
+
+    Invoke-DownloadWithRetry @splat
+}
+else {
+    $splat = @{
+        Url  = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/main/provisioners/windows/MDC1Windows/bootstrap.ps1"
+        Path = $local_bootstrap
+        PAT  = Get-Content "D:\Secrets\pat.txt"
+    }
+
+    Invoke-DownloadWithRetryGithub @splat
+}
+
 
 if (-Not (Test-Path -Path $local_bootstrap)) {
     switch (Get-WinDisplayVersion) {
