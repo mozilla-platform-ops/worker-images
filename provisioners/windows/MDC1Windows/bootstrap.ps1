@@ -214,75 +214,39 @@ function Set-SSH {
     $sshdService = Get-Service -Name sshd -ErrorAction SilentlyContinue
     if ($null -eq $sshdService) {
         Write-Log -message ('{0} :: Enabling OpenSSH.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-        switch (Get-WinDisplayVersion) {
-            "24H2" {
-                ## running this manually on 24h2 didn't need the trailing ~~~~0.0.1.0
-                Add-WindowsCapability -Online -Name OpenSSH.Server
-                ## When adding the open.ssh server capability, it doesn't start the service
-                $destinationDirectory = "C:\users\administrator\.ssh"
-                ## This is the path where the authorized_keys file will be saved
-                $authorized_keys = Join-Path $destinationDirectory -ChildPath "authorized_keys"
-                ## Create the hidden ssh directory
-                New-Item -ItemType Directory -Path $destinationDirectory -Force
-                Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/main/provisioners/windows/MDC1Windows/ssh/authorized_keys" -Path $authorized_keys
-                Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/main/provisioners/windows/MDC1Windows/ssh/sshd_config" -Path "C:\programdata\ssh\sshd_config"
-                $sshdService = Get-Service -Name sshd -ErrorAction SilentlyContinue
-                if ($sshdService.status -ne "Running") {
-                    Start-Service sshd
-                    Set-Service -Name sshd -StartupType Automatic
-                }
-                ## Is sshdservice set to autmatically start?
-                if ((Get-Service -Name sshd -ErrorAction SilentlyContinue).StartType -ne "Automatic") {
-                    Set-Service -Name sshd -StartupType Automatic
-                }
-                $sshfw = @{
-                    Name        = "AllowSSH"
-                    DisplayName = "Allow SSH"
-                    Description = "Allow SSH traffic on port 22"
-                    Profile     = "Any"
-                    Direction   = "Inbound"
-                    Action      = "Allow"
-                    Protocol    = "TCP"
-                    LocalPort   = 22
-                }
-                New-NetFirewallRule @sshfw
-            }
-            default {
-                $sshCapability = Get-WindowsCapability -Online | Where-Object { $_.Name -match "OpenSSH"}
-                foreach ($ssh in $sshCapability) {
-                    if ($ssh.State -eq "Present") {
-                        Write-Log -message ('{0} :: Uninstalling {1}.' -f $($MyInvocation.MyCommand.Name),$ssh.name) -severity 'DEBUG'
-                        Remove-WindowsCapability -Online -Name $ssh.name
-                    }
-                }
-                Write-Log -message ('{0} :: Enabling OpenSSH.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-                $destinationDirectory = "C:\users\administrator\.ssh"
-                $authorized_keys = $destinationDirectory + "authorized_keys"
-                New-Item -ItemType Directory -Path $destinationDirectory -Force
-                ## Now let's install it
-                $win32_openssh = Invoke-DownloadWithRetry "https://github.com/PowerShell/Win32-OpenSSH/releases/download/v9.8.3.0p2-Preview/OpenSSH-Win64-v9.8.3.0.msi"
-                ## Install the server component
-                $install = Start-Process -FilePath msiexec.exe -ArgumentList "/i $win32_openssh /quiet /norestart ADDLOCAL=Server" -Wait -PassThru -NoNewWindow
-                Write-host "win32_openssh install exit code: $($install.ExitCode)"
-                Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/main/provisioners/windows/MDC1Windows/ssh/authorized_keys" -Path $authorized_keys
-                Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/main/provisioners/windows/MDC1Windows/ssh/sshd_config" -Path "C:\programdata\ssh\sshd_config"
-                $sshdService = Get-Service -Name ssh* -ErrorAction SilentlyContinue
-                Write-host "sshdService status: $($sshdService.status)"
-                ## Refresh env variable for ssh to work
-                [Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path",[System.EnvironmentVariableTarget]::Machine) + ';' + ${Env:ProgramFiles} + '\OpenSSH', [System.EnvironmentVariableTarget]::Machine)
-                $sshfw = @{
-                    Name        = "AllowSSH"
-                    DisplayName = "Allow SSH"
-                    Description = "Allow SSH traffic on port 22"
-                    Profile     = "Any"
-                    Direction   = "Inbound"
-                    Action      = "Allow"
-                    Protocol    = "TCP"
-                    LocalPort   = 22
-                }
-                New-NetFirewallRule @sshfw
+        $sshCapability = Get-WindowsCapability -Online | Where-Object { $_.Name -match "OpenSSH" }
+        foreach ($ssh in $sshCapability) {
+            if ($ssh.State -eq "Present") {
+                Write-Log -message ('{0} :: Uninstalling {1}.' -f $($MyInvocation.MyCommand.Name), $ssh.name) -severity 'DEBUG'
+                Remove-WindowsCapability -Online -Name $ssh.name
             }
         }
+        Write-Log -message ('{0} :: Enabling OpenSSH.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
+        $destinationDirectory = "C:\users\administrator\.ssh"
+        $authorized_keys = $destinationDirectory + "authorized_keys"
+        New-Item -ItemType Directory -Path $destinationDirectory -Force
+        ## Now let's install it
+        $win32_openssh = Invoke-DownloadWithRetry "https://github.com/PowerShell/Win32-OpenSSH/releases/download/v9.8.3.0p2-Preview/OpenSSH-Win64-v9.8.3.0.msi"
+        ## Install the server component
+        $install = Start-Process -FilePath msiexec.exe -ArgumentList "/i $win32_openssh /quiet /norestart ADDLOCAL=Server" -Wait -PassThru -NoNewWindow
+        Write-host "win32_openssh install exit code: $($install.ExitCode)"
+        Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/main/provisioners/windows/MDC1Windows/ssh/authorized_keys" -Path $authorized_keys
+        Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/main/provisioners/windows/MDC1Windows/ssh/sshd_config" -Path "C:\programdata\ssh\sshd_config"
+        $sshdService = Get-Service -Name ssh* -ErrorAction SilentlyContinue
+        Write-host "sshdService status: $($sshdService.status)"
+        ## Refresh env variable for ssh to work
+        [Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", [System.EnvironmentVariableTarget]::Machine) + ';' + ${Env:ProgramFiles} + '\OpenSSH', [System.EnvironmentVariableTarget]::Machine)
+        $sshfw = @{
+            Name        = "AllowSSH"
+            DisplayName = "Allow SSH"
+            Description = "Allow SSH traffic on port 22"
+            Profile     = "Any"
+            Direction   = "Inbound"
+            Action      = "Allow"
+            Protocol    = "TCP"
+            LocalPort   = 22
+        }
+        New-NetFirewallRule @sshfw
     }
     else {
         Write-Log -message ('{0} :: SSHd is running.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
