@@ -7,5 +7,4 @@ image:
   zone: us-west1-a
 vm:
   disk_size: 60
-  taskcluster_ref: "matt-borris/validateGPUsD2G"
   tc_arch: AMD64

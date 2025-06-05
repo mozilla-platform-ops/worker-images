@@ -73,13 +73,24 @@ echo 'kernel.perf_event_paranoid = 1' >> /etc/sysctl.d/90-custom.conf
 groupadd snap_sudo
 echo '%snap_sudo ALL=(ALL:ALL) NOPASSWD: /usr/bin/snap' | EDITOR='tee -a' visudo
 
-# instead of building from source, we can install the pre-built binary
-cd /usr/local/bin
-retry curl -fsSL "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/generic-worker-multiuser-linux-${TC_ARCH}" > generic-worker
-retry curl -fsSL "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/start-worker-linux-${TC_ARCH}" > start-worker
-retry curl -fsSL "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/livelog-linux-${TC_ARCH}" > livelog
-retry curl -fsSL "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/taskcluster-proxy-linux-${TC_ARCH}" > taskcluster-proxy
-chmod a+x generic-worker start-worker taskcluster-proxy livelog
+# build from source using taskcluster ref
+# build generic-worker/livelog/start-worker/taskcluster-proxy from ${TASKCLUSTER_REF} commit / branch / tag etc
+retry apt-get install -y git tar
+retry curl -fsSL 'https://dl.google.com/go/go1.23.6.linux-amd64.tar.gz' > go.tar.gz
+tar xvfz go.tar.gz -C /usr/local
+export HOME=/root
+export GOPATH=~/go
+export GOROOT=/usr/local/go
+export PATH="${GOROOT}/bin:${GOPATH}/bin:${PATH}"
+export GCO_ENABLED=0
+git clone "https://github.com/taskcluster/taskcluster"
+cd taskcluster
+git checkout "${TASKCLUSTER_REF}"
+HEAD_REV="$(git rev-parse HEAD)"
+go build -tags multiuser -o "/usr/local/bin/generic-worker" -ldflags "-X main.revision=${HEAD_REV}" ./workers/generic-worker
+go build -o "/usr/local/bin/livelog" ./tools/livelog
+go build -o "/usr/local/bin/taskcluster-proxy" -ldflags "-X main.revision=${HEAD_REV}" ./tools/taskcluster-proxy
+go build -o "/usr/local/bin/start-worker" -ldflags "-X main.revision=${HEAD_REV}" ./tools/worker-runner/cmd/start-worker
 
 mkdir -p /etc/generic-worker
 mkdir -p /var/local/generic-worker
