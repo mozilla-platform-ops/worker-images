@@ -26,7 +26,6 @@ jobs:
         shell: pwsh
         run: |
           $AUTHORIZED_USERS=$(Get-Content .github/relsre.json | Convertfrom-Json)
-          $authorized_users+=$(Get-Content .github/tc.json | Convertfrom-Json)
           if ($authorized_users -contains "${{ github.actor }}") {
             Write-host "User ${{ github.actor }} is authorized."
           }
