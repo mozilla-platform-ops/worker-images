@@ -65,7 +65,6 @@ function New-AzSharedWorkerImage {
     $ENV:PKR_VAR_deployment_id = $Y.vm.tags["deploymentId"]
     $ENV:PKR_VAR_worker_pool_id = $Y.vm.tags["worker_pool_id"]
 
-    $ENV:PKR_VAR_bootstrap_script = $Y.azure["bootstrapscript"]
     $ENV:PKR_VAR_gallery_name = $Y.sharedimage["gallery_name"]
     $ENV:PKR_VAR_image_name = $Y.sharedimage["image_name"]
     $ENV:PKR_VAR_sharedimage_version = $Y.sharedimage["image_version"]
