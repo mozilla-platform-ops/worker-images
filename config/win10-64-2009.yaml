@@ -7,19 +7,20 @@ image:
 sharedimage:
   gallery_name: "win10_64_2009"
   image_name: "win10_64_2009"
+  image_version: default
 azure:
-  managed_image_resource_group_name: rg-packer-worker-images
-  managed_image_storage_account_type: Standard_LRS
+  managed_image_resource_group_name: default
+  managed_image_storage_account_type: default
 vm:
   size: Standard_F8s_v2
   tags:
     base_image: win10642009azure
     worker_pool_id: win10-64-2009
-    sourceOrganization: mozilla-platform-ops
-    sourceRepository: ronin_puppet
-    sourceBranch: windows
-    deploymentId: "389b2fc"
-    managed_by: packer
+    sourceOrganization: default
+    sourceRepository: default
+    sourceBranch: default
+    deploymentId: default
+    managed_by: default
 tests:
   - microsoft_tools_tester.tests.ps1
   - disable_services.tests.ps1
