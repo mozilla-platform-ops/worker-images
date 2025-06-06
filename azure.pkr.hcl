@@ -268,12 +268,6 @@ build {
     "source.azure-arm.nonsig"
   ]
 
-  #provisioner "powershell" {
-    #inline = [
-      #"$ErrorActionPreference='SilentlyContinue'; Set-ExecutionPolicy unrestricted -force"
-    #]
-  #}
-
   provisioner "file" {
     source      = "${path.root}/scripts/windows/CustomFunctions/Bootstrap"
     destination = "C:/Windows/System32/WindowsPowerShell/v1.0/Modules/"
@@ -283,6 +277,7 @@ build {
     elevated_password = ""
     elevated_user     = "SYSTEM"
     inline = [
+      "Write-Host '=== FIRST POWERSHELL COMMAND ==='",
       "$null = New-Item -Name 'Tests' -Path C:/ -Type Directory -Force",
       "$null = New-Item -Name 'Config' -Path C:/ -Type Directory -Force"
     ]
