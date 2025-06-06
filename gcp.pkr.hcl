@@ -255,6 +255,7 @@ build {
       "${path.cwd}/scripts/linux/common/aslr.sh",
       "${path.cwd}/scripts/linux/common/docker-config.sh",
       "${path.cwd}/scripts/linux/common/ephemeral-disks.sh",
+      "${path.cwd}/scripts/linux/common/configure-nvidia-gpus.sh",
       "${path.cwd}/scripts/linux/common/userns.sh",
       "${path.cwd}/scripts/linux/common/v4l2loopback.sh"
     ]
@@ -487,6 +488,7 @@ build {
       "${path.cwd}/scripts/linux/common/aslr.sh",
       "${path.cwd}/scripts/linux/common/docker-config.sh",
       "${path.cwd}/scripts/linux/common/ephemeral-disks.sh",
+      "${path.cwd}/scripts/linux/common/configure-nvidia-gpus.sh",
       "${path.cwd}/scripts/linux/common/userns.sh",
       "${path.cwd}/scripts/linux/common/v4l2loopback.sh"
     ]
