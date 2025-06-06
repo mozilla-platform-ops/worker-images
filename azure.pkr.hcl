@@ -390,9 +390,9 @@ build {
       "config=${var.config}"
     ]
     inline = [
-      "Import-Module BootStrap -Force";
-      "Set-PesterVersion";
-      "Set-YAMLModule";
+      "Import-Module BootStrap -Force",
+      "Set-PesterVersion",
+      "Set-YAMLModule",
       "Invoke-RoninTest -Role $ENV:base_image -Config $ENV:config"
     ]
     valid_exit_codes = [
