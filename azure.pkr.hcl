@@ -272,7 +272,7 @@ build {
     inline = [
       #"$ErrorActionPreference='SilentlyContinue';",
       "$ErrorActionPreference='Stop';",
-      "Set-ExecutionPolicy unrestricted -force"
+      "#Set-ExecutionPolicy unrestricted -force"
     ]
   }
 
