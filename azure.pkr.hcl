@@ -268,11 +268,11 @@ build {
     "source.azure-arm.nonsig"
   ]
 
-  provisioner "powershell" {
-    inline = [
-      "$ErrorActionPreference='SilentlyContinue'; Set-ExecutionPolicy unrestricted -force"
-    ]
-  }
+  #provisioner "powershell" {
+    #inline = [
+      #"$ErrorActionPreference='SilentlyContinue'; Set-ExecutionPolicy unrestricted -force"
+    #]
+  #}
 
   provisioner "file" {
     source      = "${path.root}/scripts/windows/CustomFunctions/Bootstrap"
