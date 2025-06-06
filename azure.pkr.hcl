@@ -268,8 +268,7 @@ build {
     "source.azure-arm.nonsig"
   ]
 
-
-  provisioner "powershell" {Add commentMore actions
+  provisioner "powershell" {
     inline = [
       "$ErrorActionPreference='SilentlyContinue'",
       "Set-ExecutionPolicy unrestricted -force"
