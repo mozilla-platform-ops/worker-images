@@ -285,7 +285,7 @@ build {
     elevated_password = ""
     elevated_user     = "SYSTEM"
     inline = [
-      "$null = New-Item -Name 'Tests' -Path C:/ -Type Directory -Force",
+      "$null = New-Item -Name 'Tests' -Path C:/ -Type Directory -Force;",
       "$null = New-Item -Name 'Config' -Path C:/ -Type Directory -Force"
     ]
   }
