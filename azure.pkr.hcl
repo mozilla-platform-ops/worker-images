@@ -339,7 +339,7 @@ build {
       "deploymentId=${var.deployment_id}"
     ]
     inline = [
-      "Import-Module BootStrap -Force",
+      "Import-Module BootStrap -Force;",
       "Set-AzRoninRepo"
     ]
   }
@@ -359,7 +359,7 @@ build {
       "application_id=${var.application_id}"
     ]
     inline = [
-      "Import-Module BootStrap -Force",
+      "Import-Module BootStrap -Force;",
       "Start-AzRoninPuppet"
     ]
     valid_exit_codes = [
