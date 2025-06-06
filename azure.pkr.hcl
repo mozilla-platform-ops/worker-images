@@ -309,8 +309,6 @@ build {
       "config=${var.config}"
     ]
     inline = [
-      "$VerbosePreference = 'Continue'",
-      "$DebugPreference = 'Continue'",
       "Write-Host '=== Importing BootStrap ==='",
       "Import-Module BootStrap -Force",
       "Write-Host '=== Running Disable-AntiVirus ==='",
