@@ -268,6 +268,14 @@ build {
     "source.azure-arm.nonsig"
   ]
 
+
+  provisioner "powershell" {Add commentMore actions
+    inline = [
+      "$ErrorActionPreference='SilentlyContinue'";
+      "Set-ExecutionPolicy unrestricted -force"
+    ]
+  }
+
   provisioner "file" {
     source      = "${path.root}/scripts/windows/CustomFunctions/Bootstrap"
     destination = "C:/Windows/System32/WindowsPowerShell/v1.0/Modules/"
@@ -277,8 +285,7 @@ build {
     elevated_password = ""
     elevated_user     = "SYSTEM"
     inline = [
-      "Write-Host '=== FIRST POWERSHELL COMMAND ==='",
-      "$null = New-Item -Name 'Tests' -Path C:/ -Type Directory -Force",
+      "$null = New-Item -Name 'Tests' -Path C:/ -Type Directory -Force";
       "$null = New-Item -Name 'Config' -Path C:/ -Type Directory -Force"
     ]
   }
@@ -309,15 +316,10 @@ build {
       "config=${var.config}"
     ]
     inline = [
-      "Write-Host '=== Importing BootStrap ==='",
-      "Import-Module BootStrap -Force",
-      "Write-Host '=== Running Disable-AntiVirus ==='",
-      "Disable-AntiVirus",
-      "Write-Host '=== Running Set-Logging ==='",
-      "Set-Logging",
-      "Write-Host '=== Running Install-AzPreReq ==='",
-      "Install-AzPreReq",
-      "Write-Host '=== Running Set-RoninRegOptions ==='",
+      "Import-Module BootStrap -Force";
+      "Disable-AntiVirus";
+      "Set-Logging";
+      "Install-AzPreReq";
       "Set-RoninRegOptions"
     ]
   }
@@ -337,7 +339,7 @@ build {
       "deploymentId=${var.deployment_id}"
     ]
     inline = [
-      "Import-Module BootStrap -Force",
+      "Import-Module BootStrap -Force";
       "Set-AzRoninRepo"
     ]
   }
@@ -357,7 +359,7 @@ build {
       "application_id=${var.application_id}"
     ]
     inline = [
-      "Import-Module BootStrap -Force",
+      "Import-Module BootStrap -Force";
       "Start-AzRoninPuppet"
     ]
     valid_exit_codes = [
@@ -388,9 +390,9 @@ build {
       "config=${var.config}"
     ]
     inline = [
-      "Import-Module BootStrap -Force",
-      "Set-PesterVersion",
-      "Set-YAMLModule",
+      "Import-Module BootStrap -Force";
+      "Set-PesterVersion";
+      "Set-YAMLModule";
       "Invoke-RoninTest -Role $ENV:base_image -Config $ENV:config"
     ]
     valid_exit_codes = [
@@ -415,8 +417,8 @@ build {
       "sharedimage_version=${var.sharedimage_version}"
     ]
     inline = [
-      "Import-Module BootStrap -Force",
-      "Set-MarkdownPSModule",
+      "Import-Module BootStrap -Force";
+      "Set-MarkdownPSModule";
       "Set-ReleaseNotes -Config $ENV:config -Version $ENV:sharedimage_version -Organization $ENV:src_organisation -Branch $ENV:src_Branch -Repository $ENV:src_Repository -DeploymentId $ENV:deploymentId" 
     ]
   }
@@ -441,10 +443,10 @@ build {
 
   provisioner "powershell" {
     inline = [
-      "Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Mozilla\\ronin_puppet' -Name hand_off_ready -Type string -Value yes",
-      "Write-host '=== Azure image build completed successfully ==='",
-      "Write-host '=== Generalising the image ... ==='",
-      "& $env:SystemRoot\\System32\\Sysprep\\Sysprep.exe /generalize /oobe /quit",
+      "Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Mozilla\\ronin_puppet' -Name hand_off_ready -Type string -Value yes";
+      "Write-host '=== Azure image build completed successfully ==='";
+      "Write-host '=== Generalising the image ... ==='";
+      "& $env:SystemRoot\\System32\\Sysprep\\Sysprep.exe /generalize /oobe /quit";
       "while ($true) { $imageState = Get-ItemProperty HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Setup\\State | Select ImageState; if($imageState.ImageState -ne 'IMAGE_STATE_GENERALIZE_RESEAL_TO_OOBE') { Write-Output $imageState.ImageState; Start-Sleep -s 15 } else { break } }"
     ]
   }
