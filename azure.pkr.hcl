@@ -316,10 +316,15 @@ build {
     inline = [
       "$VerbosePreference = 'Continue'",
       "$DebugPreference = 'Continue'",
+      "Write-Host '=== Importing BootStrap ==='",
       "Import-Module BootStrap -Force",
+      "Write-Host '=== Running Disable-AntiVirus ==='",
       "Disable-AntiVirus",
+      "Write-Host '=== Running Set-Logging ==='",
       "Set-Logging",
+      "Write-Host '=== Running Install-AzPreReq ==='",
       "Install-AzPreReq",
+      "Write-Host '=== Running Set-RoninRegOptions ==='",
       "Set-RoninRegOptions"
     ]
   }
