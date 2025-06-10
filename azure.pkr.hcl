@@ -270,9 +270,8 @@ build {
 
   provisioner "powershell" {
     inline = [
-      #"$ErrorActionPreference='SilentlyContinue';",
-      "$ErrorActionPreference='Stop';",
-      "#Set-ExecutionPolicy unrestricted -force"
+      "$ErrorActionPreference='SilentlyContinue';",
+      "Set-ExecutionPolicy unrestricted -force"
     ]
   }
 
