@@ -12,6 +12,8 @@ azure:
   managed_image_resource_group_name: default
   managed_image_storage_account_type: default
 vm:
+  puppet_version: default
+  git_version: default
   size: Standard_F8s_v2
   tags:
     base_image: win10642009azure
