@@ -65,4 +65,5 @@ jobs:
           --region us-west1 \
           --subscriptionId ${{ needs.setproject.outputs.PROJECT }} \
           --secrets \
-          --show-vulnerability-details
+          --show-vulnerability-details \
+          --policy-hits-only

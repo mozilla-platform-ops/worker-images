@@ -1,0 +1,77 @@
+run-name: GCP - TC - ${{ github.event.inputs.config }}
+name: FXCI - GCP - TC
+
+on:
+  workflow_dispatch:
+    inputs:
+      config:
+        type: string
+        description: The configuration file to use
+        default: "gw-fxci-gcp-l1-2404-headless-alpha-tc"
+      ref:
+        type: string
+        description: The branch or tag to build from
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  check-access:
+    name: "Verify User Access"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Load Authorized Users and Check Access
+        shell: pwsh
+        run: |
+          $AUTHORIZED_USERS=$(Get-Content .github/relsre.json | Convertfrom-Json)
+          if ($authorized_users -contains "${{ github.actor }}") {
+            Write-host "User ${{ github.actor }} is authorized."
+          }
+          else {
+            Write-Host "User ${{ github.actor }} is unauthorized."
+            exit 1
+          }
+  config:
+    needs: check-access
+    name: "Get Project ID from Config"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - id: set-matrix
+        shell: pwsh
+        run: |
+          Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
+          Set-GCPWorkerImageProject -Key '${{ github.event.inputs.config }}'
+    outputs:
+      PROJECT: ${{ steps.set-matrix.outputs.PROJECT }}
+  packer:
+    needs: config
+    name: "GCP ${{ github.event.inputs.config }}"
+    runs-on: ubuntu-latest
+    environment: prod
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: 'google-github-actions/auth@v2'
+        id: auth
+        with:
+          workload_identity_provider: "projects/324168772199/locations/global/workloadIdentityPools/github-actions/providers/github-actions"
+          service_account: "deploy-prod@${{ needs.config.outputs.PROJECT }}.iam.gserviceaccount.com"
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v2'
+      - name: 'Run Packer'
+        shell: pwsh
+        run: |
+          Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
+          $env:PKR_VAR_taskcluster_ref = '${{ github.event.inputs.ref }}'
+          $Vars = @{
+            Key = '${{ github.event.inputs.config }}'
+            Worker_Env_Var_Key = "${{ secrets.WORKER_ENV_VAR_KEY }}"
+            TC_worker_cert = "${{ secrets.TC_WORKER_CERT }}"
+            TC_worker_key = "${{ secrets.TC_WORKER_KEY }}"
+          }
+          New-GCPWorkerImage @Vars

@@ -471,8 +471,8 @@ function Invoke-DownloadWithRetryGithub {
         try {
             $attemptStartTime = Get-Date
             $Headers = @{
-                Accept = "application/vnd.github+json"
-                Authorization = "Bearer $($PAT)"
+                Accept                 = "application/vnd.github+json"
+                Authorization          = "Bearer $($PAT)"
                 "X-GitHub-Api-Version" = "2022-11-28"
             }
             $response = Invoke-WebRequest -Uri $Url -Headers $Headers -OutFile $Path
@@ -523,13 +523,25 @@ Set-SSH
 Install-Choco
 
 $local_bootstrap = "C:\bootstrap\bootstrap.ps1"
-$splat = @{
-    Url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/main/provisioners/windows/MDC1Windows/bootstrap.ps1"
-    Path = $local_bootstrap
-    PAT = Get-Content "D:\Secrets\pat.txt"
+
+if (-Not (Test-Path "D:\Secrets\pat.txt")) {
+    $splat = @{
+        Url  = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/main/provisioners/windows/MDC1Windows/bootstrap.ps1"
+        Path = $local_bootstrap
+    }
+
+    Invoke-DownloadWithRetry @splat
+}
+else {
+    $splat = @{
+        Url  = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/main/provisioners/windows/MDC1Windows/bootstrap.ps1"
+        Path = $local_bootstrap
+        PAT  = Get-Content "D:\Secrets\pat.txt"
+    }
+
+    Invoke-DownloadWithRetryGithub @splat
 }
 
-Invoke-DownloadWithRetryGithub @splat
 
 if (-Not (Test-Path -Path $local_bootstrap)) {
     switch (Get-WinDisplayVersion) {
