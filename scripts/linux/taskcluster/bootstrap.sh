@@ -169,6 +169,7 @@ retry apt-get install -y linux-modules-extra-$(uname -r)
 
 # avoid unnecessary shutdowns during worker startups
 systemctl disable unattended-upgrades
+systemctl disable apt-daily-upgrade.timer
 
 end_time="$(date '+%s')"
 echo "UserData execution took: $(($end_time - $start_time)) seconds"
