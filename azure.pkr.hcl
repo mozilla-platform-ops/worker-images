@@ -1,5 +1,6 @@
 // Inline Powershell Commands need a ";"
 // inside quotations. Except for last command. 
+// Without it Packer will treat all commands as single line.
 
 packer {
   required_plugins {
@@ -273,8 +274,7 @@ build {
 
   provisioner "powershell" {
     inline = [
-      "$ErrorActionPreference='SilentlyContinue';",
-      #"Set-ExecutionPolicy unrestricted -force"
+      "$ErrorActionPreference='SilentlyContinue'",
     ]
   }
 
