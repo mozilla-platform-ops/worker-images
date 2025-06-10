@@ -1,3 +1,6 @@
+// Inline Powershell Commands need a ";"
+// inside quotations. Except for last command. 
+
 packer {
   required_plugins {
     azure = {
