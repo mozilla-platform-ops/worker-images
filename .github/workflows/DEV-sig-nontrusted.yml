@@ -11,7 +11,9 @@ on:
         type: choice
         description: Choose which pool to build
         options:
+        - win10-64-2009
         - win10-64-2009-alpha
+        - win11-64-24h2
         - win11-64-24h2-alpha
         - win11-a64-24h2-tester-alpha
         - win11-a64-24h2-builder-alpha
@@ -23,7 +25,7 @@ permissions:
 
 ## Branch to be ran against
 env:
-  TARGET_BRANCH: RELOPS-1264
+  TARGET_BRANCH: RELOPS-1263
 
 jobs:
   check-access:
