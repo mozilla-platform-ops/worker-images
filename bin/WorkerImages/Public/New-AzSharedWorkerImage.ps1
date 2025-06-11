@@ -39,7 +39,7 @@ function New-AzSharedWorkerImage {
             elseif ($null -ne $imageVal -and $imageVal -ne '' -and $imageVal -ne 'default') {
                 $merged[$key] = $imageVal
             }
-            elseif ($null -ne $defaultVal) {
+            elseif ($null -ne $defaultVal -and $defaultVal -ne 'default') {
                 $merged[$key] = $defaultVal
             }
         }
@@ -47,19 +47,6 @@ function New-AzSharedWorkerImage {
     }
 
     $Y = Merge-YamlWithDefaults -ImageData $ImageYaml -DefaultData $DefaultYaml
-
-    # Resolve Puppet and Git versions
-    $puppetVersion = $Y.vm["puppet_version"]
-    if ($puppetVersion -eq "default" -or [string]::IsNullOrEmpty($puppetVersion)) {
-        $puppetVersion = $DefaultYaml.vm["puppet_version"]
-    }
-    $ENV:PKR_VAR_puppet_version = $puppetVersion
-
-    $gitVersion = $Y.vm["git_version"]
-    if ($gitVersion -eq "default" -or [string]::IsNullOrEmpty($gitVersion)) {
-        $gitVersion = $DefaultYaml.vm["git_version"]
-    }
-    $ENV:PKR_VAR_git_version = $gitVersion
 
     # Required Packer vars
     $ENV:PKR_VAR_config = $Key
@@ -80,6 +67,8 @@ function New-AzSharedWorkerImage {
     $ENV:PKR_VAR_gallery_name = $Y.sharedimage["gallery_name"]
     $ENV:PKR_VAR_image_name = $Y.sharedimage["image_name"]
     $ENV:PKR_VAR_sharedimage_version = $Y.sharedimage["image_version"]
+    $ENV:PKR_VAR_puppet_version = $Y.vm["puppet_version"]
+    $ENV:PKR_VAR_git_version = $Y.vm["git_version"]
 
     # Auth & config vars
     $ENV:PKR_VAR_client_id = $Client_ID
