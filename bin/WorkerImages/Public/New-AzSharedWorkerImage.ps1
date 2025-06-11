@@ -48,27 +48,40 @@ function New-AzSharedWorkerImage {
 
     $Y = Merge-YamlWithDefaults -ImageData $ImageYaml -DefaultData $DefaultYaml
 
+    # Resolve Puppet and Git versions
+    $puppetVersion = $Y.vm["puppet_version"]
+    if ($puppetVersion -eq "default" -or [string]::IsNullOrEmpty($puppetVersion)) {
+        $puppetVersion = $DefaultYaml.vm["puppet_version"]
+    }
+    $ENV:PKR_VAR_puppet_version = $puppetVersion
+
+    $gitVersion = $Y.vm["git_version"]
+    if ($gitVersion -eq "default" -or [string]::IsNullOrEmpty($gitVersion)) {
+        $gitVersion = $DefaultYaml.vm["git_version"]
+    }
+    $ENV:PKR_VAR_git_version = $gitVersion
+
+    # Required Packer vars
     $ENV:PKR_VAR_config = $Key
     $ENV:PKR_VAR_image_key_name = $Key
     $ENV:PKR_VAR_image_publisher = $Y.image["publisher"]
     $ENV:PKR_VAR_image_offer = $Y.image["offer"]
     $ENV:PKR_VAR_image_sku = $Y.image["sku"]
     $ENV:PKR_VAR_image_version = $Y.image["version"]
-
     $ENV:PKR_VAR_resource_group = $Y.azure["managed_image_resource_group_name"]
     $ENV:PKR_VAR_vm_size = $Y.vm["size"]
     $ENV:PKR_VAR_base_image = $Y.vm.tags["base_image"]
-
     $ENV:PKR_VAR_source_branch = $Y.vm.tags["sourceBranch"]
     $ENV:PKR_VAR_source_repository = $Y.vm.tags["sourceRepository"]
     $ENV:PKR_VAR_source_organization = $Y.vm.tags["sourceOrganization"]
     $ENV:PKR_VAR_deployment_id = $Y.vm.tags["deploymentId"]
     $ENV:PKR_VAR_worker_pool_id = $Y.vm.tags["worker_pool_id"]
-
+    $ENV:PKR_VAR_bootstrap_script = $Y.azure["bootstrapscript"]
     $ENV:PKR_VAR_gallery_name = $Y.sharedimage["gallery_name"]
     $ENV:PKR_VAR_image_name = $Y.sharedimage["image_name"]
     $ENV:PKR_VAR_sharedimage_version = $Y.sharedimage["image_version"]
 
+    # Auth & config vars
     $ENV:PKR_VAR_client_id = $Client_ID
     $ENV:PKR_VAR_application_id = $Application_ID
     $ENV:PKR_VAR_tenant_id = $Tenant_ID
@@ -76,8 +89,10 @@ function New-AzSharedWorkerImage {
     $ENV:PKR_VAR_oidc_request_url = $oidc_request_url
     $ENV:PKR_VAR_oidc_request_token = $oidc_request_token
 
+    # Derived name
     $ENV:PKR_VAR_temp_resource_group_name = ('{0}-{1}-{2}-pkrtmp' -f $ENV:PKR_VAR_worker_pool_id, $ENV:PKR_VAR_deployment_id, (Get-Random -Maximum 999))
 
+    # Image name logic
     switch -Wildcard ($Key) {
         "*alpha2*" {
             $PackerForceBuild = $true
