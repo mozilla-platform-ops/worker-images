@@ -1,7 +1,7 @@
 ## Used for testing and develop of Repo working code
 ## 
 
-run-name: SIG - ${{ github.event.inputs.config }}
+run-name: DEV SIG - ${{ github.event.inputs.config }}
 name: DEV SIG Deployment - FXCI
 
 on:
