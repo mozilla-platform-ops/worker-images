@@ -15,7 +15,7 @@ function New-AzSharedWorkerImage {
     Install-Module powershell-yaml -ErrorAction Stop
 
     $DefaultYaml = ConvertFrom-Yaml (Get-Content "config/windows_production_defualts.yaml" -Raw)
-    $ImageYaml = ConvertFrom-Yaml (Get-Content "config/$Key.yaml" -Raw)
+    $ImageYaml   = ConvertFrom-Yaml (Get-Content "config/$Key.yaml" -Raw)
 
     function Merge-YamlWithDefaults {
         param (
@@ -36,6 +36,9 @@ function New-AzSharedWorkerImage {
                     $imageVal.Count -gt 0) {
                 $merged[$key] = $imageVal
             }
+            elseif ($imageVal -eq 'default' -and $null -ne $defaultVal -and $defaultVal -ne 'default') {
+                $merged[$key] = $defaultVal
+            }
             elseif ($null -ne $imageVal -and $imageVal -ne '' -and $imageVal -ne 'default') {
                 $merged[$key] = $imageVal
             }
@@ -48,7 +51,7 @@ function New-AzSharedWorkerImage {
 
     $Y = Merge-YamlWithDefaults -ImageData $ImageYaml -DefaultData $DefaultYaml
 
-    # Required Packer vars
+    # Set environment variables for Packer
     $ENV:PKR_VAR_config = $Key
     $ENV:PKR_VAR_image_key_name = $Key
     $ENV:PKR_VAR_image_publisher = $Y.image["publisher"]
@@ -70,7 +73,7 @@ function New-AzSharedWorkerImage {
     $ENV:PKR_VAR_puppet_version = $Y.vm["puppet_version"]
     $ENV:PKR_VAR_git_version = $Y.vm["git_version"]
 
-    # Auth & config vars
+    # Authentication and OIDC
     $ENV:PKR_VAR_client_id = $Client_ID
     $ENV:PKR_VAR_application_id = $Application_ID
     $ENV:PKR_VAR_tenant_id = $Tenant_ID
@@ -78,30 +81,40 @@ function New-AzSharedWorkerImage {
     $ENV:PKR_VAR_oidc_request_url = $oidc_request_url
     $ENV:PKR_VAR_oidc_request_token = $oidc_request_token
 
-    # Derived name
-    $ENV:PKR_VAR_temp_resource_group_name = ('{0}-{1}-{2}-pkrtmp' -f $ENV:PKR_VAR_worker_pool_id, $ENV:PKR_VAR_deployment_id, (Get-Random -Maximum 999))
+    # Temp resource group
+    $ENV:PKR_VAR_temp_resource_group_name = ('{0}-{1}-{2}-pkrtmp' -f `
+        $ENV:PKR_VAR_worker_pool_id, `
+        $ENV:PKR_VAR_deployment_id, `
+        (Get-Random -Maximum 999))
 
-    # Image name logic
+    # Managed image name based on key
     switch -Wildcard ($Key) {
         "*alpha2*" {
             $PackerForceBuild = $true
-            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-alpha2' -f $ENV:PKR_VAR_worker_pool_id, $ENV:PKR_VAR_image_sku)
+            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-alpha2' -f `
+                $ENV:PKR_VAR_worker_pool_id, $ENV:PKR_VAR_image_sku)
         }
         "*alpha*" {
             $PackerForceBuild = $true
-            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-alpha' -f $ENV:PKR_VAR_worker_pool_id, $ENV:PKR_VAR_image_sku)
+            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-alpha' -f `
+                $ENV:PKR_VAR_worker_pool_id, $ENV:PKR_VAR_image_sku)
         }
         "*beta*" {
             $PackerForceBuild = $true
-            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-beta' -f $ENV:PKR_VAR_worker_pool_id, $ENV:PKR_VAR_image_sku)
+            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-beta' -f `
+                $ENV:PKR_VAR_worker_pool_id, $ENV:PKR_VAR_image_sku)
         }
         "*next*" {
             $PackerForceBuild = $true
-            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-next' -f $ENV:PKR_VAR_worker_pool_id, $ENV:PKR_VAR_image_sku)
+            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-next' -f `
+                $ENV:PKR_VAR_worker_pool_id, $ENV:PKR_VAR_image_sku)
         }
         Default {
             $PackerForceBuild = $false
-            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}' -f $ENV:PKR_VAR_worker_pool_id, $ENV:PKR_VAR_image_sku, $ENV:PKR_VAR_deployment_id)
+            $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}' -f `
+                $ENV:PKR_VAR_worker_pool_id, `
+                $ENV:PKR_VAR_image_sku, `
+                $ENV:PKR_VAR_deployment_id)
         }
     }
 
