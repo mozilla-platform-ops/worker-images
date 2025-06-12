@@ -295,8 +295,6 @@ pools:
     - nuc13-158
     - nuc13-159
 
-  ## Add known bad nodes here, so they do not get processed by scripts.
-  ## Above the node name(s) add reason and Jira link. 
   - name: "Known-BAD"
     ## Dead. 
     ## https://mozilla-hub.atlassian.net/browse/RELOPS-1555?focusedCommentId=1076567
@@ -304,6 +302,7 @@ pools:
     ## TSL errors on PXE boot. 
     ## https://mozilla-hub.atlassian.net/browse/RELOPS-1555?focusedCommentId=1076567
     - nuc13-107
+
 
 defaults:
   NV_domain: "mdc1.mozilla.com"
