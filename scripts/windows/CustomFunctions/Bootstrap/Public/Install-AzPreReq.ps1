@@ -1,3 +1,6 @@
+if ($MyInvocation.InvocationName -ne $MyInvocation.MyCommand.Name) {
+    Write-Error "Script loaded incorrectly or overwritten."
+}
 function Install-AzPreReq {
     param (
         [string] $ext_src = "https://roninpuppetassets.blob.core.windows.net/binaries/prerequisites",
@@ -5,104 +8,89 @@ function Install-AzPreReq {
         [string] $work_dir = "$env:systemdrive\scratch",
         [string] $manifest = "nodes.pp"
     )
+
     begin {
         Get-PackageProvider -Name Nuget -ForceBootstrap | Out-Null
         Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-        Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
-        Write-Host ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime())
-        Set-PSRepository PSGallery -InstallationPolicy Trusted
-        Install-Module powershell-yaml -ErrorAction Stop
+        Install-Module powershell-yaml -Force -ErrorAction Stop
+
+        Write-Host "[Init] Starting Install-AzPreReq at $(Get-Date -Format o)"
     }
-    process { 
-        ## Create bootstrap
+
+    process {
+        $configFile = "C:\Config\$($env:Config).yaml"
+
+        if (-Not (Test-Path $configFile)) {
+            Write-Host " Could not find config file: $configFile"
+            exit 1
+        }
+
+        $data = ConvertFrom-Yaml (Get-Content $configFile -Raw)
+
+        # Puppet version
+        $puppet_version = $data.vm.puppet_version
+        if (-not $puppet_version -or $puppet_version -eq 'default') {
+            $puppet_version = "6.28.0"
+        }
+        $puppet = "puppet-agent-$puppet_version-x64.msi"
+
+        # Git version
+        $git_version = $data.vm.git_version
+        if (-not $git_version -or $git_version -eq 'default') {
+            $git_version = "2.46.0"
+        }
+
+        switch ($env:PROCESSOR_ARCHITECTURE) {
+            "AMD64" { $git = "Git-$git_version-64-bit.exe" }
+            "ARM64" { $git = "Git-$git_version-arm64.exe" }
+            Default { $git = "Git-$git_version-64-bit.exe" }
+        }
+
+        $git_url = "https://github.com/git-for-windows/git/releases/download/v$git_version.windows.1/$git"
+
+        Write-Host "[Resolved] puppet_version: $puppet_version"
+        Write-Host "[Resolved] git_version: $git_version"
+        Write-Host "[Resolved] Puppet installer: $puppet"
+        Write-Host "[Resolved] Git installer: $git"
+        Write-Host "[Resolved] Git download URL: $git_url"
+
+        # Set up azcopy
         $null = New-Item -Path $local_dir -ItemType Directory -Force
+        Write-Host " Downloading azcopy to $env:SystemDrive"
+        Invoke-DownloadWithRetry -Url "https://aka.ms/downloadazcopy-v10-windows" -Path "$env:SystemDrive\azcopy.zip"
+        Expand-Archive -Path "$env:SystemDrive\azcopy.zip" -DestinationPath "$env:SystemDrive\azcopy"
+        Copy-Item (Get-ChildItem "$env:SystemDrive\azcopy" -Recurse | Where-Object { $_.Name -eq "azcopy.exe" }).FullName -Destination "$env:SystemDrive\"
+        Remove-Item "$env:SystemDrive\azcopy.zip"
 
-        ## Setup azcopy
-        Write-host "Downloading azcopy to $ENV:systemdrive\"
-        Invoke-DownloadWithRetry -Url "https://aka.ms/downloadazcopy-v10-windows" -Path "$env:systemdrive\azcopy.zip"
-        if (-Not (Test-Path "$ENV:systemdrive\azcopy.zip")) {
-            Write-Host "Failed to download azcopy"
-            Write-Log -message ('{0} :: Failed to download azcopy' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-            exit 1
-        }
-        Write-host "Downloaded azcopy to $ENV:systemdrive\azcopy.zip"
-        Expand-Archive -Path "$ENV:systemdrive\azcopy.zip" -DestinationPath "$ENV:systemdrive\azcopy"
-        $azcopy_path = Get-ChildItem "$ENV:systemdrive\azcopy" -Recurse | Where-Object { $PSItem.name -eq "azcopy.exe" }
-        Copy-Item $azcopy_path.FullName -Destination "$ENV:systemdrive\"
-        Remove-Item "$ENV:systemdrive\azcopy.zip"
-        
-        ## Add support for switching between puppet versions for testing
-        ## Pull in the configuration file of the worker pool
-        $data = Convertfrom-Yaml (Get-Content -Path "C:\Config\$($ENV:Config).yaml" -Raw)
+        # Download prerequisites
+        Invoke-DownloadWithRetry -Url "$ext_src/$puppet" -Path "$env:SystemDrive\$puppet"
+        Invoke-DownloadWithRetry -Url $git_url -Path "$env:SystemDrive\$git"
 
-        if ([string]::IsNullOrEmpty($data)) {
-            Write-Log -message ('{0} :: - {2:o}' -f "Could not find Config at C:\Config\$($ENV:Config).yaml", (Get-Date).ToUniversalTime()) -severity 'DEBUG'
-            Write-Host ('{0} :: - {1:o}' -f "Could not find Config at C:\Config\$($ENV:Config).yaml", , (Get-Date).ToUniversalTime())
-            exit 1
-        }
-
-        ## Puppet version
-        if ([string]::IsNullOrEmpty($data.vm.puppet_version)) {
-            $puppet = "puppet-agent-6.28.0-x64.msi"
-        }
-        else {
-            $puppet = ("puppet-agent-{0}-x64.msi") -f $data.vm.puppet_version
-        }
-        ## Git Version
-        if ([string]::IsNullOrEmpty($data.vm.git_version)) {
-            $git = "Git-2.46.0-64-bit.exe"
-            $git_url = "https://github.com/git-for-windows/git/releases/download/v2.46.0.windows.1/$($git)"
-        }
-        else {
-            switch ($env:PROCESSOR_ARCHITECTURE) {
-                "AMD64" {
-                    $git = ("Git-{0}-64-bit.exe") -f $data.vm.git_version
-                }
-                "ARM64" {
-                    $git = ("Git-{0}-arm64.exe") -f $data.vm.git_version
-                }
-                Default {}
-            }
-            $git_url = "https://github.com/git-for-windows/git/releases/download/v{0}.windows.1/{1}" -f $data.vm.git_version, $git
-        }
-
-        Write-Log -message ('Puppet version: {0} :: - {1:o}' -f $puppet, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
-        Write-Host ('Puppet version: {0} :: - {1:o}' -f $puppet, (Get-Date).ToUniversalTime())
-        
-        ## Download puppet, git, and nodes.pp
-        Invoke-DownloadWithRetry -Url "$ext_src/$puppet" -Path "$env:systemdrive\$puppet"
-        Invoke-DownloadWithRetry -Url $git_url -Path "$env:systemdrive\$git"
-$manifest_contents = @"
+        # Write manifest
+        @"
 node default {
-	include roles_profiles::roles::role
+    include roles_profiles::roles::role
 }
-"@
-        $manifest_contents | Out-File "$local_dir\$manifest" -Force
-        if (-Not (Test-Path "$local_dir\$manifest")) {
-            Write-Host "Failed to create manifest for puppet"
-        }
-        ## Install git
-        Start-Process "$env:systemdrive\$git" /verysilent -wait
+"@ | Out-File "$local_dir\$manifest" -Force
+
+        # Install Git
+        Start-Process "$env:SystemDrive\$git" /verysilent -Wait
         if (-Not (Test-Path "C:\Program Files\Git\bin")) {
-            Write-Host "Git not installed"
-            Write-Log -message  ('{0} :: Git not installed' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
+            Write-Host " Git not installed"
             exit 1
         }
-        Write-Log -message  ('{0} :: Git installed " {1}' -f $($MyInvocation.MyCommand.Name), $git) -severity 'DEBUG'
-        Write-Host ('{0} :: Git installed :: {1}' -f $($MyInvocation.MyCommand.Name), $git)
-        
-        ## Install Puppet
-        Start-Process msiexec -ArgumentList @("/qn", "/norestart", "/i", "$env:systemdrive\$puppet") -Wait
+
+        # Install Puppet
+        Start-Process msiexec -ArgumentList @("/qn", "/norestart", "/i", "$env:SystemDrive\$puppet") -Wait
         if (-Not (Test-Path "C:\Program Files\Puppet Labs\Puppet\bin")) {
-            Write-Host "Did not install puppet"
+            Write-Host " Puppet not installed"
             exit 1
         }
-        Write-Log -message  ('{0} :: Puppet installed :: {1}' -f $($MyInvocation.MyCommand.Name), $puppet) -severity 'DEBUG'
-        Write-Host ('{0} :: Puppet installed :: {1}' -f $($MyInvocation.MyCommand.Name), $puppet)
+
         $env:PATH += ";C:\Program Files\Puppet Labs\Puppet\bin"
     }
+
     end {
-        Write-Log -message ('{0} :: end - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
-        Write-Host ('{0} :: end - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime())
+        Write-Host "[Complete] Install-AzPreReq finished at $(Get-Date -Format o)"
     }
 }
