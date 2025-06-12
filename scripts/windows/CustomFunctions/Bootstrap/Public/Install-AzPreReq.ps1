@@ -1,6 +1,3 @@
-if ($MyInvocation.InvocationName -ne $MyInvocation.MyCommand.Name) {
-    Write-Error "Script loaded incorrectly or overwritten."
-}
 function Install-AzPreReq {
     param (
         [string] $ext_src = "https://roninpuppetassets.blob.core.windows.net/binaries/prerequisites",
