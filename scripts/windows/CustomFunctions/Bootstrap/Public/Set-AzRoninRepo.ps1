@@ -1,70 +1,93 @@
-Function Set-AzRoninRepo {
+function Install-AzPreReq {
     param (
-        [string] $ronin_repo = "$env:systemdrive\ronin",
-        [string] $nodes_def_src = "$env:systemdrive\BootStrap\nodes.pp",
-        [string] $nodes_def = "$env:systemdrive\ronin\manifests\nodes.pp",
-        [string] $bootstrap_dir = "$env:systemdrive\BootStrap\",
-        [string] $secret_src = "$env:systemdrive\BootStrap\secrets\",
-        [string] $secrets = "$env:systemdrive\ronin\data\secrets\",
-        [String] $sentry_reg = "HKLM:SYSTEM\CurrentControlSet\Services",
-        [string] $workerType = (Get-ItemProperty "HKLM:\SOFTWARE\Mozilla\ronin_puppet").workerType,
-        [string] $role = $env:base_image,
-        [string] $sourceOrg = $ENV:src_organisation,
-        [string] $sourceRepo = $ENV:src_Repository,
-        [string] $sourceBranch = $ENV:src_Branch,
-        [string] $deploymentId = $ENV:deploymentId
+        [string] $ext_src = "https://roninpuppetassets.blob.core.windows.net/binaries/prerequisites",
+        [string] $local_dir = "$env:systemdrive\BootStrap",
+        [string] $work_dir = "$env:systemdrive\scratch",
+        [string] $manifest = "nodes.pp"
     )
+
     begin {
-        Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
-        Write-Host ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime())
+        Get-PackageProvider -Name Nuget -ForceBootstrap | Out-Null
+        Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+        Install-Module powershell-yaml -Force -ErrorAction Stop
+
+        Write-Host "[Init] Starting Install-AzPreReq at $(Get-Date -Format o)"
     }
+
     process {
-        if ($null -eq $deploymentId) {
-            Write-host ('{0} :: Unable to find deploymentID :: {1} or env var: {2}' -f $($MyInvocation.MyCommand.Name), $deploymentId, $ENV:deploymentId)
+        $configFile = "C:\Config\$($env:Config).yaml"
+
+        if (-Not (Test-Path $configFile)) {
+            Write-Host " Could not find config file: $configFile"
             exit 1
         }
-        If ( -Not (test-path $env:systemdrive\ronin)) {
-            git clone -q --single-branch --branch $sourceBranch "https://github.com/$sourceOrg/$sourceRepo" $ronin_repo
-            $git_exit = $LastExitCode
-            if ($git_exit -eq 0) {
-                Write-Log -message ('{0} :: Cloned from https://github.com/{1}/{2}. Branch: {3}.' -f $($MyInvocation.MyCommand.Name), ($sourceOrg), ($sourceRepo), ($sourceBranch)) -severity 'DEBUG'
-                Write-Host ('{0} :: Cloned from https://github.com/{1}/{2}. Branch: {3}.' -f $($MyInvocation.MyCommand.Name), $sourceOrg, $sourceRepo, $sourceBranch)
-            }
-            else {
-                Write-Log -message  ('{0} :: Git clone failed! https://github.com/{1}/{2}. Branch: {3}.' -f $($MyInvocation.MyCommand.Name), ($sourceOrg), ($sourceRepo), ($sourceBranch)) -severity 'DEBUG'
-                DO {
-                    Start-Sleep -s 15
-                    Write-Log -message  ('{0} :: Git clone https://github.com/{1}/{2}. Branch: {3}.' -f $($MyInvocation.MyCommand.Name), ($sourceOrg), ($sourceRepo), ($sourceBranch)) -severity 'DEBUG'
-                    git clone -q --single-branch --branch $sourceBranch "https://github.com/$sourceOrg/$sourceRepo" $ronin_repo
-                    $git_exit = $LastExitCode
-                } Until ( $git_exit -eq 0)
-            }
-            Set-Location $ronin_repo
-            git checkout -q $deploymentID
-            Write-Log -message ('{0} :: Ronin Puppet HEAD is set to {1}' -f $($MyInvocation.MyCommand.Name), $deploymentID) -severity 'DEBUG'
-            Write-Host ('{0} :: Ronin Puppet HEAD is set to {1}' -f $($MyInvocation.MyCommand.Name), $deploymentID) 
+
+        $data = ConvertFrom-Yaml (Get-Content $configFile -Raw)
+
+        # Puppet version
+        $puppet_version = $data.vm.puppet_version
+        if (-not $puppet_version -or $puppet_version -eq 'default') {
+            $puppet_version = "6.28.0"
         }
-        if (-not (Test-path $nodes_def)) {
-            Copy-item -path $nodes_def_src -destination $nodes_def -force
-            (Get-Content -path $nodes_def) -replace 'roles::role', "roles::$role" | Set-Content $nodes_def
+        $puppet = "puppet-agent-$puppet_version-x64.msi"
+
+        # Git version
+        $git_version = $data.vm.git_version
+        if (-not $git_version -or $git_version -eq 'default') {
+            $git_version = "2.46.0"
         }
-        #if (-not (Test-path $secrets)) {
-        #    Copy-item -path $secret_src -destination $secrets -recurse -force
-        #}
-        # Start to disable Windows defender here
-        #$caption = ((Get-WmiObject Win32_OperatingSystem).caption)
-        #$caption = $caption.ToLower()
-        #$os_caption = $caption -replace ' ', '_'
-        #if (Test-IsWin10) {
-        #    ## This didn't work in windows 11, permissions issue. Will only run on Windows 10.
-        #    $null = Set-ItemProperty -Path "$sentry_reg\SecurityHealthService" -name "start" -Value '4' -Type Dword
-        #}
-        #if ($os_caption -notlike "*2012*") {
-        #    $null = Set-ItemProperty -Path "$sentry_reg\sense" -name "start" -Value '4' -Type Dword
-        #}
+
+        switch ($env:PROCESSOR_ARCHITECTURE) {
+            "AMD64" { $git = "Git-$git_version-64-bit.exe" }
+            "ARM64" { $git = "Git-$git_version-arm64.exe" }
+            Default { $git = "Git-$git_version-64-bit.exe" }
+        }
+
+        $git_url = "https://github.com/git-for-windows/git/releases/download/v$git_version.windows.1/$git"
+
+        Write-Host "[Resolved] puppet_version: $puppet_version"
+        Write-Host "[Resolved] git_version: $git_version"
+        Write-Host "[Resolved] Puppet installer: $puppet"
+        Write-Host "[Resolved] Git installer: $git"
+        Write-Host "[Resolved] Git download URL: $git_url"
+
+        # Set up azcopy
+        $null = New-Item -Path $local_dir -ItemType Directory -Force
+        Write-Host " Downloading azcopy to $env:SystemDrive"
+        Invoke-DownloadWithRetry -Url "https://aka.ms/downloadazcopy-v10-windows" -Path "$env:SystemDrive\azcopy.zip"
+        Expand-Archive -Path "$env:SystemDrive\azcopy.zip" -DestinationPath "$env:SystemDrive\azcopy"
+        Copy-Item (Get-ChildItem "$env:SystemDrive\azcopy" -Recurse | Where-Object { $_.Name -eq "azcopy.exe" }).FullName -Destination "$env:SystemDrive\"
+        Remove-Item "$env:SystemDrive\azcopy.zip"
+
+        # Download prerequisites
+        Invoke-DownloadWithRetry -Url "$ext_src/$puppet" -Path "$env:SystemDrive\$puppet"
+        Invoke-DownloadWithRetry -Url $git_url -Path "$env:SystemDrive\$git"
+
+        # Write manifest
+        @"
+node default {
+    include roles_profiles::roles::role
+}
+"@ | Out-File "$local_dir\$manifest" -Force
+
+        # Install Git
+        Start-Process "$env:SystemDrive\$git" /verysilent -Wait
+        if (-Not (Test-Path "C:\Program Files\Git\bin")) {
+            Write-Host " Git not installed"
+            exit 1
+        }
+
+        # Install Puppet
+        Start-Process msiexec -ArgumentList @("/qn", "/norestart", "/i", "$env:SystemDrive\$puppet") -Wait
+        if (-Not (Test-Path "C:\Program Files\Puppet Labs\Puppet\bin")) {
+            Write-Host " Puppet not installed"
+            exit 1
+        }
+
+        $env:PATH += ";C:\Program Files\Puppet Labs\Puppet\bin"
     }
+
     end {
-        Write-Log -message ('{0} :: end - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
-        Write-Host ('{0} :: end - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime())
+        Write-Host "[Complete] Install-AzPreReq finished at $(Get-Date -Format o)"
     }
 }
