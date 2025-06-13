@@ -243,12 +243,10 @@ pools:
     - nuc13-104
     - nuc13-105
     - nuc13-106
-    - nuc13-107
     - nuc13-108
     - nuc13-109
     - nuc13-110
     - nuc13-111
-    - nuc13-112
     - nuc13-113
     - nuc13-114
     - nuc13-115
@@ -302,3 +300,12 @@ Validate:
     hw_class:
         - "t-nuc12"
         - "nuc13"
+Known-BAD:
+  ## Add comment comment above the name of the node
+  nuc13:
+    ## Dead.
+    ## https://mozilla-hub.atlassian.net/browse/RELOPS-1555?focusedCommentId=1076567
+    - nuc13-112
+    ## TSL errors on PXE boot.
+    ## https://mozilla-hub.atlassian.net/browse/RELOPS-1555?focusedCommentId=1076567
+    - nuc13-107
