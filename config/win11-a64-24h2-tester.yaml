@@ -7,25 +7,22 @@ image:
 sharedimage:
   gallery_name: "win11_a64_24h2_tester"
   image_name: "win11_a64_24h2_tester"
-  image_version: 1.0.4
+  image_version: "default"
 azure:
-  managed_image_resource_group_name: rg-packer-worker-images
-  managed_image_storage_account_type: Standard_LRS
-  build_location: eastus
-  locations:
-    - centralus
+  managed_image_resource_group_name: "default"
+  managed_image_storage_account_type: "default"
 vm:
-  puppet_version: 8.10.0
-  git_version: 2.49.0
+  puppet_version: "default"
+  git_version: "default"
   size: Standard_E8pds_v5
   tags:
     base_image: win11a6424h2azuretester
     worker_pool_id: win11-a64-24h2-tester
-    sourceOrganization: mozilla-platform-ops
-    sourceRepository: ronin_puppet
-    sourceBranch: windows
-    deploymentId: "389b2fc"
-    managed_by: packer
+    sourceOrganization: "default"
+    sourceRepository: "default"
+    sourceBranch: "default"
+    deploymentId: "default"
+    managed_by: "default"
 tests:
   - microsoft_tools_tester_a64.tests.ps1
   - error_reporting.tests.ps1
