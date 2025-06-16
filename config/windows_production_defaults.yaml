@@ -3,7 +3,8 @@ azure:
   managed_image_resource_group_name: rg-packer-worker-images
   managed_image_storage_account_type: Standard_LRS
 sharedimage:
-  image_version: 1.0.4
+  #image_version: 1.0.4
+image_version: 99.08.01
 vm:
   puppet_version: 8.10.0
   git_version: 2.49.0
