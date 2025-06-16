@@ -17,7 +17,7 @@ function Install-AzPreReq {
 
     process {
         $configPath   = "C:\Config\$($env:Config).yaml"
-        $defaultsPath = "C:\Config\windows_production_defualts.yaml"
+        $defaultsPath = "C:\Config\windows_production_defaults.yaml"
 
         if (-Not (Test-Path $configPath)) {
             Write-Host "Could not find config file: $configPath"
