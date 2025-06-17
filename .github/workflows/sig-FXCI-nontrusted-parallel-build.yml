@@ -20,7 +20,7 @@ jobs:
           #- win11-64-24h2
           #- win11-a64-24h2-builder
           #- win2022-64-2009
-    uses: sig-nontrusted-deploy-image.yml
+    uses: ./.github/workflows/sig-FXCI-nontrusted-deploy-image.yml
     with:
       config: ${{ matrix.config }}
     secrets:
