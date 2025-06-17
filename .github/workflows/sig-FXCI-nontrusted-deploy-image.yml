@@ -5,7 +5,16 @@ on:
         description: "SIG image config"
         required: true
         type: string
-
+    secrets:
+      AZURE_CLIENT_ID_FXCI:
+        required: true
+      AZURE_TENANT_ID:
+        required: true
+      AZURE_SUBSCRIPTION_ID_UNTRUSTED:
+        required: true
+      AZURE_APPLICATION_ID_FXCI:
+        required: true
+        
 permissions:
   id-token: write
   contents: read
