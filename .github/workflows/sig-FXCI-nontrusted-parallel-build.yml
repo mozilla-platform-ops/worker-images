@@ -1,0 +1,30 @@
+name: Parallel SIG Image Builds
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Optional label for grouping
+        required: false
+        default: fxci
+
+jobs:
+  deploy:
+    name: Deploy ${{ matrix.config }}
+    run-name: SIG Deploy FXCI Image - ${{ matrix.config }}
+    strategy:
+      matrix:
+        config:
+          - win10-64-2009-alpha
+          - win11-64-2009-alpha
+          #- win11-64-24h2
+          #- win11-a64-24h2-builder
+          #- win2022-64-2009
+    uses: sig-nontrusted-deploy-image.yml
+    with:
+      config: ${{ matrix.config }}
+    secrets:
+      AZURE_CLIENT_ID_FXCI: ${{ secrets.AZURE_CLIENT_ID_FXCI }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID_UNTRUSTED: ${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}
+      AZURE_APPLICATION_ID_FXCI: ${{ secrets.AZURE_APPLICATION_ID_FXCI }}
