@@ -306,6 +306,6 @@ Known-BAD:
     ## Dead.
     ## https://mozilla-hub.atlassian.net/browse/RELOPS-1555?focusedCommentId=1076567
     - nuc13-112
-    ## TSL errors on PXE boot.
+    ## TLS errors on PXE boot.
     ## https://mozilla-hub.atlassian.net/browse/RELOPS-1555?focusedCommentId=1076567
     - nuc13-107
