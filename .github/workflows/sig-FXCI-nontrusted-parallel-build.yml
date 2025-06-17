@@ -1,25 +1,46 @@
-name: Parallel SIG Image Builds
+name: Parallel SIG Production Image Builds
 
 on:
   workflow_dispatch:
-    inputs:
-      environment:
-        description: Optional label for grouping
-        required: false
-        default: fxci
 
 jobs:
+  prepare-matrix:
+    name: Prepare Production Image Matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install PowerShell-YAML module
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module powershell-yaml -Force
+
+      - id: set-matrix
+        name: Extract `images.production` from YAML
+        shell: pwsh
+        run: |
+          $yaml = ConvertFrom-Yaml (Get-Content ./config/windows_production_defaults.yaml -Raw)
+          $prodImages = $yaml.images.production
+
+          if (-not $prodImages -or $prodImages.Count -eq 0) {
+            Write-Host "::error ::No production images found in YAML"
+            exit 1
+          }
+
+          $matrix = @{ config = $prodImages } | ConvertTo-Json -Compress
+          Write-Host "Generated matrix: $matrix"
+          "matrix=$matrix" >> $env:GITHUB_OUTPUT
+
   deploy:
-    name: Deploy ${{ matrix.config }}
+    name: Build Production Image - ${{ matrix.config }}
+    needs: prepare-matrix
     strategy:
       fail-fast: false
-      matrix:
-        config:
-          - win10-64-2009-alpha
-          - win11-64-2009-alpha
-          - win11-64-24h2-alpha
-          #- win11-a64-24h2-builder
-          #- win2022-64-2009
+      matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
     uses: ./.github/workflows/sig-FXCI-nontrusted-deploy-image.yml
     with:
       config: ${{ matrix.config }}
