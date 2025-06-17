@@ -10,7 +10,8 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
       - name: Install PowerShell-YAML module
         shell: pwsh
@@ -19,12 +20,20 @@ jobs:
           Install-Module powershell-yaml -Force
 
       - id: set-matrix
+        name: Extract `images.alpha` from YAML
         shell: pwsh
         run: |
           $yaml = ConvertFrom-Yaml (Get-Content ./config/windows_production_defaults.yaml -Raw)
-          $alphaImages = $yaml.images | Where-Object { $_ -like '*-alpha' }
+          $alphaImages = $yaml.images.alpha
+
+          if (-not $alphaImages -or $alphaImages.Count -eq 0) {
+            Write-Host "::error ::No alpha images found in YAML"
+            exit 1
+          }
+
           $matrix = @{ config = $alphaImages } | ConvertTo-Json -Compress
-          Write-Output "matrix=$matrix" >> $env:GITHUB_OUTPUT
+          Write-Host "Generated matrix: $matrix"
+          "matrix=$matrix" >> $env:GITHUB_OUTPUT
 
   deploy:
     name: Build Alpha Image - ${{ matrix.config }}
