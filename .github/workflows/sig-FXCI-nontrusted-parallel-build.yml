@@ -12,6 +12,7 @@ jobs:
   deploy:
     name: Deploy ${{ matrix.config }}
     strategy:
+      fail-fast: false
       matrix:
         config:
           - win10-64-2009-alpha
