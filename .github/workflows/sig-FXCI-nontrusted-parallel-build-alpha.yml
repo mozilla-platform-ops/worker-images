@@ -1,0 +1,42 @@
+name: Parallel SIG Alpha Image Builds
+
+on:
+  workflow_dispatch:
+
+jobs:
+  prepare-matrix:
+    name: Prepare Alpha Image Matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PowerShell-YAML module
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module powershell-yaml -Force
+
+      - id: set-matrix
+        shell: pwsh
+        run: |
+          $yaml = ConvertFrom-Yaml (Get-Content ./config/windows_production_defaults.yaml -Raw)
+          $alphaImages = $yaml.images | Where-Object { $_ -like '*-alpha' }
+          $matrix = @{ config = $alphaImages } | ConvertTo-Json -Compress
+          Write-Output "matrix=$matrix" >> $env:GITHUB_OUTPUT
+
+  deploy:
+    name: Build Alpha Image - ${{ matrix.config }}
+    needs: prepare-matrix
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
+    uses: ./.github/workflows/sig-FXCI-nontrusted-deploy-image.yml
+    with:
+      config: ${{ matrix.config }}
+    secrets:
+      AZURE_CLIENT_ID_FXCI: ${{ secrets.AZURE_CLIENT_ID_FXCI }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID_UNTRUSTED: ${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}
+      AZURE_APPLICATION_ID_FXCI: ${{ secrets.AZURE_APPLICATION_ID_FXCI }}
