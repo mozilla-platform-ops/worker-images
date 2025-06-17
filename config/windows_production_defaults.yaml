@@ -1,0 +1,21 @@
+---
+azure:
+  managed_image_resource_group_name: rg-packer-worker-images
+  managed_image_storage_account_type: Standard_LRS
+sharedimage:
+  image_version: 1.0.4
+vm:
+  puppet_version: 8.10.0
+  git_version: 2.49.0
+  tags:
+    sourceOrganization: mozilla-platform-ops
+    sourceRepository: ronin_puppet
+    sourceBranch: windows
+    managed_by: packer
+    deploymentId: "a788be4"
+images:
+  win10-64-2009
+  win11-64-24h2
+  win11-a64-24h2-tester
+  win11-a64-24h2-builder
+  win2022-64-2009
