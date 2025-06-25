@@ -217,6 +217,8 @@ tasks:
                                         ${normProjectUpper}_HEAD_REF: '${short_head_ref}'
                                         ${normProjectUpper}_HEAD_REV: '${head_sha}'
                                         ${normProjectUpper}_REPOSITORY_TYPE: git
+                                        ${normProjectUpper}_PIP_REQUIREMENTS: taskcluster/requirements.txt
+                                        PIP_DISABLE_REQUIRE_HASHES: 1
                                         REPOSITORIES:
                                             $json:
                                                 ${normProject}: ${normProject}
