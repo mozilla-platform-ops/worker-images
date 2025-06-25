@@ -3,6 +3,7 @@ trust-domain: "relops"
 task-priority: low
 
 taskgraph:
+  register: worker_images_taskgraph:register
   cached-task-prefix: "relops.v2.worker-images"
   repositories:
     worker_images:
