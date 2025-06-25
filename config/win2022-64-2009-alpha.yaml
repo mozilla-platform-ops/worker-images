@@ -18,6 +18,7 @@ azure:
     - eastus
 vm:
   puppet_version: 8.10.0
+  openvox_version: 8.19.2
   git_version: 2.49.0
   size: Standard_F32s_v2
   tags:
@@ -25,8 +26,8 @@ vm:
     worker_pool_id: win2022-64-2009
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "RELOPS-1264"
-    deploymentId: "8931b7f"
+    sourceBranch: "windows"
+    deploymentId: "a788be4"
     managed_by: packer
 tests:
   #- microsoft_tools_builder.tests.ps1
