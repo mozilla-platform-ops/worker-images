@@ -32,13 +32,19 @@ function Install-AzPreReq {
         $data    = ConvertFrom-Yaml (Get-Content -Path $configPath -Raw)
         $defaults = ConvertFrom-Yaml (Get-Content -Path $defaultsPath -Raw)
 
-        ## Puppet version
-        $puppet_version = $data.vm.puppet_version
-        if (-not $puppet_version -or $puppet_version -eq "default") {
-            $puppet_version = $defaults.vm.puppet_version
+        ## OpenVox Version
+        $openvox_version = $data.vm.openvox_version
+        if ($openvox_version) {
+            $puppet = "openvox-agent-$openvox_version-x64.msi"
         }
-        $puppet = "puppet-agent-$puppet_version-x64.msi"
-
+        else {
+            ## Puppet version
+            $puppet_version = $data.vm.puppet_version
+            if (-not $puppet_version -or $puppet_version -eq "default") {
+                $puppet_version = $defaults.vm.puppet_version
+            }
+            $puppet = "puppet-agent-$puppet_version-x64.msi"
+        }
         ## Git Version
         $git_version = $data.vm.git_version
         if (-not $git_version -or $git_version -eq "default") {
