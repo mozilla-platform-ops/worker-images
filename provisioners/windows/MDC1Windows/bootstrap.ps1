@@ -382,16 +382,16 @@ function Get-PreRequ {
 
         switch ($env:PROCESSOR_ARCHITECTURE) {
             "AMD64" {
-                $git = "Git-$git_version-64-bit.exe"
+                $git = "Git-$($git_version)-64-bit.exe"
             }
             "ARM64" {
-                $git = "Git-$git_version-arm64.exe"
+                $git = "Git-$($git_version)-arm64.exe"
             }
             Default {
-                $git = "Git-$git_version-64-bit.exe"
+                $git = "Git-$($git_version)-64-bit.exe"
             }
         }
-        $git_url = "https://github.com/git-for-windows/git/releases/download/v$git_version.windows.1/$git"
+        $git_url = "https://github.com/git-for-windows/git/releases/download/v$($git_version).windows.1/$($git)"
 
         if (-Not (Test-Path "$env:systemdrive\$puppet")) {
             Write-Log -Message ('{0} :: Downloading Puppet' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
@@ -402,7 +402,7 @@ function Get-PreRequ {
         }
 
         if (-Not (Test-Path "$env:systemdrive\$git")) {
-            Write-Log -Message ('{0} :: Downloading Git' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
+            Write-Log -Message ('{0} :: Downloading Git from {1}' -f $($MyInvocation.MyCommand.Name), $git_url) -severity 'DEBUG'
             Invoke-DownloadWithRetryGithub -Url $git_url -Path "$env:systemdrive\$git" -PAT (Get-Content "D:\Secrets\pat.txt")
             if (-Not (Test-Path "$env:systemdrive\$git")) {
                 Write-Log -Message ('{0} :: Git failed to download' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
