@@ -500,6 +500,8 @@ foreach ($pool in $YAML.pools) {
             $hash = $pool.hash
             $secret_date = $pool.secret_date
             $puppet_version = $pool.puppet_version
+            $openvox_version = $pool.openvox_version
+            $git_version = $pool.git_version
             Write-Output "The associated image for $shortname is: $neededImage"
             if ($pool.dev -and (-not $devlopment_script)) {
                 Write-Host "Dev mode is enabled."
@@ -522,6 +524,8 @@ foreach ($pool in $YAML.pools) {
             $src_Repository = $pool.src_Repository
             $src_Branch = $pool.src_Branch
             $secret_date = $pool.secret_date
+            $openvox_version = "8.19.2"
+            $git_version = "2.50.0"
             $puppet_version = "6.28.0"
         }
     }
