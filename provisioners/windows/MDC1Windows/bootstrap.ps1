@@ -7,6 +7,8 @@ param(
     [string] $hash,
     [string] $secret_date,
     [string] $puppet_version,
+    [string] $git_version,
+    [string] $openvox_version,
     [string] $image_provisioner = 'MDC1Windows'
 )
 
@@ -361,42 +363,62 @@ function Get-PreRequ {
         [string]
         $puppet_version,
         [string]
+        $openvox_version,
+        [string]
+        $git_version,
+        [string]
         $ext_src = "https://roninpuppetassets.blob.core.windows.net/binaries/prerequisites"
     )
     begin {
         Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
     }
     process {
-        if ([string]::IsNullOrEmpty($puppet_version)) {
-            $puppet = "puppet-agent-6.28.0-x64.msi"
+        if ($openvox_version) {
+            $puppet = "openvox-agent-$openvox_version-x64.msi"
         }
         else {
             $puppet = ("puppet-agent-{0}-x64.msi") -f $puppet_version
         }
 
-        If (-Not (Test-Path "$env:systemdrive\$puppet")) {
+        switch ($env:PROCESSOR_ARCHITECTURE) {
+            "AMD64" {
+                $git = "Git-$git_version-64-bit.exe"
+            }
+            "ARM64" {
+                $git = "Git-$git_version-arm64.exe"
+            }
+            Default {
+                $git = "Git-$git_version-64-bit.exe"
+            }
+        }
+        $git_url = "https://github.com/git-for-windows/git/releases/download/v$git_version.windows.1/$git"
+
+        if (-Not (Test-Path "$env:systemdrive\$puppet")) {
             Write-Log -Message ('{0} :: Downloading Puppet' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-
             Invoke-DownloadWithRetry "$ext_src/$puppet" -Path "$env:systemdrive\$puppet"
-
             if (-Not (Test-Path "$env:systemdrive\$puppet")) {
                 Write-Log -Message ('{0} :: Puppet failed to download' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
             }
         }
-        If (-Not (Test-Path "$env:systemdrive\Git-2.49.0-64-bit.exe")) {
+
+        if (-Not (Test-Path "$env:systemdrive\$git")) {
             Write-Log -Message ('{0} :: Downloading Git' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-            $gitUrl = "https://github.com/git-for-windows/git/releases/download/v2.49.0.windows.1/Git-2.49.0-64-bit.exe"
-            Invoke-DownloadWithRetry $giturl -Path "$env:systemdrive\Git-2.49.0-64-bit.exe"
+            Invoke-DownloadWithRetryGithub -Url $git_url -Path "$env:systemdrive\$git"
+            if (-Not (Test-Path "$env:systemdrive\$git")) {
+                Write-Log -Message ('{0} :: Git failed to download' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
+            }
         }
-        if (-Not (Test-Path "$env:programfiles\git\bin\git.exe")) {
-            Write-Log -Message ('{0} :: Installing git.exe' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-            Start-Process -FilePath "$env:systemdrive\Git-2.49.0-64-bit.exe" -ArgumentList @(
-                "/verysilent"
-            ) -Wait #-NoNewWindow
-            $env:PATH += ";C:\Program Files\git\bin"
+
+        Start-Process "$env:systemdrive\$git" /verysilent -wait
+        if (-Not (Test-Path "C:\Program Files\Git\bin")) {
+            Write-Host "Git not installed"
+            Write-Log -message  ('{0} :: Git not installed' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
+            exit 1
         }
+        Write-Log -message  ('{0} :: Git installed :: {1}' -f $($MyInvocation.MyCommand.Name), $git) -severity 'DEBUG'
+        Write-Host ('{0} :: Git installed :: {1}' -f $($MyInvocation.MyCommand.Name), $git)
+
         if (-Not (Test-Path "C:\Program Files\Puppet Labs\Puppet\bin")) {
-            ## Install Puppet using ServiceUI.exe to install as SYSTEM
             Write-Log -Message ('{0} :: Installing puppet' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
             Start-Process msiexec -ArgumentList @("/qn", "/norestart", "/i", "$env:systemdrive\$puppet") -Wait
             Write-Log -message  ('{0} :: Puppet installed :: {1}' -f $($MyInvocation.MyCommand.Name), $puppet) -severity 'DEBUG'
@@ -784,7 +806,12 @@ If ($stage -ne 'complete') {
             Write-Log -message  ('{0} :: Skipping puppet role specific bootstrap steps' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
         }
     }
-    Get-PreRequ -puppet_version $puppet_version
+    $preReq = @{
+        puppet_version = $puppet_version
+        openvox_version = $openvox_version
+        git_version = $git_version
+    }
+    Get-PreRequ @preReq
     Set-Ronin-Registry
     Get-Ronin
     Run-Ronin-Run

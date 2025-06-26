@@ -2,6 +2,8 @@
 pools:
   - name: "win10-64-2009-hw-alpha"
     puppet_version: "8.10.0"
+    openvox_version: "8.19.2"
+    git_version: "2.50.0"
     #dev: RELOPS-1470
     Description: "Moonshot Win 10 hardware"
     image: "win10-2009-MS-11-05-2024"
@@ -80,6 +82,8 @@ pools:
     - t-nuc12-015
   - name: "win11-64-24h2-hw-ref-alpha"
     puppet_version: "8.10.0"
+    openvox_version: "8.19.2"
+    git_version: "2.50.0"
     #dev: RELOPS-1470
     Description: "NUC12 Hardware Reference Staging/Testing Pool"
     image: "win11-24H2-NUC-01-16-2025"
@@ -108,6 +112,8 @@ pools:
     - nuc13-003
   - name: "win11-64-24h2-hw-alpha"
     puppet_version: "8.10.0"
+    openvox_version: "8.19.2"
+    git_version: "2.50.0"
     Description: "NUC12 Hardware Performance Staging/Testing Pool"
     image: "win11-24H2-NUC-01-16-2025"
     src_Organisation: "mozilla-platform-ops"
