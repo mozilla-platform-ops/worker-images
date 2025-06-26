@@ -20,6 +20,7 @@ azure:
     - westus
 vm:
   puppet_version: 8.10.0
+  openvox_version: 8.19.2
   git_version: 2.49.0
   size: Standard_F8s_v2
   tags:
@@ -27,8 +28,8 @@ vm:
     worker_pool_id: win11-64-2009
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "windows"
-    deploymentId: "a788be4"
+    sourceBranch: "RELOPS-1615"
+    deploymentId: "a11ac8e"
     managed_by: packer
 tests:
   - microsoft_tools_tester.tests.ps1

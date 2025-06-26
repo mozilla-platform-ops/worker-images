@@ -70,6 +70,7 @@ function New-AzSharedWorkerImage {
     $Y = Merge-YamlWithDefaults -ImageData $ImageYaml -DefaultData $DefaultYaml
 
     # Debug logging
+    Log-FinalValue "openvox_version" $Y.vm["openvox_version"] $ImageYaml.vm["openvox_version"] $DefaultYaml.vm["openvox_version"]
     Log-FinalValue "puppet_version" $Y.vm["puppet_version"] $ImageYaml.vm["puppet_version"] $DefaultYaml.vm["puppet_version"]
     Log-FinalValue "git_version"    $Y.vm["git_version"]    $ImageYaml.vm["git_version"]    $DefaultYaml.vm["git_version"]
 
