@@ -16,6 +16,7 @@ azure:
     - centralus
 vm:
   puppet_version: 8.10.0
+  openvox_version: 8.19.2
   git_version: 2.49.0
   size: Standard_E8pds_v5
   tags:
@@ -23,8 +24,8 @@ vm:
     worker_pool_id: win11-a64-24h2-tester
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "RELOPS-1264"
-    deploymentId: "7f7b845"
+    sourceBranch: "windows"
+    deploymentId: "a788be4"
     managed_by: packer
 tests:
   #- microsoft_tools_tester.tests.ps1
