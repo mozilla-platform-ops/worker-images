@@ -3,7 +3,7 @@ trust-domain: "relops"
 task-priority: low
 
 taskgraph:
-  cached-task-prefix: "mozilla.v2.worker-images"
+  cached-task-prefix: "relops.v2.worker-images"
   repositories:
     worker_images:
       name: "worker-images"
