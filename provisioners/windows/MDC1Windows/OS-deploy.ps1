@@ -106,9 +106,8 @@ function Update-GetBoot {
     write-host $branch
     write-host $pool.dev
     write-host "Invoke-WebRequest @bootstrapSplat"
-    write-host  $bootstrapSplat.URI
-    Invoke-DownloadWithRetry -Url $bootstrapSplat.URI -Path $bootstrapSplat.OutFile
-    #Invoke-WebRequest @bootstrapSplat
+    write-host $bootstrapSplat.URI
+    Invoke-DownloadWithRetryGithub -Url $bootstrapSplat.URI -Path $bootstrapSplat.OutFile
 
     $replacements = @(
         @{ OldString = "WorkerPoolId"; NewString = $WorkerPool },
@@ -120,6 +119,8 @@ function Update-GetBoot {
         @{ OldString = "1HASH"; NewString = $hash },
         @{ OldString = "1secret_date"; NewString = $secret_date },
         @{ OldString = "1puppet_version"; NewString = $puppet_version }
+        @{ OldString = "1openvox_version"; NewString = $openvox_version }
+        @{ OldString = "1git_version"; NewString = $git_version }
     )
     $content = Get-Content -Path $Template_Get_Bootstrap
     foreach ($replacement in $replacements) {
