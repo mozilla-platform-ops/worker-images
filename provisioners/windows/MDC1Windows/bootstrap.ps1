@@ -403,7 +403,7 @@ function Get-PreRequ {
 
         if (-Not (Test-Path "$env:systemdrive\$git")) {
             Write-Log -Message ('{0} :: Downloading Git' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-            Invoke-DownloadWithRetryGithub -Url $git_url -Path "$env:systemdrive\$git"
+            Invoke-DownloadWithRetryGithub -Url $git_url -Path "$env:systemdrive\$git" -PAT (Get-Content "D:\Secrets\pat.txt")
             if (-Not (Test-Path "$env:systemdrive\$git")) {
                 Write-Log -Message ('{0} :: Git failed to download' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
             }

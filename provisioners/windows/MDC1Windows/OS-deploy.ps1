@@ -107,7 +107,24 @@ function Update-GetBoot {
     write-host $pool.dev
     write-host "Invoke-WebRequest @bootstrapSplat"
     write-host $bootstrapSplat.URI
-    Invoke-DownloadWithRetryGithub -Url $bootstrapSplat.URI -Path $bootstrapSplat.OutFile
+
+    if (-Not (Test-Path "D:\Secrets\pat.txt")) {
+        $splat = @{
+            Url  = $bootstrapSplat.URI
+            Path = $bootstrapSplat.OutFile
+        }
+
+        Invoke-DownloadWithRetry @splat
+    }
+    else {
+        $splat = @{
+            Url  = $bootstrapSplat.URI
+            Path = $bootstrapSplat.OutFile
+            PAT  = Get-Content "D:\Secrets\pat.txt"
+        }
+
+        Invoke-DownloadWithRetryGithub @splat
+    }
 
     $replacements = @(
         @{ OldString = "WorkerPoolId"; NewString = $WorkerPool },
