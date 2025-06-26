@@ -9,8 +9,8 @@ pools:
     image: "win10-2009-MS-11-05-2024"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "RELOPS-1470"
-    hash: "1eec058"
+    src_Branch: "RELOPS-1615"
+    hash: "a11ac8e"
     secret_date: "11-07-2024"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -89,8 +89,8 @@ pools:
     image: "win11-24H2-NUC-01-16-2025"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "RELOPS-1470"
-    hash: "1eec058"
+    src_Branch: "RELOPS-1615"
+    hash: "a11ac8e"
     secret_date: "01-16-2025"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -118,8 +118,8 @@ pools:
     image: "win11-24H2-NUC-01-16-2025"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "RELOPS-1470"
-    hash: "1eec058"
+    src_Branch: "RELOPS-1615"
+    hash: "a11ac8e"
     secret_date: "01-16-2025"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
