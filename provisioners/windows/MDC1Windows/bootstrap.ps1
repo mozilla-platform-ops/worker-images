@@ -506,7 +506,7 @@ function Get-PreRequ {
             }
         }
 
-        Start-Process "$env:systemdrive\$git" /verysilent -wait
+        Start-Process "$env:systemdrive\$git" -ArgumentList "/verysilent" -Wait -NoNewWindow
         if (-Not (Test-Path "C:\Program Files\Git\bin")) {
             Write-Host "Git not installed"
             Write-Log -message  ('{0} :: Git not installed' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
