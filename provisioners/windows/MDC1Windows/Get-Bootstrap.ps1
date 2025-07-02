@@ -191,7 +191,7 @@ function Set-SSH {
         }
         Write-Log -message ('{0} :: Enabling OpenSSH.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
         $destinationDirectory = "C:\users\administrator\.ssh"
-        $authorized_keys = $destinationDirectory + "authorized_keys"
+        $authorized_keys = $destinationDirectory + "\authorized_keys"
         New-Item -ItemType Directory -Path $destinationDirectory -Force
         ## Now let's install it
         $win32_openssh = Invoke-DownloadWithRetry "https://github.com/PowerShell/Win32-OpenSSH/releases/download/v9.8.3.0p2-Preview/OpenSSH-Win64-v9.8.3.0.msi"
@@ -202,6 +202,7 @@ function Set-SSH {
         Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/main/provisioners/windows/MDC1Windows/ssh/sshd_config" -Path "C:\programdata\ssh\sshd_config"
         $sshdService = Get-Service -Name ssh* -ErrorAction SilentlyContinue
         Write-host "sshdService status: $($sshdService.status)"
+        Write-Log -message ('{0} :: sshdService status: {1}' -f $($MyInvocation.MyCommand.Name), $sshdService.status) -severity 'DEBUG'
         ## Refresh env variable for ssh to work
         [Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", [System.EnvironmentVariableTarget]::Machine) + ';' + ${Env:ProgramFiles} + '\OpenSSH', [System.EnvironmentVariableTarget]::Machine)
         $sshfw = @{
