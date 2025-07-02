@@ -513,6 +513,7 @@ function Get-PreRequ {
             exit 1
         }
         Write-Log -message  ('{0} :: Git installed :: {1}' -f $($MyInvocation.MyCommand.Name), $git) -severity 'DEBUG'
+        $env:PATH += ";C:\Program Files\git\bin"
         Write-Host ('{0} :: Git installed :: {1}' -f $($MyInvocation.MyCommand.Name), $git)
 
         if (-Not (Test-Path "C:\Program Files\Puppet Labs\Puppet\bin")) {
