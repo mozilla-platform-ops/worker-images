@@ -332,8 +332,10 @@ function Set-SSH {
         Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/main/provisioners/windows/MDC1Windows/ssh/authorized_keys" -Path $authorized_keys
         Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/main/provisioners/windows/MDC1Windows/ssh/sshd_config" -Path "C:\programdata\ssh\sshd_config"
         $sshdService = Get-Service -Name ssh* -ErrorAction SilentlyContinue
-        Write-host "sshdService status: $($sshdService.status)"
-        Write-Log -message ('{0} :: sshdService status: {1}' -f $($MyInvocation.MyCommand.Name), $sshdService.status) -severity 'DEBUG'
+        foreach ($s in $sshdService) {
+            Write-host "sshdService status: $($s.status)"
+            Write-Log -message ('{0} :: sshdService status: {1}' -f $($MyInvocation.MyCommand.Name), $s.status) -severity 'DEBUG'
+        }
         ## Refresh env variable for ssh to work
         [Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", [System.EnvironmentVariableTarget]::Machine) + ';' + ${Env:ProgramFiles} + '\OpenSSH', [System.EnvironmentVariableTarget]::Machine)
         $sshfw = @{
