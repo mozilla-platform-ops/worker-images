@@ -18,7 +18,7 @@ azure:
 vm:
   puppet_version: 8.10.0
   openvox_version: 8.19.2
-  git_version: 2.49.0
+  git_version: 2.50.0
   size: Standard_F8s_v2
   tags:
     base_image: win10642009azure
