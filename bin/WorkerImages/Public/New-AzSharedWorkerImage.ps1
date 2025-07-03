@@ -1,6 +1,7 @@
 function New-AzSharedWorkerImage {
     [CmdletBinding()]
     param (
+        [String] $github_token,
         [String] $Key,
         [String] $Client_ID,
         [String] $Client_Secret,
@@ -139,6 +140,8 @@ function New-AzSharedWorkerImage {
     }
 
     Write-Host "Building $($ENV:PKR_VAR_managed_image_name) in $($ENV:PKR_VAR_temp_resource_group_name)"
+    ## Set the github token for packer to use to install plugin from github
+    $ENV:PACKER_GITHUB_API_TOKEN = $github_token
     packer init azure.pkr.hcl
     if ($PackerForceBuild) {
         packer build --only azure-arm.sig -force azure.pkr.hcl

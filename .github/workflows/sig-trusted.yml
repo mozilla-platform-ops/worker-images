@@ -53,6 +53,7 @@ jobs:
         run: |
           Import-Module .\bin\WorkerImages\WorkerImages.psm1
           $Vars = @{
+            github_token = ${{ secrets.GITHUB_TOKEN }}
             Key = '${{ github.event.inputs.config }}'
             Client_ID = "${{ secrets.AZURE_CLIENT_ID_FXCI_TRUSTED }}"
             oidc_request_url = "${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}"
