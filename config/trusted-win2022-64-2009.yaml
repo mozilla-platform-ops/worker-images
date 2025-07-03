@@ -7,21 +7,14 @@ image:
 sharedimage:
   gallery_name: "trusted_win2022_64_2009"
   image_name: "trusted_win2022_64_2009"
-  image_version: 1.0.4
+  image_version: "default"
 azure:
-  managed_image_resource_group_name: rg-packer-worker-images
-  managed_image_storage_account_type: Standard_LRS
-  build_location: eastus
-  locations:
-    - centralus
-    - northcentralus
-    - eastus
-    - eastus2
-    - westus
-    - westus2
+  managed_image_resource_group_name: "default"
+  managed_image_storage_account_type: "default"
 vm:
-  puppet_version: 8.10.0
-  git_version: 2.49.0
+  puppet_version: "default"
+  git_version: "default"
+  openvox_version: "default"
   size: Standard_F32s_v2
   tags:
     base_image: win2022642009azure
