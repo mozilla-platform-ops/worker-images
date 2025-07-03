@@ -14,6 +14,7 @@ azure:
 vm:
   puppet_version: "default"
   git_version: "default"
+  openvox_version: "default"
   size: Standard_F8s_v2
   tags:
     base_image: win10642009azure
