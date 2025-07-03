@@ -266,7 +266,7 @@ Options:
     1. The Win Audit SSH key (available in relops 1 password).
     2. The following in your SSH config file:
 
-        Host nuc*.wintest2.releng.mdc1.mozilla.com
+        Host *.wintest2.releng.mdc1.mozilla.com
         User administrator
         IdentityFile ~/.ssh/win_audit_id_rsa
 "@
