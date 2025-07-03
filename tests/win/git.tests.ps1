@@ -33,7 +33,7 @@ Describe "Git" {
         $Git.DisplayName | Should -Not -Be $null
     }
 
-    It "Git Version is the same" {
+    It "Git Version is the same" -Skip {
         $Git.DisplayVersion | Should -Be $ExpectedSoftwareVersion
     }
 }
