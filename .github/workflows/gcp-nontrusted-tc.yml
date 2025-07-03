@@ -69,6 +69,7 @@ jobs:
           Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
           $env:PKR_VAR_taskcluster_ref = '${{ github.event.inputs.ref }}'
           $Vars = @{
+            github_token = ${{ secrets.GITHUB_TOKEN }}
             Key = '${{ github.event.inputs.config }}'
             Worker_Env_Var_Key = "${{ secrets.WORKER_ENV_VAR_KEY }}"
             TC_worker_cert = "${{ secrets.TC_WORKER_CERT }}"

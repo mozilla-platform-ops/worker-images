@@ -2,6 +2,9 @@ function New-GCPWorkerImage {
     [CmdletBinding()]
     param (
         [String]
+        $Github_token,
+
+        [String]
         $Key,
 
         [String]
@@ -63,6 +66,8 @@ function New-GCPWorkerImage {
 
     Write-Host "zone: $($YAML.image["zone"])"
     $ENV:PKR_VAR_zone = $YAML.image["zone"]
+
+    $ENV:PACKER_GITHUB_API_TOKEN = $Github_token
 
     ## Initialize Packer plugins
     packer init gcp.pkr.hcl
