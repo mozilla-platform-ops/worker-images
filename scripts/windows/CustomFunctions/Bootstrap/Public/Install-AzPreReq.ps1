@@ -34,17 +34,24 @@ function Install-AzPreReq {
 
         ## OpenVox Version
         $openvox_version = $data.vm.openvox_version
-        if ($openvox_version) {
-            $puppet = "openvox-agent-$openvox_version-x64.msi"
+        if (-not $openvox_version -or $openvox_version -eq "default") {
+            $openvox_version = $defaults.vm.openvox_version
         }
-        else {
-            ## Puppet version
-            $puppet_version = $data.vm.puppet_version
-            if (-not $puppet_version -or $puppet_version -eq "default") {
-                $puppet_version = $defaults.vm.puppet_version
-            }
-            $puppet = "puppet-agent-$puppet_version-x64.msi"
-        }
+        $puppet = "openvox-agent-$openvox_version-x64.msi"
+
+        # ## OpenVox Version
+        # $openvox_version = $data.vm.openvox_version
+        # if ($openvox_version) {
+        #     $puppet = "openvox-agent-$openvox_version-x64.msi"
+        # }
+        # else {
+        #     ## Puppet version
+        #     $puppet_version = $data.vm.puppet_version
+        #     if (-not $puppet_version -or $puppet_version -eq "default") {
+        #         $puppet_version = $defaults.vm.puppet_version
+        #     }
+        #     $puppet = "puppet-agent-$puppet_version-x64.msi"
+        # }
         ## Git Version
         $git_version = $data.vm.git_version
         if (-not $git_version -or $git_version -eq "default") {
