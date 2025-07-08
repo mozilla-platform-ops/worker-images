@@ -19,11 +19,11 @@ vm:
   tags:
     base_image: win2022642009azure
     worker_pool_id: trusted-win2022-64-2009
-    sourceOrganization: mozilla-platform-ops
-    sourceRepository: ronin_puppet
-    sourceBranch: windows
-    deploymentId: "389b2fc"
-    managed_by: packer
+    sourceOrganization: "default"
+    sourceRepository: "default"
+    sourceBranch: "default"
+    deploymentId: "default"
+    managed_by: "default"
 tests:
   - microsoft_tools_builder.tests.ps1
   - disable_services_builder.tests.ps1
