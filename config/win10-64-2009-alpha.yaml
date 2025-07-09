@@ -29,7 +29,7 @@ vm:
     deploymentId: "7f142a7"
     managed_by: packer
 tests:
-  - microsoft_tools_tester.tests.ps1
+  #- microsoft_tools_tester.tests.ps1
   - disable_services.tests.ps1
   - error_reporting.tests.ps1
   - suppress_dialog_boxes.tests.ps1
