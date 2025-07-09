@@ -21,8 +21,8 @@ vm:
     worker_pool_id: win11-a64-24h2-tester
     sourceOrganization: "default"
     sourceRepository: "default"
-    sourceBranch: "default"
-    deploymentId: "default"
+    sourceBranch: "windows"
+    deploymentId: "9e421c2"
     managed_by: "default"
 tests:
   - microsoft_tools_tester_a64.tests.ps1
