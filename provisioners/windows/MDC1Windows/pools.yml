@@ -17,6 +17,7 @@ pools:
     - t-w1064-ms-151
   - name: "win10-64-2009-hw"
     #dev: "win10hw_activate"
+    openvox_version: "8.19.2"
     puppet_version: "8.10.0"
     Description: "Moonshot Win 10 hardware"
     image: "win10-2009-MS-11-05-2024"
@@ -57,6 +58,7 @@ pools:
     - t-w1064-ms-179
     - t-w1064-ms-180
   - name: "win11-64-24h2-hw-ref"
+    openvox_version: "8.19.2"
     puppet_version: "8.10.0"
     Description: "NUC12 Hardware Reference Staging/Testing Pool"
     image: "win11-24H2-NUC-01-16-2025"
@@ -98,6 +100,7 @@ pools:
     - t-nuc12-002
   - name: "win11-64-24h2-hw-relops1213"
     puppet_version: "8.10.0"
+    openvox_version: "8.19.2"
     Description: "NUC12 Hardware Performance Staging/Testing Pool"
     image: "win11-24H2-NUC-01-16-2025"
     src_Organisation: "mozilla-platform-ops"
@@ -111,6 +114,7 @@ pools:
     - nuc13-002
     - nuc13-003
   - name: "win11-64-24h2-hw-alpha"
+    openvox_version: "8.19.2"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
     git_version: "2.50.0"
@@ -151,6 +155,7 @@ pools:
     - nuc13-030
     - nuc13-160
   - name: "win11-64-24h2-hw-perf-sheriff"
+    openvox_version: "8.19.2"
     puppet_version: "8.10.0"
     Description: "Tracking metric variability with performance sheriffing. Tracking in RELOPS-1288"
     image: "win11-24H2-NUC-01-16-2025"
@@ -163,6 +168,7 @@ pools:
     nodes:
     - nuc13-021
   - name: "win11-64-24h2-hw"
+    openvox_version: "8.19.2"
     puppet_version: "8.10.0"
     Description: "NUC12 Hardware Performance Staging/Testing Pool"
     image: "win11-24H2-NUC-01-16-2025"
