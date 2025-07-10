@@ -114,7 +114,6 @@ pools:
     - nuc13-002
     - nuc13-003
   - name: "win11-64-24h2-hw-alpha"
-    openvox_version: "8.19.2"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
     git_version: "2.50.0"
