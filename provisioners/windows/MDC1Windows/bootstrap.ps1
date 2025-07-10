@@ -808,6 +808,9 @@ function Set-PXE {
             $PSItem
         }
     }
+    ## Remove all contents and start fresh
+    Remove-Item -Path "D:\*" -Recurse -Force
+
     bcdedit /set "{fwbootmgr}" BOOTSEQUENCE "{$($data.Identifier.Guid)}"
     Restart-Computer -Force
 }
