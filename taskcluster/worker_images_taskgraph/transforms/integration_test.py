@@ -2,7 +2,7 @@ import logging
 
 from taskgraph.transforms.base import TransformSequence
 
-from worker_images_taskgraph.util.fxci import get_worker_pools
+from worker_images_taskgraph.util.fxci import get_worker_pool_images
 
 logger = logging.getLogger(__name__)
 transforms = TransformSequence()
@@ -10,7 +10,7 @@ transforms = TransformSequence()
 
 @transforms.add
 def change_worker_pool_to_alpha(config, tasks):
-    pools = get_worker_pools()
+    pools = get_worker_pool_images().keys()
 
     for task in tasks:
         new_worker_type = f"{task["task"]["workerType"]}-alpha"
@@ -21,4 +21,11 @@ def change_worker_pool_to_alpha(config, tasks):
             continue
 
         task["task"]["workerType"] = new_worker_type
+        yield task
+
+
+@transforms.add
+def add_optimization(config, tasks):
+    for task in tasks:
+        task["optimization"] = {"integration-test": None}
         yield task
