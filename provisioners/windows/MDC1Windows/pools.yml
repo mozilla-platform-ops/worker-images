@@ -9,8 +9,8 @@ pools:
     image: "win10-2009-MS-11-05-2024"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "RELOPS-1659"
-    hash: "d8bb333"    
+    src_Branch: "windows"
+    hash: "e0d73c9"   
     secret_date: "11-07-2024"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
