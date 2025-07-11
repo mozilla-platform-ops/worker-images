@@ -1,0 +1,24 @@
+---
+image:
+  publisher: MicrosoftWindowsServer
+  offer: WindowsServer
+  sku: 2022-datacenter-azure-edition
+  version: latest
+azure:
+  regions:
+    - centralus
+    - eastus
+    - northcentralus
+    - southcentralus
+    - westus
+    - westus2
+  managed_image_resource_group_name: ""
+  managed_image_storage_account_type: ""
+vm:
+  providerType: "azure"
+  taskcluster_version: 85.0.1
+  vm_size: Standard_D2s_v3
+  taskcluster_ref: "main"
+  taskcuster_repo: "https://github.com/taskcluster/taskcluster"
+  scripts:
+    - "azure_staging_bootstrap"
