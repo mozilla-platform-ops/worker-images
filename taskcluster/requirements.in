@@ -1,0 +1,6 @@
+# For instructions on managing dependencies, see:
+# https://taskcluster-taskgraph.readthedocs.io/en/latest/howto/bootstrap-taskgraph.html
+
+mozilla-taskgraph@git+https://github.com/mozilla-releng/mozilla-taskgraph@refs/pull/108/head
+taskcluster
+taskcluster-taskgraph>=14.4.1
