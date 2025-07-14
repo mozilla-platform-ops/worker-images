@@ -3,7 +3,6 @@ function Show-Win11Sdk {
         "Application Verifier x64 External Package (DesktopEditions)",
         "Application Verifier x64 External Package (OnecoreUAP)",
         "Kits Configuration Installer",
-        "Microsoft Edge WebView2 Runtime",
         "MSI Development Tools",
         "SDK ARM Additions",
         "SDK ARM Redistributables",
