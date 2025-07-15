@@ -260,7 +260,7 @@ tasks:
                                         else: >
                                             cd /builds/worker/checkouts/src &&
                                             ln -s /builds/worker/artifacts artifacts &&
-                                            taskgraph decision
+                                            taskgraph decision -v
                                             --pushlog-id='0'
                                             --pushdate='0'
                                             --project='${project}'
