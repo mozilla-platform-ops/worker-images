@@ -12,13 +12,14 @@ azure:
     - southcentralus
     - westus
     - westus2
-  managed_image_resource_group_name: ""
-  managed_image_storage_account_type: ""
+  managed_image_resource_group_name: "rg-tc-eng-images"
+  managed_image_storage_account_type: "Standard_LRS"
 vm:
   providerType: "azure"
-  taskcluster_version: 85.0.1
+  taskcluster_version: "latest"
   vm_size: Standard_D2s_v3
   taskcluster_ref: "main"
   taskcuster_repo: "https://github.com/taskcluster/taskcluster"
-  scripts:
-    - "azure_staging_bootstrap"
+  scripts: "azure_staging_bootstrap"
+  tags:
+    - image_set: generic-worker-win2022-staging
