@@ -78,7 +78,7 @@ jobs:
           }
           New-GCPWorkerImage @Vars
   wiz:
-    needs: packer
+    needs: [packer, setproject]
     name: "Wiz scan ${{ github.event.inputs.config }}"
     runs-on: ubuntu-latest
     environment: prod
