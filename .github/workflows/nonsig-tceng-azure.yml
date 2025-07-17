@@ -48,7 +48,11 @@ jobs:
         shell: pwsh
         run: |
           Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
-          Set-AzWorkerImageLocation -Key '${{ github.event.inputs.config }}'
+          $Vars = @{
+            team = "tceng" 
+            Key = '${{ github.event.inputs.config }}'
+          }
+          Set-AzWorkerImageLocation @Vars
     outputs:
       LOCATIONS: ${{ steps.set-matrix.outputs.LOCATIONS }}
   packer:
