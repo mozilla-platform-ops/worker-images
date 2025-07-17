@@ -34,7 +34,7 @@ function New-AzWorkerImage {
     Set-PSRepository PSGallery -InstallationPolicy Trusted
     Install-Module powershell-yaml -ErrorAction Stop
 
-    switch ($Team) {
+    switch ($team) {
         "tceng" {
             $YamlPath = "config/tceng/$Key.yaml"
             $PackerHCLPath = "packer\tceng.azure.pkr.hcl"
