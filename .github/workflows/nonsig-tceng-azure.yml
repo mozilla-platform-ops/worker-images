@@ -10,7 +10,6 @@ on:
         options:
         - generic-worker-win2022-staging
 
-
 permissions:
   id-token: write
   contents: read
@@ -23,7 +22,11 @@ jobs:
     name: "Verify User Access"
     runs-on: ubuntu-latest
     steps:
+      # TESTING ONLY: check out relops-1640 branch instead of trigger branch
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
+
       - name: Load Authorized Users and Check Access
         shell: pwsh
         run: |
@@ -43,18 +46,23 @@ jobs:
     name: "Create Image Tasks"
     runs-on: ubuntu-latest
     steps:
+      # TESTING ONLY: check out relops-1640 branch instead of trigger branch
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
+
       - id: set-matrix
         shell: pwsh
         run: |
           Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
           $Vars = @{
-            team = "tceng" 
-            Key = '${{ github.event.inputs.config }}'
+            team = "tceng"
+            Key  = '${{ github.event.inputs.config }}'
           }
           Set-AzWorkerImageLocation @Vars
     outputs:
       LOCATIONS: ${{ steps.set-matrix.outputs.LOCATIONS }}
+
   packer:
     needs: config
     name: "${{ github.event.inputs.config }} - ${{ matrix.LOCATIONS }}"
@@ -65,9 +73,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        locations: ${{fromJson(needs.config.outputs.LOCATIONS)}}
+        locations: ${{ fromJson(needs.config.outputs.LOCATIONS) }}
     steps:
+      # TESTING ONLY: check out relops-1640 branch instead of trigger branch
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
+
       - name: Azure Login
         uses: azure/login@v2
         with:
@@ -75,6 +87,7 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_TCENG }}
           enable-AzPSSession: true
+
       - name: "Remove current images"
         uses: azure/powershell@v2
         with:
@@ -82,19 +95,20 @@ jobs:
             Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
             Remove-AzWorkerImage -Key "${{ github.event.inputs.config }}" -Location "${{ matrix.LOCATIONS }}"
           azPSVersion: "latest"
+
       - name: 'Run Packer'
         shell: pwsh
         run: |
           Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
           $Vars = @{
-            team = "tceng" 
-            Location = "${{ matrix.LOCATIONS }}"
-            Key = '${{ github.event.inputs.config }}'
-            Client_ID = "${{ secrets.AZURE_CLIENT_ID_TCENG }}"
-            oidc_request_url = "${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}"
+            team               = "tceng"
+            Location           = "${{ matrix.LOCATIONS }}"
+            Key                = '${{ github.event.inputs.config }}'
+            Client_ID          = "${{ secrets.AZURE_CLIENT_ID_TCENG }}"
+            oidc_request_url   = "${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}"
             oidc_request_token = "${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}"
-            Subscription_ID = "${{ secrets.AZURE_SUBSCRIPTION_ID_TCENG }}"
-            Tenant_ID = "${{ secrets.AZURE_TENANT_ID }}"
-            Application_ID = "${{ secrets.AZURE_APPLICATION_ID_TCENG }}"
+            Subscription_ID    = "${{ secrets.AZURE_SUBSCRIPTION_ID_TCENG }}"
+            Tenant_ID          = "${{ secrets.AZURE_TENANT_ID }}"
+            Application_ID     = "${{ secrets.AZURE_APPLICATION_ID_TCENG }}"
           }
           New-AzWorkerImage @Vars
