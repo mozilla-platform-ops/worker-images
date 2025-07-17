@@ -17,11 +17,19 @@ function Set-AzWorkerImageLocation {
         $YamlPath = "config/$Key.yaml"
     }
 
+    Write-Host "Resolved YAML path: $YamlPath"
+
     if (-not (Test-Path $YamlPath)) {
         throw "YAML file not found at: $YamlPath"
     }
 
     $YAML = ConvertFrom-Yaml (Get-Content $YamlPath -Raw)
+
+    if (-not $YAML.azure -or -not $YAML.azure.locations) {
+        throw "Missing or empty 'azure.locations' key in YAML file."
+    }
+
+    Write-Host "Found azure.locations: $($YAML.azure.locations -join ', ')"
 
     if ($YAML.azure.locations.count -eq 1) {
         $locations = '["' + $YAML.azure.locations + '"]'
@@ -29,5 +37,6 @@ function Set-AzWorkerImageLocation {
         $locations = ($YAML.azure.locations | ConvertTo-Json -Compress)
     }
 
-    Write-Output "LOCATIONS=$locations" >> $ENV:GITHUB_OUTPUT
+    Write-Host "Exporting LOCATIONS=$locations"
+    "LOCATIONS=$locations" >> $env:GITHUB_OUTPUT
 }

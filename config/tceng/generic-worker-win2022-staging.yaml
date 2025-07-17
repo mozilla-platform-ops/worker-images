@@ -5,7 +5,7 @@ image:
   sku: 2022-datacenter-azure-edition
   version: latest
 azure:
-  regions:
+  locations:
     - centralus
     - eastus
     #- northcentralus
