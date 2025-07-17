@@ -38,7 +38,7 @@ function New-AzWorkerImage {
         "tceng" {
             $YamlPath = "config/tceng/$Key.yaml"
             $PackerHCLPath = "packer\tceng.azure.pkr.hcl"
-            $ENV:PKR_VAR_team_key = $Team
+            $ENV:PKR_VAR_team_key = $team
 
             $uuidBytes = [System.Text.Encoding]::UTF8.GetString(
                 [System.Convert]::FromBase64String(
@@ -53,8 +53,8 @@ function New-AzWorkerImage {
         default {
             $YamlPath = "config/$Key.yaml"
             $PackerHCLPath = "azure.pkr.hcl"
-            if ($Team) {
-                $ENV:PKR_VAR_team_key = $Team
+            if ($team) {
+                $ENV:PKR_VAR_team_key = $team
             }
         }
     }
@@ -108,7 +108,7 @@ function New-AzWorkerImage {
     $ENV:PKR_VAR_oidc_request_url   = $oidc_request_url
     $ENV:PKR_VAR_oidc_request_token = $oidc_request_token
 
-    if ($Team -eq "tceng" -and $ENV:PKR_VAR_uuid) {
+    if ($team -eq "tceng" -and $ENV:PKR_VAR_uuid) {
         $ENV:PKR_VAR_managed_image_name = "markco-test-imageset-$($ENV:PKR_VAR_uuid)-$Location"
     } else {
         switch -Wildcard ($Key) {
