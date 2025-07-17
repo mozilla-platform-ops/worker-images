@@ -8,7 +8,7 @@ on:
         type: choice
         description: Choose which pool to build
         options:
-        - win2022-64-2009-alpha
+        - generic-worker-win2022-staging
 
 jobs:
   check-access:
