@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 env:
-  TARGET_BRANCH: RELOPS-164
+  TARGET_BRANCH: RELOPS-1640
 
 jobs:
   check-access:
