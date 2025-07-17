@@ -1,5 +1,5 @@
-run-name: TCEng - ${{ github.event.inputs.config }}
-name: TCEng
+run-name: TCEng Azure - ${{ github.event.inputs.config }}
+name: TCEng Azure
 
 on:
   workflow_dispatch:
