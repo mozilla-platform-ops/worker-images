@@ -10,6 +10,14 @@ on:
         options:
         - generic-worker-win2022-staging
 
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  TARGET_BRANCH: RELOPS-164
+
 jobs:
   check-access:
     name: "Verify User Access"
