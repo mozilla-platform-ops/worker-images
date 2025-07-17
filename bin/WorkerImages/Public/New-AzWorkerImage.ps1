@@ -26,7 +26,7 @@ function New-AzWorkerImage {
         [String] $oidc_request_token,
 
         [Parameter(Mandatory = $false)]
-        [String] $Team,
+        [String] $team,
 
         [Switch] $PackerDebug
     )
