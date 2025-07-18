@@ -22,4 +22,4 @@ vm:
   taskcuster_repo: "https://github.com/taskcluster/taskcluster"
   scripts: "azure_staging_bootstrap"
   tags:
-    - image_set: generic-worker-win2022-staging
+    - image_set: markco-generic-worker-win2022-staging
