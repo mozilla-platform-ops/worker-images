@@ -93,7 +93,8 @@ jobs:
         with:
           inlineScript: |
             Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
-            Remove-AzWorkerImage -Key "${{ github.event.inputs.config }}" -Location "${{ matrix.LOCATIONS }}"
+            ## Comment out for now, each run of TC image creations contains a UUId
+            # Remove-AzWorkerImage -Key "${{ github.event.inputs.config }}" -Location "${{ matrix.LOCATIONS }}"
           azPSVersion: "latest"
 
       - name: 'Run Packer'
