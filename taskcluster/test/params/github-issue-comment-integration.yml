@@ -1,0 +1,30 @@
+base_ref: main
+base_repository: https://github.com/mozilla-platform-ops/worker-images
+base_rev: 91f59538d8ba1898a374d61ac08294efb29848a8
+build_date: 1752088338
+build_number: 1
+do_not_optimize: []
+enable_always_target: true
+existing_tasks: {}
+files_changed:
+- config/win11-64-24h2-alpha.yaml
+- scripts/linux/ubuntu-2404-amd64-headless/fxci/nvidia-container-toolkit.sh
+filters:
+- target_tasks_method
+head_ref: ahal/push-wpysxwompoxz
+head_repository: https://github.com/ahal/worker-images
+head_rev: 650f54ae5f42d77edab5acbeb3ed671ba4ff196b
+head_tag: ''
+level: '1'
+moz_build_date: '20250709191218'
+next_version: null
+optimize_strategies: null
+optimize_target_tasks: true
+owner: ahal@users.noreply.github.com
+project: worker-images
+pushdate: 0
+pushlog_id: '0'
+repository_type: git
+target_tasks_method: integration
+tasks_for: github-issue-comment
+version: null

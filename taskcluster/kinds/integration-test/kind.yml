@@ -1,0 +1,40 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+---
+loader: taskgraph.loader.transform:loader
+
+transforms:
+  - mozilla_taskgraph.transforms.replicate
+  - worker_images_taskgraph.transforms.integration_test
+
+tasks:
+  gecko:
+    description: "Run Gecko integration tests"
+    replicate:
+      target:
+        - gecko.v2.mozilla-central.latest.taskgraph.decision-os-integration
+      include-attrs:
+        kind:
+          - source-test
+          - test
+      exclude-attrs:
+        test_platform:
+          - android-hw
+          - macosx
+
+  translations:
+    description: "Run translations pipeline integration tests"
+    replicate:
+      target:
+        - translations.v2.translations.latest.taskgraph.decision-run-pipeline
+      include-attrs:
+        # Corresponds to https://github.com/mozilla/translations/blob/main/taskcluster/kinds/all-pipeline/kind.yml
+        stage:
+          - all-pipeline
+      include-deps:
+        # Decision and Action tasks are excluded because we'll be creating the
+        # tasks they normally would be.
+        # docker-image tasks are excluded because there's no value in rerunning
+        # them as part of integration tests.
+        - ^(?!(Decision|Action|PR action|build-docker-image|docker-image)).*
