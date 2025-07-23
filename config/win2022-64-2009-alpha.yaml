@@ -26,8 +26,8 @@ vm:
     worker_pool_id: win2022-64-2009
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "RELOPS-1652"
-    deploymentId: "46d4eba"
+    sourceBranch: "RELOPS-1751"
+    deploymentId: "9a5fc87"
     managed_by: packer
 tests:
   - directx_sdk.tests.ps1
