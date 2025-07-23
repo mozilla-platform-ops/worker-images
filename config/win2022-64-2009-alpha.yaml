@@ -30,8 +30,9 @@ vm:
     deploymentId: "46d4eba"
     managed_by: packer
 tests:
-  #- microsoft_tools_builder.tests.ps1
-  - microsoft_tools_builder_core.tests.ps1
+  - directx_sdk.tests.ps1
+  - microsoft_binscope.tests.ps1
+  - microsoft_cplusplus_runtime.tests.ps1
   #- disable_services_builder.tests.ps1
   - disable_services_builder_core.tests.ps1
   #- error_reporting.tests.ps1
