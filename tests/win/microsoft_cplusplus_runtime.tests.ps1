@@ -1,5 +1,3 @@
-## CLEAN-UP Software versions should be in Hiera
-
 Describe "Microsoft Visual C++ Runtime 2015" {
     BeforeAll {
         $software = Get-InstalledSoftware
