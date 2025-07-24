@@ -37,7 +37,7 @@ function New-AzWorkerImage {
     switch ($Team) {
         "tceng" {
             $YamlPath = "config/tceng/$Key.yaml"
-            $PackerHCLPath = "packer/tceng.azure.pkr.hcl"
+            $PackerHCLPath = "packer/tceng-azure.pkr.hcl"
             $ENV:PKR_VAR_Team_key = $Team
 
             $uuidBytes = [System.Text.Encoding]::UTF8.GetString(
