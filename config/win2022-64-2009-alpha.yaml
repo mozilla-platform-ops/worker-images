@@ -30,6 +30,7 @@ vm:
     deploymentId: "9a5fc87"
     managed_by: packer
 tests:
+  - netframework_core.tests.ps1
   - directx_sdk.tests.ps1
   - microsoft_binscope.tests.ps1
   - microsoft_cplusplus_runtime.tests.ps1
