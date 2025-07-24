@@ -17,15 +17,17 @@ variable "image_sku"            { default = env("image_sku") }
 variable "image_version"        { default = env("image_version") }
 variable "vm_size"              { default = env("vm_size") }
 variable "location"             { default = env("location") }
-variable "managed_image_name"   { default = env("managed_image_name") }
-variable "resource_group"       { default = env("resource_group") }
-variable "gallery_name"         { default = env("gallery_name") }
-variable "sharedimage_version"  { default = env("sharedimage_version") }
-variable "bootstrap_script"     { default = env("bootstrap_script") }
 
-variable "taskcluster_ref"      { default = env("taskcluster_ref") }
-variable "taskcluster_repo"     { default = env("taskcluster_repo") }
-variable "provider_type"        { default = env("provider_type") }
+variable "managed_image_name"                { default = env("managed_image_name") }
+variable "resource_group"                    { default = env("resource_group") }
+variable "managed_image_resource_group_name" { default = env("resource_group") }
+
+variable "sharedimage_version"   { default = env("sharedimage_version") }
+variable "bootstrap_script"      { default = env("bootstrap_script") }
+
+variable "taskcluster_ref"       { default = env("taskcluster_ref") }
+variable "taskcluster_repo"      { default = env("taskcluster_repo") }
+variable "provider_type"         { default = env("provider_type") }
 
 variable "client_id"            { default = env("client_id") }
 variable "tenant_id"            { default = env("tenant_id") }
@@ -37,7 +39,7 @@ locals {
   sbom_name = var.config
 }
 
-source "azure-arm" "sig" {
+source "azure-arm" "nonsig" {
   communicator                 = "winrm"
   winrm_insecure              = true
   winrm_timeout               = "3m"
@@ -61,21 +63,8 @@ source "azure-arm" "sig" {
   temp_resource_group_name   = "packer-temp-${timestamp()}"
   async_resourcegroup_delete = true
 
-  shared_image_gallery_destination {
-    subscription     = var.subscription_id
-    resource_group   = var.resource_group
-    gallery_name     = var.gallery_name
-    image_name       = var.managed_image_name
-    image_version    = var.sharedimage_version
-    replication_regions = [
-      "centralus",
-      "eastus",
-      "northcentralus",
-      "southcentralus",
-      "westus",
-      "westus2"
-    ]
-  }
+  managed_image_name                 = var.managed_image_name
+  managed_image_resource_group_name = var.managed_image_resource_group_name
 
   azure_tags = {
     base_image     = "${var.image_publisher}:${var.image_offer}:${var.image_sku}:${var.image_version}"
@@ -85,7 +74,7 @@ source "azure-arm" "sig" {
 }
 
 build {
-  sources = ["source.azure-arm.sig"]
+  sources = ["source.azure-arm.nonsig"]
 
   provisioner "file" {
     source      = "scripts/windows/tceng/${var.bootstrap_script}.ps1"
