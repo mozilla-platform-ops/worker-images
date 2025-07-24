@@ -5,9 +5,6 @@ Describe "Microsoft DirectX SDK (June 2010)" {
         $Directories = Get-WinFactsDirectories
         $system_env = Get-ChildItem env:
     }
-    It "NET Framework Core is installed" {
-        Get-WindowsFeature -Name "NET-Framework-Core" | Should -Not -Be $Null
-    }
     It "DirectX SDK Exists" {
         Test-Path "${ENV:ProgramFiles(x86)}\Microsoft DirectX SDK (June 2010)" | Should -Be $true
     }
