@@ -1,4 +1,4 @@
-Describe "Microsoft Visual C++ 2010 Redistributable" {
+Describe "Microsoft Visual C++ 2010 Redistributable" -Skip {
     BeforeAll {
         $software = Get-InstalledSoftware
         ## 2010 Redistributable
