@@ -74,9 +74,10 @@ function New-AzWorkerImage {
     if ($YAML.image["sku"])       { $ENV:PKR_VAR_image_sku       = $YAML.image["sku"] }
     if ($YAML.image["version"])   { $ENV:PKR_VAR_image_version   = $YAML.image["version"] }
 
-    if ($YAML.azure["managed_image_resource_group_name"]) {
-        $ENV:PKR_VAR_resource_group = $YAML.azure["managed_image_resource_group_name"]
-    }
+if ($YAML.azure["managed_image_resource_group_name"]) {
+    $ENV:PKR_VAR_resource_group = $YAML.azure["managed_image_resource_group_name"]
+    $ENV:PKR_VAR_managed_image_resource_group_name = $YAML.azure["managed_image_resource_group_name"]
+}
     if ($YAML.azure["managed_image_storage_account_type"]) {
         $ENV:PKR_VAR_managed_image_storage_account_type = $YAML.azure["managed_image_storage_account_type"]
     }
@@ -131,5 +132,6 @@ function New-AzWorkerImage {
         packer build -debug --only azure-arm.nonsig -force $PackerHCLPath
     } else {
         packer build --only azure-arm.nonsig -force $PackerHCLPath
+        packer build --only azure-arm.sig -force $PackerHCLPath
     }
 }
