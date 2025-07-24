@@ -98,9 +98,21 @@ if ($YAML.azure["managed_image_resource_group_name"]) {
     if ($YAML.vm.tags["deploymentId"])      { $ENV:PKR_VAR_deployment_id     = $YAML.vm.tags["deploymentId"] }
     if ($YAML.vm.tags["worker_pool_id"])    { $ENV:PKR_VAR_worker_pool_id    = $YAML.vm.tags["worker_pool_id"] }
 
-    if ($YAML.vm.tags["worker_pool_id"] -and $YAML.vm.tags["deploymentId"]) {
-        $ENV:PKR_VAR_temp_resource_group_name = ('{0}-{1}-{2}-pkrtmp' -f $YAML.vm.tags["worker_pool_id"], $YAML.vm.tags["deploymentId"], (Get-Random -Maximum 999))
+switch ($Team) {
+    "tceng" {
+        if (-not $ENV:PKR_VAR_uuid) {
+            throw "UUID not set — required for tceng temp resource group name"
+        }
+        $ENV:PKR_VAR_temp_resource_group_name = "imageset-$($ENV:PKR_VAR_uuid)-rg"
     }
+    default {
+        if ($YAML.vm.tags["worker_pool_id"] -and $YAML.vm.tags["deploymentId"]) {
+            $ENV:PKR_VAR_temp_resource_group_name = ('{0}-{1}-{2}-pkrtmp' -f $YAML.vm.tags["worker_pool_id"], $YAML.vm.tags["deploymentId"], (Get-Random -Maximum 999))
+        } else {
+            throw "worker_pool_id and deploymentId are required for temp resource group naming"
+        }
+    }
+}
 
     $ENV:PKR_VAR_client_id          = $Client_ID
     $ENV:PKR_VAR_tenant_id          = $Tenant_ID
