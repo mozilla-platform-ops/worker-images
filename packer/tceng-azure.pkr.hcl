@@ -10,10 +10,6 @@ packer {
   }
 }
 
-locals {
-  sbom_name = var.config
-}
-
 // Image configuration driven by environment variables set by wrapper script (e.g., parsed from YAML)
 variable "image_publisher"       { default = env("image_publisher") }
 variable "image_offer"           { default = env("image_offer") }
