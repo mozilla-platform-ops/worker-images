@@ -7,4 +7,5 @@ jobs:
       job:
           type: decision-task
           target-tasks-method: integration
+          treeherder-symbol: run-integration-tests
       when: []  # never (hook only)
