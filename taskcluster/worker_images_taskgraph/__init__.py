@@ -13,7 +13,7 @@ def register(graph_config):
     register_mozilla_taskgraph(graph_config)
 
     # Import sibling modules, triggering decorators in the process
-    _import_modules(["actions", "target", "optimize"])
+    _import_modules(["target", "optimize"])
 
 
 def _import_modules(modules):
