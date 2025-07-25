@@ -63,8 +63,8 @@ function New-AzWorkerImage {
     if ($YAML.azure["managed_image_storage_account_type"]) {
         $ENV:PKR_VAR_managed_image_storage_account_type = $YAML.azure["managed_image_storage_account_type"]
     }
-    if ($YAML.azure["bootstrapscript"]) {
-        $ENV:PKR_VAR_bootstrap_script = $YAML.azure["bootstrapscript"]
+    if ($YAML.vm["bootstrapscript"]) {
+        $ENV:PKR_VAR_bootstrap_script = $YAML.vm["bootstrapscript"]
     }
 
     if ($YAML.vm["vm_size"])              { $ENV:PKR_VAR_vm_size              = $YAML.vm["vm_size"] }
