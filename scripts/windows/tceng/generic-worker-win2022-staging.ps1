@@ -402,15 +402,16 @@ if ($hasNvidiaGpu) {
 }
 
 # Log before stopping transcript to make sure message is included in transcript.
-Write-Log "Bootstrap process completed. Shutting down..."
+Write-Log "Bootstrap process completed. Waiting on Packer..."
 
+## Leaving comments intact. packer will handle the shutodwm
 # Shut down, in preparation for creating an image. Stop-Computer isn't working,
 # also not when specifying -AsJob, so reverting to using `shutdown` command
 # instead. See:
 #   * https://www.reddit.com/r/PowerShell/comments/65250s/windows_10_creators_update_stopcomputer_not/dgfofug/?st=j1o3oa29&sh=e0c29c6d
 #   * https://support.microsoft.com/en-in/help/4014551/description-of-the-security-and-quality-rollup-for-the-net-framework-4
 #   * https://support.microsoft.com/en-us/help/4020459
-Run-Executable "shutdown" @("-s")
+# Run-Executable "shutdown" @("-s")
 
 # Technically the transcript will be stopped here anyway, since Powershell
 # stops the transcript when the script exits, but it is a useful reminder to
