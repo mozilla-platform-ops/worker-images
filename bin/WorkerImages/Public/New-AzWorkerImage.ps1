@@ -1,33 +1,15 @@
 function New-AzWorkerImage {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory = $true)]
-        [String] $Key,
-
-        [Parameter(Mandatory = $true)]
-        [String] $Location,
-
-        [Parameter(Mandatory = $true)]
-        [String] $Client_ID,
-
-        [Parameter(Mandatory = $true)]
-        [String] $Subscription_ID,
-
-        [Parameter(Mandatory = $true)]
-        [String] $Tenant_ID,
-
-        [Parameter(Mandatory = $true)]
-        [String] $Application_ID,
-
-        [Parameter(Mandatory = $true)]
-        [String] $oidc_request_url,
-
-        [Parameter(Mandatory = $true)]
-        [String] $oidc_request_token,
-
-        [Parameter(Mandatory = $false)]
-        [String] $Team,
-
+        [Parameter(Mandatory = $true)] [String] $Key,
+        [Parameter(Mandatory = $true)] [String] $Location,
+        [Parameter(Mandatory = $true)] [String] $Client_ID,
+        [Parameter(Mandatory = $true)] [String] $Subscription_ID,
+        [Parameter(Mandatory = $true)] [String] $Tenant_ID,
+        [Parameter(Mandatory = $true)] [String] $Application_ID,
+        [Parameter(Mandatory = $true)] [String] $oidc_request_url,
+        [Parameter(Mandatory = $true)] [String] $oidc_request_token,
+        [Parameter(Mandatory = $false)] [String] $Team,
         [Switch] $PackerDebug
     )
 
@@ -74,10 +56,10 @@ function New-AzWorkerImage {
     if ($YAML.image["sku"])       { $ENV:PKR_VAR_image_sku       = $YAML.image["sku"] }
     if ($YAML.image["version"])   { $ENV:PKR_VAR_image_version   = $YAML.image["version"] }
 
-if ($YAML.azure["managed_image_resource_group_name"]) {
-    $ENV:PKR_VAR_resource_group = $YAML.azure["managed_image_resource_group_name"]
-    $ENV:PKR_VAR_managed_image_resource_group_name = $YAML.azure["managed_image_resource_group_name"]
-}
+    if ($YAML.azure["managed_image_resource_group_name"]) {
+        $ENV:PKR_VAR_resource_group = $YAML.azure["managed_image_resource_group_name"]
+        $ENV:PKR_VAR_managed_image_resource_group_name = $YAML.azure["managed_image_resource_group_name"]
+    }
     if ($YAML.azure["managed_image_storage_account_type"]) {
         $ENV:PKR_VAR_managed_image_storage_account_type = $YAML.azure["managed_image_storage_account_type"]
     }
@@ -98,21 +80,23 @@ if ($YAML.azure["managed_image_resource_group_name"]) {
     if ($YAML.vm.tags["deploymentId"])      { $ENV:PKR_VAR_deployment_id     = $YAML.vm.tags["deploymentId"] }
     if ($YAML.vm.tags["worker_pool_id"])    { $ENV:PKR_VAR_worker_pool_id    = $YAML.vm.tags["worker_pool_id"] }
 
-switch ($Team) {
-    "tceng" {
-        if (-not $ENV:PKR_VAR_uuid) {
-            throw "UUID not set — required for tceng temp resource group name"
+    switch ($Team) {
+        "tceng" {
+            if (-not $ENV:PKR_VAR_uuid) {
+                throw "UUID not set — required for tceng temp resource group name"
+            }
+            $sanitizedUuid = $ENV:PKR_VAR_uuid -replace '[^a-z0-9]', ''
+            $tempRg = "imageset-$sanitizedUuid-rg"
+            $ENV:PKR_VAR_temp_resource_group_name = $tempRg.TrimEnd('-', '.')
         }
-        $ENV:PKR_VAR_temp_resource_group_name = "imageset-$($ENV:PKR_VAR_uuid)-rg"
-    }
-    default {
-        if ($YAML.vm.tags["worker_pool_id"] -and $YAML.vm.tags["deploymentId"]) {
-            $ENV:PKR_VAR_temp_resource_group_name = ('{0}-{1}-{2}-pkrtmp' -f $YAML.vm.tags["worker_pool_id"], $YAML.vm.tags["deploymentId"], (Get-Random -Maximum 999))
-        } else {
-            throw "worker_pool_id and deploymentId are required for temp resource group naming"
+        default {
+            if ($YAML.vm.tags["worker_pool_id"] -and $YAML.vm.tags["deploymentId"]) {
+                $ENV:PKR_VAR_temp_resource_group_name = ('{0}-{1}-{2}-pkrtmp' -f $YAML.vm.tags["worker_pool_id"], $YAML.vm.tags["deploymentId"], (Get-Random -Maximum 999))
+            } else {
+                throw "worker_pool_id and deploymentId are required for temp resource group naming"
+            }
         }
     }
-}
 
     $ENV:PKR_VAR_client_id          = $Client_ID
     $ENV:PKR_VAR_tenant_id          = $Tenant_ID
@@ -146,6 +130,5 @@ switch ($Team) {
         packer build -debug --only azure-arm.nonsig -force $PackerHCLPath
     } else {
         packer build --only azure-arm.nonsig -force $PackerHCLPath
-        packer build --only azure-arm.sig -force $PackerHCLPath
     }
 }
