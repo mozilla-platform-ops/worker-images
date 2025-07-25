@@ -1,8 +1,10 @@
-param (
-    $providerType,
-    $TASKCLUSTER_REF,
-    $TASKCLUSTER_REPO
-)
+##############################################################################
+# TASKCLUSTER_REF can be a git commit SHA, a git branch name, or a git tag name
+# (i.e. for a taskcluster version number, prefix with 'v' to make it a git tag)
+$TASKCLUSTER_REF = "main"
+$TASKCLUSTER_REPO = "https://github.com/taskcluster/taskcluster"
+##############################################################################
+
 # Write-Log function for logging with RFC3339 format timestamps
 function Write-Log {
     param (
@@ -308,7 +310,7 @@ Run-Executable $nssm @("set", "worker-runner", "AppRotateBytes", "0")
 # configure worker-runner
 Set-Content -Path C:\worker-runner\runner.yml @"
 provider:
-    providerType: %providerType%
+    providerType: %MY_CLOUD%
 worker:
     implementation: generic-worker
     service: "Generic Worker"

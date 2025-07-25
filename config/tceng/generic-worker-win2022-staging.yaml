@@ -18,8 +18,6 @@ vm:
   providerType: "azure"
   taskcluster_version: "latest"
   vm_size: Standard_D2s_v3
-  taskcluster_ref: "main"
-  taskcuster_repo: "https://github.com/taskcluster/taskcluster"
-  bootstrapscript: "azure_staging_bootstrap"
+  bootstrapscript: "generic-worker-win2022-staging"
   tags:
     - image_set: markco-generic-worker-win2022-staging
