@@ -20,7 +20,7 @@ variable "location"             { default = env("location") }
 
 variable "managed_image_name"                { default = env("managed_image_name") }
 variable "resource_group"                    { default = env("resource_group") }
-variable "managed_image_resource_group_name" { default = env("resource_group") }
+variable "managed_image_resource_group_name" { default = env("managed_image_resource_group_name") }
 
 variable "sharedimage_version"   { default = env("sharedimage_version") }
 variable "bootstrap_script"      { default = env("bootstrap_script") }
@@ -34,6 +34,10 @@ variable "tenant_id"            { default = env("tenant_id") }
 variable "subscription_id"      { default = env("subscription_id") }
 variable "oidc_request_url"     { default = env("ACTIONS_ID_TOKEN_REQUEST_URL") }
 variable "oidc_request_token"   { default = env("ACTIONS_ID_TOKEN_REQUEST_TOKEN") }
+
+variable "temp_resource_group_name" {
+  default = env("temp_resource_group_name")
+}
 
 locals {
   sbom_name = var.config
@@ -59,8 +63,8 @@ source "azure-arm" "nonsig" {
   image_version               = var.image_version
 
   location                    = var.location
+  temp_resource_group_name   = var.temp_resource_group_name
   vm_size                     = var.vm_size
-  temp_resource_group_name   = "packer-temp-${timestamp()}"
   async_resourcegroup_delete = true
 
   managed_image_name                 = var.managed_image_name
