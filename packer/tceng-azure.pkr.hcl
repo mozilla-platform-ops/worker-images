@@ -81,7 +81,7 @@ build {
   sources = ["source.azure-arm.nonsig"]
 
   provisioner "file" {
-    source      = "scripts/windows/tceng/${var.bootstrap_script}"
+    source      = "${path.root}/scripts/windows/tceng/${var.bootstrap_script}.ps1"
     destination = "C:/Windows/Temp/bootstrap.ps1"
   }
 
