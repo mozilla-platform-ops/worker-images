@@ -9,6 +9,11 @@ on:
         description: Choose which pool to build
         options:
         - generic-worker-win2022-staging
+        - generic-worker-win2022
+        - generic-worker-win2022-gpu-staging
+        - generic-worker-win2022-gpu
+        - generic-worker-win11-24h2-staging
+        - generic-worker-win2025-staging
 
 permissions:
   id-token: write

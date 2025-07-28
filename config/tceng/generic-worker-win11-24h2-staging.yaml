@@ -1,8 +1,8 @@
 ---
 image:
-  publisher: MicrosoftWindowsServer
-  offer: WindowsServer
-  sku: 2022-datacenter-azure-edition
+  publisher: MicrosoftWindowsDesktop
+  offer: windows11preview
+  sku: windows11preview
   version: latest
 azure:
   locations:
