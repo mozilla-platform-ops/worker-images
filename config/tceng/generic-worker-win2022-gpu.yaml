@@ -6,12 +6,12 @@ image:
   version: latest
 azure:
   locations:
-    - centralus
-    - eastus
+    #- centralus
+    #- eastus
     #- northcentralus
     #- southcentralus
     #- westus
-    #- westus2
+    - westus2
   managed_image_resource_group_name: "rg-tc-eng-images"
   managed_image_storage_account_type: "Standard_LRS"
 vm:
