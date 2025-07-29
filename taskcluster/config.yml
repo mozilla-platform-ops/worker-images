@@ -5,6 +5,7 @@ task-priority: low
 taskgraph:
   register: worker_images_taskgraph:register
   cached-task-prefix: "relops.v2.worker-images"
+  decision-parameters: 'worker_images_taskgraph.parameters:get_decision_parameters'
   repositories:
     worker_images:
       name: "worker-images"
