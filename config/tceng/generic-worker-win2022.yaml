@@ -16,7 +16,6 @@ azure:
   managed_image_storage_account_type: "Standard_LRS"
 vm:
   providerType: "azure"
-  taskcluster_version: "latest"
   vm_size: Standard_D2s_v3
   bootstrapscript: "generic-worker-win2022"
   tags:

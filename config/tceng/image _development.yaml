@@ -16,7 +16,6 @@ azure:
   managed_image_storage_account_type:
 vm:
   providerType:
-  taskcluster_version:
   vm_size:
   bootstrapscript:
   tags:
