@@ -2,7 +2,7 @@
 image:
   publisher: MicrosoftWindowsServer
   offer: WindowsServer
-  sku: 2022-datacenter-azure-edition
+  sku: 2022-datacenter-azure-edition-core
   version: latest
 sharedimage:
   gallery_name: "win2022_64_2009_alpha"
@@ -19,21 +19,24 @@ azure:
 vm:
   puppet_version: 8.10.0
   openvox_version: 8.19.2
-  git_version: 2.50.0
+  git_version: 2.50.1
   size: Standard_F32s_v2
   tags:
     base_image: win2022642009azure
     worker_pool_id: win2022-64-2009
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "RELOPS-1485"
-    deploymentId: "7f142a7"
+    sourceBranch: "RELOPS-1751"
+    deploymentId: "9a5fc87"
     managed_by: packer
 tests:
-  #- microsoft_tools_builder.tests.ps1
-  - microsoft_tools_builder_core.tests.ps1
-  #- disable_services_builder.tests.ps1
-  - disable_services_builder_core.tests.ps1
+  - netframework_core.tests.ps1
+  - directx_sdk.tests.ps1
+  - microsoft_binscope.tests.ps1
+  - microsoft_cplusplus_runtime.tests.ps1
+  - disable_puppet_service.tests.ps1
+  - disable_windows_update.tests.ps1
+  - disable_uac.tests.ps1
   #- error_reporting.tests.ps1
   - suppress_dialog_boxes.tests.ps1
   - files_system_management.tests.ps1

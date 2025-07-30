@@ -22,7 +22,7 @@ vm:
     sourceOrganization: "default"
     sourceRepository: "default"
     sourceBranch: "windows"
-    deploymentId: "9e421c2"
+    deploymentId: "default"
     managed_by: "default"
 tests:
   - microsoft_tools_builder-a64.tests.ps1

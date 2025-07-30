@@ -33,9 +33,9 @@ jobs:
             Write-Host "User ${{ github.actor }} is unauthorized."
             exit 1
           }
-  config:
+  setproject:
     needs: check-access
-    name: "Get Project ID from Config"
+    name: "Get Project ID & ImageName from Config"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -43,11 +43,13 @@ jobs:
         shell: pwsh
         run: |
           Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
+          Set-GCPWorkerImageName -Key '${{ github.event.inputs.config }}'
           Set-GCPWorkerImageProject -Key '${{ github.event.inputs.config }}'
     outputs:
+      IMAGENAME: ${{ steps.set-matrix.outputs.IMAGENAME }}
       PROJECT: ${{ steps.set-matrix.outputs.PROJECT }}
   packer:
-    needs: config
+    needs: setproject
     name: "GCP ${{ github.event.inputs.config }}"
     runs-on: ubuntu-latest
     environment: prod
@@ -60,7 +62,7 @@ jobs:
         id: auth
         with:
           workload_identity_provider: "projects/324168772199/locations/global/workloadIdentityPools/github-actions/providers/github-actions"
-          service_account: "deploy-prod@${{ needs.config.outputs.PROJECT }}.iam.gserviceaccount.com"
+          service_account: "deploy-prod@${{ needs.setproject.outputs.PROJECT }}.iam.gserviceaccount.com"
       - name: 'Set up Cloud SDK'
         uses: 'google-github-actions/setup-gcloud@v2'
       - name: 'Run Packer'
@@ -75,3 +77,25 @@ jobs:
             TC_worker_key = "${{ secrets.TC_WORKER_KEY }}"
           }
           New-GCPWorkerImage @Vars
+  wiz:
+    needs: [packer, setproject]
+    name: "Wiz scan ${{ github.event.inputs.config }}"
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - name: Download Wiz CLI
+        run: curl -o wizcli https://downloads.wiz.io/wizcli/latest/wizcli-linux-amd64 && chmod +x wizcli
+      - name: Authenticate to Wiz
+        run: ./wizcli auth --id "$WIZ_CLIENT_ID" --secret "$WIZ_CLIENT_SECRET"
+        env:
+          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
+          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
+      - name: Run wiz-cli scan
+        run: |
+          ./wizcli vm-image scan \
+          --id ${{ needs.setproject.outputs.IMAGENAME }} \
+          --region us-west1 \
+          --subscriptionId ${{ needs.setproject.outputs.PROJECT }} \
+          --secrets \
+          --show-vulnerability-details \
+          --policy-hits-only

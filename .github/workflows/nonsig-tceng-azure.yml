@@ -16,6 +16,7 @@ on:
         - generic-worker-win2025-staging
         - image_development
 
+
 permissions:
   id-token: write
   contents: read

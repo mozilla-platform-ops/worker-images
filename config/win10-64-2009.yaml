@@ -25,7 +25,8 @@ vm:
     deploymentId: "default"
     managed_by: "default"
 tests:
-  - microsoft_tools_tester.tests.ps1
+  - win11_sdk_tests.ps1
+  #- microsoft_tools_tester.tests.ps1
   - disable_services.tests.ps1
   - error_reporting.tests.ps1
   - suppress_dialog_boxes.tests.ps1
