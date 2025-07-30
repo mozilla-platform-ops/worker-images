@@ -228,9 +228,9 @@ tasks:
                                             ACTION_TASK_ID: {$json: {$eval: 'taskId'}}  # taskId of the target task (JSON-encoded)
                                             ACTION_INPUT: {$json: {$eval: 'input'}}
                                             ACTION_CALLBACK: '${action.cb_name}'
-                                      - $if: 'tasks_for == "cron" && cron["input"]'
+                                      - $if: 'tasks_for == "cron" && cron["input"] && cron.input["images"]'
                                         then:
-                                            DEPLOY_IMAGES: {$json: {$eval: cron.input}}
+                                            DEPLOY_IMAGES: {$json: {$eval: cron.input.images}}
 
                               cache:
                                   "${trustDomain}-project-${project}-level-${level}-checkouts-sparse-v2": /builds/worker/checkouts
