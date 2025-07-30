@@ -20,9 +20,6 @@ permissions:
   id-token: write
   contents: read
 
-env:
-  TARGET_BRANCH: RELOPS-1640
-
 jobs:
   check-access:
     name: "Verify User Access"
