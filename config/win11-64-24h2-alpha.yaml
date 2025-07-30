@@ -21,15 +21,15 @@ azure:
 vm:
   puppet_version: 8.10.0
   openvox_version: 8.19.2
-  git_version: 2.50.0
+  git_version: 2.50.1
   size: Standard_F8s_v2
   tags:
     base_image: win116424h2azure
     worker_pool_id: win11-64-24h2
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "RELOPS-1485"
-    deploymentId: "7f142a7"
+    sourceBranch: "RELOPS-1652"
+    deploymentId: "a704867"
     managed_by: packer
 tests:
   #- microsoft_tools_tester.tests.ps1

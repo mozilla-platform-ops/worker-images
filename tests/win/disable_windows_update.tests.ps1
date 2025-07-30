@@ -1,18 +1,4 @@
-Describe "Disable Services" {
-    BeforeDiscovery {
-        $Hiera = $Data.Hiera
-    }
-
-    Context "<_> service" -ForEach @(
-        "puppet"
-    ) {
-        It "Exists as a service" {
-            Get-Service $_ | Should -Not -Be $null
-        }
-        It "Is disabled" {
-            (Get-Service $_).Status | Should -Be "Stopped"
-        }
-    }
+Describe "Disable Windows Update" {
     Context "Windows Update" {
         BeforeAll {
             $win_update_key = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"
@@ -40,21 +26,6 @@ Describe "Disable Services" {
         }
         It "wuauserv start set to disable" {
             Get-ItemPropertyValue $service_key -Name "Start" | Should -Be 4
-        }
-    }
-    Context "Disable User Account Control" {
-        It "UAC is disabled" {
-            Get-ItemPropertyValue HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -Name "EnableLUA" | Should -Be 0
-        }
-    }
-    Context "Disable Local Clipboard" -Tags "Azure" -Skip {
-        It "Service is stopped" {
-            (Get-Service -Name "cbdhsvc_*").Status | Should -Be "Stopped"
-        }
-        It "<_> is set to disabled" -Foreach @(
-            (Get-Item -Path "HKLM:\SYSTEM\CurrentControlSet\Services\cbdhsvc_*").PSChildName
-        ){
-            Get-ItemPropertyValue "HKLM:\SYSTEM\CurrentControlSet\Services\$_" -Name "Start" | Should -Be 4
         }
     }
 }

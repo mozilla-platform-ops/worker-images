@@ -7,7 +7,7 @@ image:
   zone: us-central1-a
 vm:
   disk_size: 60
-  taskcluster_version: 85.0.1
+  taskcluster_version: 87.1.2
   tc_arch: ARM64
   script_paths: 
   - "scripts/linux/ubuntu-2404-headless-arm64-headless"

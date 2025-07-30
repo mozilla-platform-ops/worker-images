@@ -105,8 +105,6 @@ tasks:
               in:
                   $if: >
                       tasks_for in ["action", "pr-action", "cron"]
-                      || (tasks_for == "github-push" && short_head_ref == "main")
-                      || (isPullRequest && pullRequestAction in ["opened", "reopened", "synchronize"])
                       || (isPullRequest && issueCommentAction in ["created", "edited"])
                   then:
                       taskId: {$if: 'tasks_for != "action" && tasks_for != "pr-action"', then: '${ownTaskId}'}
@@ -217,6 +215,7 @@ tasks:
                                         ${normProjectUpper}_HEAD_REF: '${short_head_ref}'
                                         ${normProjectUpper}_HEAD_REV: '${head_sha}'
                                         ${normProjectUpper}_REPOSITORY_TYPE: git
+                                        ${normProjectUpper}_PIP_REQUIREMENTS: taskcluster/requirements.txt
                                         REPOSITORIES:
                                             $json:
                                                 ${normProject}: ${normProject}
@@ -229,6 +228,9 @@ tasks:
                                             ACTION_TASK_ID: {$json: {$eval: 'taskId'}}  # taskId of the target task (JSON-encoded)
                                             ACTION_INPUT: {$json: {$eval: 'input'}}
                                             ACTION_CALLBACK: '${action.cb_name}'
+                                      - $if: 'tasks_for == "cron" && cron["input"]'
+                                        then:
+                                            DEPLOY_IMAGES: {$json: {$eval: cron.input}}
 
                               cache:
                                   "${trustDomain}-project-${project}-level-${level}-checkouts-sparse-v2": /builds/worker/checkouts
@@ -262,7 +264,7 @@ tasks:
                                         else: >
                                             cd /builds/worker/checkouts/src &&
                                             ln -s /builds/worker/artifacts artifacts &&
-                                            taskgraph decision
+                                            taskgraph decision -v
                                             --pushlog-id='0'
                                             --pushdate='0'
                                             --project='${project}'

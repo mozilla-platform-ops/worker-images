@@ -8,9 +8,9 @@ Describe "Microsoft Tools" {
     ) {
         $PSItem.DisplayName -in $Names | Should -Not -Be $null
     }
-    It "<_.DisplayName> is 10.1.22621.1778" -ForEach @(
+    It "<_.DisplayName> is 10.1.22621.5040" -ForEach @(
         Show-Win11SDK
     ) {
-        $PSItem.DisplayVersion | Should -Be "10.1.22621.1778"
+        $PSItem.DisplayVersion | Should -Be "10.1.22621.5040"
     }
 }
