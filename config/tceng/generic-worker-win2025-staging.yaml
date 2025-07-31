@@ -1,0 +1,22 @@
+---
+image:
+  publisher: MicrosoftWindowsServer
+  offer: WindowsServer
+  sku: 2025-datacenter-azure-edition
+  version: latest
+azure:
+  locations:
+    - centralus
+    - eastus
+    #- northcentralus
+    #- southcentralus
+    #- westus
+    #- westus2
+  managed_image_resource_group_name: "rg-tc-eng-images"
+  managed_image_storage_account_type: "Standard_LRS"
+vm:
+  providerType: "azure"
+  vm_size: Standard_D2s_v3
+  bootstrapscript: "generic-worker-win2025-staging"
+  tags:
+    - image_set: markco-generic-worker-win2025-staging

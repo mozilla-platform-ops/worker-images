@@ -14,13 +14,12 @@ on:
         - generic-worker-win2022-gpu
         - generic-worker-win11-24h2-staging
         - generic-worker-win2025-staging
+        - image_development
+
 
 permissions:
   id-token: write
   contents: read
-
-env:
-  TARGET_BRANCH: RELOPS-1640
 
 jobs:
   check-access:

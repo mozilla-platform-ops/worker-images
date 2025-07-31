@@ -1,0 +1,22 @@
+---
+image:
+  publisher:
+  offer: 
+  sku:
+  version:
+azure:
+  locations:
+    #- centralus
+    #- eastus
+    #- northcentralus
+    #- southcentralus
+    #- westus
+    - westus2
+  managed_image_resource_group_name:
+  managed_image_storage_account_type:
+vm:
+  providerType:
+  vm_size:
+  bootstrapscript:
+  tags:
+    - image_set:

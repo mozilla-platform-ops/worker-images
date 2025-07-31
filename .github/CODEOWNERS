@@ -1,0 +1,6 @@
+* @mozilla-platform-ops/relops
+
+# TCEng writable areas – shared ownership
+/config/tceng/* @mozilla-platform-ops/relops @mozilla-platform-ops/tceng
+/scripts/windows/tceng/* @mozilla-platform-ops/relops @mozilla-platform-ops/tceng
+/scripts/linux/tceng/* @mozilla-platform-ops/relops @mozilla-platform-ops/tceng
