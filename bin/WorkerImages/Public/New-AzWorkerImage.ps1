@@ -106,7 +106,7 @@ function New-AzWorkerImage {
     $ENV:PKR_VAR_oidc_request_token = $oidc_request_token
 
     if ($Team -eq "tceng" -and $ENV:PKR_VAR_uuid) {
-        $ENV:PKR_VAR_managed_image_name = "markco-test-imageset-$($ENV:PKR_VAR_uuid)-$Location"
+        $ENV:PKR_VAR_managed_image_name = "imageset-$($ENV:PKR_VAR_uuid)-$Location"
     } else {
         switch -Wildcard ($Key) {
             "*alpha2*" {
