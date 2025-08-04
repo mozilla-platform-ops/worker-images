@@ -886,7 +886,6 @@ $stage = (Get-ItemProperty -path "HKLM:\SOFTWARE\Mozilla\ronin_puppet").bootstra
 
 If ($stage -ne 'complete') {
     Set-Logging
-    Set-SCHTask
     Get-PSModules
     ## TODO: Figure out a way to install binaries/files as taskuser without defaulting to task-user-init
     switch ($role) {
