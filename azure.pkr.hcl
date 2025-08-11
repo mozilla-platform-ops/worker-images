@@ -395,7 +395,6 @@ build {
       "Import-Module BootStrap -Force;",
       "Set-PesterVersion;",
       "Set-YAMLModule;",
-      "Get-ChildItem C:\\mozilla-unified\\*",
       "Invoke-RoninTest -Role $ENV:base_image -Config $ENV:config"
     ]
     valid_exit_codes = [
