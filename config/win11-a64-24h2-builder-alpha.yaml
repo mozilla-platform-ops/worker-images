@@ -25,7 +25,7 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: "RELOPS-1764"
-    deploymentId: "a79dd07"
+    deploymentId: "7f3b9e2"
     managed_by: packer
 tests:
   - directx_sdk.tests.ps1
