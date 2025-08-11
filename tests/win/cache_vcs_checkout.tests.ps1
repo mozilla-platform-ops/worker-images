@@ -5,4 +5,7 @@ Describe "Cache VCS Checkout" {
     It "Mozilla Unified Contents" {
         Test-Path "C:\mozilla-unified\taskcluster" | Should -Be True
     }
+    It "Mozilla Unified Cache Folder Environment Variable" {
+        $ENV:VCS_CHECKOUT | Should -Be "C:\mozilla-unified"
+    }
 }
