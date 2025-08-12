@@ -25,6 +25,7 @@ variable "managed_image_resource_group_name" { default = env("managed_image_reso
 variable "sharedimage_version"   { default = env("sharedimage_version") }
 variable "bootstrap_script"      { default = env("bootstrap_script") }
 
+=======
 locals {
   sbom_name = var.config
 }
@@ -102,7 +103,7 @@ build {
 
   provisioner "powershell" {
     inline = [
-      "& 'C:/Windows/Temp/bootstrap.ps1' -MY_CLOUD 'azure'"
+      "& 'C:/Windows/Temp/bootstrap.ps1' -providerType '${var.provider_type}' -TASKCLUSTER_REF '${var.taskcluster_ref}' -TASKCLUSTER_REPO '${var.taskcluster_repo}'"
     ]
   }
 
