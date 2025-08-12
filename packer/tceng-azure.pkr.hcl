@@ -25,24 +25,9 @@ variable "managed_image_resource_group_name" { default = env("managed_image_reso
 variable "sharedimage_version"   { default = env("sharedimage_version") }
 variable "bootstrap_script"      { default = env("bootstrap_script") }
 
-=======
-locals {
-  sbom_name = var.config
-}
-
-// Image configuration driven by environment variables set by wrapper script (e.g., parsed from YAML)
-variable "image_publisher"       { default = env("image_publisher") }
-variable "image_offer"           { default = env("image_offer") }
-variable "image_sku"             { default = env("image_sku") }
-variable "image_version"         { default = env("image_version") }
-variable "vm_size"               { default = env("vm_size") }
-variable "location"              { default = env("location") }
-
-variable "managed_image_name"    { default = env("managed_image_name") }
-variable "resource_group"        { default = env("resource_group") }
-variable "gallery_name"          { default = env("gallery_name") }
-variable "sharedimage_version"   { default = env("sharedimage_version") }
-variable "bootstrap_script"      { default = env("bootstrap_script") }
+variable "taskcluster_ref"       { default = env("taskcluster_ref") }
+variable "taskcluster_repo"      { default = env("taskcluster_repo") }
+variable "provider_type"         { default = env("provider_type") }
 
 variable "client_id"            { default = env("client_id") }
 variable "tenant_id"            { default = env("tenant_id") }
@@ -97,7 +82,6 @@ build {
 
   provisioner "file" {
     source      = "${path.root}/../scripts/windows/tceng/${var.bootstrap_script}.ps1"
-
     destination = "C:/Windows/Temp/bootstrap.ps1"
   }
 
