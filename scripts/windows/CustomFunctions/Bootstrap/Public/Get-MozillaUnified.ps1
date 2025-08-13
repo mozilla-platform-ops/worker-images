@@ -22,11 +22,11 @@ function Get-MozillaUnified {
     try {
         Write-Log -message "Cloning $Repository to $ClonePath" -severity 'INFO'
 
-        $null = New-Item -Path $TempClonePath -ItemType Directory -Force
-        if (-Not (Test-Path $TempClonePath)) {
-            Write-Log -message "Failed to create temporary clone path: $TempClonePath" -severity 'ERROR'
-            exit 1
-        }
+        # $null = New-Item -Path $TempClonePath -ItemType Directory -Force
+        # if (-Not (Test-Path $TempClonePath)) {
+        #     Write-Log -message "Failed to create temporary clone path: $TempClonePath" -severity 'ERROR'
+        #     exit 1
+        # }
 
         $Splat = @{
             FilePath = $Hg
