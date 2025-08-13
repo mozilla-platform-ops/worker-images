@@ -5,7 +5,7 @@ function Get-MozillaUnified {
         $ClonePath = "C:\hg-shared",
 
         [String]
-        $TempClonePath = "C:\hg-shared_temp"
+        $TempClonePath = "C:\hg-shared_temp",
         
         [String]
         $Repository = "https://hg.mozilla.org/mozilla-unified",

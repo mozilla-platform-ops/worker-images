@@ -386,7 +386,7 @@ build {
     ]
     inline = [
       "Import-Module BootStrap -Force;",
-      "Get-MozillaUnified;"
+      "Get-MozillaUnified"
     ]
     valid_exit_codes = [
       0,
