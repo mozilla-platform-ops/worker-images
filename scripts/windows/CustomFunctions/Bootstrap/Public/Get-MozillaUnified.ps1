@@ -11,7 +11,10 @@ function Get-MozillaUnified {
         $Repository = "https://hg.mozilla.org/mozilla-unified",
 
         [String]
-        $Hg = "C:\Program Files\Mercurial\hg.exe"
+        $Hg = "C:\Program Files\Mercurial\hg.exe",
+
+        [String]
+        $Branch = "autoland"
     )
     
     Write-Log -message "Starting mozilla-unified clone to $ClonePath" -severity 'INFO'
@@ -33,8 +36,8 @@ function Get-MozillaUnified {
                 $ClonePath,
                 "--config",
                 "extensions.robustcheckout=C:\\mozilla-build\\robustcheckout.py",
-                "--revision",
-                "tip",
+                "--branch",
+                $Branch,
                 $Repository,
                 $TempClonePath
             )
