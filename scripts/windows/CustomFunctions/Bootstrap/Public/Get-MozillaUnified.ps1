@@ -3,9 +3,6 @@ function Get-MozillaUnified {
     param (
         [String]
         $ClonePath = "C:\hg-shared",
-
-        [String]
-        $TempClonePath = "C:\hg-shared_temp",
         
         [String]
         $Repository = "https://hg.mozilla.org/mozilla-unified",
@@ -21,12 +18,8 @@ function Get-MozillaUnified {
     
     try {
         Write-Log -message "Cloning $Repository to $ClonePath" -severity 'INFO'
-
-        # $null = New-Item -Path $TempClonePath -ItemType Directory -Force
-        # if (-Not (Test-Path $TempClonePath)) {
-        #     Write-Log -message "Failed to create temporary clone path: $TempClonePath" -severity 'ERROR'
-        #     exit 1
-        # }
+        
+        $TempClonePath = Join-Path $env:TEMP "hg-shared_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
 
         $Splat = @{
             FilePath = $Hg
@@ -39,7 +32,7 @@ function Get-MozillaUnified {
                 "--branch",
                 $Branch,
                 $Repository,
-                (Join-Path $env:TEMP "hg-shared_$(Get-Date -Format 'yyyyMMdd_HHmmss')")
+                $TempClonePath
             )
             Wait = $true
             PassThru = $true
@@ -48,7 +41,7 @@ function Get-MozillaUnified {
         $hgProcess = Start-Process @Splat
         
         ## Now remove the tempClonePath
-        #Remove-Item -Path $TempClonePath -Recurse -Force
+        Remove-Item -Path $TempClonePath -Recurse -Force
 
         if ($hgProcess.ExitCode -eq 0) {
             Write-Log -message "Successfully cloned mozilla-unified to $ClonePath" -severity 'INFO'
