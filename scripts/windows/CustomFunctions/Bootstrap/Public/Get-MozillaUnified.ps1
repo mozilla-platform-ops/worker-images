@@ -16,6 +16,10 @@ function Get-MozillaUnified {
     
     Write-Log -message "Starting mozilla-unified clone to $ClonePath" -severity 'INFO'
     
+    if ((Get-CimInstance Win32_OperatingSystem).Caption -notlike "*2022*") {
+        exit 0
+    }
+
     try {
         Write-Log -message "Cloning $Repository to $ClonePath" -severity 'INFO'
         
