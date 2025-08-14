@@ -14,6 +14,12 @@ function Get-MozillaUnified {
         $Branch = "autoland"
     )
     
+    ## Let's capture both a string and boolean
+    if ($ENV:clone_mozilla_unified -match "false|false" -or $ENV:clone_mozilla_unified -eq $false) {
+        Write-Log -message "Skipping clone due to $ENV:clone_mozilla_unified" -severity 'INFO'
+        exit 0
+    }
+
     Write-Log -message "Starting mozilla-unified clone to $ClonePath" -severity 'INFO'
     
     try {
