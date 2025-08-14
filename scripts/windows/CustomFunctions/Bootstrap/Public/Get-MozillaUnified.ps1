@@ -39,7 +39,7 @@ function Get-MozillaUnified {
                 "--branch",
                 $Branch,
                 $Repository,
-                $TempClonePath
+                (Join-Path $env:TEMP "hg-shared_$(Get-Date -Format 'yyyyMMdd_HHmmss')")
             )
             Wait = $true
             PassThru = $true
@@ -48,7 +48,7 @@ function Get-MozillaUnified {
         $hgProcess = Start-Process @Splat
         
         ## Now remove the tempClonePath
-        Remove-Item -Path $TempClonePath -Recurse -Force
+        #Remove-Item -Path $TempClonePath -Recurse -Force
 
         if ($hgProcess.ExitCode -eq 0) {
             Write-Log -message "Successfully cloned mozilla-unified to $ClonePath" -severity 'INFO'
