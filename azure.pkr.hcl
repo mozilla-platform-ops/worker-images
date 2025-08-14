@@ -130,6 +130,11 @@ variable "worker_pool_id" {
   default = "${env("worker_pool_id")}"
 }
 
+variable "clone_mozilla_unified" {
+  type    = string
+  default = "${env("clone_mozilla_unified")}"
+}
+
 variable "resource_group" {
   type    = string
   default = "${env("resource_group")}"
@@ -374,6 +379,7 @@ build {
     elevated_password = ""
     elevated_user     = "SYSTEM"
     environment_vars = [
+      "clone_mozilla_unified=${var.clone_mozilla_unified}",
       "worker_pool_id=${var.worker_pool_id}",
       "base_image=${var.base_image}",
       "src_organisation=${var.source_organization}",
