@@ -74,7 +74,7 @@ function New-AzSharedWorkerImage {
     Log-FinalValue "openvox_version"    $Y.vm["openvox_version"] $ImageYaml.vm["openvox_version"] $DefaultYaml.vm["openvox_version"]
     Log-FinalValue "puppet_version"     $Y.vm["puppet_version"] $ImageYaml.vm["puppet_version"] $DefaultYaml.vm["puppet_version"]
     Log-FinalValue "git_version"        $Y.vm["git_version"]    $ImageYaml.vm["git_version"]    $DefaultYaml.vm["git_version"]
-    Log-FinalValue "clone_mozilla_unified" $Y.vm["clone_mozilla_unified"] $ImageYaml.vm["clone_mozilla_unified"] $DefaultYaml.vm["clone_mozilla_unified"]
+    #Log-FinalValue "clone_mozilla_unified" $Y.vm["clone_mozilla_unified"] $ImageYaml.vm["clone_mozilla_unified"] $DefaultYaml.vm["clone_mozilla_unified"]
     Log-FinalValue "sourceBranch"        $Y.vm.tags["sourceBranch"]        $ImageYaml.vm.tags["sourceBranch"]        $DefaultYaml.vm.tags["sourceBranch"]
     Log-FinalValue "sourceRepository"    $Y.vm.tags["sourceRepository"]    $ImageYaml.vm.tags["sourceRepository"]    $DefaultYaml.vm.tags["sourceRepository"]
     Log-FinalValue "sourceOrganization"  $Y.vm.tags["sourceOrganization"]  $ImageYaml.vm.tags["sourceOrganization"]  $DefaultYaml.vm.tags["sourceOrganization"]
@@ -102,7 +102,7 @@ function New-AzSharedWorkerImage {
     $ENV:PKR_VAR_sharedimage_version = $Y.sharedimage["image_version"]
     $ENV:PKR_VAR_puppet_version = $Y.vm["puppet_version"]
     $ENV:PKR_VAR_git_version = $Y.vm["git_version"]
-    $ENV:PKR_VAR_clone_mozilla_unified = $Y.vm["clone_mozilla_unified"]
+    #$ENV:PKR_VAR_clone_mozilla_unified = $Y.vm["clone_mozilla_unified"]
 
     $ENV:PKR_VAR_client_id = $Client_ID
     $ENV:PKR_VAR_application_id = $Application_ID

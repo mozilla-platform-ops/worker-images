@@ -15,7 +15,6 @@ azure:
   locations:
     - centralus
 vm:
-  clone_mozilla_unified: true
   puppet_version: 8.10.0
   openvox_version: 8.19.2
   git_version: 2.50.0

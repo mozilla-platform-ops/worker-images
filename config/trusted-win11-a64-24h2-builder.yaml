@@ -12,7 +12,6 @@ azure:
   managed_image_resource_group_name: "default"
   managed_image_storage_account_type: "default"
 vm:
-  clone_mozilla_unified: "default"
   puppet_version: "default"
   git_version: "default"
   openvox_version: "default"

@@ -17,7 +17,6 @@ azure:
     - northcentralus
     - eastus
 vm:
-  clone_mozilla_unified: true
   puppet_version: 8.10.0
   openvox_version: 8.19.2
   git_version: 2.50.1
@@ -27,7 +26,7 @@ vm:
     worker_pool_id: win2022-64-2009
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "RELOPS-1764"
+    sourceBranch: "windows"
     deploymentId: "52c76f8"
     managed_by: packer
 tests:
@@ -51,6 +50,5 @@ tests:
   - google_auth.tests.ps1
   - git.tests.ps1
   - mercurial.tests.ps1
-  - cache_vcs_checkout.tests.ps1
   - mozilla_build_builder.tests.ps1
   - windows_worker_runner.tests.ps1
