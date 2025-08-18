@@ -5,6 +5,7 @@ azure:
 sharedimage:
   image_version: 1.0.6
 vm:
+  clone_mozilla_unified: false
   puppet_version: 8.10.0
   git_version: 2.50.0
   openvox_version: 8.19.2
