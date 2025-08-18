@@ -44,6 +44,29 @@ function Get-MozillaUnified {
         
         $TempClonePath = Join-Path $env:TEMP "hg-shared_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
 
+        ## Initialize the $clonePath
+        $initSplat = @{
+            FilePath = $Hg
+            ArgumentList = @(
+                "init",
+                $ClonePath
+            )
+            Wait = $true
+            PassThru = $true
+            NoNewWindow = $true
+        }
+
+        $initProcess = Start-Process @initSplat
+
+        if ($initProcess.ExitCode -eq 0) {
+            Write-Log -message "Successfully initialized $ClonePath" -severity 'INFO'
+            exit 0
+        }
+        else {
+            Write-Log -message "Failed to initialize $ClonePath. Exit code: $($initProcess.ExitCode)" -severity 'ERROR'
+            exit 1
+        }
+
         $Splat = @{
             FilePath     = $Hg
             ArgumentList = @(
