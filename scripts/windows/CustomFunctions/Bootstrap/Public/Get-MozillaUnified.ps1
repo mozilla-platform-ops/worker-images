@@ -8,7 +8,10 @@ function Get-MozillaUnified {
         $Repository = "https://hg.mozilla.org/mozilla-unified",
 
         [String]
-        $Hg = "C:\Program Files\Mercurial\hg.exe"
+        $Hg = "C:\Program Files\Mercurial\hg.exe",
+
+        [String]
+        $Branch = "autoland"
     )
     ## Let's capture both a string and boolean
     if ($ENV:clone_mozilla_unified -match "false|false" -or $ENV:clone_mozilla_unified -eq $false) {
@@ -26,11 +29,18 @@ function Get-MozillaUnified {
 
     try {
         Write-Log -message "Cloning $Repository to $ClonePath" -severity 'INFO'
-    
+        
+        $TempClonePath = Join-Path $env:TEMP "hg-shared_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+
         $Splat = @{
             FilePath     = $Hg
             ArgumentList = @(
-                "clone",
+                "robustcheckout",
+                "--sharebase",
+                $TempClonePath,
+                "--config",
+                "extensions.robustcheckout=C:\\mozilla-build\\robustcheckout.py",
+                $Branch,
                 $Repository,
                 $ClonePath
             )
