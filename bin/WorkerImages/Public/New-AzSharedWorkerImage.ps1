@@ -41,7 +41,16 @@ function New-AzSharedWorkerImage {
                 $merged[$key] = $defaultVal
             }
             elseif ($null -ne $imageVal -and $imageVal -ne '' -and $imageVal -ne 'default') {
-                $merged[$key] = $imageVal
+                # Handle boolean values properly
+                if ($imageVal -is [bool]) {
+                    $merged[$key] = $imageVal
+                } elseif ($imageVal -eq 'true' -or $imageVal -eq 'True' -or $imageVal -eq $true) {
+                    $merged[$key] = $true
+                } elseif ($imageVal -eq 'false' -or $imageVal -eq 'False' -or $imageVal -eq $false) {
+                    $merged[$key] = $false
+                } else {
+                    $merged[$key] = $imageVal
+                }
             }
             elseif ($null -ne $defaultVal -and $defaultVal -ne 'default') {
                 $merged[$key] = $defaultVal
@@ -57,6 +66,9 @@ function New-AzSharedWorkerImage {
             [string] $Image,
             [string] $Default
         )
+        # Debug: Show the actual values and types
+        Write-Host "DEBUG: $Label - Image: '$Image' (Type: $($Image.GetType().Name)), Default: '$Default' (Type: $($Default.GetType().Name)), Final: '$Final' (Type: $($Final.GetType().Name))"
+        
         if ($Image -eq $Final) {
             Write-Host "$Label = $Final (from image YAML)"
         }
