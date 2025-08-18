@@ -2,18 +2,14 @@ function Get-MozillaUnified {
     [CmdletBinding()]
     param (
         [String]
-        $ClonePath = "C:\hg-shared",
+        $ClonePath = "C:\vcs-checkout",
         
         [String]
         $Repository = "https://hg.mozilla.org/mozilla-unified",
 
         [String]
-        $Hg = "C:\Program Files\Mercurial\hg.exe",
-
-        [String]
-        $Branch = "autoland"
+        $Hg = "C:\Program Files\Mercurial\hg.exe"
     )
-    
     ## Let's capture both a string and boolean
     if ($ENV:clone_mozilla_unified -match "false|false" -or $ENV:clone_mozilla_unified -eq $false) {
         Write-Log -message "Skipping clone due to $ENV:clone_mozilla_unified" -severity 'INFO'
@@ -22,32 +18,27 @@ function Get-MozillaUnified {
 
     Write-Log -message "Starting mozilla-unified clone to $ClonePath" -severity 'INFO'
     
+    ## Test for the existence of clone_mozilla_unified to true or false
+    if ($ENV:clone_mozilla_unified -match "false|false" -or $ENV:clone_mozilla_unified -eq $false) {
+        Write-Log -message "Skipping clone due to $ENV:clone_mozilla_unified" -severity 'INFO'
+        exit 0
+    }
+
     try {
         Write-Log -message "Cloning $Repository to $ClonePath" -severity 'INFO'
-        
-        $TempClonePath = Join-Path $env:TEMP "hg-shared_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
-
+    
         $Splat = @{
-            FilePath = $Hg
+            FilePath     = $Hg
             ArgumentList = @(
-                "robustcheckout",
-                "--sharebase",
-                $ClonePath,
-                "--config",
-                "extensions.robustcheckout=C:\\mozilla-build\\robustcheckout.py",
-                "--branch",
-                $Branch,
+                "clone",
                 $Repository,
-                $TempClonePath
+                $ClonePath
             )
-            Wait = $true
-            PassThru = $true
-            NoNewWindow = $true
+            Wait         = $true
+            PassThru     = $true
+            NoNewWindow  = $true
         }
         $hgProcess = Start-Process @Splat
-        
-        ## Now remove the tempClonePath
-        Remove-Item -Path $TempClonePath -Recurse -Force
 
         if ($hgProcess.ExitCode -eq 0) {
             Write-Log -message "Successfully cloned mozilla-unified to $ClonePath" -severity 'INFO'
