@@ -20,6 +20,23 @@ function Get-MozillaUnified {
         exit 0
     }
 
+    ## Create directory and set permissions to everyone
+    if (-Not (Test-Path $ClonePath)) {
+        try {
+            New-Item -ItemType Directory -Path $ClonePath -Force | Out-Null
+            $acl = Get-Acl $ClonePath
+            $permission = "Everyone", "FullControl", "Allow"
+            $rule = New-Object System.Security.AccessControl.FileSystemAccessRule $permission
+            $acl.SetAccessRule($rule)
+            Set-Acl $ClonePath $acl
+            Write-Log -message "Successfully set permissions on $ClonePath" -severity 'INFO'
+        }
+        catch {
+            Write-Log -message "Failed to set permissions on $ClonePath`: $($_.Exception.Message)" -severity 'ERROR'
+            exit 2
+        }
+    }
+
     Write-Log -message "Starting mozilla-unified clone to $ClonePath" -severity 'INFO'
 
     try {
