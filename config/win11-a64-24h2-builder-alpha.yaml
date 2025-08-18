@@ -25,8 +25,8 @@ vm:
     worker_pool_id: win11-a64-24h2-builder-alpha
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "RELOPS-1798"
-    deploymentId: "f60ae21"
+    sourceBranch: "RELOPS-1764"
+    deploymentId: "52c76f8"
     managed_by: packer
 tests:
   - directx_sdk.tests.ps1
