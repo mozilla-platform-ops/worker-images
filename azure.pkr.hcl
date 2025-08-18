@@ -130,6 +130,11 @@ variable "worker_pool_id" {
   default = "${env("worker_pool_id")}"
 }
 
+variable "clone_mozilla_unified" {
+  type    = string
+  default = "${env("clone_mozilla_unified")}"
+}
+
 variable "resource_group" {
   type    = string
   default = "${env("resource_group")}"
@@ -350,6 +355,7 @@ build {
     elevated_password = ""
     elevated_user     = "SYSTEM"
     environment_vars = [
+      "clone_mozilla_unified=${var.clone_mozilla_unified}",
       "worker_pool_id=${var.worker_pool_id}",
       "base_image=${var.base_image}",
       "src_organisation=${var.source_organization}",
@@ -362,37 +368,14 @@ build {
     ]
     inline = [
       "Import-Module BootStrap -Force;",
-      "Start-AzRoninPuppet"
+      "Start-AzRoninPuppet",
+      "Get-MozillaUnified"
     ]
     valid_exit_codes = [
       0,
       2
     ]
   }
-
-  # provisioner "powershell" {
-  #   elevated_password = ""
-  #   elevated_user     = "SYSTEM"
-  #   environment_vars = [
-  #     "worker_pool_id=${var.worker_pool_id}",
-  #     "base_image=${var.base_image}",
-  #     "src_organisation=${var.source_organization}",
-  #     "src_Repository=${var.source_repository}",
-  #     "src_Branch=${var.source_branch}",
-  #     "deploymentId=${var.deployment_id}",
-  #     "client_id=${var.client_id}",
-  #     "tenant_id=${var.tenant_id}",
-  #     "application_id=${var.application_id}"
-  #   ]
-  #   inline = [
-  #     "Import-Module BootStrap -Force;",
-  #     "Get-MozillaUnified"
-  #   ]
-  #   valid_exit_codes = [
-  #     0,
-  #     2
-  #   ]
-  # }
 
   provisioner "powershell" {
     elevated_password = ""

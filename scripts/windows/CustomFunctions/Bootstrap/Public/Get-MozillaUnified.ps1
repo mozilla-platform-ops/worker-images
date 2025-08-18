@@ -13,7 +13,9 @@ function Get-MozillaUnified {
 
     Write-Log -message "Starting mozilla-unified clone to $ClonePath" -severity 'INFO'
     
-    if ((Get-CimInstance Win32_OperatingSystem).Caption -notlike "*2022*") {
+    ## Test for the existence of clone_mozilla_unified to true or false
+    if ($ENV:clone_mozilla_unified -match "false|false" -or $ENV:clone_mozilla_unified -eq $false) {
+        Write-Log -message "Skipping clone due to $ENV:clone_mozilla_unified" -severity 'INFO'
         exit 0
     }
 
