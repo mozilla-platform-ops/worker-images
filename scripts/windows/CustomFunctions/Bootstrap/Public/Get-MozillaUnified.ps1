@@ -16,16 +16,11 @@ function Get-MozillaUnified {
     ## Let's capture both a string and boolean
     if ($ENV:clone_mozilla_unified -match "false|False" -or $ENV:clone_mozilla_unified -eq $false) {
         Write-Log -message "Skipping clone due to $ENV:clone_mozilla_unified" -severity 'INFO'
+        Write-Host ('{0} :: Skipping clone due to {1}' -f $($MyInvocation.MyCommand.Name), $ENV:clone_mozilla_unified)
         exit 0
     }
 
     Write-Log -message "Starting mozilla-unified clone to $ClonePath" -severity 'INFO'
-    
-    ## Test for the existence of clone_mozilla_unified to true or false
-    if ($ENV:clone_mozilla_unified -match "false|false" -or $ENV:clone_mozilla_unified -eq $false) {
-        Write-Log -message "Skipping clone due to $ENV:clone_mozilla_unified" -severity 'INFO'
-        exit 0
-    }
 
     try {
         Write-Log -message "Cloning $Repository to $ClonePath" -severity 'INFO'
