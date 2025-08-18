@@ -15,7 +15,6 @@ azure:
   locations:
     - centralus
 vm:
-  clone_mozilla_unified: false
   puppet_version: 8.10.0
   openvox_version: 8.19.2
   git_version: 2.50.1
@@ -25,8 +24,8 @@ vm:
     worker_pool_id: win11-a64-24h2-tester
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "RELOPS-1652"
-    deploymentId: "46d4eba"
+    sourceBranch: "windows"
+    deploymentId: "2bf40ba"
     managed_by: packer
 tests:
   #- microsoft_tools_tester.tests.ps1

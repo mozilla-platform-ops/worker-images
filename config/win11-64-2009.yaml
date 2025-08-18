@@ -25,7 +25,6 @@ azure:
     - westus2
     - westus3
 vm:
-  clone_mozilla_unified: false
   puppet_version: "default"
   git_version: "default"
   openvox_version: "default"
