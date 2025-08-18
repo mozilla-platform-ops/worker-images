@@ -35,7 +35,7 @@ function Get-MozillaUnified {
                 $TempClonePath,
                 "--config",
                 "extensions.robustcheckout=C:\\mozilla-build\\robustcheckout.py",
-                $Branch,
+                "--upstream",
                 $Repository,
                 $ClonePath
             )
