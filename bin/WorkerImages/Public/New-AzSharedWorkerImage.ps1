@@ -37,10 +37,10 @@ function New-AzSharedWorkerImage {
                     $imageVal.Count -gt 0) {
                 $merged[$key] = $imageVal
             }
-            elseif ($imageVal -eq 'default' -and $null -ne $defaultVal -and $defaultVal -ne 'default') {
+            elseif ($imageVal -is [string] -and $imageVal -eq 'default' -and $null -ne $defaultVal -and $defaultVal -ne 'default') {
                 $merged[$key] = $defaultVal
             }
-            elseif ($null -ne $imageVal -and $imageVal -ne '' -and $imageVal -ne 'default') {
+            elseif ($null -ne $imageVal -and ($imageVal -isnot [string] -or ($imageVal -ne '' -and $imageVal -ne 'default'))) {
                 $merged[$key] = $imageVal
             }
             elseif ($null -ne $defaultVal -and $defaultVal -ne 'default') {
