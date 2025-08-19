@@ -3,7 +3,7 @@ azure:
   managed_image_resource_group_name: rg-packer-worker-images
   managed_image_storage_account_type: Standard_LRS
 sharedimage:
-  image_version: 1.0.6
+  image_version: 1.0.7
 vm:
   puppet_version: 8.10.0
   git_version: 2.50.0
@@ -13,7 +13,7 @@ vm:
     sourceRepository: ronin_puppet
     sourceBranch: windows
     managed_by: packer
-    deploymentId: "4791c60"
+    deploymentId: "2bf40ba"
 images:
   production:
     - win10-64-2009
