@@ -2,7 +2,7 @@
 image:
   publisher: MicrosoftWindowsServer
   offer: WindowsServer
-  sku: 2022-datacenter-azure-edition
+  sku: 2022-datacenter-azure-edition-core
   version: latest
 sharedimage:
   gallery_name: "win2022_64_2009"
