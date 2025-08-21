@@ -886,6 +886,28 @@ $stage = (Get-ItemProperty -path "HKLM:\SOFTWARE\Mozilla\ronin_puppet").bootstra
 
 If ($stage -ne 'complete') {
     Set-Logging
+
+    # ===== PARAMETER CHECK: log missing params, sleep 60s, PXE, then stop =====
+    $requiredParams = @(
+        'worker_pool_id','role','src_Organisation','src_Repository',
+        'src_Branch','hash','secret_date','puppet_version','git_version'
+    )
+    $missingParams = @()
+    foreach ($p in $requiredParams) {
+        try { $v = (Get-Variable -Name $p -ErrorAction SilentlyContinue).Value } catch { $v = $null }
+        if ([string]::IsNullOrWhiteSpace($v)) {
+            Write-Log -message ("PARAM CHECK :: '{0}' is missing or empty." -f $p) -severity 'ERROR'
+            $missingParams += $p
+        }
+    }
+    if ($missingParams.Count -gt 0) {
+        Write-Log -message ("PARAM CHECK :: Missing required parameters: {0}. Sleeping 60s, then triggering PXE." -f ($missingParams -join ', ')) -severity 'ERROR'
+        Start-Sleep -Seconds 60
+        Set-PXE
+        return
+    }
+    # ==========================================================================
+
     Get-PSModules
     ## TODO: Figure out a way to install binaries/files as taskuser without defaulting to task-user-init
     switch ($role) {
