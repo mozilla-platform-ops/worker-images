@@ -239,9 +239,7 @@ function Set-WinRM {
 
     try {
         # Find the active IPv4 default route (most reliable "active NIC")
-        $defaultRoute = Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction Stop |
-                        Sort-Object -Property RouteMetric, IfIndex |
-                        Select-Object -First 1
+        $defaultRoute = Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction Stop | Sort-Object -Property RouteMetric, IfIndex | Select-Object -First 1
 
         $activeAdapter = $null
         if ($null -ne $defaultRoute) {
@@ -253,24 +251,20 @@ function Set-WinRM {
         }
 
         if ($null -ne $activeAdapter) {
-            $profile = Get-NetConnectionProfile -InterfaceIndex $activeAdapter.IfIndex -ErrorAction SilentlyContinue
-            if ($null -eq $profile) {
-                Write-Log -message ('{0} :: No connection profile for {1}; attempting Private.'
-                    -f $($MyInvocation.MyCommand.Name), $activeAdapter.Name) -severity 'WARN'
+            $netProfile = Get-NetConnectionProfile -InterfaceIndex $activeAdapter.IfIndex -ErrorAction SilentlyContinue
+            if ($null -eq $netProfile) {
+                Write-Log -message ('{0} :: No connection profile for {1}; attempting Private.' -f $($MyInvocation.MyCommand.Name), $activeAdapter.Name) -severity 'WARN'
                 try {
                     Set-NetConnectionProfile -InterfaceIndex $activeAdapter.IfIndex -NetworkCategory Private -ErrorAction Stop
                 } catch {
-                    Write-Log -message ('{0} :: Failed to set Private on {1}: {2}'
-                        -f $($MyInvocation.MyCommand.Name), $activeAdapter.Name, $_) -severity 'WARN'
+                    Write-Log -message ('{0} :: Failed to set Private on {1}: {2}' -f $($MyInvocation.MyCommand.Name), $activeAdapter.Name, $_) -severity 'WARN'
                 }
-            } elseif ($profile.NetworkCategory -ne 'Private') {
-                Write-Log -message ('{0} :: Setting {1} from {2} to Private.'
-                    -f $($MyInvocation.MyCommand.Name), $activeAdapter.Name, $profile.NetworkCategory) -severity 'DEBUG'
+            } elseif ($netProfile.NetworkCategory -ne 'Private') {
+                Write-Log -message ('{0} :: Setting {1} from {2} to Private.' -f $($MyInvocation.MyCommand.Name), $activeAdapter.Name, $netProfile.NetworkCategory) -severity 'DEBUG'
                 Set-NetConnectionProfile -InterfaceIndex $activeAdapter.IfIndex -NetworkCategory Private -ErrorAction Stop
             }
         } else {
-            Write-Log -message ('{0} :: Couldn''t determine active adapter; proceeding with WinRM config.'
-                -f $($MyInvocation.MyCommand.Name)) -severity 'WARN'
+            Write-Log -message ('{0} :: Couldn''t determine active adapter; proceeding with WinRM config.' -f $($MyInvocation.MyCommand.Name)) -severity 'WARN'
         }
 
         # Ensure WinRM service is enabled and running
@@ -286,31 +280,30 @@ function Set-WinRM {
 
         # Explicit firewall rules (idempotent)
         if (-not (Get-NetFirewallRule -DisplayName 'WinRM HTTP-In' -ErrorAction SilentlyContinue)) {
-            New-NetFirewallRule -DisplayName 'WinRM HTTP-In' -Name 'WinRM-HTTP-In' `
-                -Profile Domain,Private,Public -Direction Inbound -Action Allow -Protocol TCP -LocalPort 5985 | Out-Null
+            New-NetFirewallRule -DisplayName 'WinRM HTTP-In' -Name 'WinRM-HTTP-In' -Profile Domain,Private,Public -Direction Inbound -Action Allow -Protocol TCP -LocalPort 5985 | Out-Null
         }
 
         # Final state log
-        $profileNow = $null
+        $netProfileNow = $null
         if ($null -ne $activeAdapter) {
-            $profileNow = Get-NetConnectionProfile -InterfaceIndex $activeAdapter.IfIndex -ErrorAction SilentlyContinue
+            $netProfileNow = Get-NetConnectionProfile -InterfaceIndex $activeAdapter.IfIndex -ErrorAction SilentlyContinue
         }
 
         $svc = Get-Service WinRM
-        if ($null -ne $profileNow) {
-            $netcat = $profileNow.NetworkCategory
+        if ($null -ne $netProfileNow) {
+            $netcat = $netProfileNow.NetworkCategory
         } else {
             $netcat = 'Unknown'
         }
 
-        Write-Log -message ('{0} :: NetProfile={1}; WinRM={2}/{3}.'
-            -f $($MyInvocation.MyCommand.Name), $netcat, $svc.Status, $svc.StartType) -severity 'DEBUG'
+        Write-Log -message ('{0} :: NetProfile={1}; WinRM={2}/{3}.' -f $($MyInvocation.MyCommand.Name), $netcat, $svc.Status, $svc.StartType) -severity 'DEBUG'
     }
     catch {
         Write-Log -message ('{0} :: ERROR: {1}' -f $($MyInvocation.MyCommand.Name), $_) -severity 'ERROR'
         throw
     }
 }
+
 
 function Install-Choco {
     [CmdletBinding()]
