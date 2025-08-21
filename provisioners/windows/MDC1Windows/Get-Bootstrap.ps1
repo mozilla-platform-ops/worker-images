@@ -255,18 +255,22 @@ function Set-WinRM {
         if ($null -ne $activeAdapter) {
             $profile = Get-NetConnectionProfile -InterfaceIndex $activeAdapter.IfIndex -ErrorAction SilentlyContinue
             if ($null -eq $profile) {
-                Write-Log -message ('{0} :: No connection profile for {1}; attempting Private.' -f $($MyInvocation.MyCommand.Name), $activeAdapter.Name) -severity 'WARN'
+                Write-Log -message ('{0} :: No connection profile for {1}; attempting Private.'
+                    -f $($MyInvocation.MyCommand.Name), $activeAdapter.Name) -severity 'WARN'
                 try {
                     Set-NetConnectionProfile -InterfaceIndex $activeAdapter.IfIndex -NetworkCategory Private -ErrorAction Stop
                 } catch {
-                    Write-Log -message ('{0} :: Failed to set Private on {1}: {2}' -f $($MyInvocation.MyCommand.Name), $activeAdapter.Name, $_) -severity 'WARN'
+                    Write-Log -message ('{0} :: Failed to set Private on {1}: {2}'
+                        -f $($MyInvocation.MyCommand.Name), $activeAdapter.Name, $_) -severity 'WARN'
                 }
             } elseif ($profile.NetworkCategory -ne 'Private') {
-                Write-Log -message ('{0} :: Setting {1} from {2} to Private.' -f $($MyInvocation.MyCommand.Name), $activeAdapter.Name, $profile.NetworkCategory) -severity 'DEBUG'
+                Write-Log -message ('{0} :: Setting {1} from {2} to Private.'
+                    -f $($MyInvocation.MyCommand.Name), $activeAdapter.Name, $profile.NetworkCategory) -severity 'DEBUG'
                 Set-NetConnectionProfile -InterfaceIndex $activeAdapter.IfIndex -NetworkCategory Private -ErrorAction Stop
             }
         } else {
-            Write-Log -message ('{0} :: Couldn''t determine active adapter; proceeding with WinRM config.'-f $($MyInvocation.MyCommand.Name)) -severity 'WARN'
+            Write-Log -message ('{0} :: Couldn''t determine active adapter; proceeding with WinRM config.'
+                -f $($MyInvocation.MyCommand.Name)) -severity 'WARN'
         }
 
         # Ensure WinRM service is enabled and running
@@ -299,7 +303,8 @@ function Set-WinRM {
             $netcat = 'Unknown'
         }
 
-        Write-Log -message ('{0} :: NetProfile={1}; WinRM={2}/{3}.'-f $($MyInvocation.MyCommand.Name), $netcat, $svc.Status, $svc.StartType) -severity 'DEBUG'
+        Write-Log -message ('{0} :: NetProfile={1}; WinRM={2}/{3}.'
+            -f $($MyInvocation.MyCommand.Name), $netcat, $svc.Status, $svc.StartType) -severity 'DEBUG'
     }
     catch {
         Write-Log -message ('{0} :: ERROR: {1}' -f $($MyInvocation.MyCommand.Name), $_) -severity 'ERROR'
