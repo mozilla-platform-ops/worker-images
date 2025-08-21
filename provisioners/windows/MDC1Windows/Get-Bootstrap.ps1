@@ -515,11 +515,11 @@ function Invoke-DownloadWithRetryGithub {
 ## Check until the machine is online
 Test-ConnectionUntilOnline
 
-## Setup WinRM just in case the machine fails so we have credentials to use
-Set-WinRM
-
 ## Once we have internet connection, setup ssh and import the keys
 Set-SSH
+
+## Setup WinRM just in case the machine fails so we have credentials to use
+Set-WinRM
 
 ## Install chocolatey
 Install-Choco
