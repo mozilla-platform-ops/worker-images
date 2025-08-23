@@ -866,6 +866,44 @@ Write-Host "Hash: $hash"
 Write-host "Secret Date: $secret_date"
 Write-Host "Image Provisioner: $image_provisioner"
 
+# === Parameter validation: abort to PXE if any param is null/empty ===
+# Place this right after Set-PXE and before any use of the parameters.
+
+# Map parameter names to values (add/remove keys here if you want to exclude any from validation)
+$__ParamMap = [ordered]@{
+    worker_pool_id   = $worker_pool_id
+    role             = $role
+    src_Organisation = $src_Organisation
+    src_Repository   = $src_Repository
+    src_Branch       = $src_Branch
+    hash             = $hash
+    secret_date      = $secret_date
+    puppet_version   = $puppet_version
+    git_version      = $git_version
+    openvox_version  = $openvox_version
+    image_provisioner = $image_provisioner
+}
+
+$__badParams = @()
+foreach ($kv in $__ParamMap.GetEnumerator()) {
+    $v = $kv.Value
+    if ($null -eq $v -or ([string]::IsNullOrWhiteSpace([string]$v))) {
+        $__badParams += $kv.Key
+    }
+}
+
+if ($__badParams.Count -gt 0) {
+    try {
+        Write-Log -message ("Parameter validation failed. Null/empty: {0}" -f ($__badParams -join ', ')) -severity 'ERROR'
+    } catch { }  # logging might not be ready yet; ignore
+
+    Write-Warning ("Parameter validation failed. Null/empty: {0}" -f ($__badParams -join ', '))
+    # Immediately PXE boot
+    Set-PXE
+    exit 2
+}
+# === End parameter validation ===
+
 ## Add a 10 second delay to view the variables above
 Start-sleep -Seconds 20
 
