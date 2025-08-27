@@ -373,9 +373,7 @@ if (-Not (Test-Path "D:\Secrets\pat.txt")) {
     $splat = @{ Url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/main/provisioners/windows/MDC1Windows/bootstrap.ps1"; Path = $local_bootstrap }
     Invoke-DownloadWithRetry @splat
 } else {
-    #$splat = @{ Url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/main/provisioners/windows/MDC1Windows/bootstrap.ps1"; Path = $local_bootstrap; PAT = Get-Content "D:\Secrets\pat.txt" }
-    ## JUST for TESTING CHANGE BEFORE PR
-    $splat = @{ Url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/RELOPS-1660/provisioners/windows/MDC1Windows/bootstrap.ps1"; Path = $local_bootstrap; PAT = Get-Content "D:\Secrets\pat.txt" }
+    $splat = @{ Url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/main/provisioners/windows/MDC1Windows/bootstrap.ps1"; Path = $local_bootstrap; PAT = Get-Content "D:\Secrets\pat.txt" }
     Invoke-DownloadWithRetryGithub @splat
 }
 
