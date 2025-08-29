@@ -128,6 +128,14 @@
 				</SynchronousCommand>
 				<SynchronousCommand wcm:action="add">
 					<Order>4</Order>
+					<CommandLine>powercfg.exe -x -standby-timeout-ac 0 </CommandLine>
+				</SynchronousCommand>
+				<SynchronousCommand wcm:action="add">
+					<Order>5</Order>
+					<CommandLine>powercfg.exe -x -monitor-timeout-ac 0 </CommandLine>
+				</SynchronousCommand>				
+				<SynchronousCommand wcm:action="add">
+					<Order>6</Order>
 					<CommandLine>powershell.exe -ExecutionPolicy Bypass -File D:\scripts\Get-Bootstrap.ps1 </CommandLine>
 				</SynchronousCommand>
 			</FirstLogonCommands>
