@@ -80,6 +80,7 @@ function New-AzSharedWorkerImage {
     Log-FinalValue "sourceOrganization"  $Y.vm.tags["sourceOrganization"]  $ImageYaml.vm.tags["sourceOrganization"]  $DefaultYaml.vm.tags["sourceOrganization"]
     Log-FinalValue "deploymentId"        $Y.vm.tags["deploymentId"]        $ImageYaml.vm.tags["deploymentId"]        $DefaultYaml.vm.tags["deploymentId"]
     Log-FinalValue "resource_group"      $Y.azure["managed_image_resource_group_name"] $ImageYaml.azure["managed_image_resource_group_name"] $DefaultYaml.azure["managed_image_resource_group_name"]
+    Log-FinalValue "vmSize"              $Y.vm["size"]                     $ImageYaml.vm["size"]                    $DefaultYaml.vm["size"]
 
     # Set environment variables
     $ENV:PKR_VAR_config = $Key
