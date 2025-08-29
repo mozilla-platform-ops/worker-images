@@ -20,14 +20,14 @@ vm:
   puppet_version: 8.10.0
   openvox_version: 8.19.2
   git_version: 2.50.1
-  size: Standard_F32s_v2
+  size: Standard_D32alds_v6
   tags:
     base_image: win2022642009azure
     worker_pool_id: win2022-64-2009
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "RELOPS-1751"
-    deploymentId: "9a5fc87"
+    sourceBranch: "RELOPS-1841"
+    deploymentId: "f451274"
     managed_by: packer
 tests:
   - netframework_core.tests.ps1

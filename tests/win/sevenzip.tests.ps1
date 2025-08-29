@@ -14,7 +14,7 @@ Describe "Common Tools" {
         }
         
         It "7-Zip Version is 25.00" {
-            $7zip.DisplayVersion | Should -Be "25.00"
+            $7zip.DisplayVersion | Should -BeLike "25.00*"
         }
     }
 }

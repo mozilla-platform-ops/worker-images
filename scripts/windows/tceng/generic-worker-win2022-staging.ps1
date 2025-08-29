@@ -1,3 +1,7 @@
+param (
+    [string]$MY_CLOUD
+)
+
 ##############################################################################
 # TASKCLUSTER_REF can be a git commit SHA, a git branch name, or a git tag name
 # (i.e. for a taskcluster version number, prefix with 'v' to make it a git tag)
@@ -310,7 +314,7 @@ Run-Executable $nssm @("set", "worker-runner", "AppRotateBytes", "0")
 # configure worker-runner
 Set-Content -Path C:\worker-runner\runner.yml @"
 provider:
-    providerType: %MY_CLOUD%
+    providerType: $MY_CLOUD
 worker:
     implementation: generic-worker
     service: "Generic Worker"

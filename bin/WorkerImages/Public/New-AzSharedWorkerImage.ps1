@@ -37,10 +37,10 @@ function New-AzSharedWorkerImage {
                     $imageVal.Count -gt 0) {
                 $merged[$key] = $imageVal
             }
-            elseif ($imageVal -eq 'default' -and $null -ne $defaultVal -and $defaultVal -ne 'default') {
+            elseif ($imageVal -is [string] -and $imageVal -eq 'default' -and $null -ne $defaultVal -and $defaultVal -ne 'default') {
                 $merged[$key] = $defaultVal
             }
-            elseif ($null -ne $imageVal -and $imageVal -ne '' -and $imageVal -ne 'default') {
+            elseif ($null -ne $imageVal -and ($imageVal -isnot [string] -or ($imageVal -ne '' -and $imageVal -ne 'default'))) {
                 $merged[$key] = $imageVal
             }
             elseif ($null -ne $defaultVal -and $defaultVal -ne 'default') {
@@ -71,15 +71,16 @@ function New-AzSharedWorkerImage {
     $Y = Merge-YamlWithDefaults -ImageData $ImageYaml -DefaultData $DefaultYaml
 
     # Debug logging
-    Log-FinalValue "openvox_version" $Y.vm["openvox_version"] $ImageYaml.vm["openvox_version"] $DefaultYaml.vm["openvox_version"]
-    Log-FinalValue "puppet_version" $Y.vm["puppet_version"] $ImageYaml.vm["puppet_version"] $DefaultYaml.vm["puppet_version"]
-    Log-FinalValue "git_version"    $Y.vm["git_version"]    $ImageYaml.vm["git_version"]    $DefaultYaml.vm["git_version"]
-
+    Log-FinalValue "openvox_version"    $Y.vm["openvox_version"] $ImageYaml.vm["openvox_version"] $DefaultYaml.vm["openvox_version"]
+    Log-FinalValue "puppet_version"     $Y.vm["puppet_version"] $ImageYaml.vm["puppet_version"] $DefaultYaml.vm["puppet_version"]
+    Log-FinalValue "git_version"        $Y.vm["git_version"]    $ImageYaml.vm["git_version"]    $DefaultYaml.vm["git_version"]
+    #Log-FinalValue "clone_mozilla_unified" $Y.vm["clone_mozilla_unified"] $ImageYaml.vm["clone_mozilla_unified"] $DefaultYaml.vm["clone_mozilla_unified"]
     Log-FinalValue "sourceBranch"        $Y.vm.tags["sourceBranch"]        $ImageYaml.vm.tags["sourceBranch"]        $DefaultYaml.vm.tags["sourceBranch"]
     Log-FinalValue "sourceRepository"    $Y.vm.tags["sourceRepository"]    $ImageYaml.vm.tags["sourceRepository"]    $DefaultYaml.vm.tags["sourceRepository"]
     Log-FinalValue "sourceOrganization"  $Y.vm.tags["sourceOrganization"]  $ImageYaml.vm.tags["sourceOrganization"]  $DefaultYaml.vm.tags["sourceOrganization"]
     Log-FinalValue "deploymentId"        $Y.vm.tags["deploymentId"]        $ImageYaml.vm.tags["deploymentId"]        $DefaultYaml.vm.tags["deploymentId"]
     Log-FinalValue "resource_group"      $Y.azure["managed_image_resource_group_name"] $ImageYaml.azure["managed_image_resource_group_name"] $DefaultYaml.azure["managed_image_resource_group_name"]
+    Log-FinalValue "vmSize"              $Y.vm["size"]                     $ImageYaml.vm["size"]                    $DefaultYaml.vm["size"]
 
     # Set environment variables
     $ENV:PKR_VAR_config = $Key
@@ -102,6 +103,7 @@ function New-AzSharedWorkerImage {
     $ENV:PKR_VAR_sharedimage_version = $Y.sharedimage["image_version"]
     $ENV:PKR_VAR_puppet_version = $Y.vm["puppet_version"]
     $ENV:PKR_VAR_git_version = $Y.vm["git_version"]
+    #$ENV:PKR_VAR_clone_mozilla_unified = $Y.vm["clone_mozilla_unified"]
 
     $ENV:PKR_VAR_client_id = $Client_ID
     $ENV:PKR_VAR_application_id = $Application_ID

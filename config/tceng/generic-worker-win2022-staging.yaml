@@ -19,4 +19,4 @@ vm:
   vm_size: Standard_D2s_v3
   bootstrapscript: "generic-worker-win2022-staging"
   tags:
-    - image_set: markco-generic-worker-win2022-staging
+    - image_set: generic-worker-win2022-staging

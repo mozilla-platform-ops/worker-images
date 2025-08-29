@@ -1,3 +1,7 @@
+param (
+    [string]$MY_CLOUD
+)
+
 $TASKCLUSTER_VERSION = "v87.1.2"
 
 # Write-Log function for logging with RFC3339 format timestamps
@@ -300,7 +304,7 @@ Run-Executable $nssm @("set", "worker-runner", "AppRotateBytes", "0")
 # configure worker-runner
 Set-Content -Path C:\worker-runner\runner.yml @"
 provider:
-    providerType: %MY_CLOUD%
+    providerType: $MY_CLOUD
 worker:
     implementation: generic-worker
     service: "Generic Worker"
