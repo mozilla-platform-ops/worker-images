@@ -28,8 +28,8 @@ vm:
     worker_pool_id: win11-64-2009
     sourceOrganization: "default"
     sourceRepository: "default"
-    sourceBranch: "default"
-    deploymentId: "default"
+    sourceBranch: "RELOPS-1849"
+    deploymentId: "345fdb6"
     managed_by: packer
 tests:
   - win11_sdk_tests.ps1
