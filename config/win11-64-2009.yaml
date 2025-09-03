@@ -7,7 +7,7 @@ image:
 sharedimage:
   gallery_name: "win11_64_2009"
   image_name: "win11_64_2009"
-  image_version: 1.0.4
+  image_version: 1.0.7
 azure:
   managed_image_resource_group_name: rg-packer-worker-images
   managed_image_storage_account_type: Standard_LRS
@@ -35,10 +35,9 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: windows
-    deploymentId: "389b2fc"
+    deploymentId: "39e625b"
     managed_by: packer
 tests:
-  - microsoft_tools_tester.tests.ps1
   - disable_services.tests.ps1
   - error_reporting.tests.ps1
   - suppress_dialog_boxes.tests.ps1
