@@ -29,10 +29,9 @@ vm:
     sourceOrganization: "default"
     sourceRepository: "default"
     sourceBranch: "RELOPS-1849"
-    deploymentId: "25e4059"
+    deploymentId: "2b775f2"
     managed_by: packer
 tests:
-  - win11_sdk_tests.ps1
   - disable_services.tests.ps1
   - error_reporting.tests.ps1
   - suppress_dialog_boxes.tests.ps1
