@@ -29,7 +29,7 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: "RELOPS-1860"
-    deploymentId: "a42342e"
+    deploymentId: "48c8165"
     managed_by: packer
 tests:
   #- microsoft_tools_tester.tests.ps1
