@@ -2,7 +2,7 @@
 image:
   publisher: MicrosoftWindowsDesktop
   offer: windows11preview
-  sku: windows11preview
+  sku: win11-25h2-pro
   version: latest
 azure:
   locations:
