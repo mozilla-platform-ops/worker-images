@@ -40,7 +40,9 @@ Function Set-AzRoninRepo {
                 } Until ( $git_exit -eq 0)
             }
             Set-Location $ronin_repo
-            git checkout -q $deploymentID
+            if ($deploymentId -ne "NA") {
+                git checkout -q $deploymentId
+            }
             Write-Log -message ('{0} :: Ronin Puppet HEAD is set to {1}' -f $($MyInvocation.MyCommand.Name), $deploymentID) -severity 'DEBUG'
             Write-Host ('{0} :: Ronin Puppet HEAD is set to {1}' -f $($MyInvocation.MyCommand.Name), $deploymentID) 
         }
