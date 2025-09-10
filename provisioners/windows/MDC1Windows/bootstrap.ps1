@@ -428,6 +428,9 @@ function Get-PSModules {
         Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
     }
     process {
+        ## Force TLS 1.2 to get around SSL errors with PowerShell Gallery 
+        ## https://github.com/PowerShell/PowerShellGallery/issues/328
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
         $nugetProvider = Get-PackageProvider -Name NuGet -ListAvailable -ForceBootstrap -ErrorAction SilentlyContinue
         if ($nugetProvider -eq $null) {
             Write-Log -message  ('{0} :: Installing NuGet Package Provider' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
