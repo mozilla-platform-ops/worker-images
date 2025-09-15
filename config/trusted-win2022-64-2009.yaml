@@ -15,7 +15,7 @@ vm:
   puppet_version: "default"
   git_version: "default"
   openvox_version: "default"
-  size: Standard_F32s_v2
+  size: Standard_D32ads_v5
   tags:
     base_image: win2022642009azure
     worker_pool_id: trusted-win2022-64-2009
