@@ -7,7 +7,7 @@ image:
 sharedimage:
   gallery_name: "win11_64_2009"
   image_name: "win11_64_2009"
-  image_version: 1.0.7
+  image_version: "default"
 azure:
   managed_image_resource_group_name: rg-packer-worker-images
   managed_image_storage_account_type: Standard_LRS
