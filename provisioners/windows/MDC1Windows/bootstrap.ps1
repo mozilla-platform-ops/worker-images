@@ -434,7 +434,8 @@ function Get-PSModules {
         $nugetProvider = Get-PackageProvider -Name NuGet -ListAvailable -ForceBootstrap -ErrorAction SilentlyContinue
         if ($nugetProvider -eq $null) {
             Write-Log -message  ('{0} :: Installing NuGet Package Provider' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-            Install-PackageProvider -Name NuGet -Force -Confirm:$false
+            Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.208 -Force -Confirm:$false -ForceBootstrap
+            #Install-PackageProvider -Name NuGet -Force -Confirm:$false
         }
         else {
             Write-Log -message  ('{0} :: NuGet is present.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
