@@ -35,7 +35,7 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: windows
-    deploymentId: "39e625b"
+    deploymentId: "default"
     managed_by: packer
 tests:
   - disable_services.tests.ps1
