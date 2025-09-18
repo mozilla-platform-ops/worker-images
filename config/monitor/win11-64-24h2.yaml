@@ -1,0 +1,28 @@
+---
+image:
+  publisher: MicrosoftWindowsDesktop
+  offer: windows11preview
+  sku: windows11preview
+  version: latest
+
+azure:
+  # Regions for replication (first one will be used as the build location)
+  locations:
+    - centralus
+    - eastus
+  # Destination SIG resource group (where the gallery lives)
+  managed_image_resource_group_name: rg-monitor-images
+
+  # Shared Image Gallery destination (required)
+  gallery_name: monitor-sig
+  image_name: win11-64-24h2
+  image_version: 2025.09.18
+
+vm:
+  providerType: azure
+  vm_size: Standard_D2s_v3
+  bootstrapscript: scripts/windows/monitor/host-pool-image-bootstrap.ps1
+
+  # Optional tags; uncomment and add as needed
+  # tags:
+  #   - image_set: monitor-win11-24h2
