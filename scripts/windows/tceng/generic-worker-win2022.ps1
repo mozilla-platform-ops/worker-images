@@ -2,7 +2,7 @@ param (
     [string]$MY_CLOUD
 )
 
-$TASKCLUSTER_VERSION = "v87.1.2"
+$TASKCLUSTER_VERSION = "v90.0.1"
 
 # Write-Log function for logging with RFC3339 format timestamps
 function Write-Log {
@@ -267,7 +267,7 @@ Run-Executable "C:\generic-worker\generic-worker.exe" @("new-ed25519-keypair", "
 $nssm = "C:\nssm-2.24\win64\nssm.exe"
 Run-Executable $nssm @("install", "Generic Worker", "C:\generic-worker\generic-worker.exe")
 Run-Executable $nssm @("set", "Generic Worker", "AppDirectory", "C:\generic-worker")
-Run-Executable $nssm @("set", "Generic Worker", "AppParameters", "run", "--config", "C:\generic-worker\generic-worker-config.yml", "--worker-runner-protocol-pipe", "\\.\pipe\generic-worker")
+Run-Executable $nssm @("set", "Generic Worker", "AppParameters", "run", "--config", "C:\generic-worker\generic-worker-config.yml", "--worker-runner-protocol-pipe", "\\.\pipe\generic-worker", "--with-worker-runner")
 Run-Executable $nssm @("set", "Generic Worker", "DisplayName", "Generic Worker")
 Run-Executable $nssm @("set", "Generic Worker", "Description", "A taskcluster worker that runs on all mainstream platforms")
 Run-Executable $nssm @("set", "Generic Worker", "Start", "SERVICE_DEMAND_START")
@@ -398,7 +398,7 @@ if ($hasNvidiaGpu) {
 # Log before stopping transcript to make sure message is included in transcript.
 Write-Log "Bootstrap process completed. Waiting on Packer..."
 
-## Leaving comments intact. packer will handle the shutodwm
+## Leaving comments intact. packer will handle the shutdown
 # Shut down, in preparation for creating an image. Stop-Computer isn't working,
 # also not when specifying -AsJob, so reverting to using `shutdown` command
 # instead. See:
