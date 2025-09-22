@@ -4,7 +4,8 @@ function Invoke-OSIntegrationTests {
         [string]$Config,
         [string]$TaskClusterClientId,
         [string]$TaskClusterAccessToken,
-        [string]$TaskClusterRootUrl
+        [string]$TaskClusterRootUrl,
+        [string]$Taskcluster
     )
     
     $ENV:TASKCLUSTER_CLIENT_ID = $TaskClusterClientId
@@ -21,7 +22,7 @@ function Invoke-OSIntegrationTests {
     } | ConvertTo-Json -Compress
     Write-Host "Hook payload: $hookPayload"
 
-    $RESPONSE = $hookPayload | ./taskcluster api hooks triggerHook project-releng cron-task-mozilla-platform-ops-worker-images/run-integration-tests
+    $RESPONSE = $hookPayload | taskcluster api hooks triggerHook project-releng cron-task-mozilla-platform-ops-worker-images/run-integration-tests
     Write-Host "Hook response: $RESPONSE"
 
     # Extract taskId from response
@@ -97,7 +98,7 @@ function Invoke-OSIntegrationTests {
               
         try {
             # Get all tasks in the task group
-            $TASK_GROUP_RESPONSE = ./taskcluster api queue listTaskGroup $TASK_GROUP_ID 2>$null
+            $TASK_GROUP_RESPONSE = taskcluster api queue listTaskGroup $TASK_GROUP_ID 2>$null
                   
             if (-not $TASK_GROUP_RESPONSE) {
                 Write-Host "Failed to get task group info, retrying in 10 seconds..."
