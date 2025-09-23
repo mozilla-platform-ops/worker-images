@@ -1,0 +1,65 @@
+run-name: OS Integration Tests - ${{ github.event.inputs.config }}
+name: OS Integration Tests - FXCI
+
+on:
+  workflow_dispatch:
+    inputs:
+      config:
+        type: choice
+        description: Choose which pool to build
+        options:
+        - win10-64-2009-alpha
+        - win11-64-2009-alpha
+        - win11-64-24h2-alpha
+        - win11-a64-24h2-tester-alpha
+        - win11-a64-24h2-builder-alpha
+        - win2022-64-2009-alpha
+
+jobs:
+  check-access:
+    name: "Verify User Access"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Load Authorized Users and Check Access
+        shell: pwsh
+        run: |
+          $AUTHORIZED_USERS=$(Get-Content .github/relsre.json | Convertfrom-Json)
+          if ($authorized_users -contains "${{ github.actor }}") {
+            Write-host "User ${{ github.actor }} is authorized."
+          }
+          else {
+            Write-Host "User ${{ github.actor }} is unauthorized."
+            exit 1
+          }
+  integration-tests:
+    needs: check-access
+    name: "Trigger Integration Tests"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Taskcluster CLI
+        shell: bash
+        run: |
+          curl -L -o taskcluster.tar.gz https://github.com/taskcluster/taskcluster/releases/latest/download/taskcluster-linux-amd64.tar.gz
+          tar -xzf taskcluster.tar.gz
+          chmod +x taskcluster
+          sudo mv taskcluster /usr/local/bin/
+      - name: Trigger Integration Tests
+        shell: pwsh
+        env:
+          CONFIG: ${{ github.event.inputs.config }}
+          TASKCLUSTER_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
+          TASKCLUSTER_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}
+          TASKCLUSTER_ROOT_URL: "https://firefox-ci-tc.services.mozilla.com"
+        run: |
+          Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
+          $params = @{
+            Config = $ENV:CONFIG
+            TaskClusterClientId = $ENV:TASKCLUSTER_CLIENT_ID
+            TaskClusterAccessToken = $ENV:TASKCLUSTER_ACCESS_TOKEN
+            TaskClusterRootUrl = $ENV:TASKCLUSTER_ROOT_URL
+          }
+          Invoke-OSIntegrationTests @params
