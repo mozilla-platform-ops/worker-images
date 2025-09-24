@@ -11,7 +11,8 @@ function Start-AzRoninPuppet {
         [string] $ronnin_key = "$mozilla_key\ronin_puppet",
         [string] $worker_pool = (Get-ItemProperty "HKLM:\SOFTWARE\Mozilla\ronin_puppet").worker_pool_id,
         [string] $stage = (Get-ItemProperty -path "HKLM:\SOFTWARE\Mozilla\ronin_puppet").bootstrap_stage,
-        [string] $deploymentId = $ENV:deploymentId
+        [string] $deploymentId = $ENV:deploymentId,
+        [string] $cotkey = $ENV:cotkey
     )
     begin {
         Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
@@ -69,21 +70,41 @@ function Start-AzRoninPuppet {
             0 {
                 Set-ItemProperty -Path $ronnin_key -name last_run_exit -value $puppet_exit
                 Set-ItemProperty -Path $ronnin_key -Name 'bootstrap_stage' -Value 'complete'
-                #Move-StrapPuppetLogs
                 if ($worker_pool -like "trusted*") {
                     if (Test-Path -Path $ed_key) {
-                        Remove-Item $ed_key -force
+                        Remove-Item $ed_key -Force -Confirm:$false
                     }
-                    while (!(Test-Path $ed_key)) {
-                        Write-Log -message  ('{0} :: Trusted image. Waiting on CoT key. Human intervention needed.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-                        Start-Sleep -seconds 15
+                    if ($null -ne $ENV:COTKEY) {
+                        try {
+                            New-Item -Path $ed_key -ItemType File -Force -ErrorAction Stop
+                            Write-Log -message  ('{0} :: Created {1}' -f $($MyInvocation.MyCommand.Name),$ed_key) -severity 'DEBUG'
+                        }
+                        catch {
+                            Write-Log -message  ('{0} :: Unable to create {1}. Error {2}' -f $($MyInvocation.MyCommand.Name), $ed_key, $_.Exception.Message) -severity 'ERROR'
+                            exit 1
+                        }
+                        try {
+                            Set-Content -Path $ed_key -Value $ENV:COTKEY -ErrorAction Stop
+                            Write-Log -message  ('{0} :: Wrote CoT key to {1}' -f $($MyInvocation.MyCommand.Name),$ed_key) -severity 'DEBUG'
+                        }
+                        catch {
+                            Write-Log -message  ('{0} :: Unable to write CoT key to {1}. Error {2}' -f $($MyInvocation.MyCommand.Name), $ed_key, $_.Exception.Message) -severity 'ERROR'
+                            exit 1
+                        }
+                        
+                        Write-Log -message  ('{0} :: Trusted image. Blocking livelog outbound access.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
+                        New-NetFirewallRule -DisplayName "Block LiveLog" -Direction Outbound -Program "c:\generic-worker\livelog.exe" -Action block
+                        Exit 0
                     }
-                    # Provide a window for the file to be writen
-                    Start-Sleep -seconds 30
-                    Write-Log -message  ('{0} :: Trusted image. Blocking livelog outbound access.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-                    New-NetFirewallRule -DisplayName "Block LiveLog" -Direction Outbound -Program "c:\generic-worker\livelog.exe" -Action block
+                    else {
+                        Write-Log -message  ('{0} :: Trusted image. CoT key not found in environment. Human intervention needed.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
+                        Start-Sleep -Seconds 3
+                        exit 1
+                    }
                 }
-                exit 0
+                else {
+                    Exit 0
+                }
             }
             1 {
                 Write-Log -message ('{0} :: Puppet apply failed :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit) -severity 'DEBUG'
@@ -115,21 +136,41 @@ function Start-AzRoninPuppet {
                 Write-Host ('{0} :: Puppet apply succeeded, and some resources were changed :: Error code {1} :: {2:o}' -f $($MyInvocation.MyCommand.Name), $puppet_exit,(Get-Date).ToUniversalTime())
                 Set-ItemProperty -Path $ronnin_key -name last_run_exit -value $puppet_exit
                 Set-ItemProperty -Path $ronnin_key -Name 'bootstrap_stage' -Value 'complete'
-                #Move-StrapPuppetLogs
                 if ($worker_pool -like "trusted*") {
                     if (Test-Path -Path $ed_key) {
-                        Remove-Item $ed_key -force
+                        Remove-Item $ed_key -Force -Confirm:$false
                     }
-                    while (!(Test-Path $ed_key)) {
-                        Write-Log -message  ('{0} :: Trusted image. Waiting on CoT key. Human intervention needed.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-                        Start-Sleep -seconds 15
+                    if ($null -ne $ENV:COTKEY) {
+                        try {
+                            New-Item -Path $ed_key -ItemType File -Force -ErrorAction Stop
+                            Write-Log -message  ('{0} :: Created {1}' -f $($MyInvocation.MyCommand.Name),$ed_key) -severity 'DEBUG'
+                        }
+                        catch {
+                            Write-Log -message  ('{0} :: Unable to create {1}. Error {2}' -f $($MyInvocation.MyCommand.Name), $ed_key, $_.Exception.Message) -severity 'ERROR'
+                            exit 1
+                        }
+                        try {
+                            Set-Content -Path $ed_key -Value $ENV:COTKEY -ErrorAction Stop
+                            Write-Log -message  ('{0} :: Wrote CoT key to {1}' -f $($MyInvocation.MyCommand.Name),$ed_key) -severity 'DEBUG'
+                        }
+                        catch {
+                            Write-Log -message  ('{0} :: Unable to write CoT key to {1}. Error {2}' -f $($MyInvocation.MyCommand.Name), $ed_key, $_.Exception.Message) -severity 'ERROR'
+                            exit 1
+                        }
+                        
+                        Write-Log -message  ('{0} :: Trusted image. Blocking livelog outbound access.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
+                        New-NetFirewallRule -DisplayName "Block LiveLog" -Direction Outbound -Program "c:\generic-worker\livelog.exe" -Action block
+                        Exit 2
                     }
-                    # Provide a window for the file to be writen
-                    Start-Sleep -seconds 30
-                    Write-Log -message  ('{0} :: Trusted image. Blocking livelog outbound access.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-                    New-NetFirewallRule -DisplayName "Block LiveLog" -Direction Outbound -Program "c:\generic-worker\livelog.exe" -Action block
+                    else {
+                        Write-Log -message  ('{0} :: Trusted image. CoT key not found in environment. Human intervention needed.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
+                        Start-Sleep -Seconds 3
+                        exit 1
+                    }
                 }
-                exit 2
+                else {
+                    Exit 2
+                }
             }
             4 {
                 Write-Log -message ('{0} :: Puppet apply succeeded, but some resources failed :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit) -severity 'DEBUG'
