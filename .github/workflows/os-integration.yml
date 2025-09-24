@@ -42,7 +42,7 @@ jobs:
       - name: Install Taskcluster CLI
         shell: bash
         run: |
-          curl -L https://github.com/taskcluster/taskcluster/releases/latest/download/taskcluster-linux-amd64.tar.gz --output taskclustercli.tar.gz && tar -xvf taskclustercli.tar.gz && rm taskclustercli.tar.gz && chmod +x taskclustercli
+          curl -L https://github.com/taskcluster/taskcluster/releases/latest/download/taskcluster-linux-amd64.tar.gz --output taskcluster.tar.gz && tar -xvf taskcluster.tar.gz && rm taskcluster.tar.gz && chmod +x taskcluster
       - name: Trigger Integration Tests
         shell: pwsh
         env:
@@ -57,6 +57,6 @@ jobs:
             TaskClusterClientId = $ENV:TASKCLUSTER_CLIENT_ID
             TaskClusterAccessToken = $ENV:TASKCLUSTER_ACCESS_TOKEN
             TaskClusterRootUrl = $ENV:TASKCLUSTER_ROOT_URL
-            Taskcluster = "${{ github.workspace }}/taskclustercli"
+            Taskcluster = "${{ github.workspace }}/taskcluster"
           }
           Invoke-OSIntegrationTests @params
