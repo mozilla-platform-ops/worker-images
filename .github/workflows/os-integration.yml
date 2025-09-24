@@ -126,17 +126,42 @@ jobs:
           LIVE_LOG_URL=$(echo "$LIVE_LOG_RESPONSE" | jq -r '.url')
           echo "Live log URL: $LIVE_LOG_URL"
           
-          # Download the actual live_backing.log content
-          echo "Downloading live_backing.log content..."
-          LIVE_LOG_CONTENT=$(curl -s "$LIVE_LOG_URL")
+          # Download the actual live_backing.log content and extract taskGroupId with retry logic
+          echo "Downloading live_backing.log content and searching for taskGroupId..."
+          TASK_GROUP_ID=""
+          LOG_RETRY_COUNT=0
+          MAX_LOG_RETRIES=30  # 5 minutes max wait time
           
-          # Extract taskGroupId from the log content
-          TASK_GROUP_ID=$(echo "$LIVE_LOG_CONTENT" | grep -o '"taskGroupId": "[^"]*"' | cut -d'"' -f4)
-          if [ -n "$TASK_GROUP_ID" ]; then
-            echo "Task Group ID: $TASK_GROUP_ID"
-            echo "task_group_id=$TASK_GROUP_ID" >> $GITHUB_ENV
-          else
-            echo "Failed to extract taskGroupId from live.log"
+          while [ $LOG_RETRY_COUNT -lt $MAX_LOG_RETRIES ] && [ -z "$TASK_GROUP_ID" ]; do
+            echo "Attempt $((LOG_RETRY_COUNT + 1))/$MAX_LOG_RETRIES: Downloading and parsing log content..."
+            
+            # Download the log content
+            LIVE_LOG_CONTENT=$(curl -s "$LIVE_LOG_URL")
+            
+            # Check if we got content
+            if [ -n "$LIVE_LOG_CONTENT" ]; then
+              # Try to extract taskGroupId from the log content
+              TASK_GROUP_ID=$(echo "$LIVE_LOG_CONTENT" | grep -o '"taskGroupId": "[^"]*"' | cut -d'"' -f4)
+              
+              if [ -n "$TASK_GROUP_ID" ]; then
+                echo "✅ Task Group ID found: $TASK_GROUP_ID"
+                echo "task_group_id=$TASK_GROUP_ID" >> $GITHUB_ENV
+                break
+              else
+                echo "taskGroupId not found in log content yet, waiting 10 seconds..."
+                echo "Log content preview (first 200 chars): $(echo "$LIVE_LOG_CONTENT" | head -c 200)..."
+              fi
+            else
+              echo "No log content received, waiting 10 seconds..."
+            fi
+            
+            sleep 10
+            LOG_RETRY_COUNT=$((LOG_RETRY_COUNT + 1))
+          done
+          
+          if [ -z "$TASK_GROUP_ID" ]; then
+            echo "❌ Failed to extract taskGroupId from live.log after $MAX_LOG_RETRIES attempts"
+            echo "Final log content preview: $(echo "$LIVE_LOG_CONTENT" | head -c 500)..."
             exit 1
           fi
           
