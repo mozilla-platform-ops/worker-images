@@ -22,7 +22,8 @@ function Invoke-OSIntegrationTests {
     } | ConvertTo-Json -Compress
     Write-Host "Hook payload: $hookPayload"
 
-    $RESPONSE = $hookPayload | taskcluster api hooks triggerHook project-releng cron-task-mozilla-platform-ops-worker-images/run-integration-tests
+    $args = @("api", "hooks", "triggerHook", "project-releng", "cron-task-mozilla-platform-ops-worker-images/run-integration-tests")
+    $RESPONSE = $hookPayload | & $Taskcluster @args
     Write-Host "Hook response: $RESPONSE"
 
     # Extract taskId from response
@@ -41,7 +42,8 @@ function Invoke-OSIntegrationTests {
         Write-Host "Attempt $($RETRY_COUNT + 1)/$MAX_RETRIES`: Checking for live.log..."
               
         try {
-            $LIVE_LOG_RESPONSE = taskcluster api queue getLatestArtifact $TASK_ID public/logs/live.log 2>$null
+            $live_log_args = @("api", "queue", "getLatestArtifact", $TASK_ID, "public/logs/live.log")
+            $LIVE_LOG_RESPONSE = & $Taskcluster @live_log_args 2>$null
             if ($LIVE_LOG_RESPONSE) {
                 Write-Host "Live log response received"
                 break
@@ -98,8 +100,8 @@ function Invoke-OSIntegrationTests {
               
         try {
             # Get all tasks in the task group
-            $TASK_GROUP_RESPONSE = taskcluster api queue listTaskGroup $TASK_GROUP_ID 2>$null
-                  
+            $task_group_response_params = @("api", "queue", "listTaskGroup", $TASK_GROUP_ID)
+            $TASK_GROUP_RESPONSE = & $Taskcluster @task_group_response_params 2>$null
             if (-not $TASK_GROUP_RESPONSE) {
                 Write-Host "Failed to get task group info, retrying in 10 seconds..."
                 Start-Sleep -Seconds 10
