@@ -43,6 +43,9 @@ jobs:
         shell: bash
         run: |
           curl -L https://github.com/taskcluster/taskcluster/releases/latest/download/taskcluster-linux-amd64.tar.gz --output taskcluster.tar.gz && tar -xvf taskcluster.tar.gz && rm taskcluster.tar.gz && chmod +x taskcluster
+          mv taskcluster taskclustercli
+      - name: Checkout Repository
+        uses: actions/checkout@v4
       - name: Trigger Integration Tests
         shell: pwsh
         env:
@@ -57,6 +60,6 @@ jobs:
             TaskClusterClientId = $ENV:TASKCLUSTER_CLIENT_ID
             TaskClusterAccessToken = $ENV:TASKCLUSTER_ACCESS_TOKEN
             TaskClusterRootUrl = $ENV:TASKCLUSTER_ROOT_URL
-            Taskcluster = "${{ github.workspace }}/taskcluster"
+            Taskcluster = "${{ github.workspace }}/taskclustercli"
           }
           Invoke-OSIntegrationTests @params
