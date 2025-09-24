@@ -425,40 +425,87 @@ function Get-PSModules {
         )
     )
     begin {
-        Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+        Write-Log -message ('{0} :: begin - {1:o}' -f $MyInvocation.MyCommand.Name, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
     }
     process {
         ## Force TLS 1.2 to get around SSL errors with PowerShell Gallery 
         ## https://github.com/PowerShell/PowerShellGallery/issues/328
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-        $nugetProvider = Get-PackageProvider -Name NuGet -ListAvailable -ForceBootstrap -ErrorAction SilentlyContinue
-        if ($nugetProvider -eq $null) {
-            Write-Log -message  ('{0} :: Installing NuGet Package Provider' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-            Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.208 -Force -Confirm:$false -ForceBootstrap
-            #Install-PackageProvider -Name NuGet -Force -Confirm:$false
+
+        $maxAttempts  = 3
+        $attemptDelay = 60
+
+        $nugetProvider = $null
+        for ($i = 1; $i -le $maxAttempts; $i++) {
+            Write-Log -message ('{0} :: Checking for NuGet provider (attempt {1}/{2})' -f $MyInvocation.MyCommand.Name, $i, $maxAttempts) -severity 'DEBUG'
+            $nugetProvider = Get-PackageProvider -Name NuGet -ListAvailable -ForceBootstrap -ErrorAction SilentlyContinue
+
+            if ($null -ne $nugetProvider) {
+                Write-Log -message ('{0} :: NuGet provider is present.' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'
+                break
+            }
+
+            if ($i -lt $maxAttempts) {
+                Write-Log -message ('{0} :: NuGet provider not found. Sleeping {1}s before retry.' -f $MyInvocation.MyCommand.Name, $attemptDelay) -severity 'DEBUG'
+                Start-Sleep -Seconds $attemptDelay
+            }
         }
-        else {
-            Write-Log -message  ('{0} :: NuGet is present.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
+
+        if ($null -eq $nugetProvider) {
+            Write-Log -message ('{0} :: Installing NuGet Package Provider after {1} failed checks' -f $MyInvocation.MyCommand.Name, $maxAttempts) -severity 'DEBUG'
+            try {
+                Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.208 -Force -Confirm:$false -ForceBootstrap -ErrorAction Stop
+            }
+            catch {
+                Write-Log -message ('{0} :: Failed to install NuGet Package Provider: {1}' -f $MyInvocation.MyCommand.Name, $_.Exception.Message) -severity 'ERROR'
+            }
+
+            # Verify installation
+            $nugetProvider = Get-PackageProvider -Name NuGet -ListAvailable -ForceBootstrap -ErrorAction SilentlyContinue
+            if ($null -eq $nugetProvider) {
+                Write-Log -message ('{0} :: NuGet provider still not available after install attempt; exiting 3' -f $MyInvocation.MyCommand.Name) -severity 'ERROR'
+                Write-Host exit 3
+                return
+            } else {
+                Write-Log -message ('{0} :: NuGet provider installed successfully.' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'
+            }
         }
 
         foreach ($module in $modules) {
             $hit = Get-Module -Name $module
-            Write-Log -message  ('{0} :: Installing {1} module' -f $($MyInvocation.MyCommand.Name, $module)) -severity 'DEBUG'
-            if ($null -eq $hit) {
-                Install-Module -Name $module -AllowClobber -Force -Confirm:$false
+            Write-Log -message ('{0} :: Installing {1} module' -f $MyInvocation.MyCommand.Name, $module) -severity 'DEBUG'
+
+            if ($null -eq $hit -and -not (Get-Module -Name $module -ListAvailable)) {
+                try {
+                    Install-Module -Name $module -AllowClobber -Force -Confirm:$false -ErrorAction Stop
+                }
+                catch {
+                    Write-Log -message ('{0} :: Failed to install {1}: {2}' -f $MyInvocation.MyCommand.Name, $module, $_.Exception.Message) -severity 'ERROR'
+                }
+
                 if (-not (Get-Module -Name $module -ListAvailable)) {
-                    Write-Log -message  ('{0} :: {1} module did not install' -f $($MyInvocation.MyCommand.Name, $module)) -severity 'DEBUG'
-                    write-host exit 3
+                    Write-Log -message ('{0} :: {1} module did not install; exiting 3' -f $MyInvocation.MyCommand.Name, $module) -severity 'ERROR'
+                    Write-Host exit 3
+                    return
                 }
             }
             else {
-                Write-Log -message  ('{0} :: {1} module is present' -f $($MyInvocation.MyCommand.Name, $module)) -severity 'DEBUG'
+                Write-Log -message ('{0} :: {1} module is present' -f $MyInvocation.MyCommand.Name, $module) -severity 'DEBUG'
             }
-            Import-Module -Name $module -Force -PassThru
+
+            try {
+                Import-Module -Name $module -Force -PassThru | Out-Null
+                Write-Log -message ('{0} :: Imported module {1}' -f $MyInvocation.MyCommand.Name, $module) -severity 'DEBUG'
+            }
+            catch {
+                Write-Log -message ('{0} :: Failed to import module {1}: {2}' -f $MyInvocation.MyCommand.Name, $module, $_.Exception.Message) -severity 'ERROR'
+                Write-Host exit 3
+                return
+            }
         }
     }
     end {
-        Write-Log -message ('{0} :: end - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+        Write-Log -message ('{0} :: end - {1:o}' -f $MyInvocation.MyCommand.Name, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
     }
 }
 
