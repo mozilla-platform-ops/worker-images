@@ -22,6 +22,10 @@ def get_worker_pool_images() -> dict[str, set[str]]:
     for pool in data["workerPools"]:
         assert isinstance(pool, dict)
 
+        # Skip pools that don't have launchConfigs
+        if "launchConfigs" not in pool["config"]:
+            continue
+
         for lc in pool["config"]["launchConfigs"]:
             image = None
             if disks := lc.get("disks"):
