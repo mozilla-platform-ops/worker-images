@@ -8,6 +8,9 @@ function Invoke-OSIntegrationTests {
         [string]$Taskcluster
     )
     
+    ## Is Taskcluster cli locally available?
+    Start-Process -FilePath $Taskcluster -ArgumentList "version" -NoNewWindow -Wait
+
     $ENV:TASKCLUSTER_CLIENT_ID = $TaskClusterClientId
     $ENV:TASKCLUSTER_ACCESS_TOKEN = $TaskClusterAccessToken
     $ENV:TASKCLUSTER_ROOT_URL = $TaskClusterRootUrl
@@ -22,8 +25,8 @@ function Invoke-OSIntegrationTests {
     } | ConvertTo-Json -Compress
     Write-Host "Hook payload: $hookPayload"
 
-    $args = @("api", "hooks", "triggerHook", "project-releng", "cron-task-mozilla-platform-ops-worker-images/run-integration-tests")
-    $RESPONSE = $hookPayload | & $Taskcluster @args
+    $trigger_args = @("api", "hooks", "triggerHook", "project-releng", "cron-task-mozilla-platform-ops-worker-images/run-integration-tests")
+    $RESPONSE = $hookPayload | Start-Process -FilePath $Taskcluster -ArgumentList $trigger_args -NoNewWindow -Wait -PassThru | Select-Object -ExpandProperty StandardOutput
     Write-Host "Hook response: $RESPONSE"
 
     # Extract taskId from response
@@ -43,7 +46,7 @@ function Invoke-OSIntegrationTests {
               
         try {
             $live_log_args = @("api", "queue", "getLatestArtifact", $TASK_ID, "public/logs/live.log")
-            $LIVE_LOG_RESPONSE = & $Taskcluster @live_log_args 2>$null
+            $LIVE_LOG_RESPONSE = Start-Process -FilePath $Taskcluster -ArgumentList $live_log_args -NoNewWindow -Wait -PassThru -RedirectStandardError $null | Select-Object -ExpandProperty StandardOutput
             if ($LIVE_LOG_RESPONSE) {
                 Write-Host "Live log response received"
                 break
@@ -101,7 +104,7 @@ function Invoke-OSIntegrationTests {
         try {
             # Get all tasks in the task group
             $task_group_response_params = @("api", "queue", "listTaskGroup", $TASK_GROUP_ID)
-            $TASK_GROUP_RESPONSE = & $Taskcluster @task_group_response_params 2>$null
+            $TASK_GROUP_RESPONSE = Start-Process -FilePath $Taskcluster -ArgumentList $task_group_response_params -NoNewWindow -Wait -PassThru -RedirectStandardError $null | Select-Object -ExpandProperty StandardOutput
             if (-not $TASK_GROUP_RESPONSE) {
                 Write-Host "Failed to get task group info, retrying in 10 seconds..."
                 Start-Sleep -Seconds 10
