@@ -432,7 +432,7 @@ function Get-PSModules {
         ## https://github.com/PowerShell/PowerShellGallery/issues/328
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-        $maxAttempts  = 3
+        $maxAttempts  = 5
         $attemptDelay = 60
 
         $nugetProvider = $null
