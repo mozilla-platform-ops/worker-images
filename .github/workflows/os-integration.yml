@@ -135,13 +135,50 @@ jobs:
           while [ $LOG_RETRY_COUNT -lt $MAX_LOG_RETRIES ] && [ -z "$TASK_GROUP_ID" ]; do
             echo "Attempt $((LOG_RETRY_COUNT + 1))/$MAX_LOG_RETRIES: Downloading and parsing log content..."
             
-            # Download the log content
-            LIVE_LOG_CONTENT=$(curl -s "$LIVE_LOG_URL")
+            # Download the log metadata JSON with error handling
+            LIVE_LOG_METADATA=""
+            if LIVE_LOG_METADATA=$(curl -s -f "$LIVE_LOG_URL" 2>/dev/null); then
+              echo "Successfully downloaded log metadata"
+            else
+              echo "Failed to download log metadata (curl exit code: $?), will retry..."
+              sleep 10
+              LOG_RETRY_COUNT=$((LOG_RETRY_COUNT + 1))
+              continue
+            fi
+            
+            # Extract the actual log file URL from the JSON metadata
+            if [ -n "$LIVE_LOG_METADATA" ]; then
+              ACTUAL_LOG_URL=$(echo "$LIVE_LOG_METADATA" | jq -r '.url' 2>/dev/null || true)
+              if [ -z "$ACTUAL_LOG_URL" ] || [ "$ACTUAL_LOG_URL" = "null" ]; then
+                echo "Could not extract log URL from metadata, will retry..."
+                sleep 10
+                LOG_RETRY_COUNT=$((LOG_RETRY_COUNT + 1))
+                continue
+              fi
+              
+              echo "Actual log URL: $ACTUAL_LOG_URL"
+              
+              # Now download the actual log content
+              LIVE_LOG_CONTENT=""
+              if LIVE_LOG_CONTENT=$(curl -s -f "$ACTUAL_LOG_URL" 2>/dev/null); then
+                echo "Successfully downloaded actual log content"
+              else
+                echo "Failed to download actual log content (curl exit code: $?), will retry..."
+                sleep 10
+                LOG_RETRY_COUNT=$((LOG_RETRY_COUNT + 1))
+                continue
+              fi
+            else
+              echo "No log metadata received, waiting 10 seconds..."
+              sleep 10
+              LOG_RETRY_COUNT=$((LOG_RETRY_COUNT + 1))
+              continue
+            fi
             
             # Check if we got content
             if [ -n "$LIVE_LOG_CONTENT" ]; then
               # Try to extract taskGroupId from the log content
-              TASK_GROUP_ID=$(echo "$LIVE_LOG_CONTENT" | grep -o '"taskGroupId": "[^"]*"' | cut -d'"' -f4)
+              TASK_GROUP_ID=$(echo "$LIVE_LOG_CONTENT" | grep -o '"taskGroupId": "[^"]*"' | cut -d'"' -f4 || true)
               
               if [ -n "$TASK_GROUP_ID" ]; then
                 echo "✅ Task Group ID found: $TASK_GROUP_ID"
@@ -152,10 +189,10 @@ jobs:
                 echo "Log content preview (first 200 chars): $(echo "$LIVE_LOG_CONTENT" | head -c 200)..."
               fi
             else
-              echo "No log content received, waiting 10 seconds..."
+              echo "No log content received, waiting 20 seconds..."
             fi
             
-            sleep 10
+            sleep 30
             LOG_RETRY_COUNT=$((LOG_RETRY_COUNT + 1))
           done
           
@@ -173,7 +210,7 @@ jobs:
           # Wait for all tasks in the task group to complete and check their status
           echo "Monitoring task group $TASK_GROUP_ID for completion..."
           MONITOR_RETRY_COUNT=0
-          MAX_MONITOR_RETRIES=120  # 20 minutes max wait time
+          MAX_MONITOR_RETRIES=240  # 40 minutes max wait time
           ALL_COMPLETED=false
           
           while [ $MONITOR_RETRY_COUNT -lt $MAX_MONITOR_RETRIES ] && [ "$ALL_COMPLETED" = false ]; do
@@ -182,8 +219,8 @@ jobs:
             # Get all tasks in the task group
             if TASK_GROUP_RESPONSE=$("$TASKCLUSTER_CLI" api queue listTaskGroup "$TASK_GROUP_ID" 2>/dev/null); then
               if [ -z "$TASK_GROUP_RESPONSE" ]; then
-                echo "Failed to get task group info, retrying in 10 seconds..."
-                sleep 10
+                echo "Failed to get task group info, retrying in 20 seconds..."
+                sleep 20
                 MONITOR_RETRY_COUNT=$((MONITOR_RETRY_COUNT + 1))
                 continue
               fi
@@ -219,19 +256,19 @@ jobs:
                   echo "  All $COMPLETED_TASKS tasks completed successfully"
                 fi
               else
-                echo "Tasks still running/pending, waiting 10 seconds..."
-                sleep 10
+                echo "Tasks still running/pending, waiting 20 seconds..."
+                sleep 20
                 MONITOR_RETRY_COUNT=$((MONITOR_RETRY_COUNT + 1))
               fi
             else
-              echo "Error checking task group status, retrying in 10 seconds..."
-              sleep 10
+              echo "Error checking task group status, retrying in 20 seconds..."
+              sleep 20
               MONITOR_RETRY_COUNT=$((MONITOR_RETRY_COUNT + 1))
             fi
           done
           
           if [ "$ALL_COMPLETED" = false ]; then
-            TIMEOUT_MINUTES=$((MAX_MONITOR_RETRIES * 10 / 60))
+            TIMEOUT_MINUTES=$((MAX_MONITOR_RETRIES * 20 / 60))
             echo "⚠️  Timeout waiting for task group to complete after $TIMEOUT_MINUTES minutes"
             echo "Task group may still be running: $TEST_RESULTS_URL"
             exit 1
