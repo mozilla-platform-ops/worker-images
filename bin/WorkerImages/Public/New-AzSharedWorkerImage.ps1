@@ -145,10 +145,12 @@ function New-AzSharedWorkerImage {
     ## Set the github token for packer to use to install plugin from github
     $ENV:PACKER_GITHUB_API_TOKEN = $github_token
     if ($key -match "Trusted") {
-        $PKR_VAR_use_keyvault = $false
+        $PKR_VAR_use_keyvault = "true"
+        $PKR_VAR_vault_name = "kv-central-us-cot"
     }
     else {
-        $PKR_VAR_use_keyvault = $true
+        $PKR_VAR_use_keyvault = "false"
+        $PKR_VAR_vault_name = "kv-central-us-key"
     }
     packer init azure.pkr.hcl
     if ($PackerForceBuild) {

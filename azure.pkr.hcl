@@ -12,10 +12,8 @@ packer {
 }
 
 data "azure-keyvaultsecret" "cot" {
-  count = var.use_keyvault ? 1 : 0
-  
-  vault_name  = "kv-central-us-cot"
-  secret_name = "cotkey"
+  vault_name         = var.vault_name
+  secret_name        = "cotkey"
   # Authentication
   oidc_request_url   = "${var.oidc_request_url}"
   oidc_request_token = "${var.oidc_request_token}"
@@ -25,12 +23,17 @@ data "azure-keyvaultsecret" "cot" {
 }
 
 local "cotkey" {
-  expression = var.cotkey != null ? var.cotkey : (var.use_keyvault ? data.azure-keyvaultsecret.cot[0].value : "")
+  expression = var.use_keyvault ? data.azure-keyvaultsecret.cot.value : ""
   sensitive  = true
 }
 
 local "sbom_name" {
   expression = var.config
+}
+
+variable "vault_name" {
+  type    = string
+  default = "${env("vault_name")}"
 }
 
 variable "base_image" {
@@ -133,15 +136,9 @@ variable "subscription_id" {
   default = "${env("subscription_id")}"
 }
 
-variable "cotkey" {
-  type      = string
-  sensitive = true
-  default   = null
-}
-
 variable "use_keyvault" {
   type        = bool
-  default     = "${env("USE_KEYVAULT") != "" ? tobool(env("USE_KEYVAULT")) : true}"
+  default     = false
   description = "Whether to fetch secrets from Azure Key Vault"
 }
 
