@@ -12,6 +12,8 @@ packer {
 }
 
 data "azure-keyvaultsecret" "cot" {
+  count = var.use_keyvault ? 1 : 0
+  
   vault_name  = "kv-central-us-cot"
   secret_name = "cotkey"
   # Authentication
@@ -23,7 +25,7 @@ data "azure-keyvaultsecret" "cot" {
 }
 
 local "cotkey" {
-  expression = var.cotkey != null ? var.cotkey : data.azure-keyvaultsecret.cot.value
+  expression = var.cotkey != null ? var.cotkey : (var.use_keyvault ? data.azure-keyvaultsecret.cot[0].value : "")
   sensitive  = true
 }
 
@@ -135,6 +137,12 @@ variable "cotkey" {
   type      = string
   sensitive = true
   default   = null
+}
+
+variable "use_keyvault" {
+  type        = bool
+  default     = "${env("USE_KEYVAULT") != "" ? tobool(env("USE_KEYVAULT")) : true}"
+  description = "Whether to fetch secrets from Azure Key Vault"
 }
 
 variable "tenant_id" {
