@@ -11,8 +11,24 @@ packer {
   }
 }
 
-locals {
-  sbom_name = var.config
+data "azure-keyvaultsecret" "cot" {
+  vault_name  = "kv-central-us-cot"
+  secret_name = "cotkey"
+  # Authentication
+  oidc_request_url   = "${var.oidc_request_url}"
+  oidc_request_token = "${var.oidc_request_token}"
+  client_id          = "${var.client_id}"
+  subscription_id    = "${var.subscription_id}"
+  tenant_id          = "${var.tenant_id}"
+}
+
+local "cotkey" {
+  expression = var.cotkey != null ? var.cotkey : data.azure-keyvaultsecret.cot.value
+  sensitive  = true
+}
+
+local "sbom_name" {
+  expression = var.config
 }
 
 variable "base_image" {
@@ -113,6 +129,12 @@ variable "source_repository" {
 variable "subscription_id" {
   type    = string
   default = "${env("subscription_id")}"
+}
+
+variable "cotkey" {
+  type      = string
+  sensitive = true
+  default   = null
 }
 
 variable "tenant_id" {
@@ -358,7 +380,8 @@ build {
       "deploymentId=${var.deployment_id}",
       "client_id=${var.client_id}",
       "tenant_id=${var.tenant_id}",
-      "application_id=${var.application_id}"
+      "application_id=${var.application_id}",
+      "cotkey=${local.cotkey}"
     ]
     inline = [
       "Import-Module BootStrap -Force;",
@@ -421,7 +444,7 @@ build {
     inline = [
       "Import-Module BootStrap -Force;",
       "Set-MarkdownPSModule;",
-      "Set-ReleaseNotes -Config $ENV:config -Version $ENV:sharedimage_version -Organization $ENV:src_organisation -Branch $ENV:src_Branch -Repository $ENV:src_Repository -DeploymentId $ENV:deploymentId" 
+      "Set-ReleaseNotes -Config $ENV:config -Version $ENV:sharedimage_version -Organization $ENV:src_organisation -Branch $ENV:src_Branch -Repository $ENV:src_Repository -DeploymentId $ENV:deploymentId"
     ]
   }
 
