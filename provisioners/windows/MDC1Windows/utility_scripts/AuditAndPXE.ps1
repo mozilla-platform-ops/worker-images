@@ -29,6 +29,7 @@ $script:failed_script         = @()
 $script:pxe_triggered         = @()
 $script:retry_attempted       = @()
 $script:retry_recovered       = @()
+$script:pxe_inline_used       = @()
 $script:doWipeD               = $false
 
 # ------------------ Helpers ------------------
@@ -130,9 +131,17 @@ New-Item -ItemType Directory -Force -Path '$folder' | Out-Null
 "@
 
     $res = Invoke-SSHPS -NodeName $NodeName -PsCommand $ps
+    if ($res.ExitCode -eq 255) {
+        if ($script:failed_ssh -notcontains $NodeName) { $script:failed_ssh += $NodeName }
+        return @{Ok=$false; Msg="ssh failed"}
+    }
     if ($res.ExitCode -ne 0) { return @{Ok=$false; Msg="stage failed"} }
 
     $verify = Invoke-SSHPS -NodeName $NodeName -PsCommand "[int](Get-Item -LiteralPath '$file').Length"
+    if ($verify.ExitCode -eq 255) {
+        if ($script:failed_ssh -notcontains $NodeName) { $script:failed_ssh += $NodeName }
+        return @{Ok=$false; Msg="ssh failed"}
+    }
     if ($verify.ExitCode -eq 0) {
         $lenRemote = [int]($verify.Output | Select-Object -First 1)
         $lenLocal  = [Text.Encoding]::UTF8.GetBytes($pxeScriptContent).Length
@@ -151,27 +160,105 @@ function Invoke-RemotePXE {
     return @{Ok=$false; Out=$out; Msg=("exit {0}" -f $run.ExitCode) }
 }
 
+# ------------------ Inline PXE Fallback (no file needed) ------------------
+function Invoke-InlinePXE {
+    param(
+        [Parameter(Mandatory)][string]$NodeName,
+        [bool]$WipeD=$false
+    )
+    # Same logic as $pxeScriptContent, executed inline
+    $inline = @"
+try {
+  Import-Module Microsoft.Windows.Bcd.Cmdlets -ErrorAction Stop
+  \$data = (Get-BcdStore).Entries | ForEach-Object {
+    \$d = (\$_.Elements | Where-Object { \$_.Name -eq 'Description' }).Value
+    if (\$d -match 'IPv4') { \$_ }
+  }
+  if (-not \$data) { exit 999 }
+
+  bcdedit /set '{fwbootmgr}' BOOTSEQUENCE "{\$($data.Identifier.Guid)}"
+
+  if ('$WipeD' -match '^(?i:true|1|yes|y)$') {
+    try { Remove-Item 'D:\*' -Recurse -Force -ErrorAction SilentlyContinue } catch {}
+  }
+
+  Start-Process -FilePath 'shutdown.exe' -ArgumentList '/r','/t','5','/f' -WindowStyle Hidden
+  'PXE_TRIGGERED'
+} catch {
+  exit 888
+}
+"@
+    $res = Invoke-SSHPS -NodeName $NodeName -PsCommand $inline
+    $out = ($res.Output | Out-String)
+    if ($res.ExitCode -eq 0 -and $out -match 'PXE_TRIGGERED') {
+        return @{ Ok=$true; Out=$out }
+    }
+    if ($res.ExitCode -eq 255) { return @{ Ok=$false; Out=$out; Msg='ssh failed' } }
+    return @{ Ok=$false; Out=$out; Msg=("exit {0}" -f $res.ExitCode) }
+}
+
 function Set-RemotePXE {
     param([Parameter(Mandatory)][string]$NodeName,[bool]$WipeD=$script:doWipeD)
 
+    # 1) Try to stage the file version
     $stage = Stage-RemotePXEFile -NodeName $NodeName -RemotePath $pxe_script
+
     if (-not $stage.Ok) {
-        Write-Host "[$NodeName] PXE stage failed ($($stage.Msg))."
+        # If staging failed but SSH worked, try inline fallback immediately
+        if ($stage.Msg -ne 'ssh failed') {
+            Write-Host "[$NodeName] PXE stage failed ($($stage.Msg)); attempting inline PXE..."
+            $inline = Invoke-InlinePXE -NodeName $NodeName -WipeD:$WipeD
+            if ($inline.Ok) {
+                Write-Host "[$NodeName] PXE (inline) invoked."
+                if ($script:pxe_triggered -notcontains $NodeName) { $script:pxe_triggered += $NodeName }
+                if ($script:pxe_inline_used -notcontains $NodeName) { $script:pxe_inline_used += $NodeName }
+                Start-Sleep -Seconds 5
+                return
+            } else {
+                if ($inline.Msg -eq 'ssh failed') {
+                    Write-Host "[$NodeName] SSH failed during inline PXE."
+                    if ($script:failed_ssh -notcontains $NodeName) { $script:failed_ssh += $NodeName }
+                } else {
+                    Write-Host "[$NodeName] Inline PXE returned unexpected result: $($inline.Msg)"
+                }
+                return
+            }
+        } else {
+            Write-Host "[$NodeName] SSH failed during PXE stage."
+            if ($script:failed_ssh -notcontains $NodeName) { $script:failed_ssh += $NodeName }
+            return
+        }
+    }
+
+    # 2) File staged OK – try file-based invoke
+    $invoke = Invoke-RemotePXE -NodeName $NodeName -RemotePath $pxe_script -WipeD:$WipeD
+    if ($invoke.Ok) {
+        Write-Host "[$NodeName] PXE script invoked."
+        if ($script:pxe_triggered -notcontains $NodeName) { $script:pxe_triggered += $NodeName }
+        Start-Sleep -Seconds 5
+        return
+    }
+
+    # 3) File-based invoke failed: try inline fallback (unless SSH failed)
+    if ($invoke.Msg -eq 'ssh failed') {
+        Write-Host "[$NodeName] SSH failed when invoking PXE."
         if ($script:failed_ssh -notcontains $NodeName) { $script:failed_ssh += $NodeName }
         return
     }
 
-    $invoke = Invoke-RemotePXE -NodeName $NodeName -RemotePath $pxe_script -WipeD:$WipeD
-    if ($invoke.Ok) {
-        Write-Host "[$NodeName] PXE script invoked."
-        $script:pxe_triggered += $NodeName
+    Write-Host "[$NodeName] PXE script returned unexpected result: $($invoke.Msg); attempting inline PXE..."
+    $inline2 = Invoke-InlinePXE -NodeName $NodeName -WipeD:$WipeD
+    if ($inline2.Ok) {
+        Write-Host "[$NodeName] PXE (inline) invoked."
+        if ($script:pxe_triggered -notcontains $NodeName) { $script:pxe_triggered += $NodeName }
+        if ($script:pxe_inline_used -notcontains $NodeName) { $script:pxe_inline_used += $NodeName }
         Start-Sleep -Seconds 5
     } else {
-        if ($invoke.Msg -eq 'ssh failed') {
-            Write-Host "[$NodeName] SSH failed when invoking PXE."
+        if ($inline2.Msg -eq 'ssh failed') {
+            Write-Host "[$NodeName] SSH failed during inline PXE."
             if ($script:failed_ssh -notcontains $NodeName) { $script:failed_ssh += $NodeName }
         } else {
-            Write-Host "[$NodeName] PXE script returned unexpected result: $($invoke.Msg)"
+            Write-Host "[$NodeName] Inline PXE returned unexpected result: $($inline2.Msg)"
         }
     }
 }
@@ -191,9 +278,15 @@ function Invoke-AuditScript {
     $psExists = "if (Test-Path -LiteralPath $qPath) { 'EXISTS' } else { 'MISSING' }"
     $check = Invoke-SSHPS -NodeName $NodeName -PsCommand $psExists
 
-    if ($check.ExitCode -ne 0) {
+    if ($check.ExitCode -eq 255) {
         Write-Host "[$NodeName] SSH connection failed for audit presence check."
         if ($script:failed_ssh -notcontains $NodeName) { $script:failed_ssh += $NodeName }
+        return
+    }
+    if ($check.ExitCode -ne 0) {
+        Write-Host "[$NodeName] Audit presence check failed (exit $($check.ExitCode))."
+        $script:failed_script += $NodeName
+        Set-RemotePXE -NodeName $NodeName -WipeD:$script:doWipeD
         return
     }
 
@@ -429,6 +522,10 @@ if ($script:missing_audit_script.Count) { ($script:missing_audit_script | Sort-O
 Write-Host ""
 Write-Host "Nodes where PXE boot was triggered (SSH):"
 if ($script:pxe_triggered.Count) { ($script:pxe_triggered | Sort-Object -Unique) | ForEach-Object { Write-Host "- $_" } } else { Write-Host "- none" }
+
+Write-Host ""
+Write-Host "Nodes that used inline PXE (fallback without remote file):"
+if ($script:pxe_inline_used.Count) { ($script:pxe_inline_used | Sort-Object -Unique) | ForEach-Object { Write-Host "- $_" } } else { Write-Host "- none" }
 
 Write-Host ""
 Write-Host "Nodes with failed SSH connection (after retry):"
