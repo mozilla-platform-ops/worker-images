@@ -28,8 +28,8 @@ vm:
     worker_pool_id: win11-64-24h2
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "RELOPS-1887"
-    deploymentId: "NA"
+    sourceBranch: "windows"
+    deploymentId: "79dd0f2"
     managed_by: packer
 tests:
   #- microsoft_tools_tester.tests.ps1
@@ -51,4 +51,4 @@ tests:
   - mozilla_build_tester.tests.ps1
   - mozilla_maintenance_service.tests.ps1
   - windows_worker_runner.tests.ps1
-  - gpu_drivers.tests.ps1
+  - gpu_drivers_latest.tests.ps1
