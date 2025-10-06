@@ -277,7 +277,7 @@ Run-Executable "C:\generic-worker\generic-worker.exe" @("new-ed25519-keypair", "
 $nssm = "C:\nssm-2.24\win64\nssm.exe"
 Run-Executable $nssm @("install", "Generic Worker", "C:\generic-worker\generic-worker.exe")
 Run-Executable $nssm @("set", "Generic Worker", "AppDirectory", "C:\generic-worker")
-Run-Executable $nssm @("set", "Generic Worker", "AppParameters", "run", "--config", "C:\generic-worker\generic-worker-config.yml", "--worker-runner-protocol-pipe", "\\.\pipe\generic-worker")
+Run-Executable $nssm @("set", "Generic Worker", "AppParameters", "run", "--config", "C:\generic-worker\generic-worker-config.yml", "--worker-runner-protocol-pipe", "\\.\pipe\generic-worker", "--with-worker-runner")
 Run-Executable $nssm @("set", "Generic Worker", "DisplayName", "Generic Worker")
 Run-Executable $nssm @("set", "Generic Worker", "Description", "A taskcluster worker that runs on all mainstream platforms")
 Run-Executable $nssm @("set", "Generic Worker", "Start", "SERVICE_DEMAND_START")
@@ -332,15 +332,14 @@ $env:LOGONSERVER = "\\" + $env:COMPUTERNAME
 # Log before stopping transcript to make sure message is included in transcript.
 Write-Log "Bootstrap process completed. Waiting on Packer..."
 
-## Leaving comments intact. packer will handle the shutodwm
-
+## Leaving comments intact. Packer will handle the shutdown.
 # Shut down, in preparation for creating an image. Stop-Computer isn't working,
 # also not when specifying -AsJob, so reverting to using `shutdown` command
 # instead. See:
 #   * https://www.reddit.com/r/PowerShell/comments/65250s/windows_10_creators_update_stopcomputer_not/dgfofug/?st=j1o3oa29&sh=e0c29c6d
 #   * https://support.microsoft.com/en-in/help/4014551/description-of-the-security-and-quality-rollup-for-the-net-framework-4
 #   * https://support.microsoft.com/en-us/help/4020459
-#un-Executable "shutdown" @("-s")
+# Run-Executable "shutdown" @("-s")
 
 # Technically the transcript will be stopped here anyway, since Powershell
 # stops the transcript when the script exits, but it is a useful reminder to

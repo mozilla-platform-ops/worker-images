@@ -2,7 +2,7 @@ param (
     [string]$MY_CLOUD
 )
 
-$TASKCLUSTER_VERSION = "v90.0.1"
+$TASKCLUSTER_VERSION = "v90.0.4"
 
 # Write-Log function for logging with RFC3339 format timestamps
 function Write-Log {
@@ -398,7 +398,7 @@ if ($hasNvidiaGpu) {
 # Log before stopping transcript to make sure message is included in transcript.
 Write-Log "Bootstrap process completed. Waiting on Packer..."
 
-## Leaving comments intact. packer will handle the shutdown
+## Leaving comments intact. Packer will handle the shutdown.
 # Shut down, in preparation for creating an image. Stop-Computer isn't working,
 # also not when specifying -AsJob, so reverting to using `shutdown` command
 # instead. See:
