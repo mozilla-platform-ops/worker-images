@@ -24,11 +24,18 @@ jobs:
     name: "Verify User Access"
     runs-on: ubuntu-latest
     steps:
+      # TESTING ONLY: check out relops-1640 branch instead of trigger branch
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
+
       - name: Load Authorized Users and Check Access
         shell: pwsh
         run: |
-          $AUTHORIZED_USERS = Get-Content .github/relsre.json | ConvertFrom-Json
+          $TCEngUsers  = Get-Content .github/tceng.json  | ConvertFrom-Json
+          $RelsreUsers = Get-Content .github/relsre.json | ConvertFrom-Json
+          $AUTHORIZED_USERS = $TCEngUsers + $RelsreUsers
+
           if ($AUTHORIZED_USERS -contains "${{ github.actor }}") {
             Write-Host "User ${{ github.actor }} is authorized."
           } else {
@@ -42,13 +49,15 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       IMAGENAME: ${{ steps.set-matrix.outputs.IMAGENAME }}
-      PROJECT: ${{ steps.set-matrix.outputs.PROJECT }}
+      PROJECT:   ${{ steps.set-matrix.outputs.PROJECT }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
       - id: set-matrix
         shell: pwsh
         run: |
-          Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
+          Import-Module "${{ github.workspace }}/bin/WorkerImages/WorkerImages.psm1"
           Set-GCPWorkerImageName    -Key '${{ github.event.inputs.config }}'
           Set-GCPWorkerImageProject -Key '${{ github.event.inputs.config }}'
 
@@ -62,8 +71,9 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
 
-      # --- GCP Auth via WIF (Application Default Credentials for Packer) ---
       - uses: google-github-actions/auth@v2
         id: auth
         with:
@@ -79,42 +89,18 @@ jobs:
       - name: Run Packer
         shell: pwsh
         env:
-          # Pass through GH token for GitHub release/plugin throttling if needed
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN:       ${{ secrets.GITHUB_TOKEN }}
           WORKER_ENV_VAR_KEY: ${{ secrets.WORKER_ENV_VAR_KEY }}
           TC_WORKER_CERT:     ${{ secrets.TC_WORKER_CERT }}
           TC_WORKER_KEY:      ${{ secrets.TC_WORKER_KEY }}
         run: |
-          Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
+          Import-Module "${{ github.workspace }}/bin/WorkerImages/WorkerImages.psm1"
           $Vars = @{
-            github_token     = "${{ secrets.GITHUB_TOKEN }}"
-            Key              = '${{ github.event.inputs.config }}'
+            github_token       = "${{ secrets.GITHUB_TOKEN }}"
+            Key                = '${{ github.event.inputs.config }}'
             Worker_Env_Var_Key = "${{ secrets.WORKER_ENV_VAR_KEY }}"
-            TC_worker_cert   = "${{ secrets.TC_WORKER_CERT }}"
-            TC_worker_key    = "${{ secrets.TC_WORKER_KEY }}"
-            Team             = "tceng"   # <— enable tceng layout
+            TC_worker_cert     = "${{ secrets.TC_WORKER_CERT }}"
+            TC_worker_key      = "${{ secrets.TC_WORKER_KEY }}"
+            Team               = "tceng"   # ensure tceng HCL/YAML paths
           }
           New-GCPWorkerImage @Vars
-
-#  wiz:
-#    needs: [packer, setproject]
-#    name: "Wiz scan ${{ github.event.inputs.config }}"
-#    runs-on: ubuntu-latest
-#    environment: prod
-#    steps:
-#      - name: Download Wiz CLI
-#        run: curl -o wizcli https://downloads.wiz.io/wizcli/latest/wizcli-linux-amd64 && chmod +x wizcli
-#      - name: Authenticate to Wiz
-#        run: ./wizcli auth --id "$WIZ_CLIENT_ID" --secret "$WIZ_CLIENT_SECRET"
-#        env:
-#          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
-#          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
-#      - name: Run wiz-cli scan
-#        run: |
-#          ./wizcli vm-image scan \
-#          --id ${{ needs.setproject.outputs.IMAGENAME }} \
-#          --region us-west1 \
-#          --subscriptionId ${{ needs.setproject.outputs.PROJECT }} \
-#          --secrets \
-#          --show-vulnerability-details \
-#          --policy-hits-only
