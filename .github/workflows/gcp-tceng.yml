@@ -1,4 +1,4 @@
-run-name: TCEng - ${{ github.event.inputs.config }}
+run-name: TCEng GCP - ${{ github.event.inputs.config }}
 name: TCEng GCP
 
 on:
@@ -8,9 +8,7 @@ on:
         type: choice
         description: Choose which pool to build
         options:
-          - gw-fxci-gcp-l1-2404-gui-alpha
-          - gw-fxci-gcp-l1-2404-headless-alpha
-          - gw-fxci-gcp-l1-2404-arm64-headless-alpha
+          - generic-worker-ubuntu-24-04-staging
 
 permissions:
   id-token: write
