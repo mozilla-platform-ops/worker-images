@@ -5,6 +5,14 @@ if [[ -z "${MY_CLOUD}" ]]; then
 fi
 
 set -exv
+exec &> /var/log/bootstrap.log
+
+##############################################################################
+# TASKCLUSTER_REF can be a git commit SHA, a git branch name, or a git tag name
+# (i.e. for a taskcluster version number, prefix with 'v' to make it a git tag)
+TASKCLUSTER_REF='main'
+TASKCLUSTER_REPO='https://github.com/taskcluster/taskcluster'
+##############################################################################
 
 function retry {
   set +e
@@ -45,12 +53,12 @@ esac
 
 retry apt-get update
 DEBIAN_FRONTEND=noninteractive retry apt-get upgrade -yq
-retry apt-get -y remove docker docker.io containerd runc
+retry apt-get remove -y docker docker.io containerd runc
 # build-essential is needed for running `go test -race` with the -vet=off flag as of go1.19
-retry apt-get install -y apt-transport-https ca-certificates curl software-properties-common gzip python3-venv build-essential
+retry apt-get install -y apt-transport-https ca-certificates curl software-properties-common gzip python3-venv build-essential snapd crudini
 
 # needed for kvm, see https://help.ubuntu.com/community/KVM/Installation
-#retry apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
+retry apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
 
 # install docker
 retry curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
@@ -62,9 +70,9 @@ retry docker run hello-world
 
 # configure kvm vmware backdoor
 # this enables a vmware compatible interface for kvm, and is needed for some fuzzing tasks
-#cat > /etc/modprobe.d/kvm-backdoor.conf << "EOF"
-#options kvm enable_vmware_backdoor=y
-#EOF
+cat > /etc/modprobe.d/kvm-backdoor.conf << "EOF"
+options kvm enable_vmware_backdoor=y
+EOF
 
 # configure core dumps to be in the process' current directory with filename 'core'
 # (required for 3 legacy JS engine fuzzers)
@@ -77,7 +85,6 @@ echo 'kernel.perf_event_paranoid = 1' >> /etc/sysctl.d/90-custom.conf
 groupadd snap_sudo
 echo '%snap_sudo ALL=(ALL:ALL) NOPASSWD: /usr/bin/snap' | EDITOR='tee -a' visudo
 
-# build from source using taskcluster ref
 # build generic-worker/livelog/start-worker/taskcluster-proxy from ${TASKCLUSTER_REF} commit / branch / tag etc
 retry apt-get install -y git tar
 retry curl -fsSL 'https://dl.google.com/go/go1.23.6.linux-amd64.tar.gz' > go.tar.gz
@@ -87,7 +94,7 @@ export GOPATH=~/go
 export GOROOT=/usr/local/go
 export PATH="${GOROOT}/bin:${GOPATH}/bin:${PATH}"
 export GCO_ENABLED=0
-git clone "https://github.com/taskcluster/taskcluster"
+git clone "${TASKCLUSTER_REPO}"
 cd taskcluster
 git checkout "${TASKCLUSTER_REF}"
 HEAD_REV="$(git rev-parse HEAD)"
@@ -110,7 +117,7 @@ cat > /lib/systemd/system/worker.service << EOF
 Description=Start TC worker
 # start once networking is online
 Wants=network-online.target
-After=network-online.target docker.service
+After=network-online.target
 
 [Service]
 Type=simple
@@ -127,7 +134,7 @@ EOF
 
 cat > /etc/start-worker.yml << EOF
 provider:
-    providerType: google
+    providerType: %MY_CLOUD%
 worker:
     implementation: generic-worker
     path: /usr/local/bin/generic-worker
@@ -137,46 +144,131 @@ EOF
 
 systemctl enable worker
 
-# Don't install ubuntu-desktop ubuntu-gnome-desktop on headless image but install podman
-#retry apt-get install -y podman
-#retry apt-get install -y ubuntu-desktop ubuntu-gnome-desktop podman
+# Installs the snd-aloop, v4l2loopback kernel modules
+# used for the audio/video devices, and vkms
+# required by Wayland
+#
+# Installs the extra kernel modules for the currently
+# running kernel version as well as the cloud-specific
+# meta-package in case we upgrade to a new kernel version
+# on reboot
+retry apt-get install -y linux-modules-extra-$(uname -r)
+case '%MY_CLOUD%' in
+  google)
+    retry apt-get install -y linux-modules-extra-gcp
+    ;;
+  aws)
+    retry apt-get install -y linux-modules-extra-aws
+    ;;
+esac
 
-# this is neccessary in GCP because after installing gnome desktop both NetworkManager and systemd-networkd are enabled
-# which leads to https://bugs.launchpad.net/ubuntu/jammy/+source/systemd/+bug/2036358
-systemctl disable systemd-networkd-wait-online.service
+retry apt-get install -y ubuntu-desktop ubuntu-gnome-desktop podman gnome-initial-setup-
+
+if [ '%MY_CLOUD%' == 'google' ]; then
+    # this is neccessary in GCP because after installing gnome desktop both NetworkManager and systemd-networkd are enabled
+    # which leads to https://bugs.launchpad.net/ubuntu/jammy/+source/systemd/+bug/2036358
+    systemctl disable systemd-networkd-wait-online.service
+fi
 
 # set podman registries conf
-#(
-#  echo '[registries.search]'
-#  echo 'registries=["docker.io"]'
-#) >> /etc/containers/registries.conf
+(
+  echo '[registries.search]'
+  echo 'registries=["docker.io"]'
+) >> /etc/containers/registries.conf
 
-# Installs the v4l2loopback kernel module
-# used for the video device, and vkms
-# required by Wayland
-retry apt-get install -y linux-modules-extra-$(uname -r)
 # needed for mutter to work with DRM rather than falling back to X11
-#grep -Fx vkms /etc/modules || echo vkms >> /etc/modules
+grep -Fx vkms /etc/modules || echo vkms >> /etc/modules
 # disable udev rule that tags platform-vkms with "mutter-device-ignore"
 # ENV{ID_PATH}=="platform-vkms", TAG+="mutter-device-ignore"
-#sed '/platform-vkms/d' /lib/udev/rules.d/61-mutter.rules > /etc/udev/rules.d/61-mutter.rules
+sed '/platform-vkms/d' /lib/udev/rules.d/61-mutter.rules > /etc/udev/rules.d/61-mutter.rules
 
-# install necessary packages for KVM
-# https://help.ubuntu.com/community/KVM/Installation
-#retry apt-get install -y qemu-kvm bridge-utils
+echo 'options snd-aloop enable=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 index=0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31' > /etc/modprobe.d/snd-aloop.conf
+echo 'snd-aloop' >> /etc/modules
 
-# snd-aloop currently supported in aws kernel, but not in gcp kernel
-#if [ '%MY_CLOUD%' == 'aws' ]; then
-#  echo 'options snd-aloop enable=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 index=0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31' > /etc/modprobe.d/snd-aloop.conf
-#  echo 'snd-aloop' >> /etc/modules
-#fi
+#
+# dconf settings
+#
+cat > /etc/dconf/profile/user << EOF
+user-db:user
+system-db:local
+EOF
+
+mkdir /etc/dconf/db/local.d/
+# dconf user settings
+cat > /etc/dconf/db/local.d/00-tc-gnome-settings << EOF
+# /org/gnome/desktop/session/idle-delay
+[org/gnome/desktop/session]
+idle-delay=uint32 0
+
+# /org/gnome/desktop/lockdown/disable-lock-screen
+[org/gnome/desktop/lockdown]
+disable-lock-screen=true
+EOF
+
+# make dbus read the new configuration
+dconf update
+
+#
+# gdm3 settings  
+#
+# in [daemon] block of /etc/gdm3/custom.conf we need:
+#
+# XorgEnable=false
+crudini --set /etc/gdm3/custom.conf daemon XorgEnable 'false'
+
+#
+# gdm wait service file
+#
+# This hack is required because without we end up in a situation where the
+# wayland seat is in a weird state and consequences are:
+#    - either x11 session
+#    - either xwayland fallback
+#    - either wayland but with missing keyboard capability that breaks
+#        things including copy/paste
+mkdir -p /etc/systemd/system/gdm.service.d/
+cat > /etc/systemd/system/gdm.service.d/gdm-wait.conf << EOF
+[Unit]
+Description=Extra 10s wait
+
+[Service]
+ExecStartPre=/bin/sleep 10
+EOF
+
+#
+# write mutter's monitors.xml
+#
+cat > /etc/xdg/monitors.xml << EOF
+<monitors version="2">
+  <configuration>
+    <logicalmonitor>
+      <x>0</x>
+      <y>0</y>
+      <scale>1</scale>
+      <primary>yes</primary>
+      <monitor>
+        <monitorspec>
+          <connector>Virtual-1</connector>
+          <vendor>unknown</vendor>
+          <product>unknown</product>
+          <serial>unknown</serial>
+        </monitorspec>
+        <mode>
+          <width>1920</width>
+          <height>1080</height>
+          <rate>60.000</rate>
+        </mode>
+      </monitor>
+    </logicalmonitor>
+  </configuration>
+</monitors>
+EOF
 
 # avoid unnecessary shutdowns during worker startups
 systemctl disable unattended-upgrades
-systemctl disable apt-daily-upgrade.timer
 
 end_time="$(date '+%s')"
 echo "UserData execution took: $(($end_time - $start_time)) seconds"
 
+## Packer will handle the shutdown 
 # shutdown so that instance can be snapshotted
-#shutdown -h now
+# shutdown -h now
