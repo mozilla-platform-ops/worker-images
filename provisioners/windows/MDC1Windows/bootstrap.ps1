@@ -650,11 +650,12 @@ function Get-Ronin {
             Write-Log -Message ('{0} :: Cloning {1}' -f $($MyInvocation.MyCommand.Name), "$src_Organisation/$src_Repository") -severity 'DEBUG'
             git config --global --add safe.directory $ronin_repo
             git clone --single-branch --branch $src_Branch https://github.com/$src_Organisation/$src_Repository $ronin_repo
-            #git clone --single-branch --branch $src_Branch git://github.com/$src_Organisation/$src_Repository.git $ronin_repo
-            git checkout $hash
 
             ## comment out during testing
             Set-Location $ronin_repo
+            if ($hash -ne "NA") {
+                git checkout -q $deploymentId
+            }
             if ($debug) {
                 Write-Log -message  ('{0} :: Debugging set; pulling latest repo version .' -f $($MyInvocation.MyCommand.Name), ($hash)) -severity 'DEBUG'
             }
