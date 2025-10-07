@@ -1,5 +1,5 @@
-run-name: GCP - ${{ github.event.inputs.config }}
-name: FXCI - GCP
+run-name: TCEng - ${{ github.event.inputs.config }}
+name: TCEng GCP
 
 on:
   workflow_dispatch:
