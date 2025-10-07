@@ -79,7 +79,7 @@ source "googlecompute" "generic-worker-ubuntu-24-04-staging" {
 
   image_labels = {
     "image-set" = var.config
-    "arch"      = var.tc_arch
+    "arch"      = lower(var.tc_arch)
     "team"      = "tceng"
   }
 }
@@ -91,7 +91,7 @@ build {
   sources = ["source.googlecompute.generic-worker-ubuntu-24-04-staging"]
 
   provisioner "file" {
-    source      = "${path.cwd}/scripts/linux/tceng/${var.bootstrap_script}"
+    source      = "${path.root}/../scripts/linux/tceng/${var.bootstrap_script}"
     destination = "/tmp/bootstrap.sh"
   }
 
