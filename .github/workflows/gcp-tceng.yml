@@ -22,7 +22,6 @@ jobs:
     name: "Verify User Access"
     runs-on: ubuntu-latest
     steps:
-      # TESTING ONLY: check out relops-1640 branch instead of trigger branch
       - uses: actions/checkout@v4
         with:
           ref: ${{ env.TARGET_BRANCH }}
@@ -56,8 +55,8 @@ jobs:
         shell: pwsh
         run: |
           Import-Module "${{ github.workspace }}/bin/WorkerImages/WorkerImages.psm1"
-          Set-GCPWorkerImageName    -Key '${{ github.event.inputs.config }}'
-          Set-GCPWorkerImageProject -Key '${{ github.event.inputs.config }}'
+          Set-GCPWorkerImageName    -Key '${{ github.event.inputs.config }}' -Team 'tceng'
+          Set-GCPWorkerImageProject -Key '${{ github.event.inputs.config }}' -Team 'tceng'
 
   packer:
     needs: setproject
