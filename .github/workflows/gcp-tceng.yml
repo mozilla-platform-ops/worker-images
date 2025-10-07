@@ -96,8 +96,6 @@ jobs:
             github_token       = "${{ secrets.GITHUB_TOKEN }}"
             Key                = '${{ github.event.inputs.config }}'
             Worker_Env_Var_Key = "${{ secrets.WORKER_ENV_VAR_KEY }}"
-            TC_worker_cert     = "${{ secrets.TC_WORKER_CERT }}"
-            TC_worker_key      = "${{ secrets.TC_WORKER_KEY }}"
             Team               = "tceng"   # ensure tceng HCL/YAML paths
           }
           New-GCPWorkerImage @Vars
