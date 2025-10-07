@@ -9,7 +9,7 @@ image:
 vm:
   providerType: "gcp"
   disk_size: 60
-  tc_arch: "AMD64"
+  tc_arch: "amd64"
   taskcluster_version: "90.0.3"
   script_name: "generic-worker-ubuntu-24-04-staging.sh"
   tags:
