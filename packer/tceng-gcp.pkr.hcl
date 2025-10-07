@@ -74,7 +74,7 @@ source "googlecompute" "generic-worker-ubuntu-24-04-staging" {
   source_image_family = var.source_image_family
   image_name          = var.image_name
   ssh_username        = "ubuntu"
-  disk_size           = tonumber(var.disk_size)
+  disk_size           = parseint(var.disk_size, 10)
   use_iap             = true
 
   image_labels = {
