@@ -67,8 +67,18 @@ function New-GCPWorkerImage {
             $ENV:PKR_VAR_image_name = $YAML.image["image_name"]
         }
     }
-    packer init $PackerHCLPath
-    $builder = "googlecompute.tceng"
-    Write-Host "packer build --only $builder -force $PackerHCLPath"
-    packer build --only $builder -force $PackerHCLPath
+    if ($Team -and $Team -ieq "tceng") {
+        # tceng builds use a single generic HCL build, so don't use --only
+        if ($PackerDebug) {
+            packer build -debug -force $PackerHCLPath
+        } else {
+            packer build -force $PackerHCLPath
+        }
+    } else {
+        if ($PackerDebug) {
+            packer build -debug --only azure-arm.nonsig -force $PackerHCLPath
+        } else {
+            packer build --only azure-arm.nonsig -force $PackerHCLPath
+        }
+    }
 }
