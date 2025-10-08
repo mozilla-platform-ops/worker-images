@@ -67,6 +67,9 @@ function New-GCPWorkerImage {
             $ENV:PKR_VAR_image_name = $YAML.image["image_name"]
         }
     }
+
+    packer init $PackerHCLPath
+
     if ($Team -and $Team -ieq "tceng") {
         # tceng builds use a single generic HCL build, so don't use --only
         if ($PackerDebug) {
