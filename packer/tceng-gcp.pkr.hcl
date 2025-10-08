@@ -24,13 +24,11 @@ variable "worker_env_var_key" {
   default   = env("PKR_VAR_worker_env_var_key")
   sensitive = true
 }
-
 variable "tc_worker_cert" {
   type      = string
   default   = env("PKR_VAR_tc_worker_cert")
   sensitive = true
 }
-
 variable "tc_worker_key" {
   type      = string
   default   = env("PKR_VAR_tc_worker_key")
@@ -44,14 +42,14 @@ locals {
 
 # ---------- Source ----------
 source "googlecompute" "tceng" {
-  project_id              = var.project_id
-  zone                    = var.zone
-  source_image_project_id = ["ubuntu-os-cloud"]      # list required by v1.2.x
-  source_image_family     = var.source_image_family
-  image_name              = var.image_name
-  ssh_username            = "ubuntu"
-  disk_size               = local.disk_size_int
-  use_iap                 = true
+  project_id                  = var.project_id
+  zone                        = var.zone
+  source_image_project_id     = ["ubuntu-os-cloud"]
+  source_image_family         = var.source_image_family
+  image_name                  = var.image_name
+  ssh_username                = "ubuntu"
+  disk_size                   = local.disk_size_int
+  use_iap                     = true
 
   image_labels = {
     "image-set" = var.config
@@ -65,6 +63,7 @@ build {
   name    = "tceng"
   sources = ["source.googlecompute.tceng"]
 
+  # scripts/ lives at repo root
   provisioner "file" {
     source      = "${path.cwd}/scripts/linux/tceng/${var.bootstrap_script}"
     destination = "/tmp/bootstrap.sh"
