@@ -70,7 +70,7 @@ build {
   sources = ["source.googlecompute.tceng"]
 
   provisioner "file" {
-    source      = "${path.root}/../scripts/linux/tceng/${var.bootstrap_script}"
+    source      = "${path.cwd}/scripts/linux/tceng/${var.bootstrap_script}"
     destination = "/tmp/bootstrap.sh"
   }
 
