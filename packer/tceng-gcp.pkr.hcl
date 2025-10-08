@@ -13,7 +13,7 @@ variable "image_name"          { default = env("PKR_VAR_image_name") }
 variable "project_id"          { default = env("PKR_VAR_project_id") }
 variable "zone"                { default = env("PKR_VAR_zone") }
 variable "source_image_family" { default = env("PKR_VAR_source_image_family") }
-variable "disk_size"           { default = env("PKR_VAR_disk_size") }   # may be string
+variable "disk_size"           { default = env("PKR_VAR_disk_size") }
 variable "tc_arch"             { default = env("PKR_VAR_tc_arch") }
 variable "taskcluster_version" { default = env("PKR_VAR_taskcluster_version") }
 variable "taskcluster_ref"     { default = env("PKR_VAR_taskcluster_ref") }
@@ -24,11 +24,13 @@ variable "worker_env_var_key" {
   default   = env("PKR_VAR_worker_env_var_key")
   sensitive = true
 }
+
 variable "tc_worker_cert" {
   type      = string
   default   = env("PKR_VAR_tc_worker_cert")
   sensitive = true
 }
+
 variable "tc_worker_key" {
   type      = string
   default   = env("PKR_VAR_tc_worker_key")
@@ -36,7 +38,6 @@ variable "tc_worker_key" {
 }
 
 locals {
-  # disk_size might arrive as a string; parse it if so
   disk_size_int = try(parseint(var.disk_size, 10), var.disk_size)
   arch_label    = lower(var.tc_arch)
 }
@@ -45,15 +46,12 @@ locals {
 source "googlecompute" "tceng" {
   project_id              = var.project_id
   zone                    = var.zone
-
-  # Use Canonical public Ubuntu images unless your YAML overrides the family
-  source_image_project_id = "ubuntu-os-cloud"
+  source_image_project_id = ["ubuntu-os-cloud"]      # list required by v1.2.x
   source_image_family     = var.source_image_family
-
-  image_name   = var.image_name
-  ssh_username = "ubuntu"
-  disk_size    = local.disk_size_int
-  use_iap      = true
+  image_name              = var.image_name
+  ssh_username            = "ubuntu"
+  disk_size               = local.disk_size_int
+  use_iap                 = true
 
   image_labels = {
     "image-set" = var.config
@@ -67,7 +65,6 @@ build {
   name    = "tceng"
   sources = ["source.googlecompute.tceng"]
 
-  # Script is in repo root under scripts/linux/tceng/
   provisioner "file" {
     source      = "${path.cwd}/scripts/linux/tceng/${var.bootstrap_script}"
     destination = "/tmp/bootstrap.sh"
@@ -79,12 +76,9 @@ build {
       "MY_CLOUD=google",
       "IMAGE_SET=${var.config}",
       "REGION=${var.zone}",
-      # required by your bootstrap (no default): script exits if not set
       "TASKCLUSTER_VERSION=${var.taskcluster_version}",
-      # optional, for TC-from-source flows
       "TASKCLUSTER_REF=${var.taskcluster_ref}",
       "TC_ARCH=${var.tc_arch}",
-      # secrets envs (available if your scripts consume them)
       "WORKER_ENV_VAR_KEY=${var.worker_env_var_key}",
       "TC_WORKER_CERT=${var.tc_worker_cert}",
       "TC_WORKER_KEY=${var.tc_worker_key}"
