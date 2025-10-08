@@ -69,10 +69,10 @@ build {
   name    = "tceng"
   sources = ["source.googlecompute.tceng"]
 
-  provisioner "file" {
-    source      = "${path.cwd}/scripts/linux/tceng/${var.bootstrap_script}"
-    destination = "/tmp/bootstrap.sh"
-  }
+  #provisioner "file" {
+  #  source      = "${path.cwd}/scripts/linux/tceng/${var.bootstrap_script}"
+  #  destination = "/tmp/bootstrap.sh"
+  #}
 
   provisioner "shell" {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
@@ -84,7 +84,7 @@ build {
       "TASKCLUSTER_REF=${var.taskcluster_ref}",
       "TC_ARCH=${var.tc_arch}"
     ]
-    script = "/tmp/bootstrap.sh"
+    script = "${path.cwd}/scripts/linux/tceng/${var.bootstrap_script}"
   }
 
   post-processor "manifest" {
