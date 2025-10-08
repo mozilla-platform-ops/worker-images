@@ -15,4 +15,4 @@ vm:
   tags:
     image_set: "tceng-generic-worker-ubuntu-24-04"
     maintainer: "Taskcluster Engineering"
-    purpose: "tceng ubuntu-24-04-staging"
+    purpose: "tceng ubuntu-24-04"
