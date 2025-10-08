@@ -10,7 +10,7 @@ vm:
   providerType: "gcp"
   disk_size: 60
   tc_arch: "amd64"
-  taskcluster_version: "90.0.3"
+  taskcluster_version: "v90.0.3"
   script_name: "generic-worker-ubuntu-24-04.sh"
   tags:
     image_set: "tceng-generic-worker-ubuntu-24-04"
