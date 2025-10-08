@@ -9,6 +9,7 @@ on:
         description: Choose which pool to build
         options:
           - generic-worker-ubuntu-24-04-staging
+          - generic-worker-ubuntu-24-04
 
 permissions:
   id-token: write
