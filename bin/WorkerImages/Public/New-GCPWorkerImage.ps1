@@ -67,9 +67,8 @@ function New-GCPWorkerImage {
             $ENV:PKR_VAR_image_name = $YAML.image["image_name"]
         }
     }
-
     packer init $PackerHCLPath
-    $builder = "googlecompute.$Key"
+    $builder = "googlecompute.tceng"
     Write-Host "packer build --only $builder -force $PackerHCLPath"
     packer build --only $builder -force $PackerHCLPath
 }
