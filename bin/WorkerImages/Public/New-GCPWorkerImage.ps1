@@ -47,6 +47,20 @@ function New-GCPWorkerImage {
     $ENV:PACKER_GITHUB_API_TOKEN    = $Github_token
 
     if ($Team -and $Team -ieq "tceng") {
+    $scriptName = $YAML.vm["script_name"]
+    if (-not $scriptName) { throw "vm.script_name missing in $YamlPath" }
+
+    $scriptPath = Join-Path -Path $PSScriptRoot -ChildPath "..\..\scripts\linux\tceng\$scriptName"
+    $scriptPath = (Resolve-Path $scriptPath).Path 2>$null
+
+    if (-not $scriptPath -or -not (Test-Path $scriptPath)) {
+        throw "Script not found: scripts/linux/tceng/$scriptName (check filename and casing)"
+    }
+
+    $ENV:PKR_VAR_bootstrap_script = $scriptName
+    }
+
+    if ($Team -and $Team -ieq "tceng") {
         if (-not $ENV:PKR_VAR_uuid -or ($ENV:PKR_VAR_uuid -notmatch '^[a-z0-9]{20}$')) {
             $uuidBytes = [System.Text.Encoding]::UTF8.GetString(
                 [System.Convert]::FromBase64String(
