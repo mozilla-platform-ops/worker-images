@@ -15,13 +15,6 @@ if [[ -z "${TASKCLUSTER_VERSION}" ]]; then
   exit 1
 fi
 
-# Normalize version: ensure it starts with "v"
-if [[ "${TASKCLUSTER_VERSION}" =~ ^v ]]; then
-  TC_VER="${TASKCLUSTER_VERSION}"
-else
-  TC_VER="v${TASKCLUSTER_VERSION}"
-fi
-
 function retry {
   set +e
   local n=0
