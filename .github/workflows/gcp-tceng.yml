@@ -10,11 +10,13 @@ on:
         options:
           - generic-worker-ubuntu-24-04-staging
           - generic-worker-ubuntu-24-04
+          - generic-worker-ubuntu-24-04-arm64
 
 permissions:
   id-token: write
   contents: read
 
+## REMOVE after PR is merged
 env:
   TARGET_BRANCH: RELOPS-1940
 
