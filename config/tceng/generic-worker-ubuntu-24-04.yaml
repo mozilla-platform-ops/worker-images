@@ -13,6 +13,6 @@ vm:
   taskcluster_version: "90.0.3"
   script_name: "generic-worker-ubuntu-24-04.sh"
   tags:
-    image_set: "tceng-generic-worker-ubuntu-24-04-staging"
+    image_set: "tceng-generic-worker-ubuntu-24-04"
     maintainer: "Taskcluster Engineering"
     purpose: "tceng ubuntu-24-04-staging"
