@@ -119,7 +119,7 @@ pools:
   - name: "win11-64-24h2-hw-alpha"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
-    dev: RELOPS-1660
+    #dev: RELOPS-1660
     git_version: "2.50.1"
     Description: "NUC12 Hardware Performance Staging/Testing Pool"
     image: "win11-24H2-NUC-01-16-2025"
