@@ -1,13 +1,11 @@
 function New-GCPWorkerImage {
     [CmdletBinding()]
     param (
-        [String] $Github_token,
-        [String] $Key,
-        [String] $Access_Token,
-        [String] $Account_File,
-        [String] $Worker_Env_Var_Key,
-        [String] $TC_worker_cert,
-        [String] $TC_worker_key,
+        [Parameter(Mandatory = $true)]  [String] $Key,
+        [Parameter(Mandatory = $false)] [String] $Github_token,
+        [Parameter(Mandatory = $false)] [String] $Worker_Env_Var_Key,
+        [Parameter(Mandatory = $false)] [String] $TC_worker_cert,
+        [Parameter(Mandatory = $false)] [String] $TC_worker_key,
         [Parameter(Mandatory = $false)] [String] $Team
     )
 
@@ -16,86 +14,72 @@ function New-GCPWorkerImage {
 
     switch ($Team) {
         "tceng" {
-            $YamlPath = "config/tceng/$Key.yaml"
+            $YamlPath      = "config/tceng/$Key.yaml"
             $PackerHCLPath = "packer/tceng-gcp.pkr.hcl"
             $ENV:PKR_VAR_Team_key = $Team
         }
         default {
-            $YamlPath = "config/$Key.yaml"
+            $YamlPath      = "config/$Key.yaml"
             $PackerHCLPath = "gcp.pkr.hcl"
             if ($Team) { $ENV:PKR_VAR_Team_key = $Team }
         }
     }
-    if (-not (Test-Path $YamlPath)) { throw "YAML file not found at: $YamlPath" }
+
+    if (-not (Test-Path $YamlPath)) {
+        throw "YAML file not found at: $YamlPath"
+    }
 
     $YAML = ConvertFrom-Yaml (Get-Content $YamlPath -Raw)
 
-    $ENV:PKR_VAR_config = $Key
-    $ENV:PKR_VAR_project_id = $YAML.image["project_id"]
+    $ENV:PKR_VAR_config              = $Key
+    $ENV:PKR_VAR_project_id          = $YAML.image["project_id"]
+    $ENV:PKR_VAR_zone                = $YAML.image["zone"]
     $ENV:PKR_VAR_source_image_family = $YAML.image["source_image_family"]
-    $ENV:PKR_VAR_zone = $YAML.image["zone"]
+    $ENV:PKR_VAR_disk_size           = $YAML.vm["disk_size"]
+    $ENV:PKR_VAR_taskcluster_version = $YAML.vm["taskcluster_version"]
+    $ENV:PKR_VAR_taskcluster_ref     = $YAML.vm["taskcluster_ref"]
+    $ENV:PKR_VAR_tc_arch             = $YAML.vm["tc_arch"]
+    $ENV:PKR_VAR_worker_env_var_key  = $Worker_Env_Var_Key
+    $ENV:PKR_VAR_tc_worker_cert      = $TC_worker_cert
+    $ENV:PKR_VAR_tc_worker_key       = $TC_worker_key
+    $ENV:PACKER_GITHUB_API_TOKEN     = $Github_token
 
-    if ($YAML.vm["disk_size"])            { $ENV:PKR_VAR_disk_size            = $YAML.vm["disk_size"] }
-    if ($YAML.vm["taskcluster_version"])  { $ENV:PKR_VAR_taskcluster_version  = $YAML.vm["taskcluster_version"] }
-    if ($YAML.vm["taskcluster_ref"])      { $ENV:PKR_VAR_taskcluster_ref      = $YAML.vm["taskcluster_ref"] }
-    if ($YAML.vm["tc_arch"])              { $ENV:PKR_VAR_tc_arch              = $YAML.vm["tc_arch"] }
-    if ($YAML.vm["script_name"])          { $ENV:PKR_VAR_bootstrap_script     = $YAML.vm["script_name"] }
-
-    $ENV:PKR_VAR_worker_env_var_key = $Worker_Env_Var_Key
-    $ENV:PKR_VAR_tc_worker_cert     = $TC_worker_cert
-    $ENV:PKR_VAR_tc_worker_key      = $TC_worker_key
-    $ENV:PACKER_GITHUB_API_TOKEN    = $Github_token
-
-    if ($Team -and $Team -ieq "tceng") {
-    $scriptName = $YAML.vm["script_name"]
-    if (-not $scriptName) { throw "vm.script_name missing in $YamlPath" }
-
-    $scriptPath = Join-Path -Path $PSScriptRoot -ChildPath "..\..\scripts\linux\tceng\$scriptName"
-    $scriptPath = (Resolve-Path $scriptPath).Path 2>$null
-
-    if (-not $scriptPath -or -not (Test-Path $scriptPath)) {
-        throw "Script not found: scripts/linux/tceng/$scriptName (check filename and casing)"
-    }
-
-    $ENV:PKR_VAR_bootstrap_script = $scriptName
-    }
-
-    if ($Team -and $Team -ieq "tceng") {
-        if (-not $ENV:PKR_VAR_uuid -or ($ENV:PKR_VAR_uuid -notmatch '^[a-z0-9]{20}$')) {
-            $uuidBytes = [System.Text.Encoding]::UTF8.GetString(
-                [System.Convert]::FromBase64String(
-                    [System.Convert]::ToBase64String(
-                        (1..256 | ForEach-Object { Get-Random -Minimum 97 -Maximum 122 } | ForEach-Object { [byte]$_ })
-                    )
-                )
-            )
-            $uuid = ($uuidBytes -replace '[^a-z0-9]', '')[0..19] -join ''
-            $ENV:PKR_VAR_uuid = $uuid
-        }
-        $ENV:PKR_VAR_image_name = "imageset-$($ENV:PKR_VAR_uuid)"
+    # image name handling (date suffix unless alpha)
+    if ($Key -notmatch "alpha") {
+        $suffix = Get-Date -Format "yyyy-MM-dd"
+        $ENV:PKR_VAR_image_name = -join ($YAML.image["image_name"], "-", $suffix)
     } else {
-        if ($Key -notmatch "alpha") {
-            $suffix = Get-Date -Format "yyyy-MM-dd"
-            $ENV:PKR_VAR_image_name = -join ($YAML.image["image_name"], "-", $suffix)
+        $ENV:PKR_VAR_image_name = $YAML.image["image_name"]
+    }
+
+    # --- team-specific bootstrap path logic ---
+    if ($Team -and $Team -ieq "tceng") {
+        $scriptName = $YAML.vm["script_name"]
+        if (-not $scriptName) { throw "vm.script_name missing in $YamlPath" }
+
+        # resolve repo root (works in GitHub Actions and locally)
+        $repoRoot = if ($env:GITHUB_WORKSPACE -and (Test-Path $env:GITHUB_WORKSPACE)) {
+            (Resolve-Path $env:GITHUB_WORKSPACE).Path
         } else {
-            $ENV:PKR_VAR_image_name = $YAML.image["image_name"]
+            (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
         }
+
+        $teamDir    = Join-Path $repoRoot "scripts\linux\$Team"
+        $scriptPath = Join-Path $teamDir $scriptName
+        if (-not (Test-Path $scriptPath)) {
+            throw "Script not found: scripts/linux/$Team/$scriptName"
+        }
+
+        $ENV:PKR_VAR_bootstrap_script = $scriptName
     }
 
     packer init $PackerHCLPath
 
     if ($Team -and $Team -ieq "tceng") {
-        # tceng builds use a single generic HCL build, so don't use --only
-        if ($PackerDebug) {
-            packer build -debug -force $PackerHCLPath
-        } else {
-            packer build -force $PackerHCLPath
-        }
+        # tceng images use a single generic build (no --only)
+        packer build -force $PackerHCLPath
     } else {
-        if ($PackerDebug) {
-            packer build -debug --only azure-arm.nonsig -force $PackerHCLPath
-        } else {
-            packer build --only azure-arm.nonsig -force $PackerHCLPath
-        }
+        # preserve existing non-tceng behavior
+        packer build --only googlecompute.$Key -force $PackerHCLPath
     }
 }

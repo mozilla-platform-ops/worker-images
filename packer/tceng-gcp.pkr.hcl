@@ -7,7 +7,7 @@ packer {
   }
 }
 
-# ---------- Inputs (from PKR_VAR_* env) ----------
+# ---------- Variables ----------
 variable "config"              { default = env("PKR_VAR_config") }
 variable "image_name"          { default = env("PKR_VAR_image_name") }
 variable "project_id"          { default = env("PKR_VAR_project_id") }
@@ -18,6 +18,7 @@ variable "tc_arch"             { default = env("PKR_VAR_tc_arch") }
 variable "taskcluster_version" { default = env("PKR_VAR_taskcluster_version") }
 variable "taskcluster_ref"     { default = env("PKR_VAR_taskcluster_ref") }
 variable "bootstrap_script"    { default = env("PKR_VAR_bootstrap_script") }
+variable "team_key"            { default = env("PKR_VAR_Team_key") }
 
 variable "worker_env_var_key" {
   type      = string
@@ -42,19 +43,19 @@ locals {
 
 # ---------- Source ----------
 source "googlecompute" "tceng" {
-  project_id                  = var.project_id
-  zone                        = var.zone
-  source_image_project_id     = ["ubuntu-os-cloud"]
-  source_image_family         = var.source_image_family
-  image_name                  = var.image_name
-  ssh_username                = "ubuntu"
-  disk_size                   = local.disk_size_int
-  use_iap                     = true
+  project_id              = var.project_id
+  zone                    = var.zone
+  source_image_project_id = ["ubuntu-os-cloud"]
+  source_image_family     = var.source_image_family
+  image_name              = var.image_name
+  ssh_username            = "ubuntu"
+  disk_size               = local.disk_size_int
+  use_iap                 = true
 
   image_labels = {
     "image-set" = var.config
     "arch"      = local.arch_label
-    "team"      = "tceng"
+    "team"      = var.team_key
   }
 }
 
@@ -63,9 +64,9 @@ build {
   name    = "tceng"
   sources = ["source.googlecompute.tceng"]
 
-  # scripts/ lives at repo root
+  # dynamically uses the team path (scripts/linux/<team>/...)
   provisioner "file" {
-    source      = "${path.cwd}/scripts/linux/tceng/${var.bootstrap_script}"
+    source      = "${path.root}/../scripts/linux/${var.team_key}/${var.bootstrap_script}"
     destination = "/tmp/bootstrap.sh"
   }
 
