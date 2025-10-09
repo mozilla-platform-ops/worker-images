@@ -12,6 +12,7 @@ vm:
   tc_arch: "amd64"
   taskcluster_version: "v90.0.3"
   script_name: "generic-worker-ubuntu-24-04.sh"
+  machine_type: "t2a-standard-4"
   tags:
     image_set: "tceng-generic-worker-ubuntu-24-04-arm64"
     maintainer: "Taskcluster Engineering"

@@ -81,6 +81,16 @@ function New-GCPWorkerImage {
         $ENV:PACKER_GITHUB_API_TOKEN = $Github_token
     }
 
+    if ($YAML.vm["machine_type"]) {
+        # use the YAML-defined type
+        $ENV:PKR_VAR_machine_type = $YAML.vm["machine_type"]
+        Write-Host "Using machine type from YAML: $($YAML.vm['machine_type'])"
+    }
+    else {
+        # leave unset → Packer will use its internal defaults
+        Write-Host "No machine_type specified in YAML; using default from builder"
+    }
+
     ## Initialize and build
     Write-Host "packer init $PackerHCLPath"
     packer init $PackerHCLPath

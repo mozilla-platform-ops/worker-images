@@ -21,6 +21,9 @@ variable "source_image_family" { default = env("PKR_VAR_source_image_family") }
 variable "zone"                { default = env("PKR_VAR_zone") }
 variable "bootstrap_script"    { default = env("PKR_VAR_bootstrap_script") }
 
+# NEW: optional machine_type (empty means "let Packer/GCP decide")
+variable "machine_type"        { default = env("PKR_VAR_machine_type") }
+
 variable "worker_env_var_key" {
   type      = string
   default   = env("PKR_VAR_worker_env_var_key")
@@ -54,6 +57,9 @@ source "googlecompute" "tceng" {
   ssh_username            = "ubuntu"
   disk_size               = local.disk_size_int
   use_iap                 = true
+
+  # NEW: only apply when provided
+  machine_type = var.machine_type != "" ? var.machine_type : null
 
   image_labels = {
     "image-set" = var.config
