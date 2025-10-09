@@ -1,0 +1,18 @@
+---
+image:
+  project_id: "taskcluster-imaging"
+  zone: "us-central1-a"
+  source_image_family: "ubuntu-2404-lts-amd64"
+  image_name: "generic-worker-ubuntu-24-04-staging"
+  workload_identity_provider_project_number: 324168772199
+
+vm:
+  providerType: "gcp"
+  disk_size: 60
+  tc_arch: "amd64"
+  taskcluster_version: "90.0.3"
+  script_name: "generic-worker-ubuntu-24-04-staging.sh"
+  tags:
+    image_set: "tceng-generic-worker-ubuntu-24-04-staging"
+    maintainer: "Taskcluster Engineering"
+    purpose: "tceng ubuntu-24-04-staging"
