@@ -22,24 +22,24 @@ makedirs () {
 
 # Main script logic
 if mount | grep -q "instance_storage"; then
-    echo "/mnt is already using an nvme0n* device."
+    echo "/mnt is already using a local device."
 else
-    echo "/mnt is not using an nvme0n* device. Setting it up..."
-    echo "Detecting available nvme0n* devices..."
+    echo "/mnt is not using a local SSD. Setting it up..."
+    echo "Detecting available local SSDs..."
 
-    # Detect all nvme0n* devices using lsblk and filter their names
     set +e
-    NVME_DEVICES=\$(lsblk -dn -o PATH | grep nvme0n)
+    # This assumes we won't use more than 10 devices
+    NVME_DEVICES=\$(ls /dev/disk/by-id/google-local-nvme-ssd-?)
     set -e
     NVME_COUNT=\$(echo "\$NVME_DEVICES" | wc -l)
 
     if [ -z "\$NVME_DEVICES" ]; then
-        echo "No nvme0n* devices found! Exiting..."
+        echo "No google-local-nvme-ssd devices found! Exiting..."
         makedirs
         exit 0
     fi
 
-    echo "Found \$NVME_COUNT nvme0n* devices: \$NVME_DEVICES"
+    echo "Found \$NVME_COUNT local SSD devices: \$NVME_DEVICES"
 
     # Create a volume group
     vgcreate -y instance_storage \${NVME_DEVICES}
@@ -69,7 +69,7 @@ else
 END
     fi
 
-    echo "/mnt is now using nvme0n* devices."
+    echo "/mnt is now using local SSDs."
 fi
 
 makedirs
