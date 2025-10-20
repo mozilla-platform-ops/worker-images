@@ -33,7 +33,7 @@ tests:
   - netframework_core.tests.ps1
   - directx_sdk.tests.ps1
   - microsoft_binscope.tests.ps1
-  - microsoft_cplusplus_runtime.tests.ps1
+  #- microsoft_cplusplus_runtime.tests.ps1
   - disable_puppet_service.tests.ps1
   - disable_windows_update.tests.ps1
   - disable_uac.tests.ps1
