@@ -430,7 +430,7 @@ build {
       "${path.cwd}/tests/linux/prep.sh",
       "${path.cwd}/tests/linux/install_pester.sh",
       "${path.cwd}/tests/linux/test_docker.sh",
-      #"${path.cwd}/tests/linux/run_all_tests.sh"
+      "${path.cwd}/tests/linux/run_all_tests.sh"
     ]
     valid_exit_codes = [
       0
