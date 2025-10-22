@@ -18,7 +18,7 @@ permissions:
 
 ## REMOVE after PR is merged
 env:
-  TARGET_BRANCH: RELOPS-1940
+  TARGET_BRANCH: main
 
 jobs:
   check-access:
