@@ -1,6 +1,6 @@
 ---
 image:
-  project_id: "taskcluster-imaging"
+  project_id: "community-tc-workers"
   zone: "us-central1-a"
   source_image_family: "ubuntu-2404-lts-amd64"
   image_name: "generic-worker-ubuntu-24-04"
