@@ -99,7 +99,7 @@ source "googlecompute" "gw-fxci-gcp-l1-2404-gui-alpha" {
   use_iap             = true
 }
 
-source "googlecompute" "gw-fxci-gcp-l3-2404-headless" {
+source "googlecompute" "trusted-gw-fxci-gcp-l3-2404-headless" {
   disk_size               = var.disk_size
   disk_type               = "pd-ssd"
   image_licenses          = ["projects/vm-options/global/licenses/enable-vmx"]
@@ -237,7 +237,7 @@ build {
 build {
   sources = [
     "source.googlecompute.gw-fxci-gcp-l1-2404-headless-alpha",
-    "source.googlecompute.gw-fxci-gcp-l3-2404-headless"
+    "source.googlecompute.trusted-gw-fxci-gcp-l3-2404-headless"
   ]
 
   ## Every image has tests, so create the tests directory
