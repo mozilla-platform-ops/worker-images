@@ -1,15 +1,31 @@
 packer {
   required_plugins {
     googlecompute = {
-      version = ">= 1.1.4"
       source  = "github.com/hashicorp/googlecompute"
+      version = "~> 1"
     }
   }
+}
+
+data "googlecompute-secretsmanager" "cot" {
+  project_id = var.project_id
+  name       = "cot"
+}
+
+local "cotkey" {
+  expression = var.use_keyvault ? data.googlecompute-secretsmanager.cot.value : ""
+  sensitive  = true
 }
 
 variable "image_name" {
   type    = string
   default = "${env("IMAGE_NAME")}"
+}
+
+variable "use_keyvault" {
+  type        = bool
+  default     = false
+  description = "Whether to fetch secrets from Google Secrets Manager"
 }
 
 variable "disk_size" {
@@ -83,45 +99,44 @@ source "googlecompute" "gw-fxci-gcp-l1-2404-gui-alpha" {
   use_iap             = true
 }
 
-source "googlecompute" "gw-fxci-gcp-l1-2404-headless-alpha" {
-  disk_size           = var.disk_size
-  disk_type           = "pd-ssd"
-  image_licenses      = ["projects/vm-options/global/licenses/enable-vmx"]
-  image_name          = var.image_name
-  machine_type        = null
-  project_id          = var.project_id
-  source_image_family = var.source_image_family
-  ssh_username        = "ubuntu"
-  zone                = var.zone
-  use_iap             = true
+source "googlecompute" "gw-fxci-gcp-l3-2404-headless" {
+  disk_size               = var.disk_size
+  disk_type               = "pd-ssd"
+  image_licenses          = ["projects/vm-options/global/licenses/enable-vmx"]
+  image_name              = var.image_name
+  machine_type            = null
+  project_id              = var.project_id
+  source_image_family     = var.source_image_family
+  ssh_username            = "ubuntu"
+  zone                    = var.zone
+  use_iap                 = true
   image_guest_os_features = ["GVNIC"]
 }
 
-source "googlecompute" "gw-fxci-gcp-l1-2404-headless-alpha-tc" {
-  disk_size           = var.disk_size
-  disk_type           = "pd-ssd"
-  image_licenses      = ["projects/vm-options/global/licenses/enable-vmx"]
-  image_name          = var.image_name
-  machine_type        = null
-  project_id          = var.project_id
-  source_image_family = var.source_image_family
-  ssh_username        = "ubuntu"
-  zone                = var.zone
-  use_iap             = true
+source "googlecompute" "gw-fxci-gcp-l1-2404-headless-alpha" {
+  disk_size               = var.disk_size
+  disk_type               = "pd-ssd"
+  image_licenses          = ["projects/vm-options/global/licenses/enable-vmx"]
+  image_name              = var.image_name
+  machine_type            = null
+  project_id              = var.project_id
+  source_image_family     = var.source_image_family
+  ssh_username            = "ubuntu"
+  zone                    = var.zone
+  use_iap                 = true
   image_guest_os_features = ["GVNIC"]
 }
 
 source "googlecompute" "gw-fxci-gcp-l1-2404-arm64-headless-alpha" {
-  disk_size           = var.disk_size
-  #disk_type           = "pd-ssd"
-  image_licenses      = ["projects/vm-options/global/licenses/enable-vmx"]
-  image_name          = var.image_name
-  machine_type        = "t2a-standard-4"
-  project_id          = var.project_id
-  source_image_family = var.source_image_family
-  ssh_username        = "ubuntu"
-  zone                = var.zone
-  use_iap             = true
+  disk_size               = var.disk_size
+  image_licenses          = ["projects/vm-options/global/licenses/enable-vmx"]
+  image_name              = var.image_name
+  machine_type            = "t2a-standard-4"
+  project_id              = var.project_id
+  source_image_family     = var.source_image_family
+  ssh_username            = "ubuntu"
+  zone                    = var.zone
+  use_iap                 = true
   image_guest_os_features = ["GVNIC"]
 }
 
@@ -129,7 +144,7 @@ build {
   sources = [
     "source.googlecompute.gw-fxci-gcp-l1-2404-gui-alpha"
   ]
-  
+
   // ## Every image has tests, so create the tests directory
   // provisioner "shell" {
   //   execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
@@ -170,9 +185,9 @@ build {
 
   ## Reboot to get wayland config applied
   provisioner "shell" {
-    execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
-    expect_disconnect = true
-    pause_before = "10s"
+    execute_command     = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
+    expect_disconnect   = true
+    pause_before        = "10s"
     start_retry_timeout = "30m"
     scripts = [
       "${path.cwd}/scripts/linux/common/reboot.sh"
@@ -202,9 +217,9 @@ build {
 
   ## Install gcp ops agent and cleanup
   provisioner "shell" {
-    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    execute_command   = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect = true
-    pause_before = "10s"
+    pause_before      = "10s"
     scripts = [
       #"${path.cwd}/scripts/linux/common/install-ops-agent.sh",
       "${path.cwd}/scripts/linux/common/clean.sh"
@@ -221,7 +236,8 @@ build {
 
 build {
   sources = [
-    "source.googlecompute.gw-fxci-gcp-l1-2404-headless-alpha"
+    "source.googlecompute.gw-fxci-gcp-l1-2404-headless-alpha",
+    "source.googlecompute.gw-fxci-gcp-l3-2404-headless"
   ]
 
   ## Every image has tests, so create the tests directory
@@ -262,7 +278,7 @@ build {
   }
 
   provisioner "shell" {
-    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    execute_command   = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect = true
     scripts = [
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/nvidia-gcp-driver-cudnn.sh"
@@ -270,9 +286,9 @@ build {
   }
 
   provisioner "shell" {
-    execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
-    expect_disconnect = true
-    pause_before = "30s"
+    execute_command     = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
+    expect_disconnect   = true
+    pause_before        = "30s"
     start_retry_timeout = "30m"
     scripts = [
       "${path.cwd}/scripts/linux/common/reboot.sh"
@@ -280,7 +296,7 @@ build {
   }
 
   provisioner "shell" {
-    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    execute_command   = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect = true
     scripts = [
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/nvidia-container-toolkit.sh"
@@ -288,19 +304,18 @@ build {
   }
 
   provisioner "shell" {
-    execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
-    expect_disconnect = true
-    pause_before = "30s"
+    execute_command     = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
+    expect_disconnect   = true
+    pause_before        = "30s"
     start_retry_timeout = "30m"
     scripts = [
       "${path.cwd}/scripts/linux/common/reboot.sh"
     ]
   }
 
-  ## Run all tests
   provisioner "shell" {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-    pause_before = "90s"
+    pause_before    = "90s"
     environment_vars = [
       "CLOUD=google",
       "TC_ARCH=${var.tc_arch}",
@@ -317,107 +332,25 @@ build {
     ]
   }
 
-    ## Install gcp ops agent and cleanup
   provisioner "shell" {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-    expect_disconnect = true
-    scripts = [
-      #"${path.cwd}/scripts/linux/common/install-ops-agent.sh"
-      "${path.cwd}/scripts/linux/common/clean.sh",
-    ]
-    start_retry_timeout = "30m"
-  }
-
-  post-processor "manifest" {
-    output     = "packer-artifacts.json"
-    strip_path = true
-  }
-
-}
-
-build {
-  sources = [
-    "source.googlecompute.gw-fxci-gcp-l1-2404-headless-alpha-tc"
-  ]
-
-  ## Every image has tests, so create the tests directory
-  provisioner "shell" {
-    execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
-    inline = [
-      "mkdir -p /workerimages/tests",
-      "chmod -R 777 /workerimages/tests",
-    ]
-  }
-
-  ## Every image has taskcluster, so upload the taskcluster tests fle
-  provisioner "file" {
-    source      = "${path.cwd}/tests/linux/taskcluster.tests.ps1"
-    destination = "/workerimages/tests/taskcluster.tests.ps1"
-  }
-
-  provisioner "shell" {
-    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    pause_before    = "90s"
     environment_vars = [
-      "CLOUD=google",
-      "TC_ARCH=${var.tc_arch}",
-      #"TASKCLUSTER_VERSION=${var.taskcluster_version}",
-      "NUM_LOOPBACK_AUDIO_DEVICES=8",
-      "NUM_LOOPBACK_VIDEO_DEVICES=8",
-      "TASKCLUSTER_REF=${var.taskcluster_ref}"
+      "cotkey=${local.cotkey}",
+      "use_keyvault=${var.use_keyvault}"
     ]
     scripts = [
-      "${path.cwd}/scripts/linux/common/papertrail.sh",
-      "${path.cwd}/scripts/linux/taskcluster/bootstrap.sh",
-      "${path.cwd}/scripts/linux/common/additional-packages.sh",
-      "${path.cwd}/scripts/linux/common/aslr.sh",
-      "${path.cwd}/scripts/linux/common/docker-config.sh",
-      "${path.cwd}/scripts/linux/common/ephemeral-disks.sh",
-      "${path.cwd}/scripts/linux/common/configure-nvidia-gpus.sh",
-      "${path.cwd}/scripts/linux/common/userns.sh",
-      "${path.cwd}/scripts/linux/common/v4l2loopback.sh"
+      "${path.cwd}/scripts/linux/common/cot.sh"
     ]
-  }
-
-  provisioner "shell" {
-    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-    expect_disconnect = true
-    scripts = [
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/nvidia-gcp-driver-cudnn.sh"
-    ]
-  }
-
-  provisioner "shell" {
-    execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
-    expect_disconnect = true
-    pause_before = "30s"
-    start_retry_timeout = "30m"
-    scripts = [
-      "${path.cwd}/scripts/linux/common/reboot.sh"
-    ]
-  }
-
-  provisioner "shell" {
-    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-    expect_disconnect = true
-    scripts = [
-      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/nvidia-container-toolkit.sh"
-    ]
-  }
-
-  provisioner "shell" {
-    execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
-    expect_disconnect = true
-    pause_before = "30s"
-    start_retry_timeout = "30m"
-    scripts = [
-      "${path.cwd}/scripts/linux/common/reboot.sh"
+    valid_exit_codes = [
+      0
     ]
   }
 
   ## Run all tests
   provisioner "shell" {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-    pause_before = "90s"
+    pause_before    = "90s"
     environment_vars = [
       "CLOUD=google",
       "TC_ARCH=${var.tc_arch}",
@@ -427,20 +360,19 @@ build {
       "${path.cwd}/tests/linux/prep.sh",
       "${path.cwd}/tests/linux/install_pester.sh",
       "${path.cwd}/tests/linux/test_docker.sh",
-      #"${path.cwd}/tests/linux/run_all_tests.sh"
+      "${path.cwd}/tests/linux/run_all_tests.sh"
     ]
     valid_exit_codes = [
       0
     ]
   }
 
-    ## Install gcp ops agent and cleanup
   provisioner "shell" {
-    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    execute_command   = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect = true
     scripts = [
       #"${path.cwd}/scripts/linux/common/install-ops-agent.sh"
-      "${path.cwd}/scripts/linux/common/clean.sh",
+      "${path.cwd}/scripts/linux/common/clean.sh"
     ]
     start_retry_timeout = "30m"
   }
@@ -495,9 +427,9 @@ build {
   }
 
   provisioner "shell" {
-    execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
-    expect_disconnect = true
-    pause_before = "30s"
+    execute_command     = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
+    expect_disconnect   = true
+    pause_before        = "30s"
     start_retry_timeout = "30m"
     scripts = [
       "${path.cwd}/scripts/linux/common/reboot.sh"
@@ -507,7 +439,7 @@ build {
   ## Run all tests
   provisioner "shell" {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-    pause_before = "90s"
+    pause_before    = "90s"
     environment_vars = [
       "CLOUD=google",
       "TC_ARCH=${var.tc_arch}",
@@ -524,9 +456,9 @@ build {
     ]
   }
 
-    ## Install gcp ops agent and cleanup
+  ## Install gcp ops agent and cleanup
   provisioner "shell" {
-    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    execute_command   = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect = true
     scripts = [
       #"${path.cwd}/scripts/linux/common/install-ops-agent.sh",

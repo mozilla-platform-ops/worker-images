@@ -96,11 +96,9 @@ function New-GCPWorkerImage {
     packer init $PackerHCLPath
     if ($key -match "Trusted") {
         $ENV:PKR_VAR_use_keyvault = "true"
-        $ENV:PKR_VAR_vault_name = "kv-central-us-cot"
     }
     else {
         $ENV:PKR_VAR_use_keyvault = "false"
-        $ENV:PKR_VAR_vault_name = "kv-central-us-key"
     }
     if ($Team -and $Team -ieq "tceng") {
         # tceng uses single generic build; no --only flag
