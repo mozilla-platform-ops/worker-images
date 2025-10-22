@@ -69,24 +69,6 @@ variable "access_token" {
   sensitive = true
 }
 
-variable "worker_env_var_key" {
-  type      = string
-  default   = "${env("WORKER_ENV_VAR_KEY")}"
-  sensitive = true
-}
-
-variable "tc_worker_cert" {
-  type      = string
-  default   = "${env("TC_WORKER_CERT")}"
-  sensitive = true
-}
-
-variable "tc_worker_key" {
-  type      = string
-  default   = "${env("TC_WORKER_KEY")}"
-  sensitive = true
-}
-
 source "googlecompute" "gw-fxci-gcp-l1-2404-gui-alpha" {
   disk_size           = var.disk_size
   image_licenses      = ["projects/vm-options/global/licenses/enable-vmx"]
