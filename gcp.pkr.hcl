@@ -317,25 +317,6 @@ build {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     pause_before    = "90s"
     environment_vars = [
-      "CLOUD=google",
-      "TC_ARCH=${var.tc_arch}",
-      "TASKCLUSTER_VERSION=${var.taskcluster_version}",
-    ]
-    scripts = [
-      "${path.cwd}/tests/linux/prep.sh",
-      "${path.cwd}/tests/linux/install_pester.sh",
-      "${path.cwd}/tests/linux/test_docker.sh",
-      "${path.cwd}/tests/linux/run_all_tests.sh"
-    ]
-    valid_exit_codes = [
-      0
-    ]
-  }
-
-  provisioner "shell" {
-    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-    pause_before    = "90s"
-    environment_vars = [
       "cotkey=${local.cotkey}",
       "use_keyvault=${var.use_keyvault}"
     ]
