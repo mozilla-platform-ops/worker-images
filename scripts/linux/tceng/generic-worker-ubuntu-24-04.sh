@@ -2,7 +2,7 @@
 
 set -exv
 # exec &> /var/log/bootstrap.log
-exec > >(tee -a /var/log/bootstrap.log)
+#exec > >(tee -a /var/log/bootstrap.log)
 
 if [[ -z "${MY_CLOUD}" ]]; then
   echo "Error: MY_CLOUD environment variable not set. Expected one of: google, azure, aws." >&2

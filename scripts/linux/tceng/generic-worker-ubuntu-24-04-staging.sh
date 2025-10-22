@@ -5,7 +5,7 @@ if [[ -z "${MY_CLOUD}" ]]; then
 fi
 
 set -exv
-exec &> /var/log/bootstrap.log
+#exec &> /var/log/bootstrap.log
 
 ##############################################################################
 # TASKCLUSTER_REF can be a git commit SHA, a git branch name, or a git tag name
