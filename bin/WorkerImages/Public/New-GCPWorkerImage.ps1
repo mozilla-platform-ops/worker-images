@@ -53,8 +53,7 @@ function New-GCPWorkerImage {
             throw "UUID not set — required for tceng image naming"
         }
         $sanitizedUuid = $ENV:PKR_VAR_uuid -replace '[^a-z0-9]', ''
-        $date = Get-Date -Format "yyyy-MM-dd"
-        $imageName = @($YAML.image["image_name"],$date,$sanitizedUuid) -join "-"
+        $imageName = @($YAML.image["image_name"],$sanitizedUuid) -join "-"
         Write-Host "tceng image name: $imageName"
         $ENV:PKR_VAR_image_name = $imageName
     } elseif ($Key -notmatch "alpha") {
