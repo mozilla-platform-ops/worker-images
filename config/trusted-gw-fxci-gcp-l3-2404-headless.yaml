@@ -1,0 +1,13 @@
+---
+image:
+  source_image_family: ubuntu-2404-lts-amd64
+  project_id: "fxci-production-level3-workers"
+  workload_identity_provider_project_number: 324168772199
+  image_name: trusted-gw-fxci-gcp-l3-2404-headless
+  zone: us-west1-a
+vm:
+  disk_size: 60
+  taskcluster_version: 90.0.5
+  tc_arch: AMD64
+  script_paths: 
+  - "scripts/linux/ubuntu-2404-headless-amd64-headless"

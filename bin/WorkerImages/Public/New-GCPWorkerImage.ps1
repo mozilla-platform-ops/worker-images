@@ -42,11 +42,6 @@ function New-GCPWorkerImage {
     $YAML = ConvertFrom-Yaml (Get-Content $YamlPath -Raw)
     $ENV:PKR_VAR_config = $Key
 
-    ## Taskcluster Secrets
-    $ENV:PKR_VAR_worker_env_var_key = $Worker_Env_Var_Key
-    $ENV:PKR_VAR_tc_worker_cert     = $TC_worker_cert
-    $ENV:PKR_VAR_tc_worker_key      = $TC_worker_key
-
     ## Image naming
     if ($Team -and $Team -ieq "tceng") {
         if (-not $ENV:PKR_VAR_uuid) {
@@ -94,7 +89,12 @@ function New-GCPWorkerImage {
     ## Initialize and build
     Write-Host "packer init $PackerHCLPath"
     packer init $PackerHCLPath
-
+    if ($key -match "Trusted") {
+        $ENV:PKR_VAR_use_keyvault = "true"
+    }
+    else {
+        $ENV:PKR_VAR_use_keyvault = "false"
+    }
     if ($Team -and $Team -ieq "tceng") {
         # tceng uses single generic build; no --only flag
         Write-Host "packer build -force $PackerHCLPath"

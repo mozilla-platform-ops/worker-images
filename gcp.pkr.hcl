@@ -1,15 +1,31 @@
 packer {
   required_plugins {
     googlecompute = {
-      version = ">= 1.1.4"
       source  = "github.com/hashicorp/googlecompute"
+      version = "~> 1"
     }
   }
+}
+
+data "googlecompute-secretsmanager" "cot" {
+  project_id = var.project_id
+  name       = "cot"
+}
+
+local "cotkey" {
+  expression = var.use_keyvault ? data.googlecompute-secretsmanager.cot.value : ""
+  sensitive  = true
 }
 
 variable "image_name" {
   type    = string
   default = "${env("IMAGE_NAME")}"
+}
+
+variable "use_keyvault" {
+  type        = bool
+  default     = false
+  description = "Whether to fetch secrets from Google Secrets Manager"
 }
 
 variable "disk_size" {
@@ -53,24 +69,6 @@ variable "access_token" {
   sensitive = true
 }
 
-variable "worker_env_var_key" {
-  type      = string
-  default   = "${env("WORKER_ENV_VAR_KEY")}"
-  sensitive = true
-}
-
-variable "tc_worker_cert" {
-  type      = string
-  default   = "${env("TC_WORKER_CERT")}"
-  sensitive = true
-}
-
-variable "tc_worker_key" {
-  type      = string
-  default   = "${env("TC_WORKER_KEY")}"
-  sensitive = true
-}
-
 source "googlecompute" "gw-fxci-gcp-l1-2404-gui-alpha" {
   disk_size           = var.disk_size
   image_licenses      = ["projects/vm-options/global/licenses/enable-vmx"]
@@ -81,6 +79,20 @@ source "googlecompute" "gw-fxci-gcp-l1-2404-gui-alpha" {
   ssh_username        = "ubuntu"
   zone                = var.zone
   use_iap             = true
+}
+
+source "googlecompute" "trusted-gw-fxci-gcp-l3-2404-headless" {
+  disk_size               = var.disk_size
+  disk_type               = "pd-ssd"
+  image_licenses          = ["projects/vm-options/global/licenses/enable-vmx"]
+  image_name              = var.image_name
+  machine_type            = null
+  project_id              = var.project_id
+  source_image_family     = var.source_image_family
+  ssh_username            = "ubuntu"
+  zone                    = var.zone
+  use_iap                 = true
+  image_guest_os_features = ["GVNIC"]
 }
 
 source "googlecompute" "gw-fxci-gcp-l1-2404-headless-alpha" {
@@ -97,23 +109,8 @@ source "googlecompute" "gw-fxci-gcp-l1-2404-headless-alpha" {
   image_guest_os_features = ["GVNIC"]
 }
 
-source "googlecompute" "gw-fxci-gcp-l1-2404-headless-alpha-tc" {
-  disk_size               = var.disk_size
-  disk_type               = "pd-ssd"
-  image_licenses          = ["projects/vm-options/global/licenses/enable-vmx"]
-  image_name              = var.image_name
-  machine_type            = null
-  project_id              = var.project_id
-  source_image_family     = var.source_image_family
-  ssh_username            = "ubuntu"
-  zone                    = var.zone
-  use_iap                 = true
-  image_guest_os_features = ["GVNIC"]
-}
-
 source "googlecompute" "gw-fxci-gcp-l1-2404-arm64-headless-alpha" {
-  disk_size = var.disk_size
-  #disk_type           = "pd-ssd"
+  disk_size               = var.disk_size
   image_licenses          = ["projects/vm-options/global/licenses/enable-vmx"]
   image_name              = var.image_name
   machine_type            = "t2a-standard-4"
@@ -221,7 +218,8 @@ build {
 
 build {
   sources = [
-    "source.googlecompute.gw-fxci-gcp-l1-2404-headless-alpha"
+    "source.googlecompute.gw-fxci-gcp-l1-2404-headless-alpha",
+    "source.googlecompute.trusted-gw-fxci-gcp-l3-2404-headless"
   ]
 
   ## Every image has tests, so create the tests directory
@@ -297,6 +295,21 @@ build {
     ]
   }
 
+  provisioner "shell" {
+    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    pause_before    = "90s"
+    environment_vars = [
+      "cotkey=${local.cotkey}",
+      "use_keyvault=${var.use_keyvault}"
+    ]
+    scripts = [
+      "${path.cwd}/scripts/linux/common/cot.sh"
+    ]
+    valid_exit_codes = [
+      0
+    ]
+  }
+
   ## Run all tests
   provisioner "shell" {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
@@ -317,7 +330,6 @@ build {
     ]
   }
 
-  ## Install gcp ops agent and cleanup
   provisioner "shell" {
     execute_command   = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect = true
