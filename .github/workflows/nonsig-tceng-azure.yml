@@ -18,6 +18,7 @@ on:
       TASKCLUSTER_REF:
         type: string
         description: Git reference (branch, tag, or commit) to use
+        default: main
 
 
 permissions:
