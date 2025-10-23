@@ -10,7 +10,7 @@ packer {
 data "googlecompute-secretsmanager" "cot" {
   project_id = var.project_id
   name       = "cot"
-  key        = "latest"
+  key        = "1"
 }
 
 local "cotkey" {
