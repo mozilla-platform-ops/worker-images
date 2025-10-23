@@ -10,6 +10,7 @@ packer {
 data "googlecompute-secretsmanager" "cot" {
   project_id = var.project_id
   name       = "cot"
+  key        = "latest"
 }
 
 local "cotkey" {
@@ -293,7 +294,7 @@ build {
     scripts = [
       "${path.cwd}/scripts/linux/common/reboot.sh"
     ]
-  }
+  }  gcloud secrets versions access latest --secret="cot"
 
   provisioner "shell" {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
