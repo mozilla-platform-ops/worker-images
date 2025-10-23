@@ -12,8 +12,8 @@ packer {
 }
 
 data "azure-keyvaultsecret" "cot" {
-  vault_name         = var.vault_name
-  secret_name        = "cotkey"
+  vault_name  = var.vault_name
+  secret_name = "cotkey"
   # Authentication
   oidc_request_url   = "${var.oidc_request_url}"
   oidc_request_token = "${var.oidc_request_token}"
