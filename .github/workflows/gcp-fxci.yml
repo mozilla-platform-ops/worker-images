@@ -1,5 +1,5 @@
-run-name: GCP - Trusted - ${{ github.event.inputs.config }}
-name: FXCI - GCP - Trusted
+run-name: GCP - ${{ github.event.inputs.config }}
+name: FXCI - GCP
 
 on:
   workflow_dispatch:
@@ -8,7 +8,10 @@ on:
         type: choice
         description: Choose which pool to build
         options:
-        - trusted-gw-fxci-gcp-l3-2404-headless
+        - gw-fxci-gcp-l1-2404-gui-alpha
+        - gw-fxci-gcp-l1-2404-headless-alpha
+        - gw-fxci-gcp-l1-2404-arm64-headless-alpha
+        - trusted-gw-fxci-gcp-l3-2404-headless-alpha
 
 permissions:
   id-token: write
@@ -72,3 +75,26 @@ jobs:
             Key = '${{ github.event.inputs.config }}'
           }
           New-GCPWorkerImage @Vars
+  wiz:
+    needs: [packer, setproject]
+    name: "Wiz scan ${{ github.event.inputs.config }}"
+    runs-on: ubuntu-latest
+    environment: prod
+    if: ${{ !contains(github.event.inputs.config, 'trusted') }}
+    steps:
+      - name: Download Wiz CLI
+        run: curl -o wizcli https://downloads.wiz.io/wizcli/latest/wizcli-linux-amd64 && chmod +x wizcli
+      - name: Authenticate to Wiz
+        run: ./wizcli auth --id "$WIZ_CLIENT_ID" --secret "$WIZ_CLIENT_SECRET"
+        env:
+          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
+          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
+      - name: Run wiz-cli scan
+        run: |
+          ./wizcli vm-image scan \
+          --id ${{ needs.setproject.outputs.IMAGENAME }} \
+          --region us-west1 \
+          --subscriptionId ${{ needs.setproject.outputs.PROJECT }} \
+          --secrets \
+          --show-vulnerability-details \
+          --policy-hits-only

@@ -72,9 +72,7 @@ function New-GCPWorkerImage {
     if ($YAML.image["zone"])               { $ENV:PKR_VAR_zone                 = $YAML.image["zone"] }
     if ($YAML.vm["script_name"])           { $ENV:PKR_VAR_bootstrap_script     = $YAML.vm["script_name"] }
 
-    if ($Github_token) {
-        $ENV:PACKER_GITHUB_API_TOKEN = $Github_token
-    }
+    $ENV:PACKER_GITHUB_API_TOKEN = $Github_token
 
     if ($YAML.vm["machine_type"]) {
         # use the YAML-defined type
