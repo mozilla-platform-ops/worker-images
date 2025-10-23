@@ -1,11 +1,12 @@
 param (
-    [string]$MY_CLOUD
+    [string]$MY_CLOUD,
+    [string]$TASKCLUSTER_REF
 )
 
 ##############################################################################
 # TASKCLUSTER_REF can be a git commit SHA, a git branch name, or a git tag name
 # (i.e. for a taskcluster version number, prefix with 'v' to make it a git tag)
-$TASKCLUSTER_REF = "main"
+$TASKCLUSTER_REF = $TASKCLUSTER_REF
 $TASKCLUSTER_REPO = "https://github.com/taskcluster/taskcluster"
 ##############################################################################
 

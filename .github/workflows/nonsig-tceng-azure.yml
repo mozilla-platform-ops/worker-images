@@ -15,6 +15,9 @@ on:
         - generic-worker-win11-24h2-staging
         - generic-worker-win2025-staging
         - image_development
+      TASKCLUSTER_REF:
+        type: string
+        description: Git reference (branch, tag, or commit) to use
 
 
 permissions:
@@ -103,6 +106,8 @@ jobs:
 
       - name: 'Run Packer'
         shell: pwsh
+        env:
+          TASKCLUSTER_REF:    ${{ github.event.inputs.TASKCLUSTER_REF }}
         run: |
           Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
           $Vars = @{
