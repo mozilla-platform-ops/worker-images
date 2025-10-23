@@ -237,6 +237,7 @@ build {
     destination = "/workerimages/tests/taskcluster.tests.ps1"
   }
 
+  ## Install only common stuff on both images
   provisioner "shell" {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     environment_vars = [
@@ -253,16 +254,24 @@ build {
       "${path.cwd}/scripts/linux/common/aslr.sh",
       "${path.cwd}/scripts/linux/common/docker-config.sh",
       "${path.cwd}/scripts/linux/common/ephemeral-disks.sh",
-      "${path.cwd}/scripts/linux/common/configure-nvidia-gpus.sh",
       "${path.cwd}/scripts/linux/common/userns.sh",
       "${path.cwd}/scripts/linux/common/v4l2loopback.sh"
     ]
   }
 
   provisioner "shell" {
+    only              = ["source.googlecompute.gw-fxci-gcp-l1-2404-headless-alpha"]
     execute_command   = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect = true
+    environment_vars = [
+      "CLOUD=google",
+      "TC_ARCH=${var.tc_arch}",
+      "TASKCLUSTER_VERSION=${var.taskcluster_version}",
+      "NUM_LOOPBACK_AUDIO_DEVICES=8",
+      "NUM_LOOPBACK_VIDEO_DEVICES=8"
+    ]
     scripts = [
+      "${path.cwd}/scripts/linux/common/configure-nvidia-gpus.sh",
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/nvidia-gcp-driver-cudnn.sh"
     ]
   }
@@ -278,6 +287,7 @@ build {
   }
 
   provisioner "shell" {
+    only              = ["source.googlecompute.gw-fxci-gcp-l1-2404-headless-alpha"]
     execute_command   = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect = true
     scripts = [
@@ -286,6 +296,7 @@ build {
   }
 
   provisioner "shell" {
+    only                = ["source.googlecompute.gw-fxci-gcp-l1-2404-headless-alpha"]
     execute_command     = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect   = true
     pause_before        = "30s"
@@ -296,6 +307,7 @@ build {
   }
 
   provisioner "shell" {
+    only            = ["source.googlecompute.trusted-gw-fxci-gcp-l3-2404-headless-alpha"]
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     pause_before    = "90s"
     environment_vars = [
