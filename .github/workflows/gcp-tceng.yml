@@ -14,6 +14,7 @@ on:
       TASKCLUSTER_REF:
         type: string
         description: Git reference (branch, tag, or commit) to use
+        default: main
 
 permissions:
   id-token: write
@@ -95,6 +96,7 @@ jobs:
           GITHUB_TOKEN:       ${{ secrets.GITHUB_TOKEN }}
           TASKCLUSTER_REF:    ${{ github.event.inputs.TASKCLUSTER_REF }}
         run: |
+          $ENV:PKR_VAR_taskcluster_ref = $ENV:TASKCLUSTER_REF
           Import-Module "${{ github.workspace }}/bin/WorkerImages/WorkerImages.psm1"
           $Vars = @{
             github_token       = "${{ secrets.GITHUB_TOKEN }}"
