@@ -229,7 +229,7 @@ build {
   }
 
   provisioner "shell" {
-    only              = [
+    only = [
       "source.googlecompute.gw-fxci-gcp-l1-2404-headless-alpha",
       "source.googlecompute.gw-fxci-gcp-l1-2404-arm64-headless-alpha"
     ]
@@ -259,10 +259,10 @@ build {
   }
 
   provisioner "shell" {
-    only              = [
+    only = [
       "source.googlecompute.gw-fxci-gcp-l1-2404-headless-alpha",
       "source.googlecompute.gw-fxci-gcp-l1-2404-arm64-headless-alpha"
-      ]
+    ]
     execute_command   = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect = true
     scripts = [
@@ -271,10 +271,10 @@ build {
   }
 
   provisioner "shell" {
-    only                = [
+    only = [
       "source.googlecompute.gw-fxci-gcp-l1-2404-headless-alpha",
       "source.googlecompute.gw-fxci-gcp-l1-2404-arm64-headless-alpha"
-      ]
+    ]
     execute_command     = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect   = true
     pause_before        = "30s"
@@ -285,10 +285,10 @@ build {
   }
 
   provisioner "shell" {
-    only            = [
+    only = [
       "source.googlecompute.trusted-gw-fxci-gcp-l3-2404-headless-alpha",
       "source.googlecompute.trusted-gw-fxci-gcp-l1-2404-arm64-headless-alpha"
-      ]
+    ]
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     pause_before    = "90s"
     environment_vars = [
