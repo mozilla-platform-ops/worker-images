@@ -87,7 +87,7 @@ build {
 
   provisioner "powershell" {
     inline = [
-      "& 'C:/Windows/Temp/bootstrap.ps1' -MY_CLOUD azure"
+      "& 'C:/Windows/Temp/bootstrap.ps1' -MY_CLOUD azure -TASKCLUSTER_REF '${var.taskcluster_ref}' ;"
     ]
   }
 
