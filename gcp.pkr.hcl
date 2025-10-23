@@ -10,11 +10,10 @@ packer {
 data "googlecompute-secretsmanager" "cot" {
   project_id = var.project_id
   name       = "cot"
-  key        = "1"
 }
 
 local "cotkey" {
-  expression = var.use_keyvault ? data.googlecompute-secretsmanager.cot.value : ""
+  expression = var.use_keyvault ? data.googlecompute-secretsmanager.cot.payload : ""
   sensitive  = true
 }
 
