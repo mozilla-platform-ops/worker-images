@@ -122,6 +122,19 @@ source "googlecompute" "gw-fxci-gcp-l1-2404-arm64-headless-alpha" {
   image_guest_os_features = ["GVNIC"]
 }
 
+source "googlecompute" "trusted-gw-fxci-gcp-l3-2404-arm64-headless-alpha" {
+  disk_size               = var.disk_size
+  image_licenses          = ["projects/vm-options/global/licenses/enable-vmx"]
+  image_name              = var.image_name
+  machine_type            = "t2a-standard-4"
+  project_id              = var.project_id
+  source_image_family     = var.source_image_family
+  ssh_username            = "ubuntu"
+  zone                    = var.zone
+  use_iap                 = true
+  image_guest_os_features = ["GVNIC"]
+}
+
 build {
   sources = [
     "source.googlecompute.gw-fxci-gcp-l1-2404-gui-alpha"
