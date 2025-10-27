@@ -188,7 +188,7 @@ build {
     "source.googlecompute.gw-fxci-gcp-l1-2404-headless-alpha",
     "source.googlecompute.trusted-gw-fxci-gcp-l3-2404-headless-alpha",
     "source.googlecompute.gw-fxci-gcp-l1-2404-arm64-headless-alpha",
-    "source.googlecompute.trusted-gw-fxci-gcp-l1-2404-arm64-headless-alpha"
+    "source.googlecompute.trusted-gw-fxci-gcp-l3-2404-arm64-headless-alpha"
   ]
 
   ## Every image has tests, so create the tests directory
@@ -287,7 +287,7 @@ build {
   provisioner "shell" {
     only = [
       "source.googlecompute.trusted-gw-fxci-gcp-l3-2404-headless-alpha",
-      "source.googlecompute.trusted-gw-fxci-gcp-l1-2404-arm64-headless-alpha"
+      "source.googlecompute.trusted-gw-fxci-gcp-l3-2404-arm64-headless-alpha"
     ]
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     pause_before    = "90s"
