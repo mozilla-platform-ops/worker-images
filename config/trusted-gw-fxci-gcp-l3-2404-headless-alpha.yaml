@@ -3,7 +3,7 @@ image:
   source_image_family: ubuntu-2404-lts-amd64
   project_id: "fxci-production-level3-workers"
   workload_identity_provider_project_number: 324168772199
-  image_name: gw-fxci-gcp-l3-2404-headless-alpha
+  image_name: gw-fxci-gcp-l3-2404-amd64-headless-alpha
   zone: us-west1-a
 vm:
   disk_size: 60
