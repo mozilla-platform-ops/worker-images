@@ -210,8 +210,7 @@ build {
 
   provisioner "shell" {
     only = [
-      "googlecompute.gw-fxci-gcp-l1-2404-headless-alpha",
-      "googlecompute.gw-fxci-gcp-l1-2404-arm64-headless-alpha"
+      "googlecompute.gw-fxci-gcp-l1-2404-headless-alpha"
     ]
     execute_command   = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect = true
