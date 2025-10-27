@@ -303,7 +303,24 @@ build {
       "source.googlecompute.trusted-gw-fxci-gcp-l3-2404-arm64-headless-alpha"
     ]
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-    pause_before    = "90s"
+    pause_before    = "30s"
+    environment_vars = [
+      "cotkey=${local.cotkey}",
+      "use_keyvault=${var.use_keyvault}"
+    ]
+    inline = [
+      "echo 'DEBUG: About to run COT script for trusted image'",
+      "echo 'DEBUG: use_keyvault=${var.use_keyvault}'"
+    ]
+  }
+
+  provisioner "shell" {
+    only = [
+      "source.googlecompute.trusted-gw-fxci-gcp-l3-2404-headless-alpha",
+      "source.googlecompute.trusted-gw-fxci-gcp-l3-2404-arm64-headless-alpha"
+    ]
+    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    pause_before    = "30s"
     environment_vars = [
       "cotkey=${local.cotkey}",
       "use_keyvault=${var.use_keyvault}"
