@@ -1,5 +1,5 @@
-run-name: FXCI Trusted - ${{ github.event.inputs.config }}
-name: FXCI - Trusted
+run-name: Non-SIG FXCI Trusted - ${{ github.event.inputs.config }}
+name: Non-SIG FXCI - Trusted
 
 on:
   workflow_dispatch:
