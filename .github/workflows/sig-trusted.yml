@@ -1,5 +1,5 @@
-run-name: SIG Trusted - ${{ github.event.inputs.config }}
-name: SIG Deployment - FXCI Trusted
+run-name: FXCI Azure Trusted - ${{ github.event.inputs.config }}
+name: FXCI - Azure - Trusted
 
 on:
   workflow_dispatch:

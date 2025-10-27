@@ -1,5 +1,5 @@
-run-name: SIG - ${{ github.event.inputs.config }}
-name: SIG Deployment - FXCI
+run-name: FXCI - Azure - ${{ github.event.inputs.config }}
+name: FXCI - Azure
 
 on:
   workflow_dispatch:
