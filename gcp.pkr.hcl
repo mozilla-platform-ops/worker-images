@@ -298,10 +298,6 @@ build {
   }
 
   provisioner "shell" {
-    only = [
-      "source.googlecompute.trusted-gw-fxci-gcp-l3-2404-headless-alpha",
-      "source.googlecompute.trusted-gw-fxci-gcp-l3-2404-arm64-headless-alpha"
-    ]
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     pause_before    = "30s"
     environment_vars = [
