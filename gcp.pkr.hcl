@@ -137,11 +137,32 @@ source "googlecompute" "trusted-gw-fxci-gcp-l3-2404-arm64-headless-alpha" {
 
 build {
   sources = [
-    "source.googlecompute.gw-fxci-gcp-l1-2404-gui-alpha"
+    "source.googlecompute.gw-fxci-gcp-l1-2404-headless-alpha",
+    "source.googlecompute.gw-fxci-gcp-l1-2404-gui-alpha",
+    "source.googlecompute.gw-fxci-gcp-l1-2404-arm64-headless-alpha",
+    "source.googlecompute.trusted-gw-fxci-gcp-l3-2404-headless-alpha",
+    "source.googlecompute.trusted-gw-fxci-gcp-l3-2404-arm64-headless-alpha"
   ]
 
-  ## Let's use taskcluster community shell script, the staging version
+  ## Every image has tests, so create the tests directory
   provisioner "shell" {
+    execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
+    inline = [
+      "mkdir -p /workerimages/tests",
+      "chmod -R 777 /workerimages/tests",
+    ]
+  }
+
+  ## Every image has taskcluster, so upload the taskcluster tests fle
+  provisioner "file" {
+    source      = "${path.cwd}/tests/linux/taskcluster.tests.ps1"
+    destination = "/workerimages/tests/taskcluster.tests.ps1"
+  }
+
+  provisioner "shell" {
+    only = [
+      "googlecompute.gw-fxci-gcp-l1-2404-gui-alpha"
+    ]
     execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
     environment_vars = [
       "CLOUD=google",
@@ -163,64 +184,10 @@ build {
     ]
   }
 
-  ## Reboot to get wayland config applied
   provisioner "shell" {
-    execute_command     = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
-    expect_disconnect   = true
-    pause_before        = "10s"
-    start_retry_timeout = "30m"
-    scripts = [
-      "${path.cwd}/scripts/linux/common/reboot.sh"
+    except = [
+      "googlecompute.gw-fxci-gcp-l1-2404-gui-alpha"
     ]
-  }
-
-  provisioner "shell" {
-    inline = ["/usr/bin/cloud-init status --wait"]
-  }
-
-  provisioner "shell" {
-    execute_command   = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-    expect_disconnect = true
-    pause_before      = "10s"
-    scripts = [
-      #"${path.cwd}/scripts/linux/common/install-ops-agent.sh",
-      "${path.cwd}/scripts/linux/common/clean.sh"
-    ]
-    start_retry_timeout = "30m"
-  }
-
-  post-processor "manifest" {
-    output     = "packer-artifacts.json"
-    strip_path = true
-  }
-
-}
-
-build {
-  sources = [
-    "source.googlecompute.gw-fxci-gcp-l1-2404-headless-alpha",
-    "source.googlecompute.trusted-gw-fxci-gcp-l3-2404-headless-alpha",
-    "source.googlecompute.gw-fxci-gcp-l1-2404-arm64-headless-alpha",
-    "source.googlecompute.trusted-gw-fxci-gcp-l3-2404-arm64-headless-alpha"
-  ]
-
-  ## Every image has tests, so create the tests directory
-  provisioner "shell" {
-    execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
-    inline = [
-      "mkdir -p /workerimages/tests",
-      "chmod -R 777 /workerimages/tests",
-    ]
-  }
-
-  ## Every image has taskcluster, so upload the taskcluster tests fle
-  provisioner "file" {
-    source      = "${path.cwd}/tests/linux/taskcluster.tests.ps1"
-    destination = "/workerimages/tests/taskcluster.tests.ps1"
-  }
-
-  ## Install only common stuff on both images
-  provisioner "shell" {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     environment_vars = [
       "CLOUD=google",
@@ -340,7 +307,6 @@ build {
     execute_command   = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect = true
     scripts = [
-      #"${path.cwd}/scripts/linux/common/install-ops-agent.sh"
       "${path.cwd}/scripts/linux/common/clean.sh",
     ]
     start_retry_timeout = "30m"
