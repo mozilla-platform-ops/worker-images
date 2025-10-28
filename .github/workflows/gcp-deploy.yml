@@ -12,6 +12,7 @@ on:
         - gw-fxci-gcp-l1-2404-headless-alpha
         - gw-fxci-gcp-l1-2404-arm64-headless-alpha
         - trusted-gw-fxci-gcp-l3-2404-headless-alpha
+        - trusted-gw-fxci-gcp-l3-2404-arm64-headless-alpha
 
 permissions:
   id-token: write
