@@ -78,7 +78,7 @@ jobs:
         with:
           ref: ${{ env.TARGET_BRANCH }}
 
-      - uses: google-github-actions/auth@v2
+      - uses: 'google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093'
         id: auth
         with:
           workload_identity_provider: "projects/324168772199/locations/global/workloadIdentityPools/github-actions/providers/github-actions"
