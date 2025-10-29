@@ -49,4 +49,4 @@ MISC_PACKAGES+=(parallel tmux htop vim nano screen)
 MISC_PACKAGES+=(gcc make dkms pciutils linux-image-gcp linux-headers-gcp)
 
 # install the packages
-retry apt-get install -y ${MISC_PACKAGES[@]}
+retry apt-get install -y "${MISC_PACKAGES[@]}"

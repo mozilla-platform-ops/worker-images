@@ -44,4 +44,4 @@ MISC_PACKAGES+=(pulseaudio-utils)
 # random bits
 MISC_PACKAGES+=(libhunspell-1.7-0 libhunspell-dev)
 
-retry apt-get install -y ${MISC_PACKAGES[@]}
+retry apt-get install -y "${MISC_PACKAGES[@]}"
