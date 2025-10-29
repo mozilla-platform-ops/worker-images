@@ -8,9 +8,6 @@ updates:
       day: "monday"
       time: "09:00"
     open-pull-requests-limit: 10
-    labels:
-      - "dependencies"
-      - "github-actions"
     commit-message:
       prefix: "chore"
       include: "scope"
