@@ -97,7 +97,7 @@ jobs:
           enable-AzPSSession: true
 
       - name: "Remove current images"
-        uses: azure/powershell@v2
+        uses: azure/powershell@53dd145408794f7e80f97cfcca04155c85234709
         with:
           inlineScript: |
             Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1

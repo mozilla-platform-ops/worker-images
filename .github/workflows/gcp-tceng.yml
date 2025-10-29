@@ -85,10 +85,10 @@ jobs:
           service_account: "deploy-prod@${{ needs.setproject.outputs.PROJECT }}.iam.gserviceaccount.com"
 
       - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db
 
       - name: Setup Packer
-        uses: hashicorp/setup-packer@v3
+        uses: hashicorp/setup-packer@1aa358be5cf73883762b302a3a03abd66e75b232
 
       - name: Run Packer
         shell: pwsh
