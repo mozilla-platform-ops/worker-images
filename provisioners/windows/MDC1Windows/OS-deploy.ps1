@@ -688,7 +688,7 @@ if (!(Test-Path $setup)) {
 
     Write-Host "Disconecting Deployment Share."
     net use Z: /delete
-    
+
     $splat = @{
         Url  = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$branch/provisioners/windows/MDC1Windows/base-autounattend.xml"
         Path = $unattend

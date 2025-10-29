@@ -15,7 +15,7 @@ function Remove-AzWorkerImage {
         throw "Unable to config using $key. Exiting!"
         exit 1
     }
-    ## build managed image name 
+    ## build managed image name
     switch -Wildcard ($key) {
         "*alpha2*" {
             $managed_image_name = ('{0}-{1}-{2}-alpha2' -f $YAML.vm.tags["worker_pool_id"], $Location, $YAML.image["sku"])
@@ -28,7 +28,7 @@ function Remove-AzWorkerImage {
         }
         "*next*" {
             $managed_image_name = ('{0}-{1}-{2}-next' -f $YAML.vm.tags["worker_pool_id"], $Location, $YAML.image["sku"])
-        } 
+        }
         Default {
             $managed_image_name = ('{0}-{1}-{2}-{3}' -f $YAML.vm.tags["worker_pool_id"], $Location, $YAML.image["sku"], $YAML.vm.tags["deploymentId"])
         }

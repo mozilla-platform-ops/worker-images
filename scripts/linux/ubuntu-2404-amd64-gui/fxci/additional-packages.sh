@@ -34,7 +34,7 @@ MISC_PACKAGES+=(build-essential curl git gnupg-agent jq mercurial)
 MISC_PACKAGES+=(python3-pip python3-certifi python3-psutil)
 # zstd packages
 MISC_PACKAGES+=(zstd python3-zstd)
-# install zstandard to avoid installing via pip and breaking via PEP 668 https://peps.python.org/pep-0668/ 
+# install zstandard to avoid installing via pip and breaking via PEP 668 https://peps.python.org/pep-0668/
 MISC_PACKAGES+=(python3-zstandard)
 MISC_PACKAGES+=(apt-transport-https ca-certificates software-properties-common)
 # docker-worker needs this for unpacking lz4 images, perhaps uneeded but shouldn't hurt
@@ -44,4 +44,4 @@ MISC_PACKAGES+=(pulseaudio-utils)
 # random bits
 MISC_PACKAGES+=(libhunspell-1.7-0 libhunspell-dev)
 
-retry apt-get install -y ${MISC_PACKAGES[@]}
+retry apt-get install -y "${MISC_PACKAGES[@]}"

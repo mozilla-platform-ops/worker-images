@@ -43,10 +43,10 @@ start_time="$(date '+%s')"
 
 case "$(uname -m)" in
   x86_64)
-    ARCH=amd64
+    export ARCH=amd64
     ;;
   aarch64)
-    ARCH=arm64
+    export ARCH=arm64
     ;;
   *)
     echo "Unsupported architecture '$(uname -m)' - currently bootstrap.sh only supports architectures x86_64 and aarch64" >&2
@@ -155,8 +155,8 @@ systemctl enable worker
 # running kernel version as well as the cloud-specific
 # meta-package in case we upgrade to a new kernel version
 # on reboot
-retry apt-get install -y linux-modules-extra-$(uname -r)
-case '%MY_CLOUD%' in
+retry apt-get install -y "linux-modules-extra-$(uname -r)"
+case "${MY_CLOUD}" in
   google)
     retry apt-get install -y linux-modules-extra-gcp
     ;;
@@ -167,7 +167,7 @@ esac
 
 retry apt-get install -y ubuntu-desktop ubuntu-gnome-desktop podman gnome-initial-setup-
 
-if [ '%MY_CLOUD%' == 'google' ]; then
+if [ "${MY_CLOUD}" == 'google' ]; then
     # this is neccessary in GCP because after installing gnome desktop both NetworkManager and systemd-networkd are enabled
     # which leads to https://bugs.launchpad.net/ubuntu/jammy/+source/systemd/+bug/2036358
     systemctl disable systemd-networkd-wait-online.service
@@ -212,7 +212,7 @@ EOF
 dconf update
 
 #
-# gdm3 settings  
+# gdm3 settings
 #
 # in [daemon] block of /etc/gdm3/custom.conf we need:
 #
@@ -272,6 +272,6 @@ systemctl disable unattended-upgrades
 end_time="$(date '+%s')"
 echo "UserData execution took: $(($end_time - $start_time)) seconds"
 
-## Packer will handle the shutdown 
+## Packer will handle the shutdown
 # shutdown so that instance can be snapshotted
 # shutdown -h now

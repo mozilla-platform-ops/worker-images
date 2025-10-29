@@ -14,7 +14,7 @@ on:
         required: true
       AZURE_APPLICATION_ID_FXCI:
         required: true
-        
+
 permissions:
   id-token: write
   contents: read
@@ -24,7 +24,7 @@ jobs:
     name: "Verify User Access"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - name: Load Authorized Users and Check Access
         shell: pwsh
         run: |
@@ -44,9 +44,9 @@ jobs:
       contents: write
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - name: Azure Login
-        uses: azure/login@v2
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID_FXCI }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -69,7 +69,7 @@ jobs:
           New-AzSharedWorkerImage @Vars
           "sharedimageversion=$ENV:PKR_VAR_sharedimage_version" >> $env:GITHUB_ENV
       - name: Upload Release Notes Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
         with:
           name: release-notes-${{ inputs.config }}
           path: ${{ inputs.config }}-${{ env.sharedimageversion }}.md
@@ -82,14 +82,14 @@ jobs:
     runs-on: ubuntu-latest
     permissions: write-all
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
         with:
           path: sboms
           name: release-notes-${{ inputs.config }}
           merge-multiple: true
       - name: "Test SBOM Exists & Create PR"
-        shell: pwsh  
+        shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CONFIG: ${{ inputs.config }}
@@ -97,16 +97,16 @@ jobs:
           ## Install powershell-yaml module
           Set-PSRepository PSGallery -InstallationPolicy Trusted
           Install-Module powershell-yaml -ErrorAction Stop
-          
+
           Get-ChildItem "sboms" -Recurse
-          
+
           Get-ChildItem
 
           ## Get the shared image version from the config file
           $YAML = Convertfrom-Yaml (Get-Content "config/${{ env.CONFIG }}.yaml" -raw)
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          
+
           ## Confirm it's there
           Get-ChildItem "sboms" -Recurse
 
@@ -133,16 +133,16 @@ jobs:
           else {
             $ReleaseBranch = $null
           }
-          
+
           $branchExists = (gh api "/repos/$Repo/branches/$releaseBranch" | ConvertFrom-Json).Name
-          
+
           if ($null -eq $branchExists) {
             git checkout -b $ReleaseBranch
             git push origin $ReleaseBranch
           } else {
             git checkout $ReleaseBranch
           }
-        
+
           $PR_Body = @"
           # Release Notes for $($ENV:CONFIG).md
 

@@ -3,11 +3,11 @@ function Get-ProxyVersion {
     param (
         [String]
         $FilePath = "C:\generic-worker\taskcluster-proxy.exe",
-        
+
         [String]
         $StandardOutput = "C:\proxyversion.txt"
     )
-    
+
     Start-Process -FilePath $FilePath -ArgumentList "--short-version" -RedirectStandardOutput $StandardOutput -Wait -NoNewWindow
     [PSCustomObject]@{
         Name = "Proxy"

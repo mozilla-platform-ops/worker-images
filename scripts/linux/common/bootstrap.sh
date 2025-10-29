@@ -26,18 +26,6 @@ function retry {
 
 start_time="$(date '+%s')"
 
-case "$(uname -m)" in
-  x86_64)
-    ARCH=amd64
-    ;;
-  aarch64)
-    ARCH=arm64
-    ;;
-  *)
-    echo "Unsupported architecture '$(uname -m)' - currently bootstrap.sh only supports architectures x86_64 and aarch64" >&2
-    exit 64
-    ;;
-esac
 
 retry apt-get update
 DEBIAN_FRONTEND=noninteractive retry apt-get upgrade -yq
@@ -139,7 +127,7 @@ systemctl disable systemd-networkd-wait-online.service
 # Installs the v4l2loopback kernel module
 # used for the video device, and vkms
 # required by Wayland
-retry apt-get install -y linux-modules-extra-$(uname -r)
+retry apt-get install -y "linux-modules-extra-$(uname -r)"
 # needed for mutter to work with DRM rather than falling back to X11
 #grep -Fx vkms /etc/modules || echo vkms >> /etc/modules
 # disable udev rule that tags platform-vkms with "mutter-device-ignore"

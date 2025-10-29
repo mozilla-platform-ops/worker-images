@@ -12,6 +12,6 @@ function Get-HieraRoleData {
             })]
         $Path
     )
-    
+
     ConvertFrom-Yaml (get-Content $Path -Raw)
 }

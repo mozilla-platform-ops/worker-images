@@ -21,7 +21,7 @@ function Set-PesterVersion {
 
     ## install Pester
     Install-Module -Name Pester -Force
-  
+
     Write-Log -message  ('{0} :: Pester 5 installation appears complete' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-    
+
 }

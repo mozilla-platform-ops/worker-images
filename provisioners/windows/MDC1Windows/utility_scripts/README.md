@@ -4,13 +4,13 @@ Audit Windows worker nodes over **SSH** and, when needed, trigger a **PXE boot**
 
 The script runs in **passes**:
 
-1. **Audit (via SSH)** – check for and run an audit script on each node.  
-   - If the audit script **exits non-zero** or its output contains **“bad”** → PXE the node.  
+1. **Audit (via SSH)** – check for and run an audit script on each node.
+   - If the audit script **exits non-zero** or its output contains **“bad”** → PXE the node.
    - If the audit script is **missing** → queue the node for PXE in Pass 2.
 2. **PXE for missing-audit** – PXE any nodes that didn’t have the audit script.
 3. **Retry SSH** – one more audit attempt for nodes that had SSH failures in Pass 1.
 
-> By default the wait **between passes is 5 minutes**, except the wait **between Pass 1 → Pass 2 is always 5 seconds** to quickly PXE nodes missing the audit. Use `-quick` to shorten the other waits to **30 seconds**.  
+> By default the wait **between passes is 5 minutes**, except the wait **between Pass 1 → Pass 2 is always 5 seconds** to quickly PXE nodes missing the audit. Use `-quick` to shorten the other waits to **30 seconds**.
 > If Pass 2 actually PXEs any nodes, the script **does not sleep** before Pass 3.
 
 ---
@@ -165,7 +165,7 @@ pools:
 
 For each node missing the audit script:
 
-1. **Stage helper** to `C:\PXE\SetPXE.ps1` via SSH (base64 → file).  
+1. **Stage helper** to `C:\PXE\SetPXE.ps1` via SSH (base64 → file).
 2. **Invoke** it via SSH:
 
    ```powershell
@@ -207,7 +207,7 @@ The script may exit `96` if a requested single node is not found in YAML; otherw
 
 ## Exit Codes
 
-- `0` – Completed; see summary for per-node outcomes  
+- `0` – Completed; see summary for per-node outcomes
 - `96` – Single requested node not found in YAML
 
 ---

@@ -1,13 +1,18 @@
 #!/bin/bash
 
 # Check if use_keyvault environment variable is set to true
-if [[ "${use_keyvault}" == "true" ]]; then
+if [[ "${use_keyvault:-false}" == "true" ]]; then
+    # Validate that cotkey is provided
+    if [[ -z "${cotkey}" ]]; then
+        echo "Error: cotkey environment variable is required when use_keyvault is true" >&2
+        exit 1
+    fi
     # Write the cotkey content to the ed25519_key file
     echo "${cotkey}" > /etc/generic-worker/ed25519_key
 
     # Set appropriate permissions for the key file
     chmod 600 /etc/generic-worker/ed25519_key
-    
+
     echo "use_keyvault is true, wrote COT key to /etc/generic-worker/ed25519_key"
     exit 0
 else

@@ -51,7 +51,7 @@ function Get-WinFactsTaskCluster {
 
     # Get worker pool ID
     $worker_pool_id = (Get-ItemProperty "HKLM:\SOFTWARE\Mozilla\ronin_puppet").worker_pool_id
-    
+
     [PSCustomObject]@{
         custom_win_genericworker_service     = $gw_service
         custom_win_genericworker_version     = $gw_version

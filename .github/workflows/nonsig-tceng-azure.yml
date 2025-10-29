@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # TESTING ONLY: check out relops-1640 branch instead of trigger branch
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
         with:
           ref: ${{ env.TARGET_BRANCH }}
 
@@ -55,7 +55,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # TESTING ONLY: check out relops-1640 branch instead of trigger branch
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
         with:
           ref: ${{ env.TARGET_BRANCH }}
 
@@ -84,12 +84,12 @@ jobs:
         locations: ${{ fromJson(needs.config.outputs.LOCATIONS) }}
     steps:
       # TESTING ONLY: check out relops-1640 branch instead of trigger branch
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
         with:
           ref: ${{ env.TARGET_BRANCH }}
 
       - name: Azure Login
-        uses: azure/login@v2
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID_TCENG }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -118,7 +118,7 @@ jobs:
             Key                = '${{ github.event.inputs.config }}'
             Client_ID          = "${{ secrets.AZURE_CLIENT_ID_TCENG }}"
             oidc_request_url   = $env:ACTIONS_ID_TOKEN_REQUEST_URL
-            oidc_request_token = $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN            
+            oidc_request_token = $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN
             #oidc_request_url   = "${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}"
             #oidc_request_token = "${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}"
             Subscription_ID    = "${{ secrets.AZURE_SUBSCRIPTION_ID_TCENG }}"

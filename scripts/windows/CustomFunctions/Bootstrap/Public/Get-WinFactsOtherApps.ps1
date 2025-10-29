@@ -6,7 +6,7 @@ function Get-WinFactsOtherApps {
     else {
         $git_ver = 0.0.0
     }
-    
+
     [PSCustomObject]@{
         custom_win_git_version = $git_ver
     }

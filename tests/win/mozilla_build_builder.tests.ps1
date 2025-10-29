@@ -137,31 +137,31 @@ Describe "Mozilla Build - Builder" {
     }
     Context "Pip" {
         It "Certifi is installed" {
-            $certifi = ($pip_packages | Where-Object {$psitem -Match "Certifi"}) -split "==" 
+            $certifi = ($pip_packages | Where-Object {$psitem -Match "Certifi"}) -split "=="
             $certifi | Should -Not -Be $null
         }
         It "PSUtil is installed" {
-            $PSUtil = ($pip_packages | Where-Object {$psitem -Match "PSUtil"}) -split "==" 
+            $PSUtil = ($pip_packages | Where-Object {$psitem -Match "PSUtil"}) -split "=="
             $PSUtil | Should -Not -Be $null
         }
         It "PSUtil version" {
-            $PSUtil = ($pip_packages | Where-Object {$psitem -Match "PSUtil"}) -split "==" 
+            $PSUtil = ($pip_packages | Where-Object {$psitem -Match "PSUtil"}) -split "=="
             $PSUtil[1] | Should -Be $psutil_ExpectedSoftwareVersion
         }
         It "ZStandard is installed" {
-            $ZStandard = ($pip_packages | Where-Object {$psitem -Match "zstandard"}) -split "==" 
+            $ZStandard = ($pip_packages | Where-Object {$psitem -Match "zstandard"}) -split "=="
             $ZStandard | Should -Not -Be $null
         }
         It "ZStandard version" {
-            $ZStandard = ($pip_packages | Where-Object {$psitem -Match "zstandard"}) -split "==" 
+            $ZStandard = ($pip_packages | Where-Object {$psitem -Match "zstandard"}) -split "=="
             $ZStandard[1] | Should -Be $zstandard_ExepctedSoftwareVersion
         }
         It "Python3 Pip is installed" {
-            $py3pip = ($pip_packages | Where-Object {$psitem -Match "pip"}) -split "==" 
+            $py3pip = ($pip_packages | Where-Object {$psitem -Match "pip"}) -split "=="
             $py3pip | Should -Not -Be $null
         }
         It "Python3 Pip version" {
-            $py3pip = ($pip_packages | Where-Object {$psitem -Match "pip"}) -split "==" 
+            $py3pip = ($pip_packages | Where-Object {$psitem -Match "pip"}) -split "=="
             $py3pip[1] | Should -Be $py3pip_ExpectedSoftwareVersion
         }
     }
