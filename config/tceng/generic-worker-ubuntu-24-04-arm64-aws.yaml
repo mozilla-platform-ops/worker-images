@@ -1,0 +1,22 @@
+# TCEng Generic Worker - Ubuntu 24.04 ARM64 - AWS
+# Configuration for building Taskcluster Community generic-worker images on AWS Graviton
+
+image:
+  ami_name: "generic-worker-ubuntu-24-04-arm64-aws"
+  source_ami_owner: "099720109477"  # Canonical
+  source_ami_filter: "ubuntu/images/hvm-ssd/ubuntu-noble-24.04-arm64-server-*"
+
+vm:
+  disk_size: 30
+  instance_type: "t4g.large"  # ARM-based Graviton2
+  script_name: "generic-worker-ubuntu-24-04.sh"
+  taskcluster_version: "v67.1.0"
+  taskcluster_ref: "main"
+  tc_arch: "arm64"
+
+aws:
+  # Optional: replicate to multiple regions for global availability
+  ami_regions:
+    - "us-west-2"
+    - "us-east-1"
+    - "eu-west-1"

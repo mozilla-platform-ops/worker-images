@@ -1,0 +1,210 @@
+name: Build AWS Worker Image (TCEng)
+
+on:
+  workflow_dispatch:
+    inputs:
+      config:
+        description: 'Configuration file name (without .yaml extension)'
+        required: true
+        default: 'generic-worker-ubuntu-24-04-aws'
+        type: choice
+        options:
+          - generic-worker-ubuntu-24-04-aws
+          - generic-worker-ubuntu-24-04-arm64-aws
+      region:
+        description: 'AWS Region to build in'
+        required: true
+        default: 'us-west-2'
+        type: choice
+        options:
+          - us-east-1
+          - us-east-2
+          - us-west-1
+          - us-west-2
+          - eu-west-1
+          - eu-central-1
+          - ap-southeast-1
+          - ap-northeast-1
+      replicate_regions:
+        description: 'Comma-separated list of regions to replicate AMI to (optional)'
+        required: false
+        default: ''
+        type: string
+      debug:
+        description: 'Enable Packer debug mode'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_ROLE_ARN: arn:aws:iam::961225894672:role/GitHubActionsRole
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ github.event.inputs.region }}
+          role-session-name: github-actions-packer-build
+
+      - name: Setup Packer
+        uses: hashicorp/setup-packer@main
+        with:
+          version: '1.10.0'
+
+      - name: Install PowerShell modules
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module powershell-yaml -Force -ErrorAction Stop
+
+      - name: Build AMI (with replication)
+        if: github.event.inputs.replicate_regions != ''
+        shell: pwsh
+        run: |
+          Import-Module ./bin/WorkerImages/WorkerImages.psd1
+          
+          $regions = "${{ github.event.inputs.replicate_regions }}" -split ',' | ForEach-Object { $_.Trim() }
+          
+          $params = @{
+              Key            = "${{ github.event.inputs.config }}"
+              Region         = "${{ github.event.inputs.region }}"
+              AssumeRoleArn  = "${{ env.AWS_ROLE_ARN }}"
+              AmiRegions     = $regions
+          }
+          
+          if ("${{ github.event.inputs.debug }}" -eq "true") {
+              $params['PackerDebug'] = $true
+          }
+          
+          New-AWSWorkerImage @params
+
+      - name: Build AMI (no replication)
+        if: github.event.inputs.replicate_regions == ''
+        shell: pwsh
+        run: |
+          Import-Module ./bin/WorkerImages/WorkerImages.psd1
+          
+          $params = @{
+              Key            = "${{ github.event.inputs.config }}"
+              Region         = "${{ github.event.inputs.region }}"
+              AssumeRoleArn  = "${{ env.AWS_ROLE_ARN }}"
+          }
+          
+          if ("${{ github.event.inputs.debug }}" -eq "true") {
+              $params['PackerDebug'] = $true
+          }
+          
+          New-AWSWorkerImage @params
+
+      - name: Upload Packer manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: packer-manifest-${{ github.event.inputs.config }}-${{ github.run_number }}
+          path: packer-artifacts.json
+          if-no-files-found: warn
+
+      - name: Upload SBOM (if generated)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ github.event.inputs.config }}-${{ github.run_number }}
+          path: sboms/*.md
+          if-no-files-found: ignore
+
+      - name: Parse and display AMI details
+        if: success()
+        shell: pwsh
+        run: |
+          if (Test-Path "packer-artifacts.json") {
+              $manifest = Get-Content "packer-artifacts.json" | ConvertFrom-Json
+              
+              Write-Host "`n========================================" -ForegroundColor Cyan
+              Write-Host "AMI Build Successful!" -ForegroundColor Green
+              Write-Host "========================================" -ForegroundColor Cyan
+              
+              foreach ($build in $manifest.builds) {
+                  Write-Host "`nBuild: $($build.name)" -ForegroundColor Yellow
+                  
+                  # Parse AMI IDs from artifact_id (format: region:ami-xxxxx)
+                  $amiIds = $build.artifact_id -split ','
+                  foreach ($amiId in $amiIds) {
+                      if ($amiId -match '([a-z0-9-]+):(ami-[a-z0-9]+)') {
+                          $region = $matches[1]
+                          $ami = $matches[2]
+                          Write-Host "  Region: $region" -ForegroundColor White
+                          Write-Host "  AMI ID: $ami" -ForegroundColor White
+                          Write-Host "  Console: https://$region.console.aws.amazon.com/ec2/home?region=$region#ImageDetails:imageId=$ami" -ForegroundColor Cyan
+                          Write-Host ""
+                      }
+                  }
+              }
+              
+              Write-Host "========================================`n" -ForegroundColor Cyan
+          }
+
+      - name: Notify on failure
+        if: failure()
+        shell: pwsh
+        run: |
+          Write-Host "`n❌ AMI Build Failed!" -ForegroundColor Red
+          Write-Host "Please check the logs above for details.`n" -ForegroundColor Yellow
+
+  # Optional: Run tests on the built AMI
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    if: success()
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ github.event.inputs.region }}
+
+      - name: Download Packer manifest
+        uses: actions/download-artifact@v4
+        with:
+          name: packer-manifest-${{ github.event.inputs.config }}-${{ github.run_number }}
+
+      - name: Extract AMI ID
+        id: ami
+        shell: pwsh
+        run: |
+          $manifest = Get-Content "packer-artifacts.json" | ConvertFrom-Json
+          $amiId = $manifest.builds[0].artifact_id -split ',' | Select-Object -First 1
+          $amiId = ($amiId -split ':')[1]
+          echo "ami_id=$amiId" >> $env:GITHUB_OUTPUT
+          Write-Host "AMI ID: $amiId"
+
+      - name: Verify AMI exists
+        shell: bash
+        run: |
+          aws ec2 describe-images \
+            --image-ids ${{ steps.ami.outputs.ami_id }} \
+            --region ${{ github.event.inputs.region }} \
+            --output table
+
+      - name: Check AMI tags
+        shell: bash
+        run: |
+          aws ec2 describe-tags \
+            --filters "Name=resource-id,Values=${{ steps.ami.outputs.ami_id }}" \
+            --region ${{ github.event.inputs.region }} \
+            --output table
