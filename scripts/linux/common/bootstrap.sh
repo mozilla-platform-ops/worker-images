@@ -127,7 +127,7 @@ systemctl disable systemd-networkd-wait-online.service
 # Installs the v4l2loopback kernel module
 # used for the video device, and vkms
 # required by Wayland
-retry apt-get install -y linux-modules-extra-$(uname -r)
+retry apt-get install -y "linux-modules-extra-$(uname -r)"
 # needed for mutter to work with DRM rather than falling back to X11
 #grep -Fx vkms /etc/modules || echo vkms >> /etc/modules
 # disable udev rule that tags platform-vkms with "mutter-device-ignore"
