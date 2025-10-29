@@ -26,18 +26,6 @@ function retry {
 
 start_time="$(date '+%s')"
 
-case "$(uname -m)" in
-  x86_64)
-    ARCH=amd64
-    ;;
-  aarch64)
-    ARCH=arm64
-    ;;
-  *)
-    echo "Unsupported architecture '$(uname -m)' - currently bootstrap.sh only supports architectures x86_64 and aarch64" >&2
-    exit 64
-    ;;
-esac
 
 retry apt-get update
 DEBIAN_FRONTEND=noninteractive retry apt-get upgrade -yq
