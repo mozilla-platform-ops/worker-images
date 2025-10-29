@@ -4,8 +4,8 @@ Describe "Mozilla Build - Tester" {
         C:\mozilla-build\python3\python.exe -m pip freeze --all > C:\requirements.txt
         Write-Host "`n===== DEBUG: Hiera Contents ====="
         $Hiera | ConvertTo-Json -Depth 10 | Write-Host
-        Write-Host "=================================`n"        
-    }    
+        Write-Host "=================================`n"
+    }
 
     BeforeAll {
         $software = Get-InstalledSoftware
@@ -125,7 +125,7 @@ Describe "Mozilla Build - Tester" {
 
         if (-not $py3pip_ExpectedSoftwareVersion) {
             throw "Py3 pip version could not be found in any provided Hiera source."
-        }        
+        }
     }
     Context "Installation" {
         It "Mozilla-Build Folder exists" {
@@ -146,31 +146,31 @@ Describe "Mozilla Build - Tester" {
     }
     Context "Pip" {
         It "Certifi is installed" {
-            $certifi = ($pip_packages | Where-Object {$psitem -Match "Certifi"}) -split "==" 
+            $certifi = ($pip_packages | Where-Object {$psitem -Match "Certifi"}) -split "=="
             $certifi | Should -Not -Be $null
         }
         It "PSUtil is installed" {
-            $PSUtil = ($pip_packages | Where-Object {$psitem -Match "PSUtil"}) -split "==" 
+            $PSUtil = ($pip_packages | Where-Object {$psitem -Match "PSUtil"}) -split "=="
             $PSUtil | Should -Not -Be $null
         }
         It "PSUtil version 5.9.4" {
-            $PSUtil = ($pip_packages | Where-Object {$psitem -Match "PSUtil"}) -split "==" 
+            $PSUtil = ($pip_packages | Where-Object {$psitem -Match "PSUtil"}) -split "=="
             $PSUtil[1] | Should -Be $psutil_ExpectedSoftwareVersion
         }
         It "ZStandard is installed" {
-            $ZStandard = ($pip_packages | Where-Object {$psitem -Match "zstandard"}) -split "==" 
+            $ZStandard = ($pip_packages | Where-Object {$psitem -Match "zstandard"}) -split "=="
             $ZStandard | Should -Not -Be $null
         }
         It "ZStandard version 0.15.2" {
-            $ZStandard = ($pip_packages | Where-Object {$psitem -Match "zstandard"}) -split "==" 
+            $ZStandard = ($pip_packages | Where-Object {$psitem -Match "zstandard"}) -split "=="
             $ZStandard[1] | Should -Be $zstandard_ExepctedSoftwareVersion
         }
         It "Python3 Pip is installed" {
-            $py3pip = ($pip_packages | Where-Object {$psitem -Match "pip"}) -split "==" 
+            $py3pip = ($pip_packages | Where-Object {$psitem -Match "pip"}) -split "=="
             $py3pip | Should -Not -Be $null
         }
         # It "Python3 Pip version" {
-        #     $py3pip = ($pip_packages | Where-Object {$psitem -Match "pip"}) -split "==" 
+        #     $py3pip = ($pip_packages | Where-Object {$psitem -Match "pip"}) -split "=="
         #     $py3pip[1] | Should -Be $py3pip_ExpectedSoftwareVersion
         # }
         It "Pip.conf file has correct drive for pip-cache" -Skip {

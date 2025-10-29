@@ -36,7 +36,7 @@ function Set-ReleaseNotes {
     }
 
     ## Let's get all of the information about the OS
-    $OSVersionExtended = Get-OSVersionExtended 
+    $OSVersionExtended = Get-OSVersionExtended
     if ($null -eq $OSVersionExtended) {
         $reason = "Unable to find OSVersionExtended"
         Write-Log -message ('{0} :: {1} - {2:o}' -f $($MyInvocation.MyCommand.Name), $reason, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
@@ -127,22 +127,22 @@ function Set-ReleaseNotes {
         "Branch: $($Branch)",
         "DeploymentId: $($DeploymentId)"
     )
-    
+
     $markdown += New-MDList -Lines $lines -Style Unordered
-    
+
     $markdown += New-MDHeader "Mozilla Build" -Level 2
     $markdown += "`n"
     $lines2 = @(
         "Find more information about Mozilla Build on [Wiki](https://wiki.mozilla.org/MozillaBuild#Technical_Details)"
     )
     $markdown += New-MDAlert -Lines $lines2 -Style Important
-    
+
     $lines3 = @(
         "Mozilla Build: $($mozillabuild.custom_win_mozbld_version)"
     )
-    
+
     $markdown += New-MDList -Lines $lines3 -Style Unordered
-    
+
     $markdown += New-MDHeader "Taskcluster Packages Installed" -Level 3
     $markdown += "`n"
     $markdown += Show-TaskclusterBinaries | New-MDTable
@@ -152,7 +152,7 @@ function Set-ReleaseNotes {
     $markdown += "`n"
     $markdown += $pythonPackages | New-MDTable
     $markdown += "`n"
-    
+
     $markdown += New-MDHeader "Installed Software (Not Microsoft)" -Level 2
     $markdown += "`n"
     $markdown += $InstalledSoftware_NotMicrosoft | New-MDTable
@@ -161,7 +161,7 @@ function Set-ReleaseNotes {
     $markdown += New-MDHeader "Installed Software (Microsoft)" -Level 2
     $markdown += "`n"
     $markdown += $InstalledSoftware_Microsoft | New-MDTable
-    
+
     $markdown | Out-File "C:\software_report.md"
 
     $markdown_content = Get-Content -Path "C:\software_report.md"

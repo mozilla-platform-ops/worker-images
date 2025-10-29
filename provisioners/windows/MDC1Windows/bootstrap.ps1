@@ -365,7 +365,7 @@ function Set-SSH {
 function Set-WinRM {
     [CmdletBinding()]
     param (
-        
+
     )
     ## WinRM
     Write-Log -message ('{0} :: Enabling WinRM.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
@@ -428,7 +428,7 @@ function Get-PSModules {
         Write-Log -message ('{0} :: begin - {1:o}' -f $MyInvocation.MyCommand.Name, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
     }
     process {
-        ## Force TLS 1.2 to get around SSL errors with PowerShell Gallery 
+        ## Force TLS 1.2 to get around SSL errors with PowerShell Gallery
         ## https://github.com/PowerShell/PowerShellGallery/issues/328
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
@@ -899,9 +899,9 @@ function Set-WinHwRef {
 function Get-WinDisplayVersion {
     [CmdletBinding()]
     param (
-        
+
     )
-    
+
     return (Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion').DisplayVersion
 }
 

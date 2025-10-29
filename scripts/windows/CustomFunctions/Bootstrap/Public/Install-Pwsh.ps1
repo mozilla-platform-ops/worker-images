@@ -4,7 +4,7 @@ function Install-Pwsh {
         [String]
         $Version
     )
-    
+
     Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
     Write-Host ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime())
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12

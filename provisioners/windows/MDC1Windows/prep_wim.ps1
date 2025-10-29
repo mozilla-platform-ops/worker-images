@@ -20,4 +20,4 @@ Write-host "Update the script in C:\MOUNT\scripts\deployment.ps1"
 DISM /UnMount-Image /MountDir:'C:\MOUNT' /commit
 
 ## Update WDS
-## Properties --> Boot Images --> Replace Microsoft WinPE and add Winpe - Ver22.wim 
+## Properties --> Boot Images --> Replace Microsoft WinPE and add Winpe - Ver22.wim

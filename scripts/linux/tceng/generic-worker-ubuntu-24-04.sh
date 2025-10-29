@@ -199,7 +199,7 @@ EOF
 dconf update
 
 #
-# gdm3 settings  
+# gdm3 settings
 #
 # in [daemon] block of /etc/gdm3/custom.conf we need:
 #
@@ -259,6 +259,6 @@ systemctl disable unattended-upgrades
 end_time="$(date '+%s')"
 echo "UserData execution took: $(($end_time - $start_time)) seconds"
 
-## Packer will handle the shutdown 
+## Packer will handle the shutdown
 # shutdown so that instance can be snapshotted
 # shutdown -h now

@@ -69,7 +69,7 @@ function New-AzSharedWorkerImage_temp {
         "*notes*" {
             $PackerForceBuild = $true
             $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-alpha' -f $YAML.vm.tags["worker_pool_id"], $ENV:PKR_VAR_image_sku)
-        }        
+        }
         "*beta*" {
             $PackerForceBuild = $true
             $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-beta' -f $YAML.vm.tags["worker_pool_id"], $ENV:PKR_VAR_image_sku)
@@ -77,7 +77,7 @@ function New-AzSharedWorkerImage_temp {
         "*next*" {
             $PackerForceBuild = $true
             $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-next' -f $YAML.vm.tags["worker_pool_id"],  $ENV:PKR_VAR_image_sku)
-        } 
+        }
         Default {
             $PackerForceBuild = $false
             $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}' -f $YAML.vm.tags["worker_pool_id"], $ENV:PKR_VAR_image_sku, $YAML.vm.tags["deploymentId"])

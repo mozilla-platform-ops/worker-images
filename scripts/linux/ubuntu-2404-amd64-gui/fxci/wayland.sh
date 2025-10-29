@@ -37,7 +37,7 @@ ls -hal /etc/dconf/db/
 
 
 #
-# gdm3 settings  
+# gdm3 settings
 #
 
 # in [daemon] block of /etc/gdm3/custom.conf we need:

@@ -52,9 +52,9 @@ jobs:
           TASKCLUSTER_ROOT_URL: "https://firefox-ci-tc.services.mozilla.com"
         run: |
           set -euo pipefail
-          
+
           TASKCLUSTER_CLI="${{ github.workspace }}/taskcluster"
-          
+
           # Check TaskCluster CLI availability
           echo "Checking TaskCluster CLI at: $TASKCLUSTER_CLI"
           if [[ ! -f "$TASKCLUSTER_CLI" ]]; then
@@ -64,77 +64,77 @@ jobs:
             ls -la
             exit 1
           fi
-          
+
           # Make sure CLI is executable
           chmod +x "$TASKCLUSTER_CLI"
           echo "✅ TaskCluster CLI found, testing version..."
           "$TASKCLUSTER_CLI" version
-          
+
           # Set TaskCluster environment variables
           export TASKCLUSTER_CLIENT_ID="$TASKCLUSTER_CLIENT_ID"
           export TASKCLUSTER_ACCESS_TOKEN="$TASKCLUSTER_ACCESS_TOKEN"
           export TASKCLUSTER_ROOT_URL="$TASKCLUSTER_ROOT_URL"
-          
+
           # Transform config name: replace - with _
           TRANSFORMED_CONFIG=$(echo "$CONFIG" | tr '-' '_')
           echo "Transformed config: $TRANSFORMED_CONFIG"
-          
+
           # Create hook payload
           HOOK_PAYLOAD=$(cat <<EOF
           {"images":["$TRANSFORMED_CONFIG"]}
           EOF
           )
           echo "Hook payload: $HOOK_PAYLOAD"
-          
+
           # Trigger the hook and capture response
           echo "Triggering hook..."
           RESPONSE=$(echo "$HOOK_PAYLOAD" | "$TASKCLUSTER_CLI" api hooks triggerHook project-releng cron-task-mozilla-platform-ops-worker-images/run-integration-tests)
           echo "Hook response: $RESPONSE"
-          
+
           # Extract taskId from response
           TASK_ID=$(echo "$RESPONSE" | jq -r '.taskId')
           echo "Task ID: $TASK_ID"
           echo "task_id=$TASK_ID" >> $GITHUB_ENV
-          
+
           # Wait for live.log to become available and get the actual log URL
           echo "Waiting for live.log to become available for task $TASK_ID..."
           RETRY_COUNT=0
           MAX_RETRIES=30
           LIVE_LOG_RESPONSE=""
-          
+
           while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
             echo "Attempt $((RETRY_COUNT + 1))/$MAX_RETRIES: Checking for live.log..."
-            
+
             if LIVE_LOG_RESPONSE=$("$TASKCLUSTER_CLI" api queue getLatestArtifact "$TASK_ID" "public/logs/live.log" 2>/dev/null); then
               if [ -n "$LIVE_LOG_RESPONSE" ]; then
                 echo "Live log response received"
                 break
               fi
             fi
-            
+
             echo "Live log not ready yet, waiting 10 seconds..."
             sleep 10
             RETRY_COUNT=$((RETRY_COUNT + 1))
           done
-          
+
           if [ -z "$LIVE_LOG_RESPONSE" ]; then
             echo "Failed to get live.log after $MAX_RETRIES attempts"
             exit 1
           fi
-          
+
           # Extract the actual log URL from the JSON response
           LIVE_LOG_URL=$(echo "$LIVE_LOG_RESPONSE" | jq -r '.url')
           echo "Live log URL: $LIVE_LOG_URL"
-          
+
           # Download the actual live_backing.log content and extract taskGroupId with retry logic
           echo "Downloading live_backing.log content and searching for taskGroupId..."
           TASK_GROUP_ID=""
           LOG_RETRY_COUNT=0
           MAX_LOG_RETRIES=30  # 5 minutes max wait time
-          
+
           while [ $LOG_RETRY_COUNT -lt $MAX_LOG_RETRIES ] && [ -z "$TASK_GROUP_ID" ]; do
             echo "Attempt $((LOG_RETRY_COUNT + 1))/$MAX_LOG_RETRIES: Downloading and parsing log content..."
-            
+
             # Download the log metadata JSON with error handling
             LIVE_LOG_METADATA=""
             if LIVE_LOG_METADATA=$(curl -s -f "$LIVE_LOG_URL" 2>/dev/null); then
@@ -145,7 +145,7 @@ jobs:
               LOG_RETRY_COUNT=$((LOG_RETRY_COUNT + 1))
               continue
             fi
-            
+
             # Extract the actual log file URL from the JSON metadata
             if [ -n "$LIVE_LOG_METADATA" ]; then
               ACTUAL_LOG_URL=$(echo "$LIVE_LOG_METADATA" | jq -r '.url' 2>/dev/null || true)
@@ -155,9 +155,9 @@ jobs:
                 LOG_RETRY_COUNT=$((LOG_RETRY_COUNT + 1))
                 continue
               fi
-              
+
               echo "Actual log URL: $ACTUAL_LOG_URL"
-              
+
               # Now download the actual log content
               LIVE_LOG_CONTENT=""
               if LIVE_LOG_CONTENT=$(curl -s -f "$ACTUAL_LOG_URL" 2>/dev/null); then
@@ -174,12 +174,12 @@ jobs:
               LOG_RETRY_COUNT=$((LOG_RETRY_COUNT + 1))
               continue
             fi
-            
+
             # Check if we got content
             if [ -n "$LIVE_LOG_CONTENT" ]; then
               # Try to extract taskGroupId from the log content
               TASK_GROUP_ID=$(echo "$LIVE_LOG_CONTENT" | grep -o '"taskGroupId": "[^"]*"' | cut -d'"' -f4 || true)
-              
+
               if [ -n "$TASK_GROUP_ID" ]; then
                 echo "✅ Task Group ID found: $TASK_GROUP_ID"
                 echo "task_group_id=$TASK_GROUP_ID" >> $GITHUB_ENV
@@ -191,31 +191,31 @@ jobs:
             else
               echo "No log content received, waiting 20 seconds..."
             fi
-            
+
             sleep 30
             LOG_RETRY_COUNT=$((LOG_RETRY_COUNT + 1))
           done
-          
+
           if [ -z "$TASK_GROUP_ID" ]; then
             echo "❌ Failed to extract taskGroupId from live.log after $MAX_LOG_RETRIES attempts"
             echo "Final log content preview: $(echo "$LIVE_LOG_CONTENT" | head -c 500)..."
             exit 1
           fi
-          
+
           # Generate and display the test results URL
           TEST_RESULTS_URL="https://firefox-ci-tc.services.mozilla.com/tasks/groups/$TASK_GROUP_ID"
           echo "Integration test results available at: $TEST_RESULTS_URL"
           echo "test_results_url=$TEST_RESULTS_URL" >> $GITHUB_ENV
-          
+
           # Wait for all tasks in the task group to complete and check their status
           echo "Monitoring task group $TASK_GROUP_ID for completion..."
           MONITOR_RETRY_COUNT=0
           MAX_MONITOR_RETRIES=240  # 40 minutes max wait time
           ALL_COMPLETED=false
-          
+
           while [ $MONITOR_RETRY_COUNT -lt $MAX_MONITOR_RETRIES ] && [ "$ALL_COMPLETED" = false ]; do
             echo "Checking task group status (attempt $((MONITOR_RETRY_COUNT + 1))/$MAX_MONITOR_RETRIES)..."
-            
+
             # Get all tasks in the task group
             if TASK_GROUP_RESPONSE=$("$TASKCLUSTER_CLI" api queue listTaskGroup "$TASK_GROUP_ID" 2>/dev/null); then
               if [ -z "$TASK_GROUP_RESPONSE" ]; then
@@ -224,26 +224,26 @@ jobs:
                 MONITOR_RETRY_COUNT=$((MONITOR_RETRY_COUNT + 1))
                 continue
               fi
-              
+
               # Parse task statuses using jq
               PENDING_OR_RUNNING=$(echo "$TASK_GROUP_RESPONSE" | jq '[.tasks[].status.state] | map(select(. == "pending" or . == "running")) | length')
               COMPLETED_TASKS=$(echo "$TASK_GROUP_RESPONSE" | jq '[.tasks[].status.state] | map(select(. == "completed")) | length')
               FAILED_TASKS=$(echo "$TASK_GROUP_RESPONSE" | jq '[.tasks[].status.state] | map(select(. == "failed")) | length')
               EXCEPTION_TASKS=$(echo "$TASK_GROUP_RESPONSE" | jq '[.tasks[].status.state] | map(select(. == "exception")) | length')
               TOTAL_TASKS=$(echo "$TASK_GROUP_RESPONSE" | jq '.tasks | length')
-              
+
               echo "Task status summary:"
               echo "  Total tasks: $TOTAL_TASKS"
               echo "  Completed: $COMPLETED_TASKS"
               echo "  Failed: $FAILED_TASKS"
               echo "  Exception: $EXCEPTION_TASKS"
               echo "  Pending/Running: $PENDING_OR_RUNNING"
-              
+
               # Check if all tasks are complete (no pending or running)
               if [ "$PENDING_OR_RUNNING" -eq 0 ]; then
                 ALL_COMPLETED=true
                 echo "All tasks in task group have completed!"
-                
+
                 # Check for any failures
                 if [ "$FAILED_TASKS" -gt 0 ] || [ "$EXCEPTION_TASKS" -gt 0 ]; then
                   echo "❌ Integration tests FAILED!"
@@ -266,7 +266,7 @@ jobs:
               MONITOR_RETRY_COUNT=$((MONITOR_RETRY_COUNT + 1))
             fi
           done
-          
+
           if [ "$ALL_COMPLETED" = false ]; then
             TIMEOUT_MINUTES=$((MAX_MONITOR_RETRIES * 20 / 60))
             echo "⚠️  Timeout waiting for task group to complete after $TIMEOUT_MINUTES minutes"

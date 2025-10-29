@@ -1,5 +1,5 @@
 ## Used for testing and develop of Repo working code
-## 
+##
 
 run-name: DEV SIG - ${{ github.event.inputs.config }}
 name: DEV SIG Deployment - FXCI
@@ -102,7 +102,7 @@ jobs:
           name: release-notes-${{ github.event.inputs.config }}
           merge-multiple: true
       - name: "Test SBOM Exists & Create PR"
-        shell: pwsh  
+        shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CONFIG: ${{ github.event.inputs.config }}
@@ -110,16 +110,16 @@ jobs:
           ## Install powershell-yaml module
           Set-PSRepository PSGallery -InstallationPolicy Trusted
           Install-Module powershell-yaml -ErrorAction Stop
-          
+
           Get-ChildItem "sboms" -Recurse
-          
+
           Get-ChildItem
 
           ## Get the shared image version from the config file
           $YAML = Convertfrom-Yaml (Get-Content "config/${{ env.CONFIG }}.yaml" -raw)
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          
+
           ## Confirm it's there
           Get-ChildItem "sboms" -Recurse
 
@@ -146,16 +146,16 @@ jobs:
           else {
             $ReleaseBranch = $null
           }
-          
+
           $branchExists = (gh api "/repos/$Repo/branches/$releaseBranch" | ConvertFrom-Json).Name
-          
+
           if ($null -eq $branchExists) {
             git checkout -b $ReleaseBranch
             git push origin $ReleaseBranch
           } else {
             git checkout $ReleaseBranch
           }
-        
+
           $PR_Body = @"
           # Release Notes for $($ENV:CONFIG).md
 

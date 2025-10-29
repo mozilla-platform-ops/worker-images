@@ -27,7 +27,7 @@ Describe "Git" {
 
         if (-not $ExpectedSoftwareVersion) {
             throw "HG version could not be found in any provided Hiera source."
-        }        
+        }
     }
     It "Git is installed" {
         $Git.DisplayName | Should -Not -Be $null

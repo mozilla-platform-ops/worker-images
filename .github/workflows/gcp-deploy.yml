@@ -80,4 +80,4 @@ jobs:
           gcloud compute images create $ProdImageName `
           --source-image ${{ needs.setproject.outputs.IMAGENAME }} `
           --source-image-project ${{ needs.setproject.outputs.PROJECT }} `
-          --force 
+          --force

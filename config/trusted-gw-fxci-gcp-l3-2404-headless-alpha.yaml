@@ -9,5 +9,5 @@ vm:
   disk_size: 60
   taskcluster_version: 90.0.5
   tc_arch: AMD64
-  script_paths: 
+  script_paths:
   - "scripts/linux/ubuntu-2404-headless-amd64-headless"

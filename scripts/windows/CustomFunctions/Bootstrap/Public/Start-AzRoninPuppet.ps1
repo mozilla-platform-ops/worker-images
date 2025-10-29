@@ -65,7 +65,7 @@ function Start-AzRoninPuppet {
         Write-host ('{0} :: Puppet apply took - {1} minutes, {2} seconds to complete' -f $($MyInvocation.MyCommand.Name),$time.Minutes, $time.Seconds)
         Write-Log -message  ('{0} :: Puppet apply took - {1} minutes, {2} seconds to complete' -f $($MyInvocation.MyCommand.Name),$time.Minutes, $time.Seconds) -severity 'DEBUG'
         ## https://www.puppet.com/docs/puppet/6/man/apply.html#options
-        
+
         switch ($puppet_exit) {
             0 {
                 Set-ItemProperty -Path $ronnin_key -name last_run_exit -value $puppet_exit
@@ -91,7 +91,7 @@ function Start-AzRoninPuppet {
                             Write-Log -message  ('{0} :: Unable to write CoT key to {1}. Error {2}' -f $($MyInvocation.MyCommand.Name), $ed_key, $_.Exception.Message) -severity 'ERROR'
                             exit 1
                         }
-                        
+
                         Write-Log -message  ('{0} :: Trusted image. Blocking livelog outbound access.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
                         New-NetFirewallRule -DisplayName "Block LiveLog" -Direction Outbound -Program "c:\generic-worker\livelog.exe" -Action block
                         Exit 0
@@ -111,8 +111,8 @@ function Start-AzRoninPuppet {
                 Write-Host ('{0} :: Puppet apply failed :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit)
                 Set-ItemProperty -Path $ronnin_key -name "last_run_exit" -value $puppet_exit
                 ## The JSON file isn't formatted correctly, so add a ] to complete the json formatting and then output warnings or errors
-                Add-Content $LogDestination "`n]" 
-                $log = Get-Content $LogDestination | ConvertFrom-Json 
+                Add-Content $LogDestination "`n]"
+                $log = Get-Content $LogDestination | ConvertFrom-Json
                 $log | Where-Object {
                     $psitem.Level -match "warning|err" -and $_.message -notmatch "Client Certificate|Private Key"
                 } | ForEach-Object {
@@ -157,7 +157,7 @@ function Start-AzRoninPuppet {
                             Write-Log -message  ('{0} :: Unable to write CoT key to {1}. Error {2}' -f $($MyInvocation.MyCommand.Name), $ed_key, $_.Exception.Message) -severity 'ERROR'
                             exit 1
                         }
-                        
+
                         Write-Log -message  ('{0} :: Trusted image. Blocking livelog outbound access.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
                         New-NetFirewallRule -DisplayName "Block LiveLog" -Direction Outbound -Program "c:\generic-worker\livelog.exe" -Action block
                         Exit 2
@@ -177,8 +177,8 @@ function Start-AzRoninPuppet {
                 Write-Host ('{0} :: Puppet apply succeeded, but some resources failed :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit)
                 Set-ItemProperty -Path $ronnin_key -name last_run_exit -value $puppet_exit
                 ## The JSON file isn't formatted correctly, so add a ] to complete the json formatting and then output warnings or errors
-                Add-Content $LogDestination "`n]" 
-                $log = Get-Content $LogDestination | ConvertFrom-Json 
+                Add-Content $LogDestination "`n]"
+                $log = Get-Content $LogDestination | ConvertFrom-Json
                 $log | Where-Object {
                     $psitem.Level -match "warning|err" -and $_.message -notmatch "Client Certificate|Private Key"
                 } | ForEach-Object {
@@ -203,8 +203,8 @@ function Start-AzRoninPuppet {
                 Write-Host ('{0} :: Puppet apply succeeded, but included changes and failures :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit)
                 Set-ItemProperty -Path $ronnin_key -name last_run_exit -value $puppet_exit
                 ## The JSON file isn't formatted correctly, so add a ] to complete the json formatting and then output warnings or errors
-                Add-Content $LogDestination "`n]" 
-                $log = Get-Content $LogDestination | ConvertFrom-Json 
+                Add-Content $LogDestination "`n]"
+                $log = Get-Content $LogDestination | ConvertFrom-Json
                 $log | Where-Object {
                     $psitem.Level -match "warning|err" -and $_.message -notmatch "Client Certificate|Private Key"
                 } | ForEach-Object {

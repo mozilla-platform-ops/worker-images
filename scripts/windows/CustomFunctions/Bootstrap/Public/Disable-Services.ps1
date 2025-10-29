@@ -3,7 +3,7 @@ function Disable-Services {
     param (
         [String[]]$Services = @("wuauserv", "usosvc")
     )
-    
+
     foreach ($service in $Services) {
         ## check if it even exists
         $exists = Get-Service $service -ErrorAction SilentlyContinue
@@ -11,11 +11,11 @@ function Disable-Services {
         if (-Not [string]::IsNullOrEmpty($exists)) {
             ## If not disabled, stop and disable it
             if ((Get-Service $service).StartType -ne 'Disabled') {
-                if ((Get-Service $service).Status -ne 'Stopped') { 
-                    Stop-Service $service -Force 
+                if ((Get-Service $service).Status -ne 'Stopped') {
+                    Stop-Service $service -Force
                 }
-                Get-Service $service | Set-Service -StartupType Disabled 
-            }  
+                Get-Service $service | Set-Service -StartupType Disabled
+            }
         }
     }
 }

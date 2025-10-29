@@ -19,5 +19,5 @@ Describe "Microsoft Visual C++ 2015 Redistributable" {
     }
     It "Microsoft Visual C++ 2022 Redistributable (Arm64) version" {
         $vcc2022arm64_redistributable.DisplayVersion | Should -Be "14.42.34438.0"
-    }   
+    }
 }

@@ -1,5 +1,5 @@
 function Show-Win11Sdk {
-    $Names = @(    
+    $Names = @(
         "Application Verifier x64 External Package (DesktopEditions)",
         "Application Verifier x64 External Package (OnecoreUAP)",
         "Kits Configuration Installer",

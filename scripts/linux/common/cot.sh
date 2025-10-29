@@ -7,7 +7,7 @@ if [[ "${use_keyvault}" == "true" ]]; then
 
     # Set appropriate permissions for the key file
     chmod 600 /etc/generic-worker/ed25519_key
-    
+
     echo "use_keyvault is true, wrote COT key to /etc/generic-worker/ed25519_key"
     exit 0
 else

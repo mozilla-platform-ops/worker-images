@@ -22,7 +22,7 @@ function Invoke-DownloadWithRetry {
     .EXAMPLE
         Invoke-DownloadWithRetry -Url "https://example.com/file.zip"
         Downloads the file from the specified URL and saves it to a temporary path.
-    
+
     .OUTPUTS
         The path where the downloaded file is saved.
     #>
@@ -67,7 +67,7 @@ function Invoke-DownloadWithRetry {
                 $retries = 0
             }
         }
-            
+
         if ($retries -eq 0) {
             $totalSeconds = [math]::Round(($(Get-Date) - $downloadStartTime).TotalSeconds, 2)
             throw "Package download failed after $totalSeconds seconds"
