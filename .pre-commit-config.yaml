@@ -3,3 +3,7 @@ repos:
     rev: v6.0.0 # Use the ref you want to point at
     hooks:
       - id: trailing-whitespace
+  - repo: https://github.com/cisagov/pre-commit-packer
+    rev: v0.3.1
+    hooks:
+      - id: packer_fmt
