@@ -17,7 +17,7 @@ jobs:
     name: "Verify User Access"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - name: Load Authorized Users and Check Access
         shell: pwsh
         run: |
@@ -34,7 +34,7 @@ jobs:
     name: "Create Image Tasks"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - id: set-matrix
         shell: pwsh
         run: |
@@ -54,9 +54,9 @@ jobs:
       matrix:
         locations: ${{fromJson(needs.config.outputs.LOCATIONS)}}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - name: Azure Login
-        uses: azure/login@v2
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID_FXCI_TRUSTED }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -85,7 +85,7 @@ jobs:
           }
           New-AzWorkerImage @Vars
       - name: Upload Release Notes Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
         with:
           name: release-notes-${{ github.event.inputs.config }}-${{ matrix.LOCATIONS }}
           path: ${{ github.event.inputs.config }}.md
@@ -98,8 +98,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions: write-all
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
       - name: "Test SBOM Exists & Create PR"
         shell: pwsh  
         env:
