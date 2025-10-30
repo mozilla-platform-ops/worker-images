@@ -1,4 +1,4 @@
-name: Parallel SIG Alpha Image Builds
+name: FXCI - Azure Alpha Image Builds
 
 on:
   workflow_dispatch:
