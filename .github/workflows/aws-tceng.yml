@@ -60,6 +60,14 @@ jobs:
       - name: Setup Packer
         uses: hashicorp/setup-packer@1aa358be5cf73883762b302a3a03abd66e75b232
 
+      - name: Debug AWS Authentication
+        shell: bash
+        run: |
+          echo "Current AWS Identity:"
+          aws sts get-caller-identity
+          echo "Testing role assumption:"
+          aws sts assume-role --role-arn ${{ env.AWS_ROLE_ARN }} --role-session-name debug-test || echo "Role assumption failed"
+
       - name: Install PowerShell modules
         shell: pwsh
         run: |
