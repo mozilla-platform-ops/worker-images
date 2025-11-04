@@ -1,13 +1,12 @@
+run-name: TCEng AWS - ${{ github.event.inputs.config }}
 name: TCEng AWS
 
 on:
   workflow_dispatch:
     inputs:
       config:
-        description: 'Configuration file name (without .yaml extension)'
-        required: true
-        default: 'generic-worker-ubuntu-24-04'
         type: choice
+        description: Choose which pool to build
         options:
           - generic-worker-ubuntu-24-04
           - generic-worker-ubuntu-24-04-arm64
@@ -40,12 +39,40 @@ permissions:
   contents: read
 
 env:
-  AWS_ROLE_ARN: arn:aws:iam::961225894672:role/GitHubActionsRole
+  TARGET_BRANCH: main
+  AWS_ROLE_ARN: arn:aws:iam::885316786408:role/GitHubActionsRole
 
 jobs:
-  build:
+  check-access:
+    name: "Verify User Access"
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
 
+      - name: Load Authorized Users and Check Access
+        shell: pwsh
+        run: |
+          $TCEngUsers  = Get-Content .github/tceng.json  | ConvertFrom-Json
+          $RelsreUsers = Get-Content .github/relsre.json | ConvertFrom-Json
+          $AUTHORIZED_USERS = $TCEngUsers + $RelsreUsers
+
+          if ($AUTHORIZED_USERS -contains "${{ github.actor }}") {
+            Write-Host "User ${{ github.actor }} is authorized."
+          } else {
+            Write-Host "User ${{ github.actor }} is unauthorized."
+            exit 1
+          }
+
+  packer:
+    needs: check-access
+    name: "AWS ${{ github.event.inputs.config }}"
+    runs-on: ubuntu-latest
+    environment: prod
+    permissions:
+      contents: write
+      id-token: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
@@ -60,144 +87,26 @@ jobs:
       - name: Setup Packer
         uses: hashicorp/setup-packer@1aa358be5cf73883762b302a3a03abd66e75b232
 
-      - name: Install PowerShell modules
-        shell: pwsh
-        run: |
-          Set-PSRepository PSGallery -InstallationPolicy Trusted
-          Install-Module powershell-yaml -Force -ErrorAction Stop
-
-      - name: Build AMI (with replication)
-        if: github.event.inputs.replicate_regions != ''
+      - name: Run Packer
         shell: pwsh
         env:
           TASKCLUSTER_REF: ${{ github.event.inputs.TASKCLUSTER_REF }}
         run: |
-          # Set TASKCLUSTER_REF override if provided (before calling function)
-          if ($ENV:TASKCLUSTER_REF -ne "") {
-              $ENV:PKR_VAR_taskcluster_ref = $ENV:TASKCLUSTER_REF
+          $ENV:PKR_VAR_taskcluster_ref = $ENV:TASKCLUSTER_REF
+          Import-Module "${{ github.workspace }}/bin/WorkerImages/WorkerImages.psm1"
+          
+          $regions = @()
+          if ("${{ github.event.inputs.replicate_regions }}" -ne "") {
+              $regions = "${{ github.event.inputs.replicate_regions }}" -split ',' | ForEach-Object { $_.Trim() }
           }
-
-          Import-Module ./bin/WorkerImages/WorkerImages.psd1
-
-          $regions = "${{ github.event.inputs.replicate_regions }}" -split ',' | ForEach-Object { $_.Trim() }
-
-          $params = @{
-              Key            = "${{ github.event.inputs.config }}"
-              Region         = "${{ github.event.inputs.region }}"
-              AmiRegions     = $regions
+          
+          $Vars = @{
+            Key     = '${{ github.event.inputs.config }}'
+            Region  = '${{ github.event.inputs.region }}'
           }
-
-          New-AWSWorkerImage @params
-
-      - name: Build AMI (no replication)
-        if: github.event.inputs.replicate_regions == ''
-        shell: pwsh
-        env:
-          TASKCLUSTER_REF: ${{ github.event.inputs.TASKCLUSTER_REF }}
-        run: |
-          # Set TASKCLUSTER_REF override if provided (before calling function)
-          if ($ENV:TASKCLUSTER_REF -ne "") {
-              $ENV:PKR_VAR_taskcluster_ref = $ENV:TASKCLUSTER_REF
+          
+          if ($regions.Count -gt 0) {
+              $Vars['AmiRegions'] = $regions
           }
-
-          Import-Module ./bin/WorkerImages/WorkerImages.psd1
-
-          $params = @{
-              Key            = "${{ github.event.inputs.config }}"
-              Region         = "${{ github.event.inputs.region }}"
-          }
-
-          New-AWSWorkerImage @params
-
-      - name: Upload Packer manifest
-        if: always()
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
-        with:
-          name: packer-manifest-${{ github.event.inputs.config }}-${{ github.run_number }}
-          path: packer-artifacts.json
-          if-no-files-found: warn
-
-      - name: Parse and display AMI details
-        if: success()
-        shell: pwsh
-        run: |
-          if (Test-Path "packer-artifacts.json") {
-              $manifest = Get-Content "packer-artifacts.json" | ConvertFrom-Json
-
-              Write-Host "`n========================================" -ForegroundColor Cyan
-              Write-Host "AMI Build Successful!" -ForegroundColor Green
-              Write-Host "========================================" -ForegroundColor Cyan
-
-              foreach ($build in $manifest.builds) {
-                  Write-Host "`nBuild: $($build.name)" -ForegroundColor Yellow
-
-                  # Parse AMI IDs from artifact_id (format: region:ami-xxxxx)
-                  $amiIds = $build.artifact_id -split ','
-                  foreach ($amiId in $amiIds) {
-                      if ($amiId -match '([a-z0-9-]+):(ami-[a-z0-9]+)') {
-                          $region = $matches[1]
-                          $ami = $matches[2]
-                          Write-Host "  Region: $region" -ForegroundColor White
-                          Write-Host "  AMI ID: $ami" -ForegroundColor White
-                          Write-Host "  Console: https://$region.console.aws.amazon.com/ec2/home?region=$region#ImageDetails:imageId=$ami" -ForegroundColor Cyan
-                          Write-Host ""
-                      }
-                  }
-              }
-
-              Write-Host "========================================`n" -ForegroundColor Cyan
-          }
-
-      - name: Notify on failure
-        if: failure()
-        shell: pwsh
-        run: |
-          Write-Host "`n❌ AMI Build Failed!" -ForegroundColor Red
-          Write-Host "Please check the logs above for details.`n" -ForegroundColor Yellow
-
-  # Optional: Run tests on the built AMI
-  test:
-    needs: build
-    runs-on: ubuntu-latest
-    if: success()
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@00943011d9042930efac3dcd3a170e4273319bc8
-        with:
-          role-to-assume: ${{ env.AWS_ROLE_ARN }}
-          aws-region: ${{ github.event.inputs.region }}
-
-      - name: Download Packer manifest
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
-        with:
-          name: packer-manifest-${{ github.event.inputs.config }}-${{ github.run_number }}
-
-      - name: Extract AMI ID
-        id: ami
-        shell: pwsh
-        run: |
-          $manifest = Get-Content "packer-artifacts.json" | ConvertFrom-Json
-          $amiId = $manifest.builds[0].artifact_id -split ',' | Select-Object -First 1
-          $amiId = ($amiId -split ':')[1]
-          echo "ami_id=$amiId" >> $env:GITHUB_OUTPUT
-          Write-Host "AMI ID: $amiId"
-
-      - name: Verify AMI exists
-        shell: bash
-        run: |
-          aws ec2 describe-images \
-            --image-ids ${{ steps.ami.outputs.ami_id }} \
-            --region ${{ github.event.inputs.region }} \
-            --output table
-
-      - name: Check AMI tags
-        shell: bash
-        run: |
-          aws ec2 describe-tags \
-            --filters "Name=resource-id,Values=${{ steps.ami.outputs.ami_id }}" \
-            --region ${{ github.event.inputs.region }} \
-            --output table
+          
+          New-AWSWorkerImage @Vars
