@@ -6,7 +6,6 @@ image:
   source_image_family: "ubuntu-2404-lts-amd64"
   image_name: "generic-worker-ubuntu-24-04"
   workload_identity_provider_project_number: 324168772199
-
   # AWS-specific configuration
   ami_name: "generic-worker-ubuntu-24-04-aws"
   source_ami_owner: "099720109477"  # Canonical
@@ -19,10 +18,8 @@ vm:
   taskcluster_version: "v90.0.3"
   taskcluster_ref: "main"
   script_name: "generic-worker-ubuntu-24-04.sh"
-
   # AWS-specific VM settings
   instance_type: "t3.large"  # Used when building on AWS
-
   tags:
     image_set: "tceng-generic-worker-ubuntu-24-04"
     maintainer: "Taskcluster Engineering"
