@@ -105,7 +105,7 @@ function New-AWSWorkerImage {
 
     ## Build (tceng uses single generic build; no --only flag)
     Write-Host "packer build -force $PackerHCLPath"
-    packer build -force $PackerHCLPath    
+    packer build -force $PackerHCLPath
 
     # Display result
     if ($LASTEXITCODE -eq 0) {
