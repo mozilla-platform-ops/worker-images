@@ -18,5 +18,7 @@ vm:
   providerType: "azure"
   vm_size: Standard_NV12s_v3
   bootstrapscript: "generic-worker-win2022"
+  tc_arch: "amd64"
+  taskcluster_version: 90.0.3
   tags:
     - image_set: markco-generic-worker-win2022-gpu-staging

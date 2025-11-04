@@ -1,9 +1,3 @@
-param (
-    [string]$MY_CLOUD
-)
-
-$TASKCLUSTER_VERSION = "v90.0.4"
-
 # Write-Log function for logging with RFC3339 format timestamps
 function Write-Log {
     param (
@@ -98,6 +92,20 @@ function Expand-ZIPFile {
 
     # Extract the ZIP file using Expand-Archive
     Expand-Archive -Path $file -DestinationPath $destination -Force
+}
+
+Write-Log -message "TASKCLUSTER_VERSION: $($ENV:taskcluster_version)"
+Write-Log -message "PROVIDER_TYPE: $($ENV:PROVIDER_TYPE)"
+
+$TASKCLUSTER_VERSION = $ENV:taskcluster_version
+$MY_CLOUD = $ENV:PROVIDER_TYPE
+
+if ($null -eq $TASKCLUSTER_VERSION -or $TASKCLUSTER_VERSION -eq "") {
+    throw "TASKCLUSTER_VERSION environment variable is not set."
+}
+
+if ($null -eq $MY_CLOUD -or $MY_CLOUD -eq "") {
+    throw "PROVIDER_TYPE environment variable is not set."
 }
 
 # Exit the script on any powershell command error
@@ -256,10 +264,10 @@ md "C:\generic-worker"
 md "C:\worker-runner"
 
 # download generic-worker, worker-runner, livelog, and taskcluster-proxy
-Invoke-WebRequest -Uri "https://github.com/taskcluster/taskcluster/releases/download/${TASKCLUSTER_VERSION}/generic-worker-multiuser-windows-amd64" -OutFile "C:\generic-worker\generic-worker.exe"
-Invoke-WebRequest -Uri "https://github.com/taskcluster/taskcluster/releases/download/${TASKCLUSTER_VERSION}/start-worker-windows-amd64" -OutFile "C:\worker-runner\start-worker.exe"
-Invoke-WebRequest -Uri "https://github.com/taskcluster/taskcluster/releases/download/${TASKCLUSTER_VERSION}/livelog-windows-amd64" -OutFile "C:\generic-worker\livelog.exe"
-Invoke-WebRequest -Uri "https://github.com/taskcluster/taskcluster/releases/download/${TASKCLUSTER_VERSION}/taskcluster-proxy-windows-amd64" -OutFile "C:\generic-worker\taskcluster-proxy.exe"
+Invoke-WebRequest -Uri "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/generic-worker-multiuser-windows-${TC_ARCH}" -OutFile "C:\generic-worker\generic-worker.exe"
+Invoke-WebRequest -Uri "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/start-worker-windows-${TC_ARCH}" -OutFile "C:\worker-runner\start-worker.exe"
+Invoke-WebRequest -Uri "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/livelog-windows-${TC_ARCH}" -OutFile "C:\generic-worker\livelog.exe"
+Invoke-WebRequest -Uri "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/taskcluster-proxy-windows-${TC_ARCH}" -OutFile "C:\generic-worker\taskcluster-proxy.exe"
 Run-Executable "C:\generic-worker\generic-worker.exe" @("--version")
 Run-Executable "C:\generic-worker\generic-worker.exe" @("new-ed25519-keypair", "--file", "C:\generic-worker\generic-worker-ed25519-signing-key.key")
 
