@@ -32,12 +32,6 @@ variable "iam_instance_profile" {
   default = env("PKR_VAR_iam_instance_profile")
 }
 
-# NEW: assume_role for GitHub OIDC authentication
-variable "assume_role_arn" {
-  type    = string
-  default = env("PKR_VAR_assume_role_arn")
-}
-
 variable "worker_env_var_key" {
   type      = string
   default   = env("PKR_VAR_worker_env_var_key")
@@ -63,12 +57,7 @@ locals {
 # Source Definition (AWS)
 # -----------------------------
 source "amazon-ebs" "tceng" {
-  # Authentication - uses assume_role for GitHub OIDC
-  assume_role {
-    role_arn     = var.assume_role_arn
-    session_name = "packer-tceng-build"
-  }
-
+  # Authentication - uses credentials from environment (already assumed by GitHub Actions)
   region        = var.region
   instance_type = var.instance_type != "" ? var.instance_type : null
   ami_name      = var.ami_name

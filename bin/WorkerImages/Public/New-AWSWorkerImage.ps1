@@ -7,9 +7,6 @@ function New-AWSWorkerImage {
         [Parameter(Mandatory = $true)]
         [String] $Region,
 
-        [Parameter(Mandatory = $true)]
-        [String] $AssumeRoleArn,
-
         [Parameter(Mandatory = $false)]
         [String] $IamInstanceProfile,
 
@@ -57,7 +54,6 @@ function New-AWSWorkerImage {
 
     ## AWS configuration from YAML
     $ENV:PKR_VAR_region         = $Region
-    $ENV:PKR_VAR_assume_role_arn = $AssumeRoleArn
 
     if ($YAML.vm["disk_size"])             { $ENV:PKR_VAR_disk_size            = $YAML.vm["disk_size"] }
     if ($YAML.vm["instance_type"])         { $ENV:PKR_VAR_instance_type        = $YAML.vm["instance_type"] }
@@ -94,7 +90,7 @@ function New-AWSWorkerImage {
 
     Write-Host "Building AMI: $($ENV:PKR_VAR_ami_name) in region: $Region"
     Write-Host "Using HCL: $PackerHCLPath"
-    Write-Host "Using IAM Role: $AssumeRoleArn"
+    Write-Host "Using AWS credentials from GitHub Actions environment"
 
     # Ensure AWS credentials from GitHub Actions are available to Packer
     if ($ENV:AWS_ACCESS_KEY_ID) {
