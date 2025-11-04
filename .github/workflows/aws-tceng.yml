@@ -11,6 +11,10 @@ on:
         options:
           - generic-worker-ubuntu-24-04
           - generic-worker-ubuntu-24-04-arm64
+      TASKCLUSTER_REF:
+        type: string
+        description: Git reference (branch, tag, or commit) to use
+        default: main
       region:
         description: 'AWS Region to build in'
         required: true
