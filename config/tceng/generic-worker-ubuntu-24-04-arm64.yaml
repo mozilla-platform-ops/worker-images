@@ -15,7 +15,7 @@ vm:
   providerType: "gcp"  # This can be overridden via environment or parameters
   disk_size: 60
   tc_arch: "arm64"
-  taskcluster_version: 90.0.3
+  taskcluster_version: 91.1.2
   script_name: "generic-worker-ubuntu-24-04.sh"
   machine_type: "t2a-standard-4"
   # AWS-specific VM settings
