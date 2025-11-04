@@ -6,7 +6,6 @@ image:
   source_image_family: "ubuntu-2404-lts-arm64"
   image_name: "generic-worker-ubuntu-24-04-arm64"
   workload_identity_provider_project_number: 324168772199
-  
   # AWS-specific configuration
   ami_name: "generic-worker-ubuntu-24-04-arm64-aws"
   source_ami_owner: "099720109477"  # Canonical
