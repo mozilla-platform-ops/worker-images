@@ -96,6 +96,7 @@ function Expand-ZIPFile {
 
 Write-Log -message "TASKCLUSTER_VERSION: $($ENV:taskcluster_version)"
 Write-Log -message "PROVIDER_TYPE: $($ENV:PROVIDER_TYPE)"
+Write-Log -message "TC_ARCH: $($ENV:TC_ARCH)"
 
 $TASKCLUSTER_VERSION = $ENV:taskcluster_version
 $MY_CLOUD = $ENV:PROVIDER_TYPE
@@ -264,10 +265,10 @@ md "C:\generic-worker"
 md "C:\worker-runner"
 
 # download generic-worker, worker-runner, livelog, and taskcluster-proxy
-Invoke-WebRequest -Uri "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/generic-worker-multiuser-windows-${TC_ARCH}" -OutFile "C:\generic-worker\generic-worker.exe"
-Invoke-WebRequest -Uri "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/start-worker-windows-${TC_ARCH}" -OutFile "C:\worker-runner\start-worker.exe"
-Invoke-WebRequest -Uri "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/livelog-windows-${TC_ARCH}" -OutFile "C:\generic-worker\livelog.exe"
-Invoke-WebRequest -Uri "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/taskcluster-proxy-windows-${TC_ARCH}" -OutFile "C:\generic-worker\taskcluster-proxy.exe"
+Invoke-WebRequest -Uri "https://github.com/taskcluster/taskcluster/releases/download/v{0}/generic-worker-multiuser-windows-{1}" -f $TASKCLUSTER_VERSION, $TC_ARCH -OutFile "C:\generic-worker\generic-worker.exe"
+Invoke-WebRequest -Uri "https://github.com/taskcluster/taskcluster/releases/download/v{0}/start-worker-windows-{1}" -f $TASKCLUSTER_VERSION, $TC_ARCH -OutFile "C:\worker-runner\start-worker.exe"
+Invoke-WebRequest -Uri "https://github.com/taskcluster/taskcluster/releases/download/v{0}/livelog-windows-{1}" -f $TASKCLUSTER_VERSION, $TC_ARCH -OutFile "C:\generic-worker\livelog.exe"
+Invoke-WebRequest -Uri "https://github.com/taskcluster/taskcluster/releases/download/v{0}/taskcluster-proxy-windows-{1}" -f $TASKCLUSTER_VERSION, $TC_ARCH -OutFile "C:\generic-worker\taskcluster-proxy.exe"
 Run-Executable "C:\generic-worker\generic-worker.exe" @("--version")
 Run-Executable "C:\generic-worker\generic-worker.exe" @("new-ed25519-keypair", "--file", "C:\generic-worker\generic-worker-ed25519-signing-key.key")
 
