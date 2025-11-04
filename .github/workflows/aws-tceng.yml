@@ -94,19 +94,19 @@ jobs:
         run: |
           $ENV:PKR_VAR_taskcluster_ref = $ENV:TASKCLUSTER_REF
           Import-Module "${{ github.workspace }}/bin/WorkerImages/WorkerImages.psm1"
-          
+
           $regions = @()
           if ("${{ github.event.inputs.replicate_regions }}" -ne "") {
               $regions = "${{ github.event.inputs.replicate_regions }}" -split ',' | ForEach-Object { $_.Trim() }
           }
-          
+
           $Vars = @{
             Key     = '${{ github.event.inputs.config }}'
             Region  = '${{ github.event.inputs.region }}'
           }
-          
+
           if ($regions.Count -gt 0) {
               $Vars['AmiRegions'] = $regions
           }
-          
+
           New-AWSWorkerImage @Vars
