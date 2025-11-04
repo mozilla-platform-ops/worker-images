@@ -1,4 +1,4 @@
-name: Build AWS Worker Image (TCEng)
+name: TCEng AWS
 
 on:
   workflow_dispatch:
