@@ -69,11 +69,18 @@ source "azure-arm" "nonsig" {
   managed_image_name                = var.managed_image_name
   managed_image_resource_group_name = var.managed_image_resource_group_name
 
-  azure_tags = {
-    base_image    = "${var.image_publisher}:${var.image_offer}:${var.image_sku}:${var.image_version}"
-    managed_by    = "packer"
-    deployment_id = var.sharedimage_version
-  }
+  azure_tags = merge(
+    {
+      base_image    = "${var.image_publisher}:${var.image_offer}:${var.image_sku}:${var.image_version}"
+      managed_by    = "packer"
+    },
+    var.taskcluster_ref != null && var.taskcluster_ref != "" ? {
+      taskcluster_ref = var.taskcluster_ref
+    } : {},
+    var.taskcluster_version != null && var.taskcluster_version != "" ? {
+      taskcluster_version = var.taskcluster_version
+    } : {}
+  )
 }
 
 build {
