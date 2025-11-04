@@ -17,15 +17,14 @@ variable "image_sku" { default = env("image_sku") }
 variable "image_version" { default = env("image_version") }
 variable "vm_size" { default = env("vm_size") }
 variable "location" { default = env("location") }
-
+variable "tc_arch" { default = "${env("tc_arch")}" }
 variable "managed_image_name" { default = env("managed_image_name") }
 variable "resource_group" { default = env("resource_group") }
 variable "managed_image_resource_group_name" { default = env("managed_image_resource_group_name") }
-
 variable "sharedimage_version" { default = env("sharedimage_version") }
 variable "bootstrap_script" { default = env("bootstrap_script") }
-
 variable "taskcluster_ref" { default = env("taskcluster_ref") }
+variable "taskcluster_version" { default = env("taskcluster_version") }
 variable "taskcluster_repo" { default = env("taskcluster_repo") }
 variable "provider_type" { default = env("provider_type") }
 
@@ -86,8 +85,14 @@ build {
   }
 
   provisioner "powershell" {
+    environment_vars = [
+      "TASKCLUSTER_REF=${var.taskcluster_ref}",
+      "TASKCLUSTER_VERSION=${var.taskcluster_version}",
+      "TC_ARCH=${var.tc_arch}",
+      "PROVIDER_TYPE=${var.provider_type}"
+    ]
     inline = [
-      "& 'C:/Windows/Temp/bootstrap.ps1' -MY_CLOUD azure -TASKCLUSTER_REF '${var.taskcluster_ref}' ;"
+      "& 'C:/Windows/Temp/bootstrap.ps1';"
     ]
   }
 
