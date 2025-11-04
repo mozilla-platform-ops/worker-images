@@ -19,10 +19,10 @@ vm:
   taskcluster_ref: "main"
   script_name: "generic-worker-ubuntu-24-04.sh"
   machine_type: "t2a-standard-4"
-  
+
   # AWS-specific VM settings
   instance_type: "t4g.large"  # ARM-based Graviton2, used when building on AWS
-  
+
   tags:
     image_set: "tceng-generic-worker-ubuntu-24-04-arm64"
     maintainer: "Taskcluster Engineering"
