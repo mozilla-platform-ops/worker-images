@@ -30,11 +30,6 @@ on:
         required: false
         default: ''
         type: string
-      debug:
-        description: 'Enable Packer debug mode'
-        required: false
-        default: false
-        type: boolean
 
 permissions:
   id-token: write
@@ -100,10 +95,6 @@ jobs:
               Key            = "${{ github.event.inputs.config }}"
               Region         = "${{ github.event.inputs.region }}"
               AssumeRoleArn  = "${{ env.AWS_ROLE_ARN }}"
-          }
-
-          if ("${{ github.event.inputs.debug }}" -eq "true") {
-              $params['PackerDebug'] = $true
           }
 
           New-AWSWorkerImage @params
