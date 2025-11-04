@@ -71,8 +71,8 @@ source "azure-arm" "nonsig" {
 
   azure_tags = merge(
     {
-      base_image    = "${var.image_publisher}:${var.image_offer}:${var.image_sku}:${var.image_version}"
-      managed_by    = "packer"
+      base_image = "${var.image_publisher}:${var.image_offer}:${var.image_sku}:${var.image_version}"
+      managed_by = "packer"
     },
     var.taskcluster_ref != null && var.taskcluster_ref != "" ? {
       taskcluster_ref = var.taskcluster_ref
