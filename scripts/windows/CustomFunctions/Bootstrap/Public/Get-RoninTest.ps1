@@ -4,7 +4,7 @@ function Get-RoninTest {
         [String]
         $Key
     )
-    
+
     ## Install Powershell YAML module
     Get-PackageProvider -Name Nuget -ForceBootstrap | Out-Null
     Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
@@ -12,7 +12,7 @@ function Get-RoninTest {
 
     ## Get just the tests that are defined in the config
     $Hiera = Convertfrom-Yaml (Get-Content -Path "C:\ronin\data\roles\$key.yaml" -Raw)
-    
+
     ## Loop through the tests based on which ones were selected
     $hiera.tests | ForEach-Object {
         $name = $psitem

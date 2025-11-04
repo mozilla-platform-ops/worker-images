@@ -30,7 +30,7 @@ retry curl -s -o /etc/papertrail-bundle.pem https://papertrailapp.com/tools/pape
 md5=`md5sum /etc/papertrail-bundle.pem | awk '{ print $1 }'`
 if [ "$md5" != "1062c59e49c4585a9acfaad740a79c5d" ]; then
     echo "md5 for papertrail CA bundle does not match"
-    exit -1
+    exit 1
 fi
 
 cat << EOF > /etc/rsyslog.d/00-taskcluster.conf

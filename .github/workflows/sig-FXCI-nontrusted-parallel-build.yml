@@ -1,4 +1,4 @@
-name: Parallel SIG Production Image Builds
+name: FXCI - Azure Image Builds
 
 on:
   workflow_dispatch:
@@ -11,7 +11,7 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
 
       - name: Install PowerShell-YAML module
         shell: pwsh

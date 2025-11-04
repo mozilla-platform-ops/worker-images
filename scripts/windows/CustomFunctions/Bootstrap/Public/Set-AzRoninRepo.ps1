@@ -44,7 +44,7 @@ Function Set-AzRoninRepo {
                 git checkout -q $deploymentId
             }
             Write-Log -message ('{0} :: Ronin Puppet HEAD is set to {1}' -f $($MyInvocation.MyCommand.Name), $deploymentID) -severity 'DEBUG'
-            Write-Host ('{0} :: Ronin Puppet HEAD is set to {1}' -f $($MyInvocation.MyCommand.Name), $deploymentID) 
+            Write-Host ('{0} :: Ronin Puppet HEAD is set to {1}' -f $($MyInvocation.MyCommand.Name), $deploymentID)
         }
         if (-not (Test-path $nodes_def)) {
             Copy-item -path $nodes_def_src -destination $nodes_def -force

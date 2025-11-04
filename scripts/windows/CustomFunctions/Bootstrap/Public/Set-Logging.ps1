@@ -12,7 +12,7 @@ function Set-Logging {
     }
     process {
         $null = New-Item -ItemType Directory -Force -Path $local_dir -ErrorAction SilentlyContinue
-        Invoke-DownloadWithRetry $ext_src/$nxlog_msi -Path $local_dir\$nxlog_msi 
+        Invoke-DownloadWithRetry $ext_src/$nxlog_msi -Path $local_dir\$nxlog_msi
         #Invoke-WebRequest $ext_src/$nxlog_msi -outfile $local_dir\$nxlog_msi -UseBasicParsing
         msiexec /i $local_dir\$nxlog_msi /passive
         while (!(Test-Path "$nxlog_dir\conf\")) { Start-Sleep 10 }

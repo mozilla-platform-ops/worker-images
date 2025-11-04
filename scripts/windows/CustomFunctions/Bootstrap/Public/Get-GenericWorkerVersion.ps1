@@ -3,11 +3,11 @@ function Get-GenericWorkerVersion {
     param (
         [String]
         $FilePath = "C:\generic-worker\generic-worker.exe",
-        
+
         [String]
         $StandardOutput = "C:\gwversion.txt"
     )
-    
+
     ## Generic Worker
     Start-Process -FilePath $FilePath -ArgumentList "--short-version" -RedirectStandardOutput $StandardOutput -Wait -NoNewWindow
     [PSCustomObject]@{

@@ -47,7 +47,7 @@ dkms status
 #
 
 # required on 22.04?
-# 
+#
 # if [[ "$BUILD_V4L2LOOPBACK" ]]; then
 #     # This is for Ubuntu 18.04 in GCP. We have to build the module, otherwise it will not work.
 #     V4L2LOOPBACK_VERSION=${V4L2LOOPBACK_VERSION:-0.12.5}

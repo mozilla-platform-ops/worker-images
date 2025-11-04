@@ -10,7 +10,7 @@ function New-GCPWorkerImage {
         [String] $TC_worker_key,
         [String] $Team
     )
-    
+
     Set-PSRepository PSGallery -InstallationPolicy Trusted
     Install-Module powershell-yaml -ErrorAction Stop
 

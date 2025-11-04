@@ -6,13 +6,13 @@ This directory contains configuration, provisioning, and metadata related to bui
 
 ## 📁 Directory Structure
 
-- `config/tceng/`  
+- `config/tceng/`
   YAML files defining metadata and configurations for each image set (e.g. `generic-worker-win2022.yaml`, `image_development.yaml`).
 
-- `scripts/windows/tceng/`  
+- `scripts/windows/tceng/`
   PowerShell bootstrap scripts for Windows images. These are run by Packer during provisioning.
 
-- `scripts/linux/tceng/`  
+- `scripts/linux/tceng/`
   Shell bootstrap scripts for Linux-based image builds.
 
 ---
@@ -36,7 +36,7 @@ Access to the [TCEng image build workflow](https://github.com/mozilla-platform-o
 
 Before executing the workflow, the following file is used to authorize users:
 
-- [`tceng.json`](https://github.com/mozilla-platform-ops/worker-images/blob/main/.github/tceng.json)  
+- [`tceng.json`](https://github.com/mozilla-platform-ops/worker-images/blob/main/.github/tceng.json)
   This file contains a list of GitHub usernames permitted to trigger TCEng image builds.
 
 ### 🔎 How it works:
@@ -55,20 +55,20 @@ To add or remove access, submit a PR modifying `tceng.json`.
 
 The following files and directories are shared infrastructure and require a **PR submission and review** for changes:
 
-- **GitHub Actions Workflow**  
-  `.github/workflows/nonsig-tceng-azure.yml`  
+- **GitHub Actions Workflow**
+  `.github/workflows/nonsig-tceng-azure.yml`
   Defines how TCEng images are built in CI using GitHub Actions.
 
-- **Access Control List**  
-  `.github/tceng.json`  
+- **Access Control List**
+  `.github/tceng.json`
   Defines which GitHub users are authorized to trigger the workflow.
 
-- **Image Build Script**  
-  [`New-AzWorkerImage.ps1`](https://github.com/mozilla-platform-ops/worker-images/blob/main/bin/WorkerImages/Public/New-AzWorkerImage.ps1)  
+- **Image Build Script**
+  [`New-AzWorkerImage.ps1`](https://github.com/mozilla-platform-ops/worker-images/blob/main/bin/WorkerImages/Public/New-AzWorkerImage.ps1)
   PowerShell module function used to parse image YAMLs and launch a Packer build.
 
-- **Packer HCL Template**  
-  [`tceng-azure.pkr.hcl`](https://github.com/mozilla-platform-ops/worker-images/blob/main/packer/tceng-azure.pkr.hcl)  
+- **Packer HCL Template**
+  [`tceng-azure.pkr.hcl`](https://github.com/mozilla-platform-ops/worker-images/blob/main/packer/tceng-azure.pkr.hcl)
   Contains the Packer source and build configuration for non-SIG Azure image builds.
 
 ---
@@ -119,12 +119,12 @@ To ensure image names and resource group names are globally unique, the [`New-Az
 
 This UUID is injected into:
 
-- **Managed Image Name**  
+- **Managed Image Name**
   ```plaintext
   markco-test-imageset-abcde12345xyz67890-centralus
   ```
 
-- **Temporary Resource Group Name**  
+- **Temporary Resource Group Name**
   ```plaintext
   imageset-abcde12345xyz67890-rg
   ```

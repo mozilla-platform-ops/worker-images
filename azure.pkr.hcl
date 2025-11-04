@@ -1,5 +1,5 @@
 // Inline Powershell Commands need a ";"
-// inside quotations. Except for last command. 
+// inside quotations. Except for last command.
 // Without it Packer will treat all commands as single line.
 
 packer {
@@ -202,7 +202,7 @@ source "azure-arm" "sig" {
   subscription_id    = "${var.subscription_id}"
   tenant_id          = "${var.tenant_id}"
 
-  # Source 
+  # Source
   os_type         = "Windows"
   image_publisher = "${var.image_publisher}"
   image_offer     = "${var.image_offer}"
@@ -215,7 +215,7 @@ source "azure-arm" "sig" {
   vm_size                    = "${var.vm_size}"
   async_resourcegroup_delete = true
 
-  # Shared image gallery https:github.com/mozilla-platform-ops/relops_infra_as_code/blob/master/terraform/azure_fx_nonci/worker-images.tf 
+  # Shared image gallery https:github.com/mozilla-platform-ops/relops_infra_as_code/blob/master/terraform/azure_fx_nonci/worker-images.tf
   shared_image_gallery_destination {
     subscription   = "${var.subscription_id}"
     resource_group = "${var.resource_group}"
@@ -264,7 +264,7 @@ source "azure-arm" "nonsig" {
   subscription_id    = "${var.subscription_id}"
   tenant_id          = "${var.tenant_id}"
 
-  # Source 
+  # Source
   os_type         = "Windows"
   image_publisher = "${var.image_publisher}"
   image_offer     = "${var.image_offer}"

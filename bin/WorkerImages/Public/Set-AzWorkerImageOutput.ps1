@@ -5,7 +5,7 @@ function Set-AzWorkerImageOutput {
         [String]
         $CommitMessage
     )
-    
+
     Set-PSRepository PSGallery -InstallationPolicy Trusted
     Install-Module powershell-yaml -ErrorAction Stop
     $Commit = ConvertFrom-Json $CommitMessage

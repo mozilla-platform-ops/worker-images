@@ -3,7 +3,7 @@ function Get-MozillaUnified {
     param (
         [String]
         $ClonePath = "C:\vcs-checkout",
-        
+
         [String]
         $Repository = "https://hg.mozilla.org/mozilla-unified",
 
@@ -41,7 +41,7 @@ function Get-MozillaUnified {
 
     try {
         Write-Log -message "Cloning $Repository to $ClonePath" -severity 'INFO'
-        
+
         $TempClonePath = Join-Path $env:TEMP "hg-shared_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
 
         ## Initialize the $clonePath

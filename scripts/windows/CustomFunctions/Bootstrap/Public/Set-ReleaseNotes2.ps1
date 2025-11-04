@@ -60,7 +60,7 @@ function Set-ReleaseNotes2 {
 
         if ($entry -match "(?i)^Commit: (?<Hash>\w{40})") {
             if ($null -ne $currentCommit -and (
-                $Config -eq "" -or 
+                $Config -eq "" -or
                 $currentCommit.Details.Roles -icontains $Config -or
                 ($Config -match "win" -and $currentCommit.Details.Roles -icontains "all-win")
             )) {
@@ -128,7 +128,7 @@ function Set-ReleaseNotes2 {
     }
 
     if ($null -ne $currentCommit -and (
-        $Config -eq "" -or 
+        $Config -eq "" -or
         $currentCommit.Details.Roles -icontains $Config -or
         ($Config -match "win" -and $currentCommit.Details.Roles -icontains "all-win")
     )) {

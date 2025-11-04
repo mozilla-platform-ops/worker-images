@@ -120,23 +120,23 @@ Describe "Mozilla Build - Tester" -Skip:@(Assert-IsBuilder) {
     }
     Context "Pip" {
         It "Certifi is installed" {
-            $certifi = ($pip_packages | Where-Object {$psitem -Match "Certifi"}) -split "==" 
+            $certifi = ($pip_packages | Where-Object {$psitem -Match "Certifi"}) -split "=="
             $certifi | Should -Not -Be $null
         }
         It "PSUtil is installed" {
-            $PSUtil = ($pip_packages | Where-Object {$psitem -Match "PSUtil"}) -split "==" 
+            $PSUtil = ($pip_packages | Where-Object {$psitem -Match "PSUtil"}) -split "=="
             $PSUtil | Should -Not -Be $null
         }
         It "PSUtil version 5.9.4" {
-            $PSUtil = ($pip_packages | Where-Object {$psitem -Match "PSUtil"}) -split "==" 
+            $PSUtil = ($pip_packages | Where-Object {$psitem -Match "PSUtil"}) -split "=="
             $PSUtil[1] | Should -Be $psutil_ExpectedSoftwareVersion
         }
         It "ZStandard is installed" {
-            $ZStandard = ($pip_packages | Where-Object {$psitem -Match "zstandard"}) -split "==" 
+            $ZStandard = ($pip_packages | Where-Object {$psitem -Match "zstandard"}) -split "=="
             $ZStandard | Should -Not -Be $null
         }
         It "ZStandard version 0.15.2" {
-            $ZStandard = ($pip_packages | Where-Object {$psitem -Match "zstandard"}) -split "==" 
+            $ZStandard = ($pip_packages | Where-Object {$psitem -Match "zstandard"}) -split "=="
             $ZStandard[1] | Should -Be $zstandard_ExepctedSoftwareVersion
         }
     }
@@ -271,23 +271,23 @@ Describe "Mozilla Build - Builder" -Skip:@(Assert-IsTester) {
     }
     Context "Pip" {
         It "Certifi is installed" {
-            $certifi = ($pip_packages | Where-Object {$psitem -Match "Certifi"}) -split "==" 
+            $certifi = ($pip_packages | Where-Object {$psitem -Match "Certifi"}) -split "=="
             $certifi | Should -Not -Be $null
         }
         It "PSUtil is installed" {
-            $PSUtil = ($pip_packages | Where-Object {$psitem -Match "PSUtil"}) -split "==" 
+            $PSUtil = ($pip_packages | Where-Object {$psitem -Match "PSUtil"}) -split "=="
             $PSUtil | Should -Not -Be $null
         }
         It "PSUtil version 5.9.4" {
-            $PSUtil = ($pip_packages | Where-Object {$psitem -Match "PSUtil"}) -split "==" 
+            $PSUtil = ($pip_packages | Where-Object {$psitem -Match "PSUtil"}) -split "=="
             $PSUtil[1] | Should -Be $psutil_ExpectedSoftwareVersion
         }
         It "ZStandard is installed" {
-            $ZStandard = ($pip_packages | Where-Object {$psitem -Match "zstandard"}) -split "==" 
+            $ZStandard = ($pip_packages | Where-Object {$psitem -Match "zstandard"}) -split "=="
             $ZStandard | Should -Not -Be $null
         }
         It "ZStandard version 0.15.2" {
-            $ZStandard = ($pip_packages | Where-Object {$psitem -Match "zstandard"}) -split "==" 
+            $ZStandard = ($pip_packages | Where-Object {$psitem -Match "zstandard"}) -split "=="
             $ZStandard[1] | Should -Be $zstandard_ExepctedSoftwareVersion
         }
     }

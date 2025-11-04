@@ -1,9 +1,9 @@
 function Show-TaskclusterBinaries {
     [CmdletBinding()]
     param (
-        
+
     )
-    
+
     @(Get-GenericWorkerVersion),
     @(Get-LiveLogVersion),
     @(Get-WorkerRunnerVersion),

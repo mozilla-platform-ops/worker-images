@@ -38,5 +38,5 @@ def get_worker_pool_images() -> dict[str, set[str]]:
 
             if image:
                 pool_images[pool["workerPoolId"]].add(image)
-                
+
     return pool_images

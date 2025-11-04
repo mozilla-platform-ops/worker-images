@@ -10,19 +10,19 @@ packer {
 # -----------------------------
 # Variables (fed via PKR_VAR_*)
 # -----------------------------
-variable "config"              { default = env("PKR_VAR_config") }
-variable "image_name"          { default = env("PKR_VAR_image_name") }
-variable "disk_size"           { default = env("PKR_VAR_disk_size") }
-variable "project_id"          { default = env("PKR_VAR_project_id") }
+variable "config" { default = env("PKR_VAR_config") }
+variable "image_name" { default = env("PKR_VAR_image_name") }
+variable "disk_size" { default = env("PKR_VAR_disk_size") }
+variable "project_id" { default = env("PKR_VAR_project_id") }
 variable "taskcluster_version" { default = env("PKR_VAR_taskcluster_version") }
-variable "taskcluster_ref"     { default = env("PKR_VAR_taskcluster_ref") }
-variable "tc_arch"             { default = env("PKR_VAR_tc_arch") }
+variable "taskcluster_ref" { default = env("PKR_VAR_taskcluster_ref") }
+variable "tc_arch" { default = env("PKR_VAR_tc_arch") }
 variable "source_image_family" { default = env("PKR_VAR_source_image_family") }
-variable "zone"                { default = env("PKR_VAR_zone") }
-variable "bootstrap_script"    { default = env("PKR_VAR_bootstrap_script") }
+variable "zone" { default = env("PKR_VAR_zone") }
+variable "bootstrap_script" { default = env("PKR_VAR_bootstrap_script") }
 
 # NEW: optional machine_type (empty means "let Packer/GCP decide")
-variable "machine_type"        { default = env("PKR_VAR_machine_type") }
+variable "machine_type" { default = env("PKR_VAR_machine_type") }
 
 variable "worker_env_var_key" {
   type      = string

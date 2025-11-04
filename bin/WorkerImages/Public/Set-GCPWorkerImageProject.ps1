@@ -6,7 +6,7 @@ function Set-GCPWorkerImageProject {
         [Parameter(Mandatory = $false)]
         [String] $Team
     )
-    
+
     Set-PSRepository PSGallery -InstallationPolicy Trusted
     Install-Module powershell-yaml -ErrorAction Stop
 
