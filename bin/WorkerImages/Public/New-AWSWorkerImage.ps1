@@ -96,6 +96,13 @@ function New-AWSWorkerImage {
     Write-Host "Using HCL: $PackerHCLPath"
     Write-Host "Using IAM Role: $AssumeRoleArn"
 
+    # Ensure AWS credentials from GitHub Actions are available to Packer
+    if ($ENV:AWS_ACCESS_KEY_ID) {
+        Write-Host "AWS credentials detected from environment"
+    } else {
+        Write-Warning "No AWS credentials found in environment - this may cause authentication issues"
+    }
+
     ## Initialize Packer
     Write-Host "packer init $PackerHCLPath"
     packer init $PackerHCLPath

@@ -71,7 +71,14 @@ jobs:
       - name: Build AMI (with replication)
         if: github.event.inputs.replicate_regions != ''
         shell: pwsh
+        env:
+          TASKCLUSTER_REF: ${{ github.event.inputs.TASKCLUSTER_REF }}
         run: |
+          # Set TASKCLUSTER_REF override if provided (before calling function)
+          if ($ENV:TASKCLUSTER_REF -ne "") {
+              $ENV:PKR_VAR_taskcluster_ref = $ENV:TASKCLUSTER_REF
+          }
+          
           Import-Module ./bin/WorkerImages/WorkerImages.psd1
 
           $regions = "${{ github.event.inputs.replicate_regions }}" -split ',' | ForEach-Object { $_.Trim() }
@@ -83,16 +90,19 @@ jobs:
               AmiRegions     = $regions
           }
 
-          if ("${{ github.event.inputs.debug }}" -eq "true") {
-              $params['PackerDebug'] = $true
-          }
-
           New-AWSWorkerImage @params
 
       - name: Build AMI (no replication)
         if: github.event.inputs.replicate_regions == ''
         shell: pwsh
+        env:
+          TASKCLUSTER_REF: ${{ github.event.inputs.TASKCLUSTER_REF }}
         run: |
+          # Set TASKCLUSTER_REF override if provided (before calling function)
+          if ($ENV:TASKCLUSTER_REF -ne "") {
+              $ENV:PKR_VAR_taskcluster_ref = $ENV:TASKCLUSTER_REF
+          }
+          
           Import-Module ./bin/WorkerImages/WorkerImages.psd1
 
           $params = @{
