@@ -9,7 +9,7 @@ image:
   # AWS-specific configuration
   ami_name: "generic-worker-ubuntu-24-04-arm64-aws"
   source_ami_owner: "099720109477"  # Canonical
-  source_ami_filter: "ubuntu/images/hvm-ssd/ubuntu-noble-24.04-arm64-server-*"
+  source_ami_filter: "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-arm64-server-*"
 
 vm:
   providerType: "gcp"  # This can be overridden via environment or parameters
