@@ -90,10 +90,11 @@ jobs:
           GITHUB_TOKEN:       ${{ secrets.GITHUB_TOKEN }}
           TASKCLUSTER_REF:    ${{ github.event.inputs.TASKCLUSTER_REF }}
         run: |
+          $ENV:PKR_VAR_taskcluster_ref = $ENV:TASKCLUSTER_REF
           Import-Module "${{ github.workspace }}/bin/WorkerImages/WorkerImages.psm1"
           $Vars = @{
             github_token       = "${{ secrets.GITHUB_TOKEN }}"
             Key                = '${{ github.event.inputs.config }}'
-            Team               = "tceng"
+            Team               = "tceng"   # ensure tceng HCL/YAML paths
           }
           New-GCPWorkerImage @Vars
