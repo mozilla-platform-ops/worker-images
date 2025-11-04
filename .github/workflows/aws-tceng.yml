@@ -78,7 +78,7 @@ jobs:
           if ($ENV:TASKCLUSTER_REF -ne "") {
               $ENV:PKR_VAR_taskcluster_ref = $ENV:TASKCLUSTER_REF
           }
-          
+
           Import-Module ./bin/WorkerImages/WorkerImages.psd1
 
           $regions = "${{ github.event.inputs.replicate_regions }}" -split ',' | ForEach-Object { $_.Trim() }
@@ -102,7 +102,7 @@ jobs:
           if ($ENV:TASKCLUSTER_REF -ne "") {
               $ENV:PKR_VAR_taskcluster_ref = $ENV:TASKCLUSTER_REF
           }
-          
+
           Import-Module ./bin/WorkerImages/WorkerImages.psd1
 
           $params = @{
