@@ -20,18 +20,12 @@ permissions:
   id-token: write
   contents: read
 
-## REMOVE after PR is merged
-env:
-  TARGET_BRANCH: main
-
 jobs:
   check-access:
     name: "Verify User Access"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
-        with:
-          ref: ${{ env.TARGET_BRANCH }}
 
       - name: Load Authorized Users and Check Access
         shell: pwsh
@@ -96,11 +90,10 @@ jobs:
           GITHUB_TOKEN:       ${{ secrets.GITHUB_TOKEN }}
           TASKCLUSTER_REF:    ${{ github.event.inputs.TASKCLUSTER_REF }}
         run: |
-          $ENV:PKR_VAR_taskcluster_ref = $ENV:TASKCLUSTER_REF
           Import-Module "${{ github.workspace }}/bin/WorkerImages/WorkerImages.psm1"
           $Vars = @{
             github_token       = "${{ secrets.GITHUB_TOKEN }}"
             Key                = '${{ github.event.inputs.config }}'
-            Team               = "tceng"   # ensure tceng HCL/YAML paths
+            Team               = "tceng"
           }
           New-GCPWorkerImage @Vars
