@@ -48,19 +48,17 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@00943011d9042930efac3dcd3a170e4273319bc8
         with:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ github.event.inputs.region }}
           role-session-name: github-actions-packer-build
 
       - name: Setup Packer
-        uses: hashicorp/setup-packer@main
-        with:
-          version: '1.10.0'
+        uses: hashicorp/setup-packer@1aa358be5cf73883762b302a3a03abd66e75b232
 
       - name: Install PowerShell modules
         shell: pwsh
@@ -115,19 +113,11 @@ jobs:
 
       - name: Upload Packer manifest
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
         with:
           name: packer-manifest-${{ github.event.inputs.config }}-${{ github.run_number }}
           path: packer-artifacts.json
           if-no-files-found: warn
-
-      - name: Upload SBOM (if generated)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: sbom-${{ github.event.inputs.config }}-${{ github.run_number }}
-          path: sboms/*.md
-          if-no-files-found: ignore
 
       - name: Parse and display AMI details
         if: success()
@@ -175,16 +165,16 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@00943011d9042930efac3dcd3a170e4273319bc8
         with:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ github.event.inputs.region }}
 
       - name: Download Packer manifest
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
         with:
           name: packer-manifest-${{ github.event.inputs.config }}-${{ github.run_number }}
 
