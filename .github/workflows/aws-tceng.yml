@@ -46,7 +46,7 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -74,20 +74,20 @@ jobs:
         shell: pwsh
         run: |
           Import-Module ./bin/WorkerImages/WorkerImages.psd1
-          
+
           $regions = "${{ github.event.inputs.replicate_regions }}" -split ',' | ForEach-Object { $_.Trim() }
-          
+
           $params = @{
               Key            = "${{ github.event.inputs.config }}"
               Region         = "${{ github.event.inputs.region }}"
               AssumeRoleArn  = "${{ env.AWS_ROLE_ARN }}"
               AmiRegions     = $regions
           }
-          
+
           if ("${{ github.event.inputs.debug }}" -eq "true") {
               $params['PackerDebug'] = $true
           }
-          
+
           New-AWSWorkerImage @params
 
       - name: Build AMI (no replication)
@@ -95,17 +95,17 @@ jobs:
         shell: pwsh
         run: |
           Import-Module ./bin/WorkerImages/WorkerImages.psd1
-          
+
           $params = @{
               Key            = "${{ github.event.inputs.config }}"
               Region         = "${{ github.event.inputs.region }}"
               AssumeRoleArn  = "${{ env.AWS_ROLE_ARN }}"
           }
-          
+
           if ("${{ github.event.inputs.debug }}" -eq "true") {
               $params['PackerDebug'] = $true
           }
-          
+
           New-AWSWorkerImage @params
 
       - name: Upload Packer manifest
@@ -130,14 +130,14 @@ jobs:
         run: |
           if (Test-Path "packer-artifacts.json") {
               $manifest = Get-Content "packer-artifacts.json" | ConvertFrom-Json
-              
+
               Write-Host "`n========================================" -ForegroundColor Cyan
               Write-Host "AMI Build Successful!" -ForegroundColor Green
               Write-Host "========================================" -ForegroundColor Cyan
-              
+
               foreach ($build in $manifest.builds) {
                   Write-Host "`nBuild: $($build.name)" -ForegroundColor Yellow
-                  
+
                   # Parse AMI IDs from artifact_id (format: region:ami-xxxxx)
                   $amiIds = $build.artifact_id -split ','
                   foreach ($amiId in $amiIds) {
@@ -151,7 +151,7 @@ jobs:
                       }
                   }
               }
-              
+
               Write-Host "========================================`n" -ForegroundColor Cyan
           }
 
@@ -167,7 +167,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: success()
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

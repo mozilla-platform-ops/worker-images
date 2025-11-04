@@ -10,19 +10,19 @@ packer {
 # -----------------------------
 # Variables (fed via PKR_VAR_*)
 # -----------------------------
-variable "config"              { default = env("PKR_VAR_config") }
-variable "ami_name"            { default = env("PKR_VAR_ami_name") }
-variable "disk_size"           { default = env("PKR_VAR_disk_size") }
-variable "region"              { default = env("PKR_VAR_region") }
+variable "config" { default = env("PKR_VAR_config") }
+variable "ami_name" { default = env("PKR_VAR_ami_name") }
+variable "disk_size" { default = env("PKR_VAR_disk_size") }
+variable "region" { default = env("PKR_VAR_region") }
 variable "taskcluster_version" { default = env("PKR_VAR_taskcluster_version") }
-variable "taskcluster_ref"     { default = env("PKR_VAR_taskcluster_ref") }
-variable "tc_arch"             { default = env("PKR_VAR_tc_arch") }
-variable "source_ami"          { default = env("PKR_VAR_source_ami") }
-variable "source_ami_owner"    { default = env("PKR_VAR_source_ami_owner") }
-variable "source_ami_filter"   { default = env("PKR_VAR_source_ami_filter") }
-variable "instance_type"       { default = env("PKR_VAR_instance_type") }
-variable "bootstrap_script"    { default = env("PKR_VAR_bootstrap_script") }
-variable "ami_regions"         { 
+variable "taskcluster_ref" { default = env("PKR_VAR_taskcluster_ref") }
+variable "tc_arch" { default = env("PKR_VAR_tc_arch") }
+variable "source_ami" { default = env("PKR_VAR_source_ami") }
+variable "source_ami_owner" { default = env("PKR_VAR_source_ami_owner") }
+variable "source_ami_filter" { default = env("PKR_VAR_source_ami_filter") }
+variable "instance_type" { default = env("PKR_VAR_instance_type") }
+variable "bootstrap_script" { default = env("PKR_VAR_bootstrap_script") }
+variable "ami_regions" {
   type    = list(string)
   default = []
 }
@@ -87,7 +87,7 @@ source "amazon-ebs" "tceng" {
 
   # SSH communicator
   ssh_username = "ubuntu"
-  
+
   # IAM instance profile (if needed for build-time permissions)
   iam_instance_profile = var.iam_instance_profile != "" ? var.iam_instance_profile : null
 

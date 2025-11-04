@@ -1,21 +1,21 @@
 function New-AWSWorkerImage {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory = $true)] 
+        [Parameter(Mandatory = $true)]
         [String] $Key,
-        
-        [Parameter(Mandatory = $true)] 
+
+        [Parameter(Mandatory = $true)]
         [String] $Region,
-        
-        [Parameter(Mandatory = $true)] 
+
+        [Parameter(Mandatory = $true)]
         [String] $AssumeRoleArn,
-        
-        [Parameter(Mandatory = $false)] 
+
+        [Parameter(Mandatory = $false)]
         [String] $IamInstanceProfile,
-        
-        [Parameter(Mandatory = $false)] 
+
+        [Parameter(Mandatory = $false)]
         [String[]] $AmiRegions,
-        
+
         [Switch] $PackerDebug
     )
 
@@ -65,12 +65,12 @@ function New-AWSWorkerImage {
     if ($YAML.vm["taskcluster_ref"])       { $ENV:PKR_VAR_taskcluster_ref      = $YAML.vm["taskcluster_ref"] }
     if ($YAML.vm["tc_arch"])               { $ENV:PKR_VAR_tc_arch              = $YAML.vm["tc_arch"] }
     if ($YAML.vm["script_name"])           { $ENV:PKR_VAR_bootstrap_script     = $YAML.vm["script_name"] }
-    
+
     # AWS-specific image configuration
     if ($YAML.image["source_ami"])         { $ENV:PKR_VAR_source_ami           = $YAML.image["source_ami"] }
     if ($YAML.image["source_ami_owner"])   { $ENV:PKR_VAR_source_ami_owner     = $YAML.image["source_ami_owner"] }
     if ($YAML.image["source_ami_filter"])  { $ENV:PKR_VAR_source_ami_filter    = $YAML.image["source_ami_filter"] }
-    
+
     # Optional IAM instance profile
     if ($IamInstanceProfile) {
         $ENV:PKR_VAR_iam_instance_profile = $IamInstanceProfile
@@ -113,7 +113,7 @@ function New-AWSWorkerImage {
     # Display result
     if ($LASTEXITCODE -eq 0) {
         Write-Host "✅ Successfully built AMI: $($ENV:PKR_VAR_ami_name)" -ForegroundColor Green
-        
+
         # Parse manifest if available
         if (Test-Path "packer-artifacts.json") {
             $manifest = Get-Content "packer-artifacts.json" | ConvertFrom-Json
