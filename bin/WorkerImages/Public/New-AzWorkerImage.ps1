@@ -52,9 +52,9 @@ function New-AzWorkerImage {
     $ENV:PKR_VAR_image_key_name = $Key
 
     if ($YAML.image["publisher"]) { $ENV:PKR_VAR_image_publisher = $YAML.image["publisher"] }
-    if ($YAML.image["offer"])     { $ENV:PKR_VAR_image_offer     = $YAML.image["offer"] }
-    if ($YAML.image["sku"])       { $ENV:PKR_VAR_image_sku       = $YAML.image["sku"] }
-    if ($YAML.image["version"])   { $ENV:PKR_VAR_image_version   = $YAML.image["version"] }
+    if ($YAML.image["offer"]) { $ENV:PKR_VAR_image_offer = $YAML.image["offer"] }
+    if ($YAML.image["sku"]) { $ENV:PKR_VAR_image_sku = $YAML.image["sku"] }
+    if ($YAML.image["version"]) { $ENV:PKR_VAR_image_version = $YAML.image["version"] }
 
     if ($YAML.azure["managed_image_resource_group_name"]) {
         $ENV:PKR_VAR_resource_group = $YAML.azure["managed_image_resource_group_name"]
@@ -67,18 +67,18 @@ function New-AzWorkerImage {
         $ENV:PKR_VAR_bootstrap_script = $YAML.vm["bootstrapscript"]
     }
 
-    if ($YAML.vm["vm_size"])              { $ENV:PKR_VAR_vm_size              = $YAML.vm["vm_size"] }
-    if ($YAML.vm["taskcluster_version"])  { $ENV:PKR_VAR_taskcluster_version  = $YAML.vm["taskcluster_version"] }
-    if ($YAML.vm["taskcluster_ref"])      { $ENV:PKR_VAR_taskcluster_ref      = $YAML.vm["taskcluster_ref"] }
-    if ($YAML.vm["taskcuster_repo"])      { $ENV:PKR_VAR_taskcuster_repo      = $YAML.vm["taskcuster_repo"] }
-    if ($YAML.vm["providerType"])         { $ENV:PKR_VAR_provider_type        = $YAML.vm["providerType"] }
-
-    if ($YAML.vm.tags["base_image"])        { $ENV:PKR_VAR_base_image        = $YAML.vm.tags["base_image"] }
-    if ($YAML.vm.tags["sourceBranch"])      { $ENV:PKR_VAR_source_branch     = $YAML.vm.tags["sourceBranch"] }
-    if ($YAML.vm.tags["sourceRepository"])  { $ENV:PKR_VAR_source_repository = $YAML.vm.tags["sourceRepository"] }
-    if ($YAML.vm.tags["sourceOrganization"]){ $ENV:PKR_VAR_source_organization = $YAML.vm.tags["sourceOrganization"] }
-    if ($YAML.vm.tags["deploymentId"])      { $ENV:PKR_VAR_deployment_id     = $YAML.vm.tags["deploymentId"] }
-    if ($YAML.vm.tags["worker_pool_id"])    { $ENV:PKR_VAR_worker_pool_id    = $YAML.vm.tags["worker_pool_id"] }
+    if ($YAML.vm["vm_size"]) { $ENV:PKR_VAR_vm_size = $YAML.vm["vm_size"] }
+    if ($YAML.vm["taskcluster_version"]) { $ENV:PKR_VAR_taskcluster_version = $YAML.vm["taskcluster_version"] }
+    if ($YAML.vm["taskcluster_ref"]) { $ENV:PKR_VAR_taskcluster_ref = $YAML.vm["taskcluster_ref"] }
+    if ($YAML.vm["taskcluster_repo"]) { $ENV:PKR_VAR_taskcluster_repo = $YAML.vm["taskcluster_repo"] }
+    if ($YAML.vm["providerType"]) { $ENV:PKR_VAR_provider_type = $YAML.vm["providerType"] }
+    if ($YAML.vm["tc_arch"]) { $ENV:PKR_VAR_tc_arch = $YAML.vm["tc_arch"] }
+    if ($YAML.vm.tags["base_image"]) { $ENV:PKR_VAR_base_image = $YAML.vm.tags["base_image"] }
+    if ($YAML.vm.tags["sourceBranch"]) { $ENV:PKR_VAR_source_branch = $YAML.vm.tags["sourceBranch"] }
+    if ($YAML.vm.tags["sourceRepository"]) { $ENV:PKR_VAR_source_repository = $YAML.vm.tags["sourceRepository"] }
+    if ($YAML.vm.tags["sourceOrganization"]) { $ENV:PKR_VAR_source_organization = $YAML.vm.tags["sourceOrganization"] }
+    if ($YAML.vm.tags["deploymentId"]) { $ENV:PKR_VAR_deployment_id = $YAML.vm.tags["deploymentId"] }
+    if ($YAML.vm.tags["worker_pool_id"]) { $ENV:PKR_VAR_worker_pool_id = $YAML.vm.tags["worker_pool_id"] }
 
     switch ($Team) {
         "tceng" {
@@ -92,22 +92,24 @@ function New-AzWorkerImage {
         default {
             if ($YAML.vm.tags["worker_pool_id"] -and $YAML.vm.tags["deploymentId"]) {
                 $ENV:PKR_VAR_temp_resource_group_name = ('{0}-{1}-{2}-pkrtmp' -f $YAML.vm.tags["worker_pool_id"], $YAML.vm.tags["deploymentId"], (Get-Random -Maximum 999))
-            } else {
+            }
+            else {
                 throw "worker_pool_id and deploymentId are required for temp resource group naming"
             }
         }
     }
 
-    $ENV:PKR_VAR_client_id          = $Client_ID
-    $ENV:PKR_VAR_tenant_id          = $Tenant_ID
-    $ENV:PKR_VAR_subscription_id    = $Subscription_ID
-    $ENV:PKR_VAR_application_id     = $Application_ID
-    $ENV:PKR_VAR_oidc_request_url   = $oidc_request_url
+    $ENV:PKR_VAR_client_id = $Client_ID
+    $ENV:PKR_VAR_tenant_id = $Tenant_ID
+    $ENV:PKR_VAR_subscription_id = $Subscription_ID
+    $ENV:PKR_VAR_application_id = $Application_ID
+    $ENV:PKR_VAR_oidc_request_url = $oidc_request_url
     $ENV:PKR_VAR_oidc_request_token = $oidc_request_token
 
     if ($Team -eq "tceng" -and $ENV:PKR_VAR_uuid) {
         $ENV:PKR_VAR_managed_image_name = "imageset-$($ENV:PKR_VAR_uuid)-$Location"
-    } else {
+    }
+    else {
         switch -Wildcard ($Key) {
             "*alpha2*" {
                 $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}-alpha2' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:PKR_VAR_image_sku)
@@ -128,7 +130,8 @@ function New-AzWorkerImage {
     packer init $PackerHCLPath
     if ($PackerDebug) {
         packer build -debug --only azure-arm.nonsig -force $PackerHCLPath
-    } else {
+    }
+    else {
         packer build --only azure-arm.nonsig -force $PackerHCLPath
     }
 }
