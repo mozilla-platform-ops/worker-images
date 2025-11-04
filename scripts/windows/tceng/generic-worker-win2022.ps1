@@ -265,10 +265,18 @@ md "C:\generic-worker"
 md "C:\worker-runner"
 
 # download generic-worker, worker-runner, livelog, and taskcluster-proxy
-Invoke-WebRequest -Uri ("https://github.com/taskcluster/taskcluster/releases/download/v{0}/generic-worker-multiuser-windows-{1}" -f $TASKCLUSTER_VERSION, $TC_ARCH) -OutFile "C:\generic-worker\generic-worker.exe"
-Invoke-WebRequest -Uri ("https://github.com/taskcluster/taskcluster/releases/download/v{0}/start-worker-windows-{1}" -f $TASKCLUSTER_VERSION, $TC_ARCH) -OutFile "C:\worker-runner\start-worker.exe"
-Invoke-WebRequest -Uri ("https://github.com/taskcluster/taskcluster/releases/download/v{0}/livelog-windows-{1}" -f $TASKCLUSTER_VERSION, $TC_ARCH) -OutFile "C:\generic-worker\livelog.exe"
-Invoke-WebRequest -Uri ("https://github.com/taskcluster/taskcluster/releases/download/v{0}/taskcluster-proxy-windows-{1}" -f $TASKCLUSTER_VERSION, $TC_ARCH) -OutFile "C:\generic-worker\taskcluster-proxy.exe"
+$gw = ("https://github.com/taskcluster/taskcluster/releases/download/v{0}/generic-worker-multiuser-windows-{1}" -f $TASKCLUSTER_VERSION, $TC_ARCH)
+$wr = ("https://github.com/taskcluster/taskcluster/releases/download/v{0}/start-worker-windows-{1}" -f $TASKCLUSTER_VERSION, $TC_ARCH)
+$ll = ("https://github.com/taskcluster/taskcluster/releases/download/v{0}/livelog-windows-{1}" -f $TASKCLUSTER_VERSION, $TC_ARCH)
+$tp = ("https://github.com/taskcluster/taskcluster/releases/download/v{0}/taskcluster-proxy-windows-{1}" -f $TASKCLUSTER_VERSION, $TC_ARCH)
+Write-log "Downloading $gw"
+Write-Log "Downloading $wr"
+Write-Log "Downloading $ll"
+Write-Log "Downloading $tp"
+Invoke-WebRequest -Uri $gw -OutFile "C:\generic-worker\generic-worker.exe"
+Invoke-WebRequest -Uri $wr -OutFile "C:\worker-runner\start-worker.exe"
+Invoke-WebRequest -Uri $ll -OutFile "C:\generic-worker\livelog.exe"
+Invoke-WebRequest -Uri $tp -OutFile "C:\generic-worker\taskcluster-proxy.exe"
 Run-Executable "C:\generic-worker\generic-worker.exe" @("--version")
 Run-Executable "C:\generic-worker\generic-worker.exe" @("new-ed25519-keypair", "--file", "C:\generic-worker\generic-worker-ed25519-signing-key.key")
 
