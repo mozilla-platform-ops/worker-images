@@ -53,19 +53,18 @@ function New-AWSWorkerImage {
     $ENV:PKR_VAR_ami_name = $amiName
 
     ## AWS configuration from YAML
-    $ENV:PKR_VAR_region         = $Region
+    $ENV:PKR_VAR_region = $Region
 
-    if ($YAML.vm["disk_size"])             { $ENV:PKR_VAR_disk_size            = $YAML.vm["disk_size"] }
-    if ($YAML.vm["instance_type"])         { $ENV:PKR_VAR_instance_type        = $YAML.vm["instance_type"] }
-    if ($YAML.vm["taskcluster_version"])   { $ENV:PKR_VAR_taskcluster_version  = $YAML.vm["taskcluster_version"] }
-    if ($YAML.vm["taskcluster_ref"])       { $ENV:PKR_VAR_taskcluster_ref      = $YAML.vm["taskcluster_ref"] }
-    if ($YAML.vm["tc_arch"])               { $ENV:PKR_VAR_tc_arch              = $YAML.vm["tc_arch"] }
-    if ($YAML.vm["script_name"])           { $ENV:PKR_VAR_bootstrap_script     = $YAML.vm["script_name"] }
+    if ($YAML.vm["disk_size"]) { $ENV:PKR_VAR_disk_size = $YAML.vm["disk_size"] }
+    if ($YAML.vm["instance_type"]) { $ENV:PKR_VAR_instance_type = $YAML.vm["instance_type"] }
+    if ($YAML.vm["taskcluster_version"]) { $ENV:PKR_VAR_taskcluster_version = $YAML.vm["taskcluster_version"] }
+    if ($YAML.vm["tc_arch"]) { $ENV:PKR_VAR_tc_arch = $YAML.vm["tc_arch"] }
+    if ($YAML.vm["script_name"]) { $ENV:PKR_VAR_bootstrap_script = $YAML.vm["script_name"] }
 
     # AWS-specific image configuration
-    if ($YAML.image["source_ami"])         { $ENV:PKR_VAR_source_ami           = $YAML.image["source_ami"] }
-    if ($YAML.image["source_ami_owner"])   { $ENV:PKR_VAR_source_ami_owner     = $YAML.image["source_ami_owner"] }
-    if ($YAML.image["source_ami_filter"])  { $ENV:PKR_VAR_source_ami_filter    = $YAML.image["source_ami_filter"] }
+    if ($YAML.image["source_ami"]) { $ENV:PKR_VAR_source_ami = $YAML.image["source_ami"] }
+    if ($YAML.image["source_ami_owner"]) { $ENV:PKR_VAR_source_ami_owner = $YAML.image["source_ami_owner"] }
+    if ($YAML.image["source_ami_filter"]) { $ENV:PKR_VAR_source_ami_filter = $YAML.image["source_ami_filter"] }
 
     # Optional IAM instance profile
     if ($IamInstanceProfile) {
@@ -95,7 +94,8 @@ function New-AWSWorkerImage {
     # Ensure AWS credentials from GitHub Actions are available to Packer
     if ($ENV:AWS_ACCESS_KEY_ID) {
         Write-Host "AWS credentials detected from environment"
-    } else {
+    }
+    else {
         Write-Warning "No AWS credentials found in environment - this may cause authentication issues"
     }
 
@@ -104,14 +104,8 @@ function New-AWSWorkerImage {
     packer init $PackerHCLPath
 
     ## Build (tceng uses single generic build; no --only flag)
-    if ($PackerDebug) {
-        Write-Host "packer build -debug -force $PackerHCLPath"
-        packer build -debug -force $PackerHCLPath
-    }
-    else {
-        Write-Host "packer build -force $PackerHCLPath"
-        packer build -force $PackerHCLPath
-    }
+    Write-Host "packer build -force $PackerHCLPath"
+    packer build -force $PackerHCLPath    
 
     # Display result
     if ($LASTEXITCODE -eq 0) {

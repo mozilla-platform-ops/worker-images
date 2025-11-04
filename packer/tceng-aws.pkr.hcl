@@ -117,7 +117,6 @@ build {
       "IMAGE_SET=${var.config}",
       "REGION=${var.region}",
       "TASKCLUSTER_VERSION=${var.taskcluster_version}",
-      "TASKCLUSTER_REF=${var.taskcluster_ref}",
       "TC_ARCH=${var.tc_arch}"
     ]
     script = "${path.cwd}/scripts/linux/tceng/${var.bootstrap_script}"
