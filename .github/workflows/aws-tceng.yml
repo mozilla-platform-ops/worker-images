@@ -6,11 +6,11 @@ on:
       config:
         description: 'Configuration file name (without .yaml extension)'
         required: true
-        default: 'generic-worker-ubuntu-24-04-aws'
+        default: 'generic-worker-ubuntu-24-04'
         type: choice
         options:
-          - generic-worker-ubuntu-24-04-aws
-          - generic-worker-ubuntu-24-04-arm64-aws
+          - generic-worker-ubuntu-24-04
+          - generic-worker-ubuntu-24-04-arm64
       region:
         description: 'AWS Region to build in'
         required: true

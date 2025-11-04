@@ -1,19 +1,38 @@
 ---
 image:
+  # GCP-specific configuration
   project_id: "community-tc-workers"
   zone: "us-central1-a"
   source_image_family: "ubuntu-2404-lts-arm64"
   image_name: "generic-worker-ubuntu-24-04-arm64"
   workload_identity_provider_project_number: 324168772199
+  
+  # AWS-specific configuration
+  ami_name: "generic-worker-ubuntu-24-04-arm64-aws"
+  source_ami_owner: "099720109477"  # Canonical
+  source_ami_filter: "ubuntu/images/hvm-ssd/ubuntu-noble-24.04-arm64-server-*"
 
 vm:
-  providerType: "gcp"
+  providerType: "gcp"  # This can be overridden via environment or parameters
   disk_size: 60
   tc_arch: "arm64"
   taskcluster_version: "v90.0.3"
+  taskcluster_ref: "main"
   script_name: "generic-worker-ubuntu-24-04.sh"
   machine_type: "t2a-standard-4"
+  
+  # AWS-specific VM settings
+  instance_type: "t4g.large"  # ARM-based Graviton2, used when building on AWS
+  
   tags:
     image_set: "tceng-generic-worker-ubuntu-24-04-arm64"
     maintainer: "Taskcluster Engineering"
     purpose: "tceng ubuntu-24-04-staging-arm64"
+
+# AWS-specific settings
+aws:
+  # Optional: replicate to multiple regions for global availability
+  ami_regions:
+    - "us-west-2"
+    - "us-east-1"
+    - "eu-west-1"

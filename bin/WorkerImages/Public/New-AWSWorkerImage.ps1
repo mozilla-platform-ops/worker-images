@@ -23,7 +23,7 @@ function New-AWSWorkerImage {
     Install-Module powershell-yaml -ErrorAction Stop
 
     # AWS images are only for tceng
-    $YamlPath      = "config/tceng/$Key.yaml"
+    $YamlPath = "config/tceng/$Key.yaml"
     $PackerHCLPath = "packer/tceng-aws.pkr.hcl"
     $ENV:PKR_VAR_Team_key = "tceng"
 
