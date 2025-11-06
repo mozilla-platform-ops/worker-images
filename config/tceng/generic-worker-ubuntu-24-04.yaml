@@ -12,7 +12,6 @@ image:
   source_ami_filter: "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"
 
 vm:
-  providerType: "gcp"  # This can be overridden via environment or parameters
   disk_size: 60
   tc_arch: "amd64"
   taskcluster_version: 91.1.2
