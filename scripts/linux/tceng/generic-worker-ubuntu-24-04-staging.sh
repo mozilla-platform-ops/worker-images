@@ -137,7 +137,7 @@ EOF
 
 cat > /etc/start-worker.yml << EOF
 provider:
-    providerType: %MY_CLOUD%
+    providerType: ${MY_CLOUD}
 worker:
     implementation: generic-worker
     path: /usr/local/bin/generic-worker
