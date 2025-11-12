@@ -20,7 +20,7 @@ vm:
   puppet_version: 8.10.0
   openvox_version: 8.19.2
   git_version: 2.50.1
-  size: Standard_D32ads_v5
+  size: Standard_D32ads_v6
   tags:
     base_image: win2022642009azure
     worker_pool_id: win2022-64-2009
