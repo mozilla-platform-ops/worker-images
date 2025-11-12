@@ -26,7 +26,7 @@ vm:
     worker_pool_id: win2022-64-2009
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "win_explorer_foreground"
+    sourceBranch: "RELOPS-1841"
     deploymentId: "NA"
     managed_by: packer
 tests:
