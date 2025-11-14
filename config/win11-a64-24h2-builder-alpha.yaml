@@ -17,15 +17,15 @@ azure:
 vm:
   puppet_version: 8.10.0
   openvox_version: 8.19.2
-  git_version: 2.51.2.0
+  git_version: 2.51.2
   size: Standard_E8pds_v5
   tags:
     base_image: win11a6424h2azurebuilder
     worker_pool_id: win11-a64-24h2-builder-alpha
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "win_explorer_foreground"
-    deploymentId: "NA"
+    sourceBranch: "default"
+    deploymentId: "default"
     managed_by: packer
 tests:
   - directx_sdk.tests.ps1
