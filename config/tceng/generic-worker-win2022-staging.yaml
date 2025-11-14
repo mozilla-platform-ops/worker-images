@@ -7,7 +7,6 @@ image:
 azure:
   locations:
     - centralus
-    - eastus
   managed_image_resource_group_name: "rg-tc-eng-images"
   managed_image_storage_account_type: "Standard_LRS"
 vm:
