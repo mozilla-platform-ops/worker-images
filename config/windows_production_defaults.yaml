@@ -3,17 +3,17 @@ azure:
   managed_image_resource_group_name: rg-packer-worker-images
   managed_image_storage_account_type: Standard_LRS
 sharedimage:
-  image_version: 1.0.8
+  image_version: 1.0.9
 vm:
   puppet_version: 8.10.0
-  git_version: 2.51.0
+  git_version: 2.51.2
   openvox_version: 8.19.2
   tags:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: windows
     managed_by: packer
-    deploymentId: "79dd0f2"
+    deploymentId: "4e4d2f8"
 images:
   production:
     - win10-64-2009
