@@ -28,7 +28,7 @@ vm:
     worker_pool_id: win11-64-2009
     sourceOrganization: "default"
     sourceRepository: "default"
-    sourceBranch: "RELOPS-1944"
+    sourceBranch: "win_explorer_foreground"
     deploymentId: "NA"
     managed_by: packer
 tests:
