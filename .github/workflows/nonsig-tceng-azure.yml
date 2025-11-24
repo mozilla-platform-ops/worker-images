@@ -29,7 +29,7 @@ jobs:
     name: "Verify User Access"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
 
       - name: Load Authorized Users and Check Access
         shell: pwsh
@@ -51,7 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # TESTING ONLY: check out relops-1640 branch instead of trigger branch
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
 
       - id: set-matrix
         shell: pwsh
@@ -77,7 +77,7 @@ jobs:
       matrix:
         locations: ${{ fromJson(needs.config.outputs.LOCATIONS) }}
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
 
       - name: Azure Login
         uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5
