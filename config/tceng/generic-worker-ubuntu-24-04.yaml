@@ -14,7 +14,7 @@ image:
 vm:
   disk_size: 60
   tc_arch: "amd64"
-  taskcluster_version: 93.1.2
+  taskcluster_version: 94.1.1
   script_name: "generic-worker-ubuntu-24-04.sh"
   # AWS-specific VM settings
   instance_type: "t3.large"  # Used when building on AWS
