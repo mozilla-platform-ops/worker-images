@@ -41,7 +41,7 @@ jobs:
 
     - name: Get changed shell files
       id: changed-shell-files
-      uses: tj-actions/changed-files@c3a1bb2c992d77180ae65be6ae6c166cf40f857c # v45.0.3
+      uses: tj-actions/changed-files@e0021407031f5be11a464abee9a0776171c79891 # v47.0.1
       with:
         files: |
           **/*.sh
