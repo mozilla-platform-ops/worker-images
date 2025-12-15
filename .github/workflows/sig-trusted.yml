@@ -65,7 +65,7 @@ jobs:
           New-AzSharedWorkerImage @Vars
           "sharedimageversion=$ENV:PKR_VAR_sharedimage_version" >> $env:GITHUB_ENV
       - name: Upload Release Notes Artifact
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: release-notes-${{ github.event.inputs.config }}
           path: ${{ github.event.inputs.config }}-${{ env.sharedimageversion }}.md
