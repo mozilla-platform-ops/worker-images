@@ -36,6 +36,16 @@ def get_worker_pool_images() -> dict[str, set[str]]:
                 if match := AZURE_IMAGE_NAME_RE.match(image_ref["id"]):
                     image = match[1]
 
+            # Azure ARM deployment style (used by some pools)
+            elif (
+                arm_image_id := lc.get("armDeployment", {})
+                .get("parameters", {})
+                .get("imageId", {})
+                .get("value")
+            ):
+                if match := AZURE_IMAGE_NAME_RE.match(arm_image_id):
+                    image = match[1]
+
             if image:
                 pool_images[pool["workerPoolId"]].add(image)
 
