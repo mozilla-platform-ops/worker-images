@@ -6,7 +6,7 @@
 
 ## Triggers
 - **Manual:** `workflow_dispatch` with `config` (required) and optional `image_name` override.
-- **Post-build:** `sig-nontrusted.yml` and `sig-FXCI-nontrusted-deploy-image.yml` call the workflow after `packer` completes.
+- **Post-build:** `sig-nontrusted.yml` calls the workflow after `packer` completes.
 
 ## Image Name Resolution
 - If `image_name` is provided, it is used directly.
