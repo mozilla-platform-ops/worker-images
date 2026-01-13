@@ -14,6 +14,10 @@ on:
         required: true
       AZURE_APPLICATION_ID_FXCI:
         required: true
+      TASKCLUSTER_OS_INT_CLIENT_ID:
+        required: true
+      TASKCLUSTER_OS_INT_ACCESS_TOKEN:
+        required: true
 
 permissions:
   id-token: write
@@ -43,6 +47,8 @@ jobs:
     permissions:
       contents: write
       id-token: write
+    outputs:
+      image_name: ${{ steps.run-packer.outputs.image_name }}
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
       - name: Azure Login
@@ -53,6 +59,7 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}
           enable-AzPSSession: true
       - name: 'Run Packer'
+        id: run-packer
         shell: pwsh
         run: |
           Import-Module .\bin\WorkerImages\WorkerImages.psm1
@@ -68,6 +75,7 @@ jobs:
           }
           New-AzSharedWorkerImage @Vars
           "sharedimageversion=$ENV:PKR_VAR_sharedimage_version" >> $env:GITHUB_ENV
+          "image_name=$ENV:PKR_VAR_image_name" >> $env:GITHUB_OUTPUT
       - name: Upload Release Notes Artifact
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
@@ -76,6 +84,14 @@ jobs:
           overwrite: true
           retention-days: 1
           if-no-files-found: error
+  os-integration:
+    needs: packer
+    name: "OS Integration Tests - ${{ inputs.config }}"
+    uses: ./.github/workflows/os-integration.yml
+    with:
+      config: ${{ inputs.config }}
+      image_name: ${{ needs.packer.outputs.image_name }}
+    secrets: inherit
   sbom:
     needs: packer
     name: "Upload release notes"

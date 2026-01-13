@@ -1,4 +1,4 @@
-run-name: OS Integration Tests - ${{ github.event.inputs.config }}
+run-name: OS Integration Tests - ${{ inputs.config }}
 name: OS Integration Tests - FXCI
 
 on:
@@ -14,11 +14,31 @@ on:
         - win11-a64-24h2-tester-alpha
         - win11-a64-24h2-builder-alpha
         - win2022-64-2009-alpha
+      image_name:
+        type: string
+        description: Optional shared image name override
+        required: false
+  workflow_call:
+    inputs:
+      config:
+        type: string
+        description: Config name from config/
+        required: true
+      image_name:
+        type: string
+        description: Optional shared image name override
+        required: false
+    secrets:
+      TASKCLUSTER_OS_INT_CLIENT_ID:
+        required: true
+      TASKCLUSTER_OS_INT_ACCESS_TOKEN:
+        required: true
 
 jobs:
   check-access:
     name: "Verify User Access"
     runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
       - name: Load Authorized Users and Check Access
@@ -34,11 +54,36 @@ jobs:
           }
   integration-tests:
     needs: check-access
+    if: needs.check-access.result == 'success' || needs.check-access.result == 'skipped'
     name: "Trigger Integration Tests"
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+      - name: Resolve shared image name
+        id: resolve-image
+        shell: pwsh
+        env:
+          CONFIG: ${{ inputs.config }}
+          IMAGE_NAME_INPUT: ${{ inputs.image_name }}
+        run: |
+          if ($env:IMAGE_NAME_INPUT) {
+            $imageName = $env:IMAGE_NAME_INPUT
+          } else {
+            Set-PSRepository PSGallery -InstallationPolicy Trusted
+            Install-Module powershell-yaml -ErrorAction Stop
+            $yaml = ConvertFrom-Yaml (Get-Content "config/$($env:CONFIG).yaml" -Raw)
+            $imageName = $yaml.sharedimage.image_name
+          }
+
+          if (-not $imageName) {
+            Write-Host "::error ::Unable to determine shared image name"
+            exit 1
+          }
+
+          "image_name=$imageName" >> $env:GITHUB_OUTPUT
+          Write-Host "Resolved image name: $imageName"
       - name: Install Taskcluster CLI
         shell: bash
         run: |
@@ -46,7 +91,8 @@ jobs:
       - name: Trigger Integration Tests
         shell: bash
         env:
-          CONFIG: ${{ github.event.inputs.config }}
+          CONFIG: ${{ inputs.config }}
+          IMAGE_NAME: ${{ steps.resolve-image.outputs.image_name }}
           TASKCLUSTER_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
           TASKCLUSTER_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}
           TASKCLUSTER_ROOT_URL: "https://firefox-ci-tc.services.mozilla.com"
@@ -75,13 +121,11 @@ jobs:
           export TASKCLUSTER_ACCESS_TOKEN="$TASKCLUSTER_ACCESS_TOKEN"
           export TASKCLUSTER_ROOT_URL="$TASKCLUSTER_ROOT_URL"
 
-          # Transform config name: replace - with _
-          TRANSFORMED_CONFIG=$(echo "$CONFIG" | tr '-' '_')
-          echo "Transformed config: $TRANSFORMED_CONFIG"
+          echo "Using image name: $IMAGE_NAME"
 
           # Create hook payload
           HOOK_PAYLOAD=$(cat <<EOF
-          {"images":["$TRANSFORMED_CONFIG"]}
+          {"images":["$IMAGE_NAME"]}
           EOF
           )
           echo "Hook payload: $HOOK_PAYLOAD"
