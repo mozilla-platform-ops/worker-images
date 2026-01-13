@@ -131,11 +131,13 @@ def main():
 
     decision_task_id = response["taskId"]
     root_url = os.environ["TASKCLUSTER_ROOT_URL"].rstrip("/")
-    print(f"Decision Task ID: {decision_task_id}")
-    print(f"Decision Task URL: {root_url}/tasks/{decision_task_id}")
+    decision_task_url = f"{root_url}/tasks/{decision_task_id}"
+
+    print(f"\nDecision Task ID: {decision_task_id}")
+    print(f"Decision Task URL: {decision_task_url}")
 
     if args.no_wait:
-        print("--no-wait specified, exiting")
+        print("\n--no-wait specified, exiting")
         return
 
     # Wait for decision task to complete and get the created task group ID
@@ -144,11 +146,15 @@ def main():
 
     if not task_group_id:
         print("Failed to get task group ID from decision task", file=sys.stderr)
+        print(f"Check decision task: {decision_task_url}", file=sys.stderr)
         sys.exit(1)
 
-    print(f"Integration Task Group ID: {task_group_id}")
     test_results_url = f"{root_url}/tasks/groups/{task_group_id}"
-    print(f"Integration test results: {test_results_url}\n")
+
+    print(f"\n{'=' * 60}")
+    print(f"Integration Task Group ID: {task_group_id}")
+    print(f"Integration Test Results:  {test_results_url}")
+    print(f"{'=' * 60}\n")
 
     # Monitor task group
     print("Monitoring task group for completion...")
@@ -176,12 +182,16 @@ def main():
 
             if pending_running == 0:
                 print()
+                print(f"{'=' * 60}")
                 if failed > 0 or exception > 0:
                     print(f"FAILED: {failed} failed, {exception} exception")
                     print(f"Details: {test_results_url}")
+                    print(f"{'=' * 60}")
                     sys.exit(1)
                 else:
                     print(f"PASSED: All {completed} tasks completed successfully")
+                    print(f"Details: {test_results_url}")
+                    print(f"{'=' * 60}")
                     sys.exit(0)
 
         except taskcluster.exceptions.TaskclusterRestFailure as e:
