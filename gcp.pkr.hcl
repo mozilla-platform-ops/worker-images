@@ -212,6 +212,16 @@ build {
     only = [
       "googlecompute.gw-fxci-gcp-l1-2404-headless-alpha"
     ]
+    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    scripts = [
+      "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/podman.sh"
+    ]
+  }
+
+  provisioner "shell" {
+    only = [
+      "googlecompute.gw-fxci-gcp-l1-2404-headless-alpha"
+    ]
     execute_command   = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect = true
     environment_vars = [
