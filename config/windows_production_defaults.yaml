@@ -6,14 +6,14 @@ sharedimage:
   image_version: 1.0.9
 vm:
   puppet_version: 8.10.0
-  git_version: 2.51.2
-  openvox_version: 8.19.2
+  git_version: 2.52.0
+  openvox_version: 8.24.2
   tags:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: windows
     managed_by: packer
-    deploymentId: "d78da86"
+    deploymentId: "366b4a2"
 images:
   production:
     - win10-64-2009
