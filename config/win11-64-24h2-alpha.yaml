@@ -28,8 +28,8 @@ vm:
     worker_pool_id: win11-64-24h2
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "RELOPS-2094"
-    deploymentId: "NA"
+    sourceBranch: "2RELOPS-1660"
+    deploymentId: "b15751c"
     managed_by: packer
 tests:
   - win11_sdk_tests.ps1
