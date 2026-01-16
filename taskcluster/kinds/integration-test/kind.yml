@@ -18,6 +18,9 @@ tasks:
         kind:
           - source-test
           - test
+          - mochitest
+          - browsertime
+          - web-platform-tests
       exclude-attrs:
         test_platform:
           - android-hw
