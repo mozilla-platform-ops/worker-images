@@ -98,7 +98,6 @@ pools:
     secret_date: "01-16-2025"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    - t-nuc12-001
     - t-nuc12-002
   - name: "win11-64-24h2-hw-relops1213"
     puppet_version: "8.10.0"
@@ -326,3 +325,6 @@ Known-BAD:
     ## TLS errors on PXE boot.
     ## https://mozilla-hub.atlassian.net/browse/RELOPS-1555?focusedCommentId=1076567
     - nuc13-107
+    ## Dead
+    ## Different model as well
+    - t-nuc12-001
