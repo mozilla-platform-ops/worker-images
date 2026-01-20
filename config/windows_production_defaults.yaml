@@ -13,7 +13,7 @@ vm:
     sourceRepository: ronin_puppet
     sourceBranch: windows
     managed_by: packer
-    deploymentId: "27d89ce"
+    deploymentId: "9d7ab3f"
 images:
   production:
     - win10-64-2009
