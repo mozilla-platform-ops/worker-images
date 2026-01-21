@@ -32,11 +32,14 @@ tasks:
     # Filter to only include tasks running on b-win2022 worker type
     filter-worker-types:
       - b-win2022
+    # Map build worker pools to their alpha equivalents
+    # Note: CoT won't be valid for these integration tests, but that's
+    # acceptable since we're testing the worker image, not producing releases
+    worker-pool-mappings:
+      gecko-3/b-win2022: gecko-1/b-win2022-alpha
     replicate:
       target:
-        # Use autoland decision task (level 1, gecko-1 provisioner)
-        # This avoids CoT issues with mozilla-central builds (level 3, gecko-3)
-        - gecko.v2.autoland.latest.taskgraph.decision
+        - gecko.v2.mozilla-central.latest.taskgraph.decision
       include-attrs:
         kind:
           - build
