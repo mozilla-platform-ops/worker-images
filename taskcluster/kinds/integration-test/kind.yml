@@ -6,6 +6,7 @@ loader: taskgraph.loader.transform:loader
 
 transforms:
   - mozilla_taskgraph.transforms.replicate
+  - worker_images_taskgraph.transforms.filter_by_worker_type
   - worker_images_taskgraph.transforms.integration_test
 
 tasks:
@@ -25,6 +26,25 @@ tasks:
         test_platform:
           - android-hw
           - macosx
+
+  gecko-builds:
+    description: "Run Gecko build tasks on alpha worker pools"
+    # Filter to only include tasks running on b-win2022 worker type
+    filter-worker-types:
+      - b-win2022
+    replicate:
+      target:
+        # Use the full decision task to get build tasks (not in os-integration)
+        - gecko.v2.mozilla-central.latest.taskgraph.decision
+      include-attrs:
+        kind:
+          - build
+      # Exclude builds that don't have alpha pools configured
+      exclude-attrs:
+        build_platform:
+          - android
+          - macosx
+          - linux
 
   translations:
     description: "Run translations pipeline integration tests"
