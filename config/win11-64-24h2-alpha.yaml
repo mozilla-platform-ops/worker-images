@@ -3,7 +3,7 @@ image:
   publisher: MicrosoftWindowsDesktop
   offer: Windows-11
   sku: win11-24h2-avd
-  version: 26100.7171.251109
+  version: latest
 sharedimage:
   gallery_name: "win11_64_24h2_alpha"
   image_name: "win11_64_24h2_alpha"
@@ -20,15 +20,15 @@ azure:
     - westus
 vm:
   puppet_version: 8.10.0
-  openvox_version: 8.19.2
-  git_version: 2.51.2
+  git_version: 2.52.0
+  openvox_version: 8.24.2
   size: Standard_F8s_v2
   tags:
     base_image: win116424h2azure
     worker_pool_id: win11-64-24h2
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "RELOPS-2123"
+    sourceBranch: "RELOPS-2125"
     deploymentId: "NA"
     managed_by: packer
 tests:
