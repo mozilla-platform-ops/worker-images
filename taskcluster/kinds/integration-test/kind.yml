@@ -32,6 +32,10 @@ tasks:
     # Filter to only include tasks running on b-win2022 worker type
     filter-worker-types:
       - b-win2022
+    # Map build worker pools to their alpha equivalents
+    # Build tasks use gecko-3 provisioner, but alpha pools are in gecko-1
+    worker-pool-mappings:
+      gecko-3/b-win2022: gecko-1/b-win2022-alpha
     replicate:
       target:
         # Use the full decision task to get build tasks (not in os-integration)
