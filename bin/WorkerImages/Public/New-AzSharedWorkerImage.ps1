@@ -112,6 +112,16 @@ function New-AzSharedWorkerImage {
     $ENV:PKR_VAR_oidc_request_url = $oidc_request_url
     $ENV:PKR_VAR_oidc_request_token = $oidc_request_token
 
+    # Set replication regions from config locations (HCL list format for Packer)
+    $Locations = $Y.azure["locations"]
+    if ($Locations -and $Locations.Count -gt 0) {
+        $RegionsHcl = '["' + ($Locations -join '", "') + '"]'
+        $ENV:PKR_VAR_replication_regions = $RegionsHcl
+        Write-Host "Replication regions: $RegionsHcl"
+    } else {
+        Write-Host "WARNING: No locations specified in config, using Packer default"
+    }
+
     $ENV:PKR_VAR_temp_resource_group_name = ('{0}-{1}-{2}-pkrtmp' -f `
         $ENV:PKR_VAR_worker_pool_id, `
         $ENV:PKR_VAR_deployment_id, `
