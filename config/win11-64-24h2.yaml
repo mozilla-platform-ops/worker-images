@@ -3,7 +3,7 @@ image:
   publisher: MicrosoftWindowsDesktop
   offer: Windows-11
   sku: win11-24h2-avd
-  version: 26100.7171.251109
+  version: 26100.6899.251011
 sharedimage:
   gallery_name: "win11_64_24h2"
   image_name: "win11_64_24h2"
@@ -22,7 +22,7 @@ vm:
     sourceOrganization: "default"
     sourceRepository: "default"
     sourceBranch: "default"
-    deploymentId: "default"
+    deploymentId: "eff5db6"
     managed_by: "default"
 tests:
   - win11_sdk_tests.ps1
