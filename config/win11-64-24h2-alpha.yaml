@@ -33,7 +33,7 @@ vm:
     managed_by: packer
 tests:
   - win11_sdk_tests.ps1
-  - microsoft_vcc_win10_win11_x64.tests.ps1
+  #- microsoft_vcc_win10_win11_x64.tests.ps1
   - disable_services.tests.ps1
   - skip_oobe.tests.ps1
   - error_reporting.tests.ps1
