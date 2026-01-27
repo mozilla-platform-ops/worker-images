@@ -11,7 +11,7 @@ The script runs in **passes**:
 3. **Retry SSH** – one more audit attempt for nodes that had SSH failures in earlier actions.
 
 
-> By default the wait **between passes is 5 minutes**, except the wait **between Pass 1 → Pass 2 is always 5 seconds** to quickly PXE nodes missing the audit. Use `-quick` to shorten the other waits to **30 seconds**.  
+> By default the wait **between passes is 5 minutes**, except the wait **between Pass 1 → Pass 2 is always 5 seconds** to quickly PXE nodes missing the audit. Use `-quick` to shorten the other waits to **30 seconds**.
 > If Pass 2 actually PXEs any nodes, the script **does not sleep** before Pass 3.
 
 ---
