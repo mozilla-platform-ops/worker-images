@@ -15,19 +15,10 @@ function Start-AzRoninPuppet {
         [string] $cotkey = $ENV:cotkey
     )
 
-    $functionStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-    Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
-    Write-Host "========== $($MyInvocation.MyCommand.Name) started at $((Get-Date).ToUniversalTime().ToString('o')) =========="
-    trap {
-        $functionStopwatch.Stop()
-        $elapsedMinutes = [int][math]::Floor($functionStopwatch.Elapsed.TotalMinutes)
-        $elapsedSeconds = $functionStopwatch.Elapsed.Seconds
-        Write-Log -message ('{0} :: completed in {1} minutes, {2} seconds' -f $($MyInvocation.MyCommand.Name), $elapsedMinutes, $elapsedSeconds) -severity 'DEBUG'
-        Write-Host "========== $($MyInvocation.MyCommand.Name) completed in $elapsedMinutes minutes, $elapsedSeconds seconds =========="
-        throw $_
-    }
-
     begin {
+        $functionStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+        Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+        Write-Host "========== $($MyInvocation.MyCommand.Name) started at $((Get-Date).ToUniversalTime().ToString('o')) =========="
     }
     process {
         Set-Location $env:systemdrive\ronin
