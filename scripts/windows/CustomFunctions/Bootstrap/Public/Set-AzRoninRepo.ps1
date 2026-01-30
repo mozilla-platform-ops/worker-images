@@ -14,10 +14,20 @@ Function Set-AzRoninRepo {
         [string] $sourceBranch = $ENV:src_Branch,
         [string] $deploymentId = $ENV:deploymentId
     )
+
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+    Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+    Write-Host "========== $($MyInvocation.MyCommand.Name) started at $((Get-Date).ToUniversalTime().ToString('o')) =========="
+    trap {
+        $stopwatch.Stop()
+        $elapsedMinutes = [int][math]::Floor($stopwatch.Elapsed.TotalMinutes)
+        $elapsedSeconds = $stopwatch.Elapsed.Seconds
+        Write-Log -message ('{0} :: completed in {1} minutes, {2} seconds' -f $($MyInvocation.MyCommand.Name), $elapsedMinutes, $elapsedSeconds) -severity 'DEBUG'
+        Write-Host "========== $($MyInvocation.MyCommand.Name) completed in $elapsedMinutes minutes, $elapsedSeconds seconds =========="
+        throw
+    }
+
     begin {
-        $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-        Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
-        Write-Host "========== $($MyInvocation.MyCommand.Name) started at $((Get-Date).ToUniversalTime().ToString('o')) =========="
     }
     process {
         if ($null -eq $deploymentId) {
@@ -68,7 +78,9 @@ Function Set-AzRoninRepo {
     }
     end {
         $stopwatch.Stop()
-        Write-Log -message ('{0} :: completed in {1} minutes, {2} seconds' -f $($MyInvocation.MyCommand.Name), $stopwatch.Elapsed.Minutes, $stopwatch.Elapsed.Seconds) -severity 'DEBUG'
-        Write-Host "========== $($MyInvocation.MyCommand.Name) completed in $($stopwatch.Elapsed.Minutes) minutes, $($stopwatch.Elapsed.Seconds) seconds =========="
+        $elapsedMinutes = [int][math]::Floor($stopwatch.Elapsed.TotalMinutes)
+        $elapsedSeconds = $stopwatch.Elapsed.Seconds
+        Write-Log -message ('{0} :: completed in {1} minutes, {2} seconds' -f $($MyInvocation.MyCommand.Name), $elapsedMinutes, $elapsedSeconds) -severity 'DEBUG'
+        Write-Host "========== $($MyInvocation.MyCommand.Name) completed in $elapsedMinutes minutes, $elapsedSeconds seconds =========="
     }
 }

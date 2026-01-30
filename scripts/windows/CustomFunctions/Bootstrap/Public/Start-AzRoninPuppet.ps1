@@ -14,10 +14,20 @@ function Start-AzRoninPuppet {
         [string] $deploymentId = $ENV:deploymentId,
         [string] $cotkey = $ENV:cotkey
     )
+
+    $functionStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+    Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+    Write-Host "========== $($MyInvocation.MyCommand.Name) started at $((Get-Date).ToUniversalTime().ToString('o')) =========="
+    trap {
+        $functionStopwatch.Stop()
+        $elapsedMinutes = [int][math]::Floor($functionStopwatch.Elapsed.TotalMinutes)
+        $elapsedSeconds = $functionStopwatch.Elapsed.Seconds
+        Write-Log -message ('{0} :: completed in {1} minutes, {2} seconds' -f $($MyInvocation.MyCommand.Name), $elapsedMinutes, $elapsedSeconds) -severity 'DEBUG'
+        Write-Host "========== $($MyInvocation.MyCommand.Name) completed in $elapsedMinutes minutes, $elapsedSeconds seconds =========="
+        throw
+    }
+
     begin {
-        $functionStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-        Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
-        Write-Host "========== $($MyInvocation.MyCommand.Name) started at $((Get-Date).ToUniversalTime().ToString('o')) =========="
     }
     process {
         Set-Location $env:systemdrive\ronin
@@ -236,7 +246,9 @@ function Start-AzRoninPuppet {
     }
     end {
         $functionStopwatch.Stop()
-        Write-Log -message ('{0} :: completed in {1} minutes, {2} seconds' -f $($MyInvocation.MyCommand.Name), $functionStopwatch.Elapsed.Minutes, $functionStopwatch.Elapsed.Seconds) -severity 'DEBUG'
-        Write-Host "========== $($MyInvocation.MyCommand.Name) completed in $($functionStopwatch.Elapsed.Minutes) minutes, $($functionStopwatch.Elapsed.Seconds) seconds =========="
+        $elapsedMinutes = [int][math]::Floor($functionStopwatch.Elapsed.TotalMinutes)
+        $elapsedSeconds = $functionStopwatch.Elapsed.Seconds
+        Write-Log -message ('{0} :: completed in {1} minutes, {2} seconds' -f $($MyInvocation.MyCommand.Name), $elapsedMinutes, $elapsedSeconds) -severity 'DEBUG'
+        Write-Host "========== $($MyInvocation.MyCommand.Name) completed in $elapsedMinutes minutes, $elapsedSeconds seconds =========="
     }
 }
