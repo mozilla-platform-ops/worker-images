@@ -24,7 +24,7 @@ function Start-AzRoninPuppet {
         $elapsedSeconds = $functionStopwatch.Elapsed.Seconds
         Write-Log -message ('{0} :: completed in {1} minutes, {2} seconds' -f $($MyInvocation.MyCommand.Name), $elapsedMinutes, $elapsedSeconds) -severity 'DEBUG'
         Write-Host "========== $($MyInvocation.MyCommand.Name) completed in $elapsedMinutes minutes, $elapsedSeconds seconds =========="
-        throw
+        throw $_
     }
 
     begin {
