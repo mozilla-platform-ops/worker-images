@@ -23,6 +23,9 @@ function Set-ReleaseNotes {
     ## The config will be the name of the configuration file (win11-64-2009) without the extension
     ## We'll use this to generate release notes for each OS
 
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+    Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+    Write-Host "========== $($MyInvocation.MyCommand.Name) started at $((Get-Date).ToUniversalTime().ToString('o')) =========="
     Write-Log -message ('{0} :: Processing {1} {2} - {3:o}' -f $($MyInvocation.MyCommand.Name), $Config, $Version, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
 
     ## Let's install markdownPS just in case it isn't installed
@@ -188,4 +191,7 @@ function Set-ReleaseNotes {
         Copy-Item -Path "C:\software_report.md" -Destination "C:\$($Config).md"
     }
 
+    $stopwatch.Stop()
+    Write-Log -message ('{0} :: completed in {1} minutes, {2} seconds' -f $($MyInvocation.MyCommand.Name), $stopwatch.Elapsed.Minutes, $stopwatch.Elapsed.Seconds) -severity 'DEBUG'
+    Write-Host "========== $($MyInvocation.MyCommand.Name) completed in $($stopwatch.Elapsed.Minutes) minutes, $($stopwatch.Elapsed.Seconds) seconds =========="
 }

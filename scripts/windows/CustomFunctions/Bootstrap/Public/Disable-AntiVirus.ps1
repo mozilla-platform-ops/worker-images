@@ -5,6 +5,10 @@ function Disable-AntiVirus {
 
     )
 
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+    Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+    Write-Host "========== $($MyInvocation.MyCommand.Name) started at $((Get-Date).ToUniversalTime().ToString('o')) =========="
+
     $avPreference = @(
         @{DisableArchiveScanning = $true }
         @{DisableAutoExclusions = $true }
@@ -41,4 +45,8 @@ function Disable-AntiVirus {
     if (Test-Path $atpRegPath) {
         Set-ItemProperty -Path $atpRegPath -Name 'ForceDefenderPassiveMode' -Value '1' -Type 'DWORD'
     }
+
+    $stopwatch.Stop()
+    Write-Log -message ('{0} :: completed in {1} minutes, {2} seconds' -f $($MyInvocation.MyCommand.Name), $stopwatch.Elapsed.Minutes, $stopwatch.Elapsed.Seconds) -severity 'DEBUG'
+    Write-Host "========== $($MyInvocation.MyCommand.Name) completed in $($stopwatch.Elapsed.Minutes) minutes, $($stopwatch.Elapsed.Seconds) seconds =========="
 }
