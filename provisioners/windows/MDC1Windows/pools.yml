@@ -155,7 +155,7 @@ pools:
     - nuc13-028
     - nuc13-029
     - nuc13-030
-    - nuc13-160
+    - nuc13-159
   - name: "win11-64-24h2-hw-perf-sheriff"
     openvox_version: "8.19.2"
     puppet_version: "8.10.0"
@@ -309,7 +309,7 @@ pools:
     - nuc13-156
     - nuc13-157
     - nuc13-158
-    - nuc13-159
+    - nuc13-160
 defaults:
   NV_domain: "mdc1.mozilla.com"
 Validate:
