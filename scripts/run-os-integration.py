@@ -193,15 +193,14 @@ def main():
             if pending_running == 0:
                 print()
                 print(f"{'=' * 60}")
+                print(f"Integration Task Group ID: {task_group_id}")
+                print(f"Integration Test Results:  {test_results_url}")
+                print(f"{'=' * 60}")
                 if failed > 0 or exception > 0:
                     print(f"FAILED: {failed} failed, {exception} exception")
-                    print(f"Details: {test_results_url}")
-                    print(f"{'=' * 60}")
                     sys.exit(1)
                 else:
                     print(f"PASSED: All {completed} tasks completed successfully")
-                    print(f"Details: {test_results_url}")
-                    print(f"{'=' * 60}")
                     sys.exit(0)
 
         except taskcluster.exceptions.TaskclusterRestFailure as e:
