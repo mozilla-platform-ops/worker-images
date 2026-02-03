@@ -11,11 +11,11 @@ Run OS integration tests by triggering the Taskcluster hook.
 
 Usage:
     uv run scripts/run-os-integration.py <image_name>
-    uv run scripts/run-os-integration.py <image_name> --monitor
+    uv run scripts/run-os-integration.py <image_name> --no-wait
 
 Example:
     uv run scripts/run-os-integration.py win11_64_24h2_alpha
-    uv run scripts/run-os-integration.py win11_64_24h2_alpha --monitor
+    uv run scripts/run-os-integration.py win11_64_24h2_alpha --no-wait
 
 Environment variables (required):
     TASKCLUSTER_CLIENT_ID      - Taskcluster client ID
@@ -92,12 +92,9 @@ def main():
         "image_name", help="Image name to test (e.g., win11_64_24h2_alpha)"
     )
     parser.add_argument(
-        "--no-wait", action="store_true", help="Don't wait for task group URL (exit immediately after triggering)"
-    )
-    parser.add_argument(
-        "--monitor",
+        "--no-wait",
         action="store_true",
-        help="Monitor task group until completion (default: just print URL and exit)",
+        help="Don't wait for task group URL or completion (exit immediately after triggering)",
     )
     parser.add_argument(
         "--timeout",
@@ -163,10 +160,7 @@ def main():
     print(f"Integration Test Results:  {test_results_url}")
     print(f"{'=' * 60}\n")
 
-    if not args.monitor:
-        return
-
-    # Monitor task group
+    # Monitor task group (default behavior)
     print("Monitoring task group for completion...")
     start_time = time.time()
 
