@@ -136,7 +136,7 @@ def write_github_summary(
                 duration = format_duration(int((end_dt - start_dt).total_seconds()))
 
         emoji = get_result_emoji(state, None)
-        lines.append(f"| {emoji} | [{task_id[:8]}...]({task_url}) | {name} | {state} | {duration} |")
+        lines.append(f"| {emoji} | [`{task_id}`]({task_url}) | {name} | {state} | {duration} |")
 
     lines.append("")
 
