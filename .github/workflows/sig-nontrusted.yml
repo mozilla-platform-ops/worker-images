@@ -119,7 +119,7 @@ jobs:
             exit 1
           }
 
-          "SBOM_PATH=$SBOM_PATH" >> $env:GITHUB_ENV
+          Add-Content -Path $env:GITHUB_ENV -Value "SBOM_PATH=$SBOM_PATH"
       - name: "Commit SBOM to main"
         uses: stefanzweifel/git-auto-commit-action@04702edda442b2e678b25b537cec683a1493fcb9
         with:
