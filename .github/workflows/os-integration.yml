@@ -85,7 +85,7 @@ jobs:
           "image_name=$imageName" >> $env:GITHUB_OUTPUT
           Write-Host "Resolved image name: $imageName"
       - name: Install uv
-        uses: astral-sh/setup-uv@803947b9bd8e9f986429fa0c5a41c367cd732b41  # v7.2.1
+        uses: astral-sh/setup-uv@803947b9bd8e9f986429fa0c5a41c367cd732b41
       - name: Run OS Integration Tests
         env:
           IMAGE_NAME: ${{ steps.resolve-image.outputs.image_name }}

@@ -167,13 +167,3 @@ jobs:
           git commit -m "$($ENV:CONFIG) - Release Notes for $($ENV:CONFIG).md"
           git push -u origin $ReleaseBranch
           gh pr create --base main --head $ReleaseBranch --title $PR_Title --body $PR_Body
-  os-integration:
-    needs: sbom
-    name: "Run OS Integration Tests"
-    uses: ./.github/workflows/os-integration.yml
-    with:
-      config: win11-64-24h2-alpha
-      image_name: win11_64_24h2_alpha
-    secrets:
-      TASKCLUSTER_OS_INT_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
-      TASKCLUSTER_OS_INT_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}

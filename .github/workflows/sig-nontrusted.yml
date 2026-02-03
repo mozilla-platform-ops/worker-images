@@ -126,3 +126,13 @@ jobs:
           branch: main
           commit_message: "${{ github.event.inputs.config }} - Release Notes"
           file_pattern: "${{ env.SBOM_PATH }}"
+  os-integration:
+    needs: sbom
+    if: github.event.inputs.config == 'win11-64-24h2-alpha'
+    name: "Run OS Integration Tests"
+    uses: ./.github/workflows/os-integration.yml
+    with:
+      config: ${{ github.event.inputs.config }}
+    secrets:
+      TASKCLUSTER_OS_INT_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
+      TASKCLUSTER_OS_INT_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}
