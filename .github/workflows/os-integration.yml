@@ -35,13 +35,15 @@ on:
         required: true
 
 jobs:
-  check-access:
-    name: "Verify User Access"
+  integration-tests:
+    name: "Trigger Integration Tests"
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
-      - name: Load Authorized Users and Check Access
+      - name: Verify User Access
+        if: github.event_name == 'workflow_dispatch'
         shell: pwsh
         run: |
           $AUTHORIZED_USERS=$(Get-Content .github/relsre.json | Convertfrom-Json)
@@ -52,15 +54,6 @@ jobs:
             Write-Host "User ${{ github.actor }} is unauthorized."
             exit 1
           }
-  integration-tests:
-    needs: check-access
-    if: needs.check-access.result == 'success' || needs.check-access.result == 'skipped'
-    name: "Trigger Integration Tests"
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
       - name: Resolve shared image name
         id: resolve-image
         shell: pwsh
