@@ -208,8 +208,8 @@ def main():
     parser.add_argument(
         "--timeout",
         type=int,
-        default=3600,
-        help="Timeout in seconds (default: 3600, i.e. 60 minutes)",
+        default=7200,
+        help="Timeout in seconds (default: 7200, i.e. 2 hours)",
     )
     args = parser.parse_args()
 
