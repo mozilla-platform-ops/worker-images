@@ -92,4 +92,4 @@ jobs:
           TASKCLUSTER_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
           TASKCLUSTER_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}
         run: |
-          uv run ci/run-os-integration.py "$IMAGE_NAME" --timeout 7200
+          uv run ci/run-os-integration.py "$IMAGE_NAME"
