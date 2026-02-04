@@ -130,7 +130,7 @@ jobs:
           file_pattern: "${{ env.SBOM_PATH }}"
   os-integration:
     needs: packer
-    name: "Run OS Integration Tests"
+    name: "OS Integration Tests"
     uses: ./.github/workflows/os-integration.yml
     with:
       config: ${{ github.event.inputs.config }}

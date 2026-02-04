@@ -118,8 +118,6 @@ def write_github_summary(
 
         # Get task name from task definition
         name = task.get("task", {}).get("metadata", {}).get("name", "Unknown")
-        if len(name) > 60:
-            name = name[:57] + "..."
 
         # Calculate duration from runs
         duration = "-"
