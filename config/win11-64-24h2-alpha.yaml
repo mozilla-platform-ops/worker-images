@@ -29,7 +29,7 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: "RELOPS-2138"
-    deploymentId: "0aa2050"
+    deploymentId: "52c17b0"
     managed_by: packer
 tests:
   - win11_sdk_tests.ps1
