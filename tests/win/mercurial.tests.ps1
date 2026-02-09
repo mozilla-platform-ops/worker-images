@@ -5,27 +5,10 @@ Describe "Mercurial" {
 
     BeforeAll {
         $HgInfo = Get-Command "hg.exe"
-        $ExpectedSoftwareVersion = $null
+        $variant = $Hiera.'win-worker'.variant
+        $win = $Hiera.windows
 
-        try {
-            $ExpectedSoftwareVersion = $Hiera.'win-worker'.hg.version
-        } catch {}
-
-        if (-not $ExpectedSoftwareVersion) {
-            try {
-                ExpectedSoftwareVersion = $Hiera.'win-worker'.variant.hg.version
-            } catch {}
-        }
-
-        if (-not $ExpectedSoftwareVersion) {
-            try {
-                $ExpectedSoftwareVersion = $Hiera.windows.hg.version
-            } catch {}
-        }
-
-        if (-not $ExpectedSoftwareVersion) {
-            throw "HG version could not be found in any provided Hiera source."
-        }
+        $ExpectedSoftwareVersion = if ($variant.hg.version) { $variant.hg.version } else { $win.hg.version }
 
     }
 

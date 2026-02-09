@@ -5,27 +5,10 @@ Describe "Nvidia GPU Downloaded" {
 
     BeforeAll {
 
-        $GPU = $null
+        $variant = $Hiera.'win-worker'.variant
+        $win = $Hiera.windows
 
-        try {
-            $GPU = $Hiera.'win-worker'.'gpu-latest'.name
-        } catch {}
-
-        if (-not $GPU) {
-            try {
-                $GPU = $Hiera.'win-worker'.'gpu-latest'.name
-            } catch {}
-        }
-
-        if (-not $GPU) {
-            try {
-                $GPU = $Hiera.windows.'gpu-latest'.name
-            } catch {}
-        }
-
-        if (-not $GPU) {
-            throw "Azure VM Agent version could not be found in any provided Hiera source."
-        }
+        $GPU = if ($variant.'gpu-latest'.name) { $variant.'gpu-latest'.name } else { $win.'gpu-latest'.name }
     }
     It "Nvidia GPU Drivers are downloaded" {
         Test-Path "$systemdrive\Windows\Temp\$($GPU).exe" | Should -Be $true

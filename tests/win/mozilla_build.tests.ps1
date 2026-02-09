@@ -14,115 +14,14 @@ Describe "Mozilla Build" -Skip:@(Assert-IsBuilder) {
         }
         $pip_packages = Get-Content C:\requirements.txt
         $Install_Path = "C:\mozilla-build"
+        $variant = $Hiera.'win-worker'.variant
+        $win = $Hiera.windows
 
-        $hg_ExpectedSoftwareVersion = $null
-
-        try {
-            $hg_ExpectedSoftwareVersion = $Hiera.'win-worker'.hg.version
-        } catch {}
-
-        if (-not $hg_ExpectedSoftwareVersion) {
-            try {
-                $hg_ExpectedSoftwareVersion = $Hiera.'win-worker'.variant.hg.version
-            } catch {}
-        }
-
-        if (-not $hg_ExpectedSoftwareVersion) {
-            try {
-                $hg_ExpectedSoftwareVersion = $Hiera.windows.hg.version
-            } catch {}
-        }
-
-        if (-not $hg_ExpectedSoftwareVersion) {
-            throw "HG version could not be found in any provided Hiera source."
-        }
-                $mozillabuild_ExpectedSoftwareVersion = $null
-
-        try {
-            $mozillabuild_ExpectedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.version
-        } catch {}
-
-        if (-not $mozillabuild_ExpectedSoftwareVersion) {
-            try {
-                $mozillabuild_ExpectedSoftwareVersion = $Hiera.'win-worker'.variant.mozilla_build.version
-            } catch {}
-        }
-
-        if (-not $mozillabuild_ExpectedSoftwareVersion) {
-            try {
-                $mozillabuild_ExpectedSoftwareVersion = $Hiera.windows.mozilla_build.version
-            } catch {}
-        }
-
-        if (-not $mozillabuild_ExpectedSoftwareVersion) {
-            throw "MozillaBuild version could not be found in any provided Hiera source."
-        }
-
-        $psutil_ExpectedSoftwareVersion = $null
-
-        try {
-            $psutil_ExpectedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.psutil_version
-        } catch {}
-
-        if (-not $psutil_ExpectedSoftwareVersion) {
-            try {
-                $psutil_ExpectedSoftwareVersion = $Hiera.'win-worker'.variant.mozilla_build.psutil_version
-            } catch {}
-        }
-
-        if (-not $psutil_ExpectedSoftwareVersion) {
-            try {
-                $psutil_ExpectedSoftwareVersion = $Hiera.windows.mozilla_build.psutil_version
-            } catch {}
-        }
-
-        if (-not $psutil_ExpectedSoftwareVersion) {
-            throw "Psutil version could not be found in any provided Hiera source."
-        }
-
-        $zstandard_ExepctedSoftwareVersion = $null
-
-        try {
-            $zstandard_ExepctedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.zstandard_version
-        } catch {}
-
-        if (-not $zstandard_ExepctedSoftwareVersion) {
-            try {
-                $zstandard_ExepctedSoftwareVersion = $Hiera.'win-worker'.variant.mozilla_build.zstandard_version
-            } catch {}
-        }
-
-        if (-not $zstandard_ExepctedSoftwareVersion) {
-            try {
-                $zstandard_ExepctedSoftwareVersion = $Hiera.windows.mozilla_build.zstandard_version
-            } catch {}
-        }
-
-        if (-not $zstandard_ExepctedSoftwareVersion) {
-            throw "Zstandard version could not be found in any provided Hiera source."
-        }
-
-        $py3pip_ExpectedSoftwareVersion = $null
-
-        try {
-            $py3pip_ExpectedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.py3_pip_version
-        } catch {}
-
-        if (-not $py3pip_ExpectedSoftwareVersion) {
-            try {
-                $py3pip_ExpectedSoftwareVersion = $Hiera.'win-worker'.variant.mozilla_build.py3_pip_version
-            } catch {}
-        }
-
-        if (-not $py3pip_ExpectedSoftwareVersion) {
-            try {
-                $py3pip_ExpectedSoftwareVersion = $Hiera.windows.mozilla_build.py3_pip_version
-            } catch {}
-        }
-
-        if (-not $py3pip_ExpectedSoftwareVersion) {
-            throw "Py3 pip version could not be found in any provided Hiera source."
-        }
+        $hg_ExpectedSoftwareVersion = if ($variant.hg.version) { $variant.hg.version } else { $win.hg.version }
+        $mozillabuild_ExpectedSoftwareVersion = if ($variant.mozilla_build.version) { $variant.mozilla_build.version } else { $win.mozilla_build.version }
+        $psutil_ExpectedSoftwareVersion = if ($variant.mozilla_build.psutil_version) { $variant.mozilla_build.psutil_version } else { $win.mozilla_build.psutil_version }
+        $zstandard_ExpectedSoftwareVersion = if ($variant.mozilla_build.zstandard_version) { $variant.mozilla_build.zstandard_version } else { $win.mozilla_build.zstandard_version }
+        $py3pip_ExpectedSoftwareVersion = if ($variant.mozilla_build.py3_pip_version) { $variant.mozilla_build.py3_pip_version } else { $win.mozilla_build.py3_pip_version }
     }
     Context "Installation" {
         It "Mozilla-Build Folder exists" {
@@ -143,27 +42,27 @@ Describe "Mozilla Build" -Skip:@(Assert-IsBuilder) {
     }
     Context "Pip" {
         It "Certifi is installed" {
-            $certifi = ($pip_packages | Where-Object {$psitem -Match "Certifi"}) -split "=="
+            $certifi = ($pip_packages | Where-Object { $psitem -Match "Certifi" }) -split "=="
             $certifi | Should -Not -Be $null
         }
         It "PSUtil is installed" {
-            $PSUtil = ($pip_packages | Where-Object {$psitem -Match "PSUtil"}) -split "=="
+            $PSUtil = ($pip_packages | Where-Object { $psitem -Match "PSUtil" }) -split "=="
             $PSUtil | Should -Not -Be $null
         }
         It "PSUtil version 5.9.4" {
-            $PSUtil = ($pip_packages | Where-Object {$psitem -Match "PSUtil"}) -split "=="
+            $PSUtil = ($pip_packages | Where-Object { $psitem -Match "PSUtil" }) -split "=="
             $PSUtil[1] | Should -Be $psutil_ExpectedSoftwareVersion
         }
         It "ZStandard is installed" {
-            $ZStandard = ($pip_packages | Where-Object {$psitem -Match "zstandard"}) -split "=="
+            $ZStandard = ($pip_packages | Where-Object { $psitem -Match "zstandard" }) -split "=="
             $ZStandard | Should -Not -Be $null
         }
         It "ZStandard version 0.15.2" {
-            $ZStandard = ($pip_packages | Where-Object {$psitem -Match "zstandard"}) -split "=="
-            $ZStandard[1] | Should -Be $zstandard_ExepctedSoftwareVersion
+            $ZStandard = ($pip_packages | Where-Object { $psitem -Match "zstandard" }) -split "=="
+            $ZStandard[1] | Should -Be $zstandard_ExpectedSoftwareVersion
         }
         It "Python3 Pip is installed" {
-            $py3pip = ($pip_packages | Where-Object {$psitem -Match "pip"}) -split "=="
+            $py3pip = ($pip_packages | Where-Object { $psitem -Match "pip" }) -split "=="
             $py3pip | Should -Not -Be $null
         }
         # It "Python3 Pip version" {
@@ -180,13 +79,13 @@ Describe "Mozilla Build" -Skip:@(Assert-IsBuilder) {
             $mercurial.DisplayName | Should -Not -Be $Null
         }
         It "Mercurial major version is the same" {
-            ([Version]$mercurial.DisplayVersion ).Major | Should -Be $hg_ExpectedSoftwareVersion.Major
+            ([Version]$mercurial.DisplayVersion).Major | Should -Be $hg_ExpectedSoftwareVersion.Major
         }
         It "Mercurial minor version is the same" {
-            ([Version]$mercurial.DisplayVersion ).Minor | Should -Be $hg_ExpectedSoftwareVersion.Minor
+            ([Version]$mercurial.DisplayVersion).Minor | Should -Be $hg_ExpectedSoftwareVersion.Minor
         }
         It "Mercurial build version is the same" {
-            ([Version]$mercurial.DisplayVersion ).Build | Should -Be $hg_ExpectedSoftwareVersion.Build
+            ([Version]$mercurial.DisplayVersion).Build | Should -Be $hg_ExpectedSoftwareVersion.Build
         }
     }
     Context "HG Files" -Skip {
@@ -287,115 +186,14 @@ Describe "Mozilla Build - Builder" -Skip:@(Assert-IsTester) {
         }
         $pip_packages = Get-Content C:\requirements.txt
         $Install_Path = "C:\mozilla-build"
+        $variant = $Hiera.'win-worker'.variant
+        $win = $Hiera.windows
 
-        $hg_ExpectedSoftwareVersion = $null
-
-        try {
-            $hg_ExpectedSoftwareVersion = $Hiera.'win-worker'.hg.version
-        } catch {}
-
-        if (-not $hg_ExpectedSoftwareVersion) {
-            try {
-                $hg_ExpectedSoftwareVersion = $Hiera.'win-worker'.variant.hg.version
-            } catch {}
-        }
-
-        if (-not $hg_ExpectedSoftwareVersion) {
-            try {
-                $hg_ExpectedSoftwareVersion = $Hiera.windows.hg.version
-            } catch {}
-        }
-
-        if (-not $hg_ExpectedSoftwareVersion) {
-            throw "HG version could not be found in any provided Hiera source."
-        }
-                $mozillabuild_ExpectedSoftwareVersion = $null
-
-        try {
-            $mozillabuild_ExpectedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.version
-        } catch {}
-
-        if (-not $mozillabuild_ExpectedSoftwareVersion) {
-            try {
-                $mozillabuild_ExpectedSoftwareVersion = $Hiera.'win-worker'.variant.mozilla_build.version
-            } catch {}
-        }
-
-        if (-not $mozillabuild_ExpectedSoftwareVersion) {
-            try {
-                $mozillabuild_ExpectedSoftwareVersion = $Hiera.windows.mozilla_build.version
-            } catch {}
-        }
-
-        if (-not $mozillabuild_ExpectedSoftwareVersion) {
-            throw "MozillaBuild version could not be found in any provided Hiera source."
-        }
-
-        $psutil_ExpectedSoftwareVersion = $null
-
-        try {
-            $psutil_ExpectedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.psutil_version
-        } catch {}
-
-        if (-not $psutil_ExpectedSoftwareVersion) {
-            try {
-                $psutil_ExpectedSoftwareVersion = $Hiera.'win-worker'.variant.mozilla_build.psutil_version
-            } catch {}
-        }
-
-        if (-not $psutil_ExpectedSoftwareVersion) {
-            try {
-                $psutil_ExpectedSoftwareVersion = $Hiera.windows.mozilla_build.psutil_version
-            } catch {}
-        }
-
-        if (-not $psutil_ExpectedSoftwareVersion) {
-            throw "Psutil version could not be found in any provided Hiera source."
-        }
-
-        $zstandard_ExepctedSoftwareVersion = $null
-
-        try {
-            $zstandard_ExepctedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.zstandard_version
-        } catch {}
-
-        if (-not $zstandard_ExepctedSoftwareVersion) {
-            try {
-                $zstandard_ExepctedSoftwareVersion = $Hiera.'win-worker'.variant.mozilla_build.zstandard_version
-            } catch {}
-        }
-
-        if (-not $zstandard_ExepctedSoftwareVersion) {
-            try {
-                $zstandard_ExepctedSoftwareVersion = $Hiera.windows.mozilla_build.zstandard_version
-            } catch {}
-        }
-
-        if (-not $zstandard_ExepctedSoftwareVersion) {
-            throw "Zstandard version could not be found in any provided Hiera source."
-        }
-
-        $py3pip_ExpectedSoftwareVersion = $null
-
-        try {
-            $py3pip_ExpectedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.py3_pip_version
-        } catch {}
-
-        if (-not $py3pip_ExpectedSoftwareVersion) {
-            try {
-                $py3pip_ExpectedSoftwareVersion = $Hiera.'win-worker'.variant.mozilla_build.py3_pip_version
-            } catch {}
-        }
-
-        if (-not $py3pip_ExpectedSoftwareVersion) {
-            try {
-                $py3pip_ExpectedSoftwareVersion = $Hiera.windows.mozilla_build.py3_pip_version
-            } catch {}
-        }
-
-        if (-not $py3pip_ExpectedSoftwareVersion) {
-            throw "Py3 pip version could not be found in any provided Hiera source."
-        }
+        $hg_ExpectedSoftwareVersion = if ($variant.hg.version) { $variant.hg.version } else { $win.hg.version }
+        $mozillabuild_ExpectedSoftwareVersion = if ($variant.mozilla_build.version) { $variant.mozilla_build.version } else { $win.mozilla_build.version }
+        $psutil_ExpectedSoftwareVersion = if ($variant.mozilla_build.psutil_version) { $variant.mozilla_build.psutil_version } else { $win.mozilla_build.psutil_version }
+        $zstandard_ExpectedSoftwareVersion = if ($variant.mozilla_build.zstandard_version) { $variant.mozilla_build.zstandard_version } else { $win.mozilla_build.zstandard_version }
+        $py3pip_ExpectedSoftwareVersion = if ($variant.mozilla_build.py3_pip_version) { $variant.mozilla_build.py3_pip_version } else { $win.mozilla_build.py3_pip_version }
     }
     Context "Installation" {
         It "Mozilla-Build Folder exists" {
@@ -410,31 +208,31 @@ Describe "Mozilla Build - Builder" -Skip:@(Assert-IsTester) {
     }
     Context "Pip" {
         It "Certifi is installed" {
-            $certifi = ($pip_packages | Where-Object {$psitem -Match "Certifi"}) -split "=="
+            $certifi = ($pip_packages | Where-Object { $psitem -Match "Certifi" }) -split "=="
             $certifi | Should -Not -Be $null
         }
         It "PSUtil is installed" {
-            $PSUtil = ($pip_packages | Where-Object {$psitem -Match "PSUtil"}) -split "=="
+            $PSUtil = ($pip_packages | Where-Object { $psitem -Match "PSUtil" }) -split "=="
             $PSUtil | Should -Not -Be $null
         }
         It "PSUtil version" {
-            $PSUtil = ($pip_packages | Where-Object {$psitem -Match "PSUtil"}) -split "=="
+            $PSUtil = ($pip_packages | Where-Object { $psitem -Match "PSUtil" }) -split "=="
             $PSUtil[1] | Should -Be $psutil_ExpectedSoftwareVersion
         }
         It "ZStandard is installed" {
-            $ZStandard = ($pip_packages | Where-Object {$psitem -Match "zstandard"}) -split "=="
+            $ZStandard = ($pip_packages | Where-Object { $psitem -Match "zstandard" }) -split "=="
             $ZStandard | Should -Not -Be $null
         }
         It "ZStandard version" {
-            $ZStandard = ($pip_packages | Where-Object {$psitem -Match "zstandard"}) -split "=="
-            $ZStandard[1] | Should -Be $zstandard_ExepctedSoftwareVersion
+            $ZStandard = ($pip_packages | Where-Object { $psitem -Match "zstandard" }) -split "=="
+            $ZStandard[1] | Should -Be $zstandard_ExpectedSoftwareVersion
         }
         It "Python3 Pip is installed" {
-            $py3pip = ($pip_packages | Where-Object {$psitem -Match "pip"}) -split "=="
+            $py3pip = ($pip_packages | Where-Object { $psitem -Match "pip" }) -split "=="
             $py3pip | Should -Not -Be $null
         }
         It "Python3 Pip version" {
-            $py3pip = ($pip_packages | Where-Object {$psitem -Match "pip"}) -split "=="
+            $py3pip = ($pip_packages | Where-Object { $psitem -Match "pip" }) -split "=="
             $py3pip[1] | Should -Be $py3pip_ExpectedSoftwareVersion
         }
     }
@@ -443,13 +241,13 @@ Describe "Mozilla Build - Builder" -Skip:@(Assert-IsTester) {
             $mercurial.DisplayName | Should -Not -Be $Null
         }
         It "Mercurial major version is the same" {
-            ([Version]$mercurial.DisplayVersion ).Major | Should -Be $hg_ExpectedSoftwareVersion.Major
+            ([Version]$mercurial.DisplayVersion).Major | Should -Be $hg_ExpectedSoftwareVersion.Major
         }
         It "Mercurial minor version is the same" {
-            ([Version]$mercurial.DisplayVersion ).Minor | Should -Be $hg_ExpectedSoftwareVersion.Minor
+            ([Version]$mercurial.DisplayVersion).Minor | Should -Be $hg_ExpectedSoftwareVersion.Minor
         }
         It "Mercurial build version is the same" {
-            ([Version]$mercurial.DisplayVersion ).Build | Should -Be $hg_ExpectedSoftwareVersion.Build
+            ([Version]$mercurial.DisplayVersion).Build | Should -Be $hg_ExpectedSoftwareVersion.Build
         }
     }
     Context "HG Files" -Skip {
@@ -481,7 +279,7 @@ Describe "Mozilla Build - Builder" -Skip:@(Assert-IsTester) {
             Where-Object { $PSItem.IdentityReference -eq "Everyone" }).FileSystemRights |
             Should -Be "FullControl"
         }
-        it "Tooltool.py exists" {
+        It "Tooltool.py exists" {
             Test-Path "C:\mozilla-build\tooltool.py" | Should -Be $true
         }
     }

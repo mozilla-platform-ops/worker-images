@@ -8,27 +8,10 @@ Describe "Windows Azure VM Agent" {
             $_.DisplayName -like "Windows Azure VM Agent*"
         }
 
-        $VmAgentVersionRaw = $null
+        $variant = $Hiera.'win-worker'.variant
+        $win = $Hiera.windows
 
-        try {
-            $VmAgentVersionRaw = $Hiera.'win-worker'.azure.vm_agent.version
-        } catch {}
-
-        if (-not $VmAgentVersionRaw) {
-            try {
-                $VmAgentVersionRaw = $Hiera.'win-worker'.variant.azure.vm_agent.version
-            } catch {}
-        }
-
-        if (-not $VmAgentVersionRaw) {
-            try {
-                $VmAgentVersionRaw = $Hiera.windows.azure.vm_agent.version
-            } catch {}
-        }
-
-        if (-not $VmAgentVersionRaw) {
-            throw "Azure VM Agent version could not be found in any provided Hiera source."
-        }
+        $VmAgentVersionRaw = if ($variant.azure.vm_agent.version) { $variant.azure.vm_agent.version } else { $win.azure.vm_agent.version }
 
         $ExpectedSoftwareVersion = [Version]($VmAgentVersionRaw -split "_")[0]
     }

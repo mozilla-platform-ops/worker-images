@@ -62,3 +62,34 @@ jobs:
       if: steps.changed-shell-files.outputs.any_changed == 'false'
       run: |
         echo "No shell files changed, skipping shellcheck"
+
+  psscriptanalyzer:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+
+    - name: Get changed PowerShell test files
+      id: changed-ps-files
+      uses: tj-actions/changed-files@e0021407031f5be11a464abee9a0776171c79891 # v47.0.1
+      with:
+        files: |
+          tests/**/*.ps1
+
+    - name: Run PSScriptAnalyzer
+      if: steps.changed-ps-files.outputs.any_changed == 'true'
+      shell: pwsh
+      run: |
+        Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+        $results = Invoke-ScriptAnalyzer -Path tests/ -Settings tests/PSScriptAnalyzerSettings.psd1 -Recurse
+        if ($results) {
+            $results | Format-Table -AutoSize
+            Write-Error "PSScriptAnalyzer found $($results.Count) issue(s)"
+            exit 1
+        }
+        Write-Host "PSScriptAnalyzer: no issues found"
+
+    - name: Skip PSScriptAnalyzer if no test files changed
+      if: steps.changed-ps-files.outputs.any_changed == 'false'
+      run: |
+        echo "No PowerShell test files changed, skipping PSScriptAnalyzer"

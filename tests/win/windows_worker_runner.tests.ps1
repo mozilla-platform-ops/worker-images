@@ -5,50 +5,11 @@ Describe "Taskcluster" {
 
     BeforeAll {
 
-        $nssm = ($Hiera.'win-worker'.nssm.version)
-        $nssm = $null
+        $variant = $Hiera.'win-worker'.variant
+        $win = $Hiera.windows
 
-        try {
-            $nssm = $Hiera.'win-worker'.nssm.version
-        } catch {}
-
-        if (-not $nssm) {
-            try {
-                $nssm = $Hiera.'win-worker'.variant.nssm.version
-            } catch {}
-        }
-
-        if (-not $nssm) {
-            try {
-                $nssm = $Hiera.windows.nssm.version
-            } catch {}
-        }
-
-        if (-not $nssm) {
-            throw "NSSM version could not be found in any provided Hiera source."
-        }
-
-        $taskcluster_ExpectedSoftwareVersion = $null
-
-        try {
-            $taskcluster_ExpectedSoftwareVersion = $Hiera.'win-worker'.generic_worker.version
-        } catch {}
-
-        if (-not $taskcluster_ExpectedSoftwareVersion) {
-            try {
-                $taskcluster_ExpectedSoftwareVersion = $Hiera.'win-worker'.variant.taskcluster.version
-            } catch {}
-        }
-
-        if (-not $taskcluster_ExpectedSoftwareVersion) {
-            try {
-                $taskcluster_ExpectedSoftwareVersion = $Hiera.windows.taskcluster.version
-            } catch {}
-        }
-
-        if (-not $taskcluster_ExpectedSoftwareVersion) {
-            throw "HG version could not be found in any provided Hiera source."
-        }
+        $nssm = if ($variant.nssm.version) { $variant.nssm.version } else { $win.nssm.version }
+        $taskcluster_ExpectedSoftwareVersion = if ($variant.taskcluster.version) { $variant.taskcluster.version } else { $win.taskcluster.version }
 
     }
     Context "Non-Sucking Service Manager" {
