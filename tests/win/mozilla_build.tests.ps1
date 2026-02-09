@@ -1,4 +1,4 @@
-Describe "Mozilla Build - Tester" -Skip:@(Assert-IsBuilder) {
+Describe "Mozilla Build" -Skip:@(Assert-IsBuilder) {
     BeforeDiscovery {
         $Hiera = $Data.Hiera
         C:\mozilla-build\python3\python.exe -m pip freeze --all > C:\requirements.txt
