@@ -29,7 +29,7 @@ vm:
     sourceOrganization: "default"
     sourceRepository: "default"
     sourceBranch: "RELOPS-2180"
-    deploymentId: "aefa8a9"
+    deploymentId: "NA"
     managed_by: packer
 tests:
   - disable_services.tests.ps1
