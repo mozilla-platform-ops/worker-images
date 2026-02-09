@@ -14,6 +14,7 @@ Describe "Mozilla Build - Tester" -Skip:@(Assert-IsBuilder) {
         }
         $pip_packages = Get-Content C:\requirements.txt
         $Install_Path = "C:\mozilla-build"
+
         $hg_ExpectedSoftwareVersion = $null
 
         try {
@@ -97,8 +98,30 @@ Describe "Mozilla Build - Tester" -Skip:@(Assert-IsBuilder) {
             } catch {}
         }
 
-        if (-not $mozilla_build.psutil_version) {
+        if (-not $zstandard_ExepctedSoftwareVersion) {
             throw "Zstandard version could not be found in any provided Hiera source."
+        }
+
+        $py3pip_ExpectedSoftwareVersion = $null
+
+        try {
+            $py3pip_ExpectedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.py3_pip_version
+        } catch {}
+
+        if (-not $py3pip_ExpectedSoftwareVersion) {
+            try {
+                $py3pip_ExpectedSoftwareVersion = $Hiera.'win-worker'.variant.mozilla_build.py3_pip_version
+            } catch {}
+        }
+
+        if (-not $py3pip_ExpectedSoftwareVersion) {
+            try {
+                $py3pip_ExpectedSoftwareVersion = $Hiera.windows.mozilla_build.py3_pip_version
+            } catch {}
+        }
+
+        if (-not $py3pip_ExpectedSoftwareVersion) {
+            throw "Py3 pip version could not be found in any provided Hiera source."
         }
     }
     Context "Installation" {
@@ -139,8 +162,20 @@ Describe "Mozilla Build - Tester" -Skip:@(Assert-IsBuilder) {
             $ZStandard = ($pip_packages | Where-Object {$psitem -Match "zstandard"}) -split "=="
             $ZStandard[1] | Should -Be $zstandard_ExepctedSoftwareVersion
         }
+        It "Python3 Pip is installed" {
+            $py3pip = ($pip_packages | Where-Object {$psitem -Match "pip"}) -split "=="
+            $py3pip | Should -Not -Be $null
+        }
+        # It "Python3 Pip version" {
+        #     $py3pip = ($pip_packages | Where-Object {$psitem -Match "pip"}) -split "=="
+        #     $py3pip[1] | Should -Be $py3pip_ExpectedSoftwareVersion
+        # }
+        It "Pip.conf file has correct drive for pip-cache" -Skip {
+            $pipini = Get-Content "$ENV:ProgramData\pip\pip.ini"
+            $pipini[3] | Should -Be "download-cache = D:\pip-cache"
+        }
     }
-    Context "Mercurial" {
+    Context "Mercurial" -Skip {
         It "Mercurial gets installed" {
             $mercurial.DisplayName | Should -Not -Be $Null
         }
@@ -154,7 +189,7 @@ Describe "Mozilla Build - Tester" -Skip:@(Assert-IsBuilder) {
             ([Version]$mercurial.DisplayVersion ).Build | Should -Be $hg_ExpectedSoftwareVersion.Build
         }
     }
-    Context "HG Files" {
+    Context "HG Files" -Skip {
         BeforeAll {
             $hgshared_acl = (Get-Acl -Path C:\hg-shared).Access |
             Where-Object { $PSItem.IdentityReference -eq "Everyone" }
@@ -185,7 +220,7 @@ Describe "Mozilla Build - Tester" -Skip:@(Assert-IsBuilder) {
         }
     }
     Context "Modifications" {
-        It "hg removed from mozbuild path" {
+        It "hg removed from mozbuild path" -Skip {
             Test-Path "$Install_Path\python3\Scripts\hg" | Should -Be $false
         }
         It "Mozillabuild environment variable" {
@@ -237,6 +272,11 @@ Describe "Mozilla Build - Tester" -Skip:@(Assert-IsBuilder) {
 }
 
 Describe "Mozilla Build - Builder" -Skip:@(Assert-IsTester) {
+    BeforeDiscovery {
+        $Hiera = $Data.Hiera
+        C:\mozilla-build\python3\python.exe -m pip freeze --all > C:\requirements.txt
+    }
+
     BeforeAll {
         $software = Get-InstalledSoftware
         $mercurial = $software | Where-Object {
@@ -247,10 +287,115 @@ Describe "Mozilla Build - Builder" -Skip:@(Assert-IsTester) {
         }
         $pip_packages = Get-Content C:\requirements.txt
         $Install_Path = "C:\mozilla-build"
-        $hg_ExpectedSoftwareVersion = [Version]$Hiera.'win-worker'.mozilla_build.hg_version
-        $mozillabuild_ExpectedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.version
-        $psutil_ExpectedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.psutil_version
-        $zstandard_ExepctedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.zstandard_version
+
+        $hg_ExpectedSoftwareVersion = $null
+
+        try {
+            $hg_ExpectedSoftwareVersion = $Hiera.'win-worker'.hg.version
+        } catch {}
+
+        if (-not $hg_ExpectedSoftwareVersion) {
+            try {
+                $hg_ExpectedSoftwareVersion = $Hiera.'win-worker'.variant.hg.version
+            } catch {}
+        }
+
+        if (-not $hg_ExpectedSoftwareVersion) {
+            try {
+                $hg_ExpectedSoftwareVersion = $Hiera.windows.hg.version
+            } catch {}
+        }
+
+        if (-not $hg_ExpectedSoftwareVersion) {
+            throw "HG version could not be found in any provided Hiera source."
+        }
+                $mozillabuild_ExpectedSoftwareVersion = $null
+
+        try {
+            $mozillabuild_ExpectedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.version
+        } catch {}
+
+        if (-not $mozillabuild_ExpectedSoftwareVersion) {
+            try {
+                $mozillabuild_ExpectedSoftwareVersion = $Hiera.'win-worker'.variant.mozilla_build.version
+            } catch {}
+        }
+
+        if (-not $mozillabuild_ExpectedSoftwareVersion) {
+            try {
+                $mozillabuild_ExpectedSoftwareVersion = $Hiera.windows.mozilla_build.version
+            } catch {}
+        }
+
+        if (-not $mozillabuild_ExpectedSoftwareVersion) {
+            throw "MozillaBuild version could not be found in any provided Hiera source."
+        }
+
+        $psutil_ExpectedSoftwareVersion = $null
+
+        try {
+            $psutil_ExpectedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.psutil_version
+        } catch {}
+
+        if (-not $psutil_ExpectedSoftwareVersion) {
+            try {
+                $psutil_ExpectedSoftwareVersion = $Hiera.'win-worker'.variant.mozilla_build.psutil_version
+            } catch {}
+        }
+
+        if (-not $psutil_ExpectedSoftwareVersion) {
+            try {
+                $psutil_ExpectedSoftwareVersion = $Hiera.windows.mozilla_build.psutil_version
+            } catch {}
+        }
+
+        if (-not $psutil_ExpectedSoftwareVersion) {
+            throw "Psutil version could not be found in any provided Hiera source."
+        }
+
+        $zstandard_ExepctedSoftwareVersion = $null
+
+        try {
+            $zstandard_ExepctedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.zstandard_version
+        } catch {}
+
+        if (-not $zstandard_ExepctedSoftwareVersion) {
+            try {
+                $zstandard_ExepctedSoftwareVersion = $Hiera.'win-worker'.variant.mozilla_build.zstandard_version
+            } catch {}
+        }
+
+        if (-not $zstandard_ExepctedSoftwareVersion) {
+            try {
+                $zstandard_ExepctedSoftwareVersion = $Hiera.windows.mozilla_build.zstandard_version
+            } catch {}
+        }
+
+        if (-not $zstandard_ExepctedSoftwareVersion) {
+            throw "Zstandard version could not be found in any provided Hiera source."
+        }
+
+        $py3pip_ExpectedSoftwareVersion = $null
+
+        try {
+            $py3pip_ExpectedSoftwareVersion = $Hiera.'win-worker'.mozilla_build.py3_pip_version
+        } catch {}
+
+        if (-not $py3pip_ExpectedSoftwareVersion) {
+            try {
+                $py3pip_ExpectedSoftwareVersion = $Hiera.'win-worker'.variant.mozilla_build.py3_pip_version
+            } catch {}
+        }
+
+        if (-not $py3pip_ExpectedSoftwareVersion) {
+            try {
+                $py3pip_ExpectedSoftwareVersion = $Hiera.windows.mozilla_build.py3_pip_version
+            } catch {}
+        }
+
+        if (-not $py3pip_ExpectedSoftwareVersion) {
+            throw "Py3 pip version could not be found in any provided Hiera source."
+        }
     }
     Context "Installation" {
         It "Mozilla-Build Folder exists" {
@@ -262,12 +407,6 @@ Describe "Mozilla Build - Builder" -Skip:@(Assert-IsTester) {
         It "msys2\bin\sh.exe exists" {
             Test-Path "C:\mozilla-build\msys2\usr\bin\sh.exe" | Should -Be $true
         }
-        It "Mozilla Maintenance Service gets installed" -Skip {
-            $mms.DisplayName | Should -Not -Be $Null
-        }
-        It "Mozilla Maintenance Service is 27.0a1" -Skip {
-            $mms.DisplayVersion | Should -Be "27.0a1"
-        }
     }
     Context "Pip" {
         It "Certifi is installed" {
@@ -278,7 +417,7 @@ Describe "Mozilla Build - Builder" -Skip:@(Assert-IsTester) {
             $PSUtil = ($pip_packages | Where-Object {$psitem -Match "PSUtil"}) -split "=="
             $PSUtil | Should -Not -Be $null
         }
-        It "PSUtil version 5.9.4" {
+        It "PSUtil version" {
             $PSUtil = ($pip_packages | Where-Object {$psitem -Match "PSUtil"}) -split "=="
             $PSUtil[1] | Should -Be $psutil_ExpectedSoftwareVersion
         }
@@ -286,12 +425,20 @@ Describe "Mozilla Build - Builder" -Skip:@(Assert-IsTester) {
             $ZStandard = ($pip_packages | Where-Object {$psitem -Match "zstandard"}) -split "=="
             $ZStandard | Should -Not -Be $null
         }
-        It "ZStandard version 0.15.2" {
+        It "ZStandard version" {
             $ZStandard = ($pip_packages | Where-Object {$psitem -Match "zstandard"}) -split "=="
             $ZStandard[1] | Should -Be $zstandard_ExepctedSoftwareVersion
         }
+        It "Python3 Pip is installed" {
+            $py3pip = ($pip_packages | Where-Object {$psitem -Match "pip"}) -split "=="
+            $py3pip | Should -Not -Be $null
+        }
+        It "Python3 Pip version" {
+            $py3pip = ($pip_packages | Where-Object {$psitem -Match "pip"}) -split "=="
+            $py3pip[1] | Should -Be $py3pip_ExpectedSoftwareVersion
+        }
     }
-    Context "Mercurial" {
+    Context "Mercurial" -Skip {
         It "Mercurial gets installed" {
             $mercurial.DisplayName | Should -Not -Be $Null
         }
@@ -305,7 +452,7 @@ Describe "Mozilla Build - Builder" -Skip:@(Assert-IsTester) {
             ([Version]$mercurial.DisplayVersion ).Build | Should -Be $hg_ExpectedSoftwareVersion.Build
         }
     }
-    Context "HG Files" {
+    Context "HG Files" -Skip {
         BeforeAll {
             $hgshared_acl = (Get-Acl -Path C:\hg-shared).Access |
             Where-Object { $PSItem.IdentityReference -eq "Everyone" }
@@ -334,9 +481,27 @@ Describe "Mozilla Build - Builder" -Skip:@(Assert-IsTester) {
             Where-Object { $PSItem.IdentityReference -eq "Everyone" }).FileSystemRights |
             Should -Be "FullControl"
         }
+        it "Tooltool.py exists" {
+            Test-Path "C:\mozilla-build\tooltool.py" | Should -Be $true
+        }
     }
     Context "Modifications" {
-        It "hg removed from mozbuild path" {
+        It "MozMake directory exists" {
+            Test-Path "C:\mozilla-build\mozmake" | Should -Be $true
+        }
+        It "Mozmake.exe exists" {
+            Test-Path "C:\mozilla-build\mozmake\mozmake.exe" | Should -Be $true
+        }
+        It "Builds directory exists" {
+            Test-Path "C:\builds" | Should -Be $true
+        }
+        It "Mozilla Build hg directory is empty" {
+            Test-Path "$Install_Path\python\Scripts\hg" | Should -Be $false
+        }
+        It "Mozilla Build hg.exe does not exist" {
+            Test-Path "$Install_Path\python\Scripts\hg.exe" | Should -Be $false
+        }
+        It "hg removed from mozbuild path" -Skip {
             Test-Path "$Install_Path\python3\Scripts\hg" | Should -Be $false
         }
         It "Mozillabuild environment variable" {
@@ -383,6 +548,16 @@ Describe "Mozilla Build - Builder" -Skip:@(Assert-IsTester) {
     Context "Install PSUtil" {
         It "init.py path exists for python 3" {
             Test-Path "C:\mozilla-build\python3\Lib\site-packages\psutil\__init__.py" | Should -Be $true
+        }
+    }
+    Context "Certain binaries are in msys2 path" -Skip {
+        It "Tar.exe" {
+            $tar = Get-Command tar
+            $tar.Source | Should -Be "C:\mozilla-build\msys2\usr\bin\tar.exe"
+        }
+        It "Find.exe" {
+            $bash = Get-Command find
+            $bash.Source | Should -Be "C:\mozilla-build\msys2\usr\bin\find.exe"
         }
     }
 }

@@ -48,5 +48,6 @@ tests:
   - sevenzip.tests.ps1
   - google_auth.tests.ps1
   - git.tests.ps1
-  - mozilla_build_builder.tests.ps1
+  - mozilla_build.tests.ps1
   - windows_worker_runner.tests.ps1
+  - error_reporting.tests.ps1

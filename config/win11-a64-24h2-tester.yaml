@@ -37,5 +37,8 @@ tests:
   - logging.tests.ps1
   - mercurial.tests.ps1
   - git.tests.ps1
-  - mozilla_build_tester.tests.ps1
+  - mozilla_build.tests.ps1
+  - mozilla_maintenance_service.tests.ps1
   - windows_worker_runner.tests.ps1
+  - disable_services.tests.ps1
+  - microsoft_wptx64.tests.ps1
