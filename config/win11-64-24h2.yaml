@@ -22,7 +22,7 @@ vm:
     sourceOrganization: "default"
     sourceRepository: "default"
     sourceBranch: "default"
-    deploymentId: "ab465e8"
+    deploymentId: "ab4658e"
     managed_by: "default"
 tests:
   - win11_sdk_tests.ps1
