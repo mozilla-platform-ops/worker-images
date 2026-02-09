@@ -6,7 +6,6 @@ loader: taskgraph.loader.transform:loader
 
 transforms:
   - mozilla_taskgraph.transforms.replicate
-  - worker_images_taskgraph.transforms.filter_by_worker_type
   - worker_images_taskgraph.transforms.integration_test
 
 tasks:
@@ -29,12 +28,8 @@ tasks:
 
   gecko-builds:
     description: "Run Gecko build tasks on alpha worker pools"
-    # Filter to only include tasks running on b-win2022 worker type
-    filter-worker-types:
-      - b-win2022
-    # Map build worker pools to their alpha equivalents
-    # Note: CoT won't be valid for these integration tests, but that's
-    # acceptable since we're testing the worker image, not producing releases
+    # Map build worker pools to their alpha equivalents.
+    # Non-mapped pools pass through unchanged.
     worker-pool-mappings:
       gecko-3/b-win2022: gecko-1/b-win2022-alpha
     replicate:

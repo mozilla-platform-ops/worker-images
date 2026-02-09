@@ -71,20 +71,25 @@ def change_worker_pool_to_alpha(config, tasks):
         old_worker_type = task["task"]["workerType"]
         old_pool = f"{old_provisioner}/{old_worker_type}"
 
-        # Check for explicit pool mapping first
-        if old_pool in pool_mappings:
-            new_pool = pool_mappings[old_pool]
-            if new_pool not in pools:
+        # If explicit pool mappings are defined for this task definition,
+        # only remap pools that match a mapping; pass others through unchanged.
+        if pool_mappings:
+            if old_pool in pool_mappings:
+                new_pool = pool_mappings[old_pool]
+                if new_pool not in pools:
+                    logger.debug(
+                        f"skipping {config.kind} task because mapped pool {new_pool} "
+                        f"is not configured!"
+                    )
+                    continue
+                new_provisioner, new_worker_type = new_pool.split("/", 1)
+                task["task"]["provisionerId"] = new_provisioner
+                task["task"]["workerType"] = new_worker_type
+                logger.debug(f"Mapped {old_pool} -> {new_pool}")
+            else:
                 logger.debug(
-                    f"skipping {config.kind} task because mapped pool {new_pool} "
-                    f"is not configured!"
+                    f"No pool mapping for {old_pool}, passing through unchanged"
                 )
-                continue
-            # Parse new pool into provisioner/workerType
-            new_provisioner, new_worker_type = new_pool.split("/", 1)
-            task["task"]["provisionerId"] = new_provisioner
-            task["task"]["workerType"] = new_worker_type
-            logger.debug(f"Mapped {old_pool} -> {new_pool}")
             yield task
             continue
 
