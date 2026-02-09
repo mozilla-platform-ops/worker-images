@@ -10,12 +10,12 @@
 Run OS integration tests by triggering the Taskcluster hook.
 
 Usage:
-    uv run scripts/run-os-integration.py <image_name>
-    uv run scripts/run-os-integration.py <image_name> --monitor
+    uv run ci/run-os-integration.py <image_name>
+    uv run ci/run-os-integration.py <image_name> --no-wait
 
 Example:
-    uv run scripts/run-os-integration.py win11_64_24h2_alpha
-    uv run scripts/run-os-integration.py win11_64_24h2_alpha --monitor
+    uv run ci/run-os-integration.py win11_64_24h2_alpha
+    uv run ci/run-os-integration.py win11_64_24h2_alpha --no-wait
 
 Environment variables (required):
     TASKCLUSTER_CLIENT_ID      - Taskcluster client ID
@@ -23,6 +23,7 @@ Environment variables (required):
 
 Optional:
     TASKCLUSTER_ROOT_URL       - Defaults to https://firefox-ci-tc.services.mozilla.com
+    GITHUB_STEP_SUMMARY        - GitHub Actions step summary file (auto-detected)
 """
 
 import argparse
@@ -31,9 +32,115 @@ import os
 import re
 import sys
 import time
+from pathlib import Path
 
 import requests
 import taskcluster
+
+
+def format_duration(seconds: int) -> str:
+    """Format duration in seconds as human-readable string."""
+    if seconds < 0:
+        return "-"
+    if seconds < 60:
+        return f"{seconds}s"
+    if seconds < 3600:
+        minutes = seconds // 60
+        secs = seconds % 60
+        return f"{minutes}m {secs}s"
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    return f"{hours}h {minutes}m"
+
+
+def get_result_emoji(state: str, result: str | None) -> str:
+    """Get emoji for task result."""
+    if state in ("pending", "running", "unscheduled"):
+        return "\u23f3"  # hourglass
+    if state == "completed":
+        return "\u2705"  # green check
+    if state == "failed":
+        return "\u274c"  # red x
+    if state == "exception":
+        return "\u26a0\ufe0f"  # warning
+    return "\u2753"  # question mark
+
+
+def write_github_summary(
+    tasks: list[dict],
+    task_group_id: str,
+    image_name: str,
+    root_url: str,
+) -> None:
+    """Write a job summary for GitHub Actions."""
+    summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not summary_file:
+        return
+
+    task_group_url = f"{root_url}/tasks/groups/{task_group_id}"
+
+    # Calculate summary stats
+    states = [t["status"]["state"] for t in tasks]
+    completed = sum(1 for s in states if s == "completed")
+    failed = sum(1 for s in states if s == "failed")
+    exception = sum(1 for s in states if s == "exception")
+    pending_running = sum(1 for s in states if s in ("pending", "running", "unscheduled"))
+    total = len(tasks)
+
+    # Determine overall status
+    if pending_running > 0:
+        overall_status = "\u23f3 In Progress"
+    elif failed > 0 or exception > 0:
+        overall_status = "\u274c Failed"
+    else:
+        overall_status = "\u2705 Passed"
+
+    lines = [
+        f"## OS Integration Tests - {image_name}",
+        "",
+        f"**Status:** {overall_status}",
+        f"**Task Group:** [{task_group_id}]({task_group_url})",
+        "",
+        f"| Completed | Failed | Exception | Pending/Running | Total |",
+        f"|:---------:|:------:|:---------:|:---------------:|:-----:|",
+        f"| {completed} | {failed} | {exception} | {pending_running} | {total} |",
+        "",
+        "### Task Details",
+        "",
+        "| Status | Task ID | Name | State | Duration |",
+        "|:------:|---------|------|-------|----------|",
+    ]
+
+    for task in tasks:
+        task_id = task["status"]["taskId"]
+        task_url = f"{root_url}/tasks/{task_id}"
+        state = task["status"]["state"]
+
+        # Get task name from task definition
+        name = task.get("task", {}).get("metadata", {}).get("name", "Unknown")
+
+        # Calculate duration from runs
+        duration = "-"
+        runs = task["status"].get("runs", [])
+        if runs:
+            last_run = runs[-1]
+            started = last_run.get("started")
+            resolved = last_run.get("resolved")
+            if started and resolved:
+                from datetime import datetime
+
+                start_dt = datetime.fromisoformat(started.replace("Z", "+00:00"))
+                end_dt = datetime.fromisoformat(resolved.replace("Z", "+00:00"))
+                duration = format_duration(int((end_dt - start_dt).total_seconds()))
+
+        emoji = get_result_emoji(state, None)
+        lines.append(f"| {emoji} | [{task_id}]({task_url}) | {name} | {state} | {duration} |")
+
+    lines.append("")
+
+    summary_path = Path(summary_file)
+    with summary_path.open("a") as f:
+        f.write("\n".join(lines))
 
 
 def get_created_task_group_id(queue, decision_task_id: str) -> str | None:
@@ -92,18 +199,15 @@ def main():
         "image_name", help="Image name to test (e.g., win11_64_24h2_alpha)"
     )
     parser.add_argument(
-        "--no-wait", action="store_true", help="Don't wait for task group URL (exit immediately after triggering)"
-    )
-    parser.add_argument(
-        "--monitor",
+        "--no-wait",
         action="store_true",
-        help="Monitor task group until completion (default: just print URL and exit)",
+        help="Don't wait for task group URL or completion (exit immediately after triggering)",
     )
     parser.add_argument(
         "--timeout",
         type=int,
-        default=3600,
-        help="Timeout in seconds (default: 3600, i.e. 60 minutes)",
+        default=7200,
+        help="Timeout in seconds (default: 7200, i.e. 2 hours)",
     )
     args = parser.parse_args()
 
@@ -163,10 +267,7 @@ def main():
     print(f"Integration Test Results:  {test_results_url}")
     print(f"{'=' * 60}\n")
 
-    if not args.monitor:
-        return
-
-    # Monitor task group
+    # Monitor task group (default behavior)
     print("Monitoring task group for completion...")
     start_time = time.time()
 
@@ -193,21 +294,32 @@ def main():
             if pending_running == 0:
                 print()
                 print(f"{'=' * 60}")
+                print(f"Integration Task Group ID: {task_group_id}")
+                print(f"Integration Test Results:  {test_results_url}")
+                print(f"{'=' * 60}")
+
+                # Write GitHub Actions job summary
+                write_github_summary(tasks, task_group_id, args.image_name, root_url)
+
                 if failed > 0 or exception > 0:
                     print(f"FAILED: {failed} failed, {exception} exception")
-                    print(f"Details: {test_results_url}")
-                    print(f"{'=' * 60}")
                     sys.exit(1)
                 else:
                     print(f"PASSED: All {completed} tasks completed successfully")
-                    print(f"Details: {test_results_url}")
-                    print(f"{'=' * 60}")
                     sys.exit(0)
 
         except taskcluster.exceptions.TaskclusterRestFailure as e:
             print(f"Error checking task group: {e}")
 
         time.sleep(10)
+
+    # Timeout - still write summary with current state
+    try:
+        response = queue.listTaskGroup(task_group_id)
+        tasks = response.get("tasks", [])
+        write_github_summary(tasks, task_group_id, args.image_name, root_url)
+    except Exception:
+        pass
 
     print(f"Timeout after {args.timeout} seconds")
     print(f"Task group may still be running: {test_results_url}")

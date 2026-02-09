@@ -5,6 +5,18 @@ function Disable-AntiVirus {
 
     )
 
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+    Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+    Write-Host "========== $($MyInvocation.MyCommand.Name) started at $((Get-Date).ToUniversalTime().ToString('o')) =========="
+    trap {
+        $stopwatch.Stop()
+        $elapsedMinutes = [int][math]::Floor($stopwatch.Elapsed.TotalMinutes)
+        $elapsedSeconds = $stopwatch.Elapsed.Seconds
+        Write-Log -message ('{0} :: completed in {1} minutes, {2} seconds' -f $($MyInvocation.MyCommand.Name), $elapsedMinutes, $elapsedSeconds) -severity 'DEBUG'
+        Write-Host "========== $($MyInvocation.MyCommand.Name) completed in $elapsedMinutes minutes, $elapsedSeconds seconds =========="
+        throw $_
+    }
+
     $avPreference = @(
         @{DisableArchiveScanning = $true }
         @{DisableAutoExclusions = $true }
@@ -41,4 +53,10 @@ function Disable-AntiVirus {
     if (Test-Path $atpRegPath) {
         Set-ItemProperty -Path $atpRegPath -Name 'ForceDefenderPassiveMode' -Value '1' -Type 'DWORD'
     }
+
+    $stopwatch.Stop()
+    $elapsedMinutes = [int][math]::Floor($stopwatch.Elapsed.TotalMinutes)
+    $elapsedSeconds = $stopwatch.Elapsed.Seconds
+    Write-Log -message ('{0} :: completed in {1} minutes, {2} seconds' -f $($MyInvocation.MyCommand.Name), $elapsedMinutes, $elapsedSeconds) -severity 'DEBUG'
+    Write-Host "========== $($MyInvocation.MyCommand.Name) completed in $elapsedMinutes minutes, $elapsedSeconds seconds =========="
 }

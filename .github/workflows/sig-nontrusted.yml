@@ -96,10 +96,9 @@ jobs:
           path: sboms
           name: release-notes-${{ github.event.inputs.config }}
           merge-multiple: true
-      - name: "Test SBOM Exists & Create PR"
+      - name: "Prepare SBOM Commit"
         shell: pwsh
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CONFIG: ${{ github.event.inputs.config }}
         run: |
           ## Install powershell-yaml module
@@ -108,60 +107,33 @@ jobs:
 
           Get-ChildItem "sboms" -Recurse
 
-          Get-ChildItem
-
           ## Get the shared image version from the config file
           $YAML = Convertfrom-Yaml (Get-Content "config/${{ env.CONFIG }}.yaml" -raw)
-          git config --local user.name "github-actions[bot]"
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-
-          ## Confirm it's there
-          Get-ChildItem "sboms" -Recurse
 
           ## Store the file in a variable
-          $SBOM_PATH = "sboms\${{ github.event.inputs.config }}-$($Yaml.sharedimage.image_version).md"
-          $SBOM_NAME = "${{ github.event.inputs.config }}-$($Yaml.sharedimage.image_version).md"
+          $SBOM_PATH = "sboms/${{ github.event.inputs.config }}-$($Yaml.sharedimage.image_version).md"
 
           Write-host "SBOM Path: $SBOM_PATH"
-          Write-host "SBOM Name: $SBOM_NAME"
-
-          ## Create a new branch for the release notes
-          $Date = Get-Date -Format "yyyyMMddTHHmm"
-          $Repo = "${{ github.repository }}"
-
-          if ($ENV:CONFIG -match "win10") {
-            $ReleaseBranch = "releases/win10/$Date-docs"
-          }
-          elseif ($ENV:CONFIG -match "win11") {
-            $ReleaseBranch = "releases/win11/$Date-docs"
-          }
-          elseif ($ENV:CONFIG -match "win2022") {
-            $ReleaseBranch = "releases/win2022/$Date-docs"
-          }
-          else {
-            $ReleaseBranch = $null
+          if (-not (Test-Path $SBOM_PATH)) {
+            Write-Error "SBOM not found at $SBOM_PATH"
+            exit 1
           }
 
-          $branchExists = (gh api "/repos/$Repo/branches/$releaseBranch" | ConvertFrom-Json).Name
-
-          if ($null -eq $branchExists) {
-            git checkout -b $ReleaseBranch
-            git push origin $ReleaseBranch
-          } else {
-            git checkout $ReleaseBranch
-          }
-
-          $PR_Body = @"
-          # Release Notes for $($ENV:CONFIG).md
-
-          Automatically generated PR for $($ENV:CONFIG).md
-          "@
-
-          $PR_Title = "$ENV:CONFIG ($Date) Image Update"
-          Write-host "Using git add $SBOM_PATH"
-          git add $SBOM_PATH
-          Write-Host "Using git add ."
-          git add .
-          git commit -m "$($ENV:CONFIG) - Release Notes for $($ENV:CONFIG).md"
-          git push -u origin $ReleaseBranch
-          gh pr create --base main --head $ReleaseBranch --title $PR_Title --body $PR_Body
+          Add-Content -Path $env:GITHUB_ENV -Value "SBOM_PATH=$SBOM_PATH"
+      - name: "Pull latest main"
+        run: git pull --rebase --autostash origin main
+      - name: "Commit SBOM to main"
+        uses: stefanzweifel/git-auto-commit-action@04702edda442b2e678b25b537cec683a1493fcb9
+        with:
+          branch: main
+          commit_message: "${{ github.event.inputs.config }} - Release Notes"
+          file_pattern: "${{ env.SBOM_PATH }}"
+  os-integration:
+    needs: packer
+    name: "OS Integration Tests"
+    uses: ./.github/workflows/os-integration.yml
+    with:
+      config: ${{ github.event.inputs.config }}
+    secrets:
+      TASKCLUSTER_OS_INT_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
+      TASKCLUSTER_OS_INT_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}

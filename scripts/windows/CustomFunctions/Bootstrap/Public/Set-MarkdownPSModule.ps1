@@ -4,8 +4,17 @@ function Set-MarkdownPSModule {
 
     )
 
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
     Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
-    Write-Host ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime())
+    Write-Host "========== $($MyInvocation.MyCommand.Name) started at $((Get-Date).ToUniversalTime().ToString('o')) =========="
+    trap {
+        $stopwatch.Stop()
+        $elapsedMinutes = [int][math]::Floor($stopwatch.Elapsed.TotalMinutes)
+        $elapsedSeconds = $stopwatch.Elapsed.Seconds
+        Write-Log -message ('{0} :: completed in {1} minutes, {2} seconds' -f $($MyInvocation.MyCommand.Name), $elapsedMinutes, $elapsedSeconds) -severity 'DEBUG'
+        Write-Host "========== $($MyInvocation.MyCommand.Name) completed in $elapsedMinutes minutes, $elapsedSeconds seconds =========="
+        throw $_
+    }
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
     ## Bootstrap for powershell modules
@@ -16,4 +25,9 @@ function Set-MarkdownPSModule {
     Install-Module -Name "MarkdownPS" -Force
     Write-Log -message  ('{0} :: Installed MarkdownPS' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
 
+    $stopwatch.Stop()
+    $elapsedMinutes = [int][math]::Floor($stopwatch.Elapsed.TotalMinutes)
+    $elapsedSeconds = $stopwatch.Elapsed.Seconds
+    Write-Log -message ('{0} :: completed in {1} minutes, {2} seconds' -f $($MyInvocation.MyCommand.Name), $elapsedMinutes, $elapsedSeconds) -severity 'DEBUG'
+    Write-Host "========== $($MyInvocation.MyCommand.Name) completed in $elapsedMinutes minutes, $elapsedSeconds seconds =========="
 }

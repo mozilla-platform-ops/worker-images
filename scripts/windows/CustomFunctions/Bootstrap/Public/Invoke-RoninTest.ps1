@@ -6,6 +6,18 @@ Function Invoke-RoninTest {
         [Switch] $PassThru
     )
 
+    $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+    Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+    Write-Host "========== $($MyInvocation.MyCommand.Name) started at $((Get-Date).ToUniversalTime().ToString('o')) =========="
+    trap {
+        $stopwatch.Stop()
+        $elapsedMinutes = [int][math]::Floor($stopwatch.Elapsed.TotalMinutes)
+        $elapsedSeconds = $stopwatch.Elapsed.Seconds
+        Write-Log -message ('{0} :: completed in {1} minutes, {2} seconds' -f $($MyInvocation.MyCommand.Name), $elapsedMinutes, $elapsedSeconds) -severity 'DEBUG'
+        Write-Host "========== $($MyInvocation.MyCommand.Name) completed in $elapsedMinutes minutes, $elapsedSeconds seconds =========="
+        throw $_
+    }
+
     $RolePath = "C:\ronin\data\roles\$Role.yaml"
     $WinPath = "C:\ronin\data\os\Windows.yaml"
     $ConfigPath = "C:\Config\$Config.yaml"
@@ -70,4 +82,10 @@ Function Invoke-RoninTest {
     $Configuration.Output.Verbosity = "Detailed"
 
     Invoke-Pester -Configuration $Configuration
+
+    $stopwatch.Stop()
+    $elapsedMinutes = [int][math]::Floor($stopwatch.Elapsed.TotalMinutes)
+    $elapsedSeconds = $stopwatch.Elapsed.Seconds
+    Write-Log -message ('{0} :: completed in {1} minutes, {2} seconds' -f $($MyInvocation.MyCommand.Name), $elapsedMinutes, $elapsedSeconds) -severity 'DEBUG'
+    Write-Host "========== $($MyInvocation.MyCommand.Name) completed in $elapsedMinutes minutes, $elapsedSeconds seconds =========="
 }

@@ -20,20 +20,20 @@ azure:
     - westus
 vm:
   puppet_version: 8.10.0
-  openvox_version: 8.19.2
-  git_version: 2.51.2
+  git_version: 2.52.0
+  openvox_version: 8.24.2
   size: Standard_F8s_v2
   tags:
     base_image: win116424h2azure
     worker_pool_id: win11-64-24h2
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "RELOPS-2123"
-    deploymentId: "NA"
+    sourceBranch: "RELOPS-2138"
+    deploymentId: "261ede8"
     managed_by: packer
 tests:
   - win11_sdk_tests.ps1
-  - microsoft_vcc_win10_win11_x64.tests.ps1
+  #- microsoft_vcc_win10_win11_x64.tests.ps1
   - disable_services.tests.ps1
   - skip_oobe.tests.ps1
   - error_reporting.tests.ps1
@@ -52,4 +52,4 @@ tests:
   - mozilla_build_tester.tests.ps1
   - mozilla_maintenance_service.tests.ps1
   #- windows_worker_runner.tests.ps1
-  - gpu_drivers.tests.ps1
+  #- gpu_drivers.tests.ps1

@@ -16,6 +16,12 @@ param(
     [switch]$pxe_only,        # skip audit and PXE immediately in pass 1
     [int]$sleep_secs = 300,   # default 5 minutes between passes
     [switch]$quick,           # when set, reduce sleep to 30 seconds (except pass 1->2 which is fixed at 5s)
+
+    # Dry-run + throttling
+    [switch]$dry_run,                 # print actions only; no PXE, no reboot, no remote changes
+    [int]$pxe_batch_size = 10,        # after this many PXE triggers, sleep
+    [int]$pxe_batch_sleep_secs = 60,  # sleep duration after batch threshold
+
     [switch]$help
 )
 
@@ -31,6 +37,10 @@ $script:retry_attempted       = @()
 $script:retry_recovered       = @()
 $script:pxe_inline_used       = @()
 $script:doWipeD               = $false
+
+# Dry-run + batching state
+$script:would_pxe             = @()
+$script:pxe_batch_count       = 0
 
 # ------------------ Helpers ------------------
 function Sleep-BetweenPasses {
@@ -89,6 +99,27 @@ function Invoke-SSHPSFile {
 function Quote-LiteralPath {
     param([Parameter(Mandatory)][string]$Path)
     return "'" + ($Path -replace "'", "''") + "'"
+}
+
+# register successful PXE trigger and apply batch sleep
+function Register-PXETrigger {
+    param(
+        [Parameter(Mandatory)][string]$NodeName,
+        [switch]$Inline
+    )
+
+    if ($script:pxe_triggered -notcontains $NodeName) { $script:pxe_triggered += $NodeName }
+    if ($Inline -and $script:pxe_inline_used -notcontains $NodeName) { $script:pxe_inline_used += $NodeName }
+
+    $script:pxe_batch_count++
+
+    if ($pxe_batch_size -gt 0 -and $script:pxe_batch_count -ge $pxe_batch_size) {
+        Write-Host ""
+        Write-Host ("---- PXE batch threshold reached ({0} hosts). Sleeping {1}s ----" -f $pxe_batch_size, $pxe_batch_sleep_secs)
+        Start-Sleep -Seconds $pxe_batch_sleep_secs
+        Write-Host ""
+        $script:pxe_batch_count = 0
+    }
 }
 
 # ------------------ Embedded PXE Script Content ------------------
@@ -200,6 +231,12 @@ try {
 function Set-RemotePXE {
     param([Parameter(Mandatory)][string]$NodeName,[bool]$WipeD=$script:doWipeD)
 
+    if ($dry_run) {
+        Write-Host "[$NodeName] DRY RUN: would trigger PXE (Wipe D: $WipeD)."
+        if ($script:would_pxe -notcontains $NodeName) { $script:would_pxe += $NodeName }
+        return
+    }
+
     # 1) Try to stage the file version
     $stage = Stage-RemotePXEFile -NodeName $NodeName -RemotePath $pxe_script
 
@@ -210,8 +247,7 @@ function Set-RemotePXE {
             $inline = Invoke-InlinePXE -NodeName $NodeName -WipeD:$WipeD
             if ($inline.Ok) {
                 Write-Host "[$NodeName] PXE (inline) invoked."
-                if ($script:pxe_triggered -notcontains $NodeName) { $script:pxe_triggered += $NodeName }
-                if ($script:pxe_inline_used -notcontains $NodeName) { $script:pxe_inline_used += $NodeName }
+                Register-PXETrigger -NodeName $NodeName -Inline
                 Start-Sleep -Seconds 5
                 return
             } else {
@@ -234,7 +270,7 @@ function Set-RemotePXE {
     $invoke = Invoke-RemotePXE -NodeName $NodeName -RemotePath $pxe_script -WipeD:$WipeD
     if ($invoke.Ok) {
         Write-Host "[$NodeName] PXE script invoked."
-        if ($script:pxe_triggered -notcontains $NodeName) { $script:pxe_triggered += $NodeName }
+        Register-PXETrigger -NodeName $NodeName
         Start-Sleep -Seconds 5
         return
     }
@@ -250,8 +286,7 @@ function Set-RemotePXE {
     $inline2 = Invoke-InlinePXE -NodeName $NodeName -WipeD:$WipeD
     if ($inline2.Ok) {
         Write-Host "[$NodeName] PXE (inline) invoked."
-        if ($script:pxe_triggered -notcontains $NodeName) { $script:pxe_triggered += $NodeName }
-        if ($script:pxe_inline_used -notcontains $NodeName) { $script:pxe_inline_used += $NodeName }
+        Register-PXETrigger -NodeName $NodeName -Inline
         Start-Sleep -Seconds 5
     } else {
         if ($inline2.Msg -eq 'ssh failed') {
@@ -315,7 +350,9 @@ function Invoke-AuditScript {
                 }
 
                 if ($result -match '(?i)\bbad\b') {
-                    Write-Host "[$NodeName] Audit reported bad/wrong config; triggering PXE."
+                    if ($dry_run) { Write-Host "[$NodeName] Audit reported bad/wrong config; DRY RUN: would trigger PXE." }
+                    else          { Write-Host "[$NodeName] Audit reported bad/wrong config; triggering PXE." }
+
                     $script:wrong_config += $NodeName
                     Set-RemotePXE -NodeName $NodeName -WipeD:$script:doWipeD
                 }
@@ -325,7 +362,9 @@ function Invoke-AuditScript {
                 if ($script:failed_ssh -notcontains $NodeName) { $script:failed_ssh += $NodeName }
             }
             default {
-                Write-Host "[$NodeName] Audit script failed (exit $($run.ExitCode)); triggering PXE."
+                if ($dry_run) { Write-Host "[$NodeName] Audit script failed (exit $($run.ExitCode)); DRY RUN: would trigger PXE." }
+                else          { Write-Host "[$NodeName] Audit script failed (exit $($run.ExitCode)); triggering PXE." }
+
                 $script:failed_script += $NodeName
                 Set-RemotePXE -NodeName $NodeName -WipeD:$script:doWipeD
             }
@@ -377,16 +416,21 @@ if ($help) {
 Usage: script.ps1 [options]
 
 Options:
-  -single            : Operate on a single node.
-  -node              : Node name when using -single.
-  -pool              : Operate on an entire pool of nodes.
-  -pool_name         : Pool name when using -pool.
-  -pxe_only          : Skip audit presence check and immediately PXE the selected nodes in pass 1.
-  -wipe_d            : Wipe D:\* on nodes when triggering PXE (SSH).
-  -no_pxe_missing    : Skip pass 2 (PXE for nodes missing audit).
-  -sleep_secs <n>    : Sleep between passes (default 300; use -quick for 30s).
-  -quick             : Shortcut to set sleep between passes to 30 seconds. (Pass 1->2 is always 5s.)
-  -help              : Show this help.
+  -single                 : Operate on a single node.
+  -node                   : Node name when using -single.
+  -pool                   : Operate on an entire pool of nodes.
+  -pool_name              : Pool name when using -pool.
+  -pxe_only               : Skip audit presence check and immediately PXE the selected nodes in pass 1.
+  -wipe_d                 : Wipe D:\* on nodes when triggering PXE (SSH).
+  -no_pxe_missing         : Skip pass 2 (PXE for nodes missing audit).
+  -sleep_secs <n>         : Sleep between passes (default 300; use -quick for 30s).
+  -quick                  : Shortcut to set sleep between passes to 30 seconds. (Pass 1->2 is always 5s.)
+
+  -dry_run                : DRY RUN mode (no PXE, no reboot, no remote file writes).
+  -pxe_batch_size <n>     : After <n> successful PXE triggers, sleep (default 10).
+  -pxe_batch_sleep_secs <n>: Sleep length after threshold (default 60).
+
+  -help                   : Show this help.
 
 SSH config example:
   Host *.$domain_suffix
@@ -433,6 +477,7 @@ if ($pxe_only) {
     Write-Host "------------------------------------------------------------"
     Write-Host "            FIRST PASS (PXE-ONLY MODE VIA SSH)              "
     Write-Host "                 Wipe D: $($script:doWipeD)                 "
+    Write-Host "                 Dry run: $dry_run                          "
     Write-Host "------------------------------------------------------------"
     Write-Host ""
 
@@ -483,6 +528,7 @@ if (-not $pxe_only) {
         Write-Host "                    SECOND PASS (PXE)                       "
         Write-Host "        Nodes missing the audit script will PXE now         "
         Write-Host "             Wipe D: $($script:doWipeD)                     "
+        Write-Host "             Dry run: $dry_run                              "
         Write-Host "------------------------------------------------------------"
         Write-Host ""
 
@@ -513,7 +559,9 @@ Write-Host ""
 # ------------------ Final Summaries ------------------
 Write-Host ""
 Write-Host "==== SUMMARY ===="
+Write-Host "Dry run: $dry_run"
 Write-Host "PXE Wipe D setting: $($script:doWipeD)"
+Write-Host ("PXE batch throttle: size={0}, sleep={1}s" -f $pxe_batch_size, $pxe_batch_sleep_secs)
 Write-Host ""
 
 Write-Host "Nodes with missing audit script ($audit_script):"
@@ -542,3 +590,7 @@ if ($script:wrong_config.Count) { ($script:wrong_config | Sort-Object -Unique) |
 Write-Host ""
 Write-Host "Nodes with script issues:"
 if ($script:failed_script.Count) { ($script:failed_script | Sort-Object -Unique) | ForEach-Object { Write-Host "- $_" } } else { Write-Host "- none" }
+
+Write-Host ""
+Write-Host "Nodes that would have PXE’d (dry run):"
+if ($script:would_pxe.Count) { ($script:would_pxe | Sort-Object -Unique) | ForEach-Object { Write-Host "- $_" } } else { Write-Host "- none" }

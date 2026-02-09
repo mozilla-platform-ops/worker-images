@@ -679,8 +679,8 @@ if (!(Test-Path $setup)) {
     Copy-Item -Path $source_secrets -Destination $secret_file -Force
     Write-host "Copying $source_secrets_pat to $PATsecret_file"
     Copy-Item -Path $source_secrets_pat -Destination $PATsecret_file -Force
-    Write-Host "Copying $source_AZsecrets to $AZsecret_file"
-    Copy-Item -Path $source_AZsecrets -Destination $AZsecret_file -Force
+    #Write-Host "Copying $source_AZsecrets to $AZsecret_file"
+    #Copy-Item -Path $source_AZsecrets -Destination $AZsecret_file -Force
     Write-host "Copying $source_scripts to $local_scripts"
     Copy-Item -Path $source_scripts $local_scripts -Recurse -Force
     Write-host "Copying $source_app\* to $local_app"
@@ -726,6 +726,7 @@ elseif (!(Test-Path $secret_file)) {
     Write-host "Updating secret file."
     Copy-Item -Path $source_secrets -Destination $secret_file -Force
     Copy-Item -Path $source_AZsecrets -Destination $AZsecret_file -Force
+    Copy-Item -Path $source_secrets_pat -Destination $PATsecret_file -Force
     #Copy-Item -Path $source_scripts\Get-Bootstrap.ps1 $local_scripts\Get-Bootstrap.ps1 -Recurse -Force
     Write-Host "Disconecting Deployment Share."
     net use Z: /delete
