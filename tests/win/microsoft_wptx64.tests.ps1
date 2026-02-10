@@ -1,9 +1,8 @@
 Describe "WPTx64" {
     BeforeAll {
+        $osFacts = Get-WinFactsCustomOS
         $osVersion = Get-OSVersionExtended
         $displayVersion = $osVersion.DisplayVersion
-        $osArch = (Get-CimInstance Win32_OperatingSystem).OSArchitecture
-        $osCaption = (Get-CimInstance Win32_OperatingSystem).Caption
 
         # Determine expected package name and version based on OS
         if ($displayVersion -eq "24H2") {
