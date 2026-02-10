@@ -1,4 +1,4 @@
-Describe "Mozilla Build" -Skip:(Assert-IsBuilder) {
+Describe "Mozilla Build" -Skip:($Data.Hiera.'win-worker'.function -eq 'builder') {
     BeforeDiscovery {
         $Hiera = $Data.Hiera
         C:\mozilla-build\python3\python.exe -m pip freeze --all > C:\requirements.txt
@@ -33,10 +33,10 @@ Describe "Mozilla Build" -Skip:(Assert-IsBuilder) {
         It "msys2\bin\sh.exe exists" {
             Test-Path "C:\mozilla-build\msys2\usr\bin\sh.exe" | Should -Be $true
         }
-        It "Mozilla Maintenance Service gets installed" -Skip:((Assert-IsBuilder) -and ((Get-WinFactsCustomOS).os_name -eq 'Windows 11') -and ((Get-WinFactsCustomOS).custom_win_os_arch -eq 'aarch64')) {
+        It "Mozilla Maintenance Service gets installed" {
             $mms.DisplayName | Should -Not -Be $Null
         }
-        It "Mozilla Maintenance Service is 27.0a1" -Skip:((Assert-IsBuilder) -and ((Get-WinFactsCustomOS).os_name -eq 'Windows 11') -and ((Get-WinFactsCustomOS).custom_win_os_arch -eq 'aarch64')) {
+        It "Mozilla Maintenance Service is 27.0a1" {
             $mms.DisplayVersion | Should -Be "27.0a1"
         }
     }
@@ -170,7 +170,7 @@ Describe "Mozilla Build" -Skip:(Assert-IsBuilder) {
     }
 }
 
-Describe "Mozilla Build - Builder" -Skip:(Assert-IsTester) {
+Describe "Mozilla Build - Builder" -Skip:($Data.Hiera.'win-worker'.function -ne 'builder') {
     BeforeDiscovery {
         $Hiera = $Data.Hiera
         C:\mozilla-build\python3\python.exe -m pip freeze --all > C:\requirements.txt
