@@ -1,29 +1,42 @@
 Describe "WPTx64" {
-    BeforeAll {
-        $osFacts = Get-WinFactsCustomOS
-        $osVersion = Get-OSVersionExtended
-        $displayVersion = $osVersion.DisplayVersion
+    BeforeDiscovery {
+        $Hiera = $Data.Hiera
+    }
 
-        # Determine expected package name and version based on architecture and OS
-        if ($osFacts.arch -eq "aarch64") {
-            # ARM64 uses plain WPTx64 regardless of OS version
-            $expectedPackageName = "WPTx64"
-            $expectedVersion = "10.1.16299.15"
-        }
-        elseif ($displayVersion -eq "24H2") {
-            # Win11 24H2 x64 uses WPTx64 (DesktopEditions)
-            $expectedPackageName = "WPTx64 (DesktopEditions)"
-            $expectedVersion = "10.1.22621.5040"
-        }
-        elseif ($displayVersion -eq "2009" -or $osVersion.CurrentBuild -eq "19041") {
-            # Win10/11 2009 uses plain WPTx64
-            $expectedPackageName = "WPTx64"
-            $expectedVersion = "10.1.19041.685"
-        }
-        else {
-            # Win2022 and trusted images use older WPTx64
-            $expectedPackageName = "WPTx64"
-            $expectedVersion = "10.1.16299.15"
+    BeforeAll {
+        $Hiera = $Data.Hiera
+        $workerFunction = $Hiera.'win-worker'.function
+        $arch = (Get-WinFactsCustomOS).custom_win_os_arch
+        $displayVersion = (Get-OSVersionExtended).DisplayVersion
+
+        # Builders and aarch64 only get the base WPTx64 MSI.
+        # x64 testers additionally get the Windows SDK, which installs
+        # a newer WPTx64 whose name and version depend on the OS release.
+        switch ($workerFunction) {
+            "builder" {
+                $expectedPackageName = "WPTx64"
+                $expectedVersion = "10.1.16299.15"
+            }
+            "tester" {
+                switch ("${arch}/${displayVersion}") {
+                    "x64/24H2" {
+                        $expectedPackageName = "WPTx64 (DesktopEditions)"
+                        $expectedVersion = "10.1.22621.5040"
+                    }
+                    "x64/22H2" {
+                        $expectedPackageName = "WPTx64"
+                        $expectedVersion = "10.1.19041.685"
+                    }
+                    default {
+                        $expectedPackageName = "WPTx64"
+                        $expectedVersion = "10.1.16299.15"
+                    }
+                }
+            }
+            default {
+                $expectedPackageName = "WPTx64"
+                $expectedVersion = "10.1.16299.15"
+            }
         }
 
         $software = Get-InstalledSoftware | Where-Object {

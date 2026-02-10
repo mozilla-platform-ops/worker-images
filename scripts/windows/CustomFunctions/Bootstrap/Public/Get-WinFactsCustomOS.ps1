@@ -84,6 +84,14 @@ function Get-WinFactsCustomOS {
         $os_version = $null
     }
 
+    $os_arch = (Get-CimInstance Win32_OperatingSystem).OSArchitecture
+    if ($os_arch -like "*ARM*") {
+        $arch = "aarch64"
+    }
+    else {
+        $arch = "x64"
+    }
+
     [PSCustomObject]@{
         custom_win_release_id      = $release_id
         custom_win_os_caption      = $os_caption
@@ -96,5 +104,6 @@ function Get-WinFactsCustomOS {
         custom_win_worker_pool_id  = $worker_pool_id
         custom_win_gpu             = $gpu
         custom_win_purpose         = $purpose
+        custom_win_os_arch         = $arch
     }
 }
