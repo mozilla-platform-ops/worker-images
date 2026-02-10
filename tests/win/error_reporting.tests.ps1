@@ -4,11 +4,7 @@ Describe "Error reporting" {
     }
 
     BeforeAll {
-        if ((Get-CimInstance Win32_OperatingSystem).OSArchitecture -match "ARM") {
-            $DumpPath = "C:\error-dumps"
-        } else {
-            $DumpPath = "D:\error-dumps"
-        }
+        $DumpPath = "C:\error-dumps"
     }
     It "Error dump folder exists" {
         Test-Path $DumpPath | Should -Be $True
