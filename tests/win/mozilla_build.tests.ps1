@@ -33,10 +33,10 @@ Describe "Mozilla Build" -Skip:(Assert-IsBuilder) {
         It "msys2\bin\sh.exe exists" {
             Test-Path "C:\mozilla-build\msys2\usr\bin\sh.exe" | Should -Be $true
         }
-        It "Mozilla Maintenance Service gets installed" {
+        It "Mozilla Maintenance Service gets installed" -Skip:((Assert-IsBuilder) -and ((Get-WinFactsCustomOS).os_name -eq 'Windows 11') -and ((Get-WinFactsCustomOS).arch -eq 'aarch64')) {
             $mms.DisplayName | Should -Not -Be $Null
         }
-        It "Mozilla Maintenance Service is 27.0a1" {
+        It "Mozilla Maintenance Service is 27.0a1" -Skip:((Assert-IsBuilder) -and ((Get-WinFactsCustomOS).os_name -eq 'Windows 11') -and ((Get-WinFactsCustomOS).arch -eq 'aarch64')) {
             $mms.DisplayVersion | Should -Be "27.0a1"
         }
     }
