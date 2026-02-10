@@ -31,6 +31,6 @@ Describe "WPTx64" {
     }
 
     It "WPTx64 version" {
-        $software.Version | Should -Be $expectedVersion
+        $software.DisplayVersion | Should -Be $expectedVersion
     }
 }
