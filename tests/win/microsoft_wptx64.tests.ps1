@@ -4,7 +4,6 @@ Describe "WPTx64" {
     }
 
     BeforeAll {
-        $Hiera = $Data.Hiera
         $workerFunction = $Hiera.'win-worker'.function
         $arch = (Get-WinFactsCustomOS).custom_win_os_arch
         $displayVersion = (Get-OSVersionExtended).DisplayVersion
