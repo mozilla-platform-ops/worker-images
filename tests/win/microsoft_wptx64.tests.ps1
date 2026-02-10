@@ -4,9 +4,14 @@ Describe "WPTx64" {
         $osVersion = Get-OSVersionExtended
         $displayVersion = $osVersion.DisplayVersion
 
-        # Determine expected package name and version based on OS
-        if ($displayVersion -eq "24H2") {
-            # Win11 24H2 uses WPTx64 (DesktopEditions) or (OnecoreUAP)
+        # Determine expected package name and version based on architecture and OS
+        if ($osFacts.arch -eq "aarch64") {
+            # ARM64 uses plain WPTx64 regardless of OS version
+            $expectedPackageName = "WPTx64"
+            $expectedVersion = "10.1.16299.15"
+        }
+        elseif ($displayVersion -eq "24H2") {
+            # Win11 24H2 x64 uses WPTx64 (DesktopEditions)
             $expectedPackageName = "WPTx64 (DesktopEditions)"
             $expectedVersion = "10.1.22621.5040"
         }
@@ -16,7 +21,7 @@ Describe "WPTx64" {
             $expectedVersion = "10.1.19041.685"
         }
         else {
-            # ARM64, Win2022, and trusted images use older WPTx64
+            # Win2022 and trusted images use older WPTx64
             $expectedPackageName = "WPTx64"
             $expectedVersion = "10.1.16299.15"
         }
