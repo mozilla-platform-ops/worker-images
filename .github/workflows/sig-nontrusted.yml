@@ -130,7 +130,7 @@ jobs:
           file_pattern: "${{ env.SBOM_PATH }}"
   os-integration:
     needs: packer
-    if: ${{ !startsWith(github.event.inputs.config, 'win2022') && !startsWith(github.event.inputs.config, 'win11-a64') }}
+    if: ${{ !startsWith(github.event.inputs.config, 'win2022') }}
     name: "OS Integration Tests"
     uses: ./.github/workflows/os-integration.yml
     with:
