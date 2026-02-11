@@ -230,7 +230,7 @@ source "azure-arm" "sig" {
 
   # Destination
   temp_resource_group_name   = "${var.temp_resource_group_name}"
-  location                   = "Central US"
+  location                   = "${var.location}"
   vm_size                    = "${var.vm_size}"
   async_resourcegroup_delete = true
 
