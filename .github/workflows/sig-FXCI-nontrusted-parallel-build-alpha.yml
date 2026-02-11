@@ -3,6 +3,10 @@ name: FXCI - Azure Alpha Image Builds
 on:
   workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   prepare-matrix:
     name: Prepare Alpha Image Matrix
@@ -35,17 +39,125 @@ jobs:
           Write-Host "Generated matrix: $matrix"
           "matrix=$matrix" >> $env:GITHUB_OUTPUT
 
-  deploy:
-    name: Build Alpha Image - ${{ matrix.config }}
-    needs: prepare-matrix
+  check-access:
+    name: "Verify User Access"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+      - name: Load Authorized Users and Check Access
+        shell: pwsh
+        run: |
+          $AUTHORIZED_USERS=$(Get-Content .github/relsre.json | Convertfrom-Json)
+          if ($authorized_users -contains "${{ github.actor }}") {
+            Write-host "User ${{ github.actor }} is authorized."
+          }
+          else {
+            Write-Host "User ${{ github.actor }} is unauthorized."
+            exit 1
+          }
+
+  packer:
+    needs: [check-access, prepare-matrix]
+    name: "Build ${{ matrix.config }}"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
-    uses: ./.github/workflows/sig-FXCI-nontrusted-deploy-image.yml
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+      - name: Azure Login
+        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID_FXCI }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}
+          enable-AzPSSession: true
+      - name: 'Run Packer'
+        shell: pwsh
+        run: |
+          Import-Module .\bin\WorkerImages\WorkerImages.psm1
+          $Vars = @{
+            github_token = "${{ secrets.GITHUB_TOKEN }}"
+            Key = '${{ matrix.config }}'
+            Client_ID = "${{ secrets.AZURE_CLIENT_ID_FXCI }}"
+            oidc_request_url = "${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}"
+            oidc_request_token = "${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}"
+            Subscription_ID = "${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}"
+            Tenant_ID = "${{ secrets.AZURE_TENANT_ID }}"
+            Application_ID = "${{ secrets.AZURE_APPLICATION_ID_FXCI }}"
+          }
+          New-AzSharedWorkerImage @Vars
+          "sharedimageversion=$ENV:PKR_VAR_sharedimage_version" >> $env:GITHUB_ENV
+      - name: Upload Release Notes Artifact
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: release-notes-${{ matrix.config }}
+          path: ${{ matrix.config }}-${{ env.sharedimageversion }}.md
+          overwrite: true
+          retention-days: 1
+          if-no-files-found: error
+
+  sbom:
+    needs: [prepare-matrix, packer]
+    name: "Upload release notes - ${{ matrix.config }}"
+    runs-on: ubuntu-latest
+    permissions: write-all
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          path: sboms
+          name: release-notes-${{ matrix.config }}
+          merge-multiple: true
+      - name: "Prepare SBOM Commit"
+        shell: pwsh
+        env:
+          CONFIG: ${{ matrix.config }}
+        run: |
+          ## Install powershell-yaml module
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module powershell-yaml -ErrorAction Stop
+
+          Get-ChildItem "sboms" -Recurse
+
+          ## Get the shared image version from the config file
+          $YAML = Convertfrom-Yaml (Get-Content "config/${{ env.CONFIG }}.yaml" -raw)
+
+          ## Store the file in a variable
+          $SBOM_PATH = "sboms/${{ matrix.config }}-$($Yaml.sharedimage.image_version).md"
+
+          Write-host "SBOM Path: $SBOM_PATH"
+          if (-not (Test-Path $SBOM_PATH)) {
+            Write-Error "SBOM not found at $SBOM_PATH"
+            exit 1
+          }
+
+          Add-Content -Path $env:GITHUB_ENV -Value "SBOM_PATH=$SBOM_PATH"
+      - name: "Pull latest main"
+        run: git pull --rebase --autostash origin main
+      - name: "Commit SBOM to main"
+        uses: stefanzweifel/git-auto-commit-action@04702edda442b2e678b25b537cec683a1493fcb9
+        with:
+          branch: main
+          commit_message: "${{ matrix.config }} - Release Notes"
+          file_pattern: "${{ env.SBOM_PATH }}"
+
+  os-integration:
+    needs: [prepare-matrix, packer]
+    if: ${{ !startsWith(matrix.config, 'win2022') && !startsWith(matrix.config, 'win11-a64') }}
+    name: "OS Integration Tests - ${{ matrix.config }}"
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
+    uses: ./.github/workflows/os-integration.yml
     with:
       config: ${{ matrix.config }}
     secrets:
-      AZURE_CLIENT_ID_FXCI: ${{ secrets.AZURE_CLIENT_ID_FXCI }}
-      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-      AZURE_SUBSCRIPTION_ID_UNTRUSTED: ${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}
-      AZURE_APPLICATION_ID_FXCI: ${{ secrets.AZURE_APPLICATION_ID_FXCI }}
+      TASKCLUSTER_OS_INT_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
+      TASKCLUSTER_OS_INT_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}
