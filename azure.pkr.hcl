@@ -101,6 +101,11 @@ variable "location" {
   default = "${env("location")}"
 }
 
+variable "build_location" {
+  type    = string
+  default = "${env("build_location")}"
+}
+
 variable "managed-by" {
   type    = string
   default = "${env("managed_by")}"
@@ -230,7 +235,7 @@ source "azure-arm" "sig" {
 
   # Destination
   temp_resource_group_name   = "${var.temp_resource_group_name}"
-  location                   = "Central US"
+  location                   = "${var.build_location}"
   vm_size                    = "${var.vm_size}"
   async_resourcegroup_delete = true
 
