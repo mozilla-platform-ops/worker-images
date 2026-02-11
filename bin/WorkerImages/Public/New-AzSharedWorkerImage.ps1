@@ -97,7 +97,7 @@ function New-AzSharedWorkerImage {
         $BuildLocation = "Central US"
         Write-Host "WARNING: No build_location specified in config, defaulting to '$BuildLocation'"
     }
-    $ENV:PKR_VAR_location = $BuildLocation
+    $ENV:PKR_VAR_build_location = $BuildLocation
     $ENV:PKR_VAR_base_image = $Y.vm.tags["base_image"]
     $ENV:PKR_VAR_source_branch = $Y.vm.tags["sourceBranch"]
     $ENV:PKR_VAR_source_repository = $Y.vm.tags["sourceRepository"]
