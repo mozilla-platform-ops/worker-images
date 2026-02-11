@@ -64,24 +64,38 @@ function Get-WinFactsCustomOS {
         $gpu = 'no'
     }
 
+    # Set OS version based on caption
     if ($os_caption -like "*windows_10*") {
         $os_version = ( -join ( "win_10_", $release_id))
-        $purpose = "tester"
     }
     elseif ($os_caption -like "*windows_11*") {
         $os_version = ( -join ( "win_11_", $release_id))
-        $purpose = "tester"
     }
     elseif ($os_caption -like "*2012*") {
         $os_version = "win_2012"
-        $purpose = 'builder'
     }
     elseif ($os_caption -like "*2022*") {
         $os_version = ( -join ( "win_2022_", $release_id))
-        $purpose = 'builder'
     }
     else {
         $os_version = $null
+    }
+
+    # Determine purpose from role name, with OS caption as fallback
+    if ($role -like "*builder*") {
+        $purpose = 'builder'
+    }
+    elseif ($role -like "*tester*") {
+        $purpose = 'tester'
+    }
+    elseif ($os_caption -like "*windows_10*" -or $os_caption -like "*windows_11*") {
+        $purpose = "tester"
+    }
+    elseif ($os_caption -like "*2012*" -or $os_caption -like "*2022*") {
+        $purpose = 'builder'
+    }
+    else {
+        $purpose = $null
     }
 
     $os_arch = (Get-CimInstance Win32_OperatingSystem).OSArchitecture

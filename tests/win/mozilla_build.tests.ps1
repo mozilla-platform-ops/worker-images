@@ -1,4 +1,4 @@
-Describe "Mozilla Build" -Skip:($Data.Hiera.'win-worker'.function -eq 'builder') {
+Describe "Mozilla Build" -Skip:(Assert-IsBuilder) {
     BeforeDiscovery {
         $Hiera = $Data.Hiera
         C:\mozilla-build\python3\python.exe -m pip freeze --all > C:\requirements.txt
@@ -170,7 +170,7 @@ Describe "Mozilla Build" -Skip:($Data.Hiera.'win-worker'.function -eq 'builder')
     }
 }
 
-Describe "Mozilla Build - Builder" -Skip:($Data.Hiera.'win-worker'.function -ne 'builder') {
+Describe "Mozilla Build - Builder" -Skip:(Assert-IsTester) {
     BeforeDiscovery {
         $Hiera = $Data.Hiera
         C:\mozilla-build\python3\python.exe -m pip freeze --all > C:\requirements.txt
