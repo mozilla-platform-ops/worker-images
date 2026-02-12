@@ -102,8 +102,13 @@ jobs:
 
           Get-ChildItem
 
-          ## Get the shared image version from the config file
-          $YAML = Convertfrom-Yaml (Get-Content "config/${{ env.CONFIG }}.yaml" -raw)
+          ## Resolve shared image version, using production defaults when config is set to "default"
+          $ConfigYaml = Convertfrom-Yaml (Get-Content "config/${{ env.CONFIG }}.yaml" -raw)
+          $ImageVersion = $ConfigYaml.sharedimage.image_version
+          if ($ImageVersion -eq "default") {
+            $DefaultsYaml = Convertfrom-Yaml (Get-Content "config/windows_production_defaults.yaml" -raw)
+            $ImageVersion = $DefaultsYaml.sharedimage.image_version
+          }
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
 
@@ -111,8 +116,8 @@ jobs:
           Get-ChildItem "sboms" -Recurse
 
           ## Store the file in a variable
-          $SBOM_PATH = "sboms\${{ env.CONFIG }}-$($Yaml.sharedimage.image_version).md"
-          $SBOM_NAME = "${{ env.CONFIG }}-$($Yaml.sharedimage.image_version).md"
+          $SBOM_PATH = "sboms\${{ env.CONFIG }}-$ImageVersion.md"
+          $SBOM_NAME = "${{ env.CONFIG }}-$ImageVersion.md"
 
           Write-host "SBOM Path: $SBOM_PATH"
           Write-host "SBOM Name: $SBOM_NAME"
