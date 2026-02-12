@@ -107,11 +107,16 @@ jobs:
 
           Get-ChildItem "sboms" -Recurse
 
-          ## Get the shared image version from the config file
-          $YAML = Convertfrom-Yaml (Get-Content "config/${{ env.CONFIG }}.yaml" -raw)
+          ## Resolve shared image version, using production defaults when config is set to "default"
+          $ConfigYaml = Convertfrom-Yaml (Get-Content "config/${{ env.CONFIG }}.yaml" -raw)
+          $ImageVersion = $ConfigYaml.sharedimage.image_version
+          if ($ImageVersion -eq "default") {
+            $DefaultsYaml = Convertfrom-Yaml (Get-Content "config/windows_production_defaults.yaml" -raw)
+            $ImageVersion = $DefaultsYaml.sharedimage.image_version
+          }
 
           ## Store the file in a variable
-          $SBOM_PATH = "sboms/${{ github.event.inputs.config }}-$($Yaml.sharedimage.image_version).md"
+          $SBOM_PATH = "sboms/${{ env.CONFIG }}-$ImageVersion.md"
 
           Write-host "SBOM Path: $SBOM_PATH"
           if (-not (Test-Path $SBOM_PATH)) {
