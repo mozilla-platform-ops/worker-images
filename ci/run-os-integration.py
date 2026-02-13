@@ -37,6 +37,23 @@ from pathlib import Path
 import requests
 import taskcluster
 
+IN_GITHUB_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
+
+
+def gh_notice(message: str) -> None:
+    if IN_GITHUB_ACTIONS:
+        print(f"::notice::{message}")
+
+
+def gh_warning(message: str) -> None:
+    if IN_GITHUB_ACTIONS:
+        print(f"::warning::{message}")
+
+
+def gh_error(message: str) -> None:
+    if IN_GITHUB_ACTIONS:
+        print(f"::error::{message}")
+
 
 def format_duration(seconds: int) -> str:
     """Format duration in seconds as human-readable string."""
@@ -177,10 +194,12 @@ def get_created_task_group_id(queue, decision_task_id: str) -> str | None:
                         return matches[0]
 
                 if state == "failed":
-                    print(f"Decision task failed", file=sys.stderr)
+                    gh_error("Decision task failed")
+                    print("Decision task failed", file=sys.stderr)
                     return None
                 if state == "exception":
-                    print(f"Decision task had an exception", file=sys.stderr)
+                    gh_error("Decision task had an exception")
+                    print("Decision task had an exception", file=sys.stderr)
                     return None
 
             print(f"Attempt {attempt + 1}/30: Decision task state: {state}")
@@ -246,6 +265,7 @@ def main():
 
     print(f"\nDecision Task ID: {decision_task_id}")
     print(f"Decision Task URL: {decision_task_url}")
+    gh_notice(f"Decision task: {decision_task_url}")
 
     if args.no_wait:
         print("\n--no-wait specified, exiting")
@@ -256,6 +276,7 @@ def main():
     task_group_id = get_created_task_group_id(queue, decision_task_id)
 
     if not task_group_id:
+        gh_error(f"Failed to get task group ID from decision task: {decision_task_url}")
         print("Failed to get task group ID from decision task", file=sys.stderr)
         print(f"Check decision task: {decision_task_url}", file=sys.stderr)
         sys.exit(1)
@@ -266,6 +287,7 @@ def main():
     print(f"Integration Task Group ID: {task_group_id}")
     print(f"Integration Test Results:  {test_results_url}")
     print(f"{'=' * 60}\n")
+    gh_notice(f"Task group: {test_results_url}")
 
     # Monitor task group (default behavior)
     print("Monitoring task group for completion...")
@@ -302,10 +324,14 @@ def main():
                 write_github_summary(tasks, task_group_id, args.image_name, root_url)
 
                 if failed > 0 or exception > 0:
-                    print(f"FAILED: {failed} failed, {exception} exception")
+                    msg = f"FAILED: {failed} failed, {exception} exception — {test_results_url}"
+                    print(msg)
+                    gh_error(msg)
                     sys.exit(1)
                 else:
-                    print(f"PASSED: All {completed} tasks completed successfully")
+                    msg = f"PASSED: All {completed} tasks completed successfully"
+                    print(msg)
+                    gh_notice(msg)
                     sys.exit(0)
 
         except taskcluster.exceptions.TaskclusterRestFailure as e:
@@ -321,8 +347,9 @@ def main():
     except Exception:
         pass
 
-    print(f"Timeout after {args.timeout} seconds")
-    print(f"Task group may still be running: {test_results_url}")
+    msg = f"Timeout after {args.timeout}s — task group may still be running: {test_results_url}"
+    print(msg)
+    gh_error(msg)
     sys.exit(1)
 
 
