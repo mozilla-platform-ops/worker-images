@@ -84,5 +84,6 @@ jobs:
           IMAGE_NAME: ${{ steps.resolve-image.outputs.image_name }}
           TASKCLUSTER_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
           TASKCLUSTER_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}
+          PYTHONUNBUFFERED: "1"
         run: |
           uv run ci/run-os-integration.py "$IMAGE_NAME"
