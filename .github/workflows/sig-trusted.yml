@@ -62,7 +62,20 @@ jobs:
             Tenant_ID = "${{ secrets.AZURE_TENANT_ID }}"
             Application_ID = "${{ secrets.AZURE_APPLICATION_ID_FXCI_TRUSTED }}"
           }
-          New-AzSharedWorkerImage @Vars
+          $maxAttempts = 3
+          for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+            Write-Host "Packer attempt $attempt of $maxAttempts"
+            New-AzSharedWorkerImage @Vars
+            if ($LASTEXITCODE -eq 0) {
+              break
+            }
+            if ($attempt -eq $maxAttempts) {
+              Write-Host "::error ::Packer failed after $maxAttempts attempts"
+              exit 1
+            }
+            Write-Host "::warning ::Packer failed (attempt $attempt, exit code $LASTEXITCODE). Retrying in 30 seconds..."
+            Start-Sleep -Seconds 30
+          }
           "sharedimageversion=$ENV:PKR_VAR_sharedimage_version" >> $env:GITHUB_ENV
       - name: Upload Release Notes Artifact
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
