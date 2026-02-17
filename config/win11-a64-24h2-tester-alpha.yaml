@@ -17,7 +17,7 @@ azure:
 vm:
   puppet_version: 8.10.0
   openvox_version: 8.19.2
-  git_version: 2.51.2
+  git_version: 2.53.0
   size: Standard_E8pds_v5
   tags:
     base_image: win11a6424h2azuretester
@@ -25,7 +25,7 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: "windows"
-    deploymentId: "e38a563"
+    deploymentId: "e0e6ea5"
     managed_by: packer
 tests:
   - error_reporting.tests.ps1
