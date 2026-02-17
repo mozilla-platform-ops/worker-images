@@ -28,8 +28,8 @@ vm:
     worker_pool_id: win11-64-2009
     sourceOrganization: "default"
     sourceRepository: "default"
-    sourceBranch: "RELOPS-2180"
-    deploymentId: "NA"
+    sourceBranch: "windows"
+    deploymentId: "beb7843"
     managed_by: packer
 tests:
   - disable_services.tests.ps1

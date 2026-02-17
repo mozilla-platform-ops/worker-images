@@ -25,7 +25,7 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: "windows"
-    deploymentId: "e38a563"
+    deploymentId: "beb7843"
     managed_by: packer
 tests:
   - directx_sdk.tests.ps1
