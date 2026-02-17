@@ -20,7 +20,7 @@ azure:
     - westus
 vm:
   puppet_version: 8.10.0
-  git_version: 2.52.0
+  git_version: 2.53.0
   openvox_version: 8.24.2
   size: Standard_F8s_v2
   tags:
