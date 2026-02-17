@@ -39,6 +39,21 @@ Describe "Mozilla Maintenance Service" {
             Should -BeGreaterThan (Get-Date)
         }
     }
+    Context "Mozilla Maintenance Service ACL" {
+        BeforeAll {
+            $Folder = 'C:\Program Files (x86)\Mozilla Maintenance Service'
+            $Acl = Get-Acl $Folder
+            $EveryoneAce = $Acl.Access | Where-Object {
+                $PSItem.IdentityReference -eq "Everyone" -and
+                $PSItem.FileSystemRights -eq "FullControl" -and
+                $PSItem.InheritanceFlags -eq "ContainerInherit, ObjectInherit" -and
+                $PSItem.AccessControlType -eq "Allow"
+            }
+        }
+        It "Everyone has FullControl on maintenance service directory" {
+            $EveryoneAce | Should -Not -BeNullOrEmpty
+        }
+    }
     Context "Mozilla Maintenance Service Registry" {
         BeforeAll {
             $thawte = "HKLM:\SOFTWARE\Mozilla\MaintenanceService\3932ecacee736d366d6436db0f55bce4\0"
