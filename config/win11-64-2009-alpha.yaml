@@ -29,7 +29,7 @@ vm:
     sourceOrganization: "default"
     sourceRepository: "default"
     sourceBranch: "windows"
-    deploymentId: "e0b700c"
+    deploymentId: "e0e6ea5"
     managed_by: packer
 tests:
   - disable_services.tests.ps1
