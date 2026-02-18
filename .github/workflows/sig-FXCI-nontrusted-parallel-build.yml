@@ -107,57 +107,39 @@ jobs:
           if-no-files-found: error
 
   sbom:
+    if: ${{ always() }}
     needs: [prepare-matrix, packer]
-    name: "Upload release notes - ${{ matrix.config }}"
+    name: "Upload release notes"
     runs-on: ubuntu-latest
     permissions: write-all
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
+    concurrency:
+      group: release-notes-main
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
           path: sboms
-          name: release-notes-${{ matrix.config }}
+          pattern: release-notes-*
           merge-multiple: true
-      - name: "Prepare SBOM Commit"
-        shell: pwsh
-        env:
-          CONFIG: ${{ matrix.config }}
+      - name: "Validate downloaded release notes"
+        shell: bash
         run: |
-          ## Install powershell-yaml module
-          Set-PSRepository PSGallery -InstallationPolicy Trusted
-          Install-Module powershell-yaml -ErrorAction Stop
-
-          Get-ChildItem "sboms" -Recurse
-
-          ## Resolve shared image version, using production defaults when config is set to "default"
-          $ConfigYaml = Convertfrom-Yaml (Get-Content "config/${{ env.CONFIG }}.yaml" -raw)
-          $ImageVersion = $ConfigYaml.sharedimage.image_version
-          if ($ImageVersion -eq "default") {
-            $DefaultsYaml = Convertfrom-Yaml (Get-Content "config/windows_production_defaults.yaml" -raw)
-            $ImageVersion = $DefaultsYaml.sharedimage.image_version
-          }
-
-          ## Store the file in a variable
-          $SBOM_PATH = "sboms/${{ env.CONFIG }}-$ImageVersion.md"
-
-          Write-host "SBOM Path: $SBOM_PATH"
-          if (-not (Test-Path $SBOM_PATH)) {
-            Write-Error "SBOM not found at $SBOM_PATH"
+          if ls sboms/*.md >/dev/null 2>&1; then
+            echo "Downloaded release notes:"
+            ls -1 sboms/*.md
+          else
+            echo "No release notes were downloaded from successful packer jobs."
             exit 1
-          }
-
-          Add-Content -Path $env:GITHUB_ENV -Value "SBOM_PATH=$SBOM_PATH"
+          fi
       - name: "Pull latest main"
         run: git pull --rebase --autostash origin main
-      - name: "Commit SBOM to main"
+      - name: "Commit release notes to main"
         uses: stefanzweifel/git-auto-commit-action@04702edda442b2e678b25b537cec683a1493fcb9
         with:
           branch: main
-          commit_message: "${{ matrix.config }} - Release Notes"
-          file_pattern: "${{ env.SBOM_PATH }}"
+          commit_message: "Update release notes"
+          file_pattern: "sboms/*.md"
 
   os-integration:
     needs: [prepare-matrix, packer]
