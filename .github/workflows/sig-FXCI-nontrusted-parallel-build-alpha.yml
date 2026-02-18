@@ -40,7 +40,7 @@ jobs:
           Write-Host "Generated matrix: $matrix"
           "matrix=$matrix" >> $env:GITHUB_OUTPUT
 
-          $osIntImages = $alphaImages | Where-Object { $_ -notmatch '^win2022' -and $_ -notmatch '^win11-a64' }
+          $osIntImages = $alphaImages | Where-Object { $_ -notmatch '^win2022' }
           $osIntMatrix = @{ config = @($osIntImages) } | ConvertTo-Json -Compress
           Write-Host "Generated os-integration matrix: $osIntMatrix"
           "os_integration_matrix=$osIntMatrix" >> $env:GITHUB_OUTPUT
