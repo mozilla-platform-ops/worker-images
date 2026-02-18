@@ -58,7 +58,7 @@ def log_message(level: str, message: str, include_datetimestamp: bool = False) -
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         message = f"[{timestamp}] {message}"
 
-    if IN_GITHUB_ACTIONS:
+    if IN_GITHUB_ACTIONS and level in ("warning", "error"):
         escaped_message = _escape_github_command_message(message)
         print(f"::{level}::{escaped_message}")
         return
