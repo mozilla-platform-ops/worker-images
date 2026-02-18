@@ -27,6 +27,11 @@ Optional:
     TASKCLUSTER_ROOT_URL       - Defaults to https://firefox-ci-tc.services.mozilla.com
     GITHUB_STEP_SUMMARY        - GitHub Actions step summary file (auto-detected)
     DATETIMESTAMP/DATE_TIMESTAMP - true/false override for UTC date+timestamp logs
+
+Polling behavior:
+    Decision task polling: every 10 seconds
+    Task group polling: every 5 minutes
+    Task group status log output: every 10 minutes
 """
 
 import argparse
@@ -44,6 +49,9 @@ import taskcluster
 IN_GITHUB_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
 TRUTHY_VALUES = {"1", "true", "yes", "on"}
 FALSY_VALUES = {"0", "false", "no", "off"}
+DECISION_TASK_POLL_INTERVAL_SECONDS = 10
+TASK_GROUP_POLL_INTERVAL_SECONDS = 300
+TASK_GROUP_LOG_INTERVAL_SECONDS = 600
 
 
 def _escape_github_command_message(message: str) -> str:
@@ -202,7 +210,6 @@ def get_created_task_group_id(
     queue,
     decision_task_id: str,
     include_datetimestamp: bool = False,
-    poll_interval: int = 10,
 ) -> str | None:
     """
     The decision task creates a new task group for integration tests.
@@ -256,7 +263,7 @@ def get_created_task_group_id(
                     )
                     return None
 
-            time.sleep(poll_interval)
+            time.sleep(DECISION_TASK_POLL_INTERVAL_SECONDS)
 
         except taskcluster.exceptions.TaskclusterRestFailure as e:
             error_text = str(e)
@@ -266,7 +273,7 @@ def get_created_task_group_id(
                     include_datetimestamp,
                 )
                 last_error = error_text
-            time.sleep(poll_interval)
+            time.sleep(DECISION_TASK_POLL_INTERVAL_SECONDS)
 
     return None
 
@@ -292,12 +299,6 @@ def main():
         action=argparse.BooleanOptionalAction,
         default=None,
         help="Enable/disable UTC date+timestamp log prefix (default: enabled)",
-    )
-    parser.add_argument(
-        "--poll-interval",
-        type=int,
-        default=10,
-        help="Polling interval in seconds (default: 10)",
     )
     args = parser.parse_args()
     include_datetimestamp = True
@@ -361,7 +362,6 @@ def main():
         queue,
         decision_task_id,
         include_datetimestamp=include_datetimestamp,
-        poll_interval=args.poll_interval,
     )
 
     if not task_group_id:
@@ -379,7 +379,7 @@ def main():
     # Monitor task group (default behavior)
     log_notice("Monitoring task group for completion...", include_datetimestamp)
     start_time = time.time()
-    last_snapshot: tuple[int, int, int, int, int] | None = None
+    last_status_log_at: float | None = None
     last_task_group_error = None
 
     while time.time() - start_time < args.timeout:
@@ -396,8 +396,14 @@ def main():
             exception = sum(1 for s in states if s == "exception")
             total = len(tasks)
 
-            snapshot = (completed, failed, exception, pending_running, total)
-            if snapshot != last_snapshot:
+            now = time.time()
+            if (
+                now - start_time >= TASK_GROUP_LOG_INTERVAL_SECONDS
+                and (
+                    last_status_log_at is None
+                    or now - last_status_log_at >= TASK_GROUP_LOG_INTERVAL_SECONDS
+                )
+            ):
                 elapsed = format_duration(int(time.time() - start_time))
                 log_notice(
                     f"Status update ({elapsed}): {completed}/{total} completed, "
@@ -405,7 +411,7 @@ def main():
                     f"{pending_running} pending/running",
                     include_datetimestamp,
                 )
-                last_snapshot = snapshot
+                last_status_log_at = now
             last_task_group_error = None
 
             if pending_running == 0:
@@ -439,7 +445,7 @@ def main():
                 )
                 last_task_group_error = error_text
 
-        time.sleep(args.poll_interval)
+        time.sleep(TASK_GROUP_POLL_INTERVAL_SECONDS)
 
     # Timeout - still write summary with current state
     try:
