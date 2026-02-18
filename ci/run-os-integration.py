@@ -13,6 +13,7 @@ Usage:
     uv run ci/run-os-integration.py <image_name>
     uv run ci/run-os-integration.py <image_name> --no-wait
     uv run ci/run-os-integration.py <image_name> --datetimestamp
+    uv run ci/run-os-integration.py <image_name> --no-datetimestamp
 
 Example:
     uv run ci/run-os-integration.py win11_64_24h2_alpha
@@ -25,7 +26,7 @@ Environment variables (required):
 Optional:
     TASKCLUSTER_ROOT_URL       - Defaults to https://firefox-ci-tc.services.mozilla.com
     GITHUB_STEP_SUMMARY        - GitHub Actions step summary file (auto-detected)
-    DATETIMESTAMP/DATE_TIMESTAMP - Set to true/1 to include UTC date+timestamp logs
+    DATETIMESTAMP/DATE_TIMESTAMP - true/false override for UTC date+timestamp logs
 """
 
 import argparse
@@ -42,6 +43,7 @@ import taskcluster
 
 IN_GITHUB_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
 TRUTHY_VALUES = {"1", "true", "yes", "on"}
+FALSY_VALUES = {"0", "false", "no", "off"}
 
 
 def _escape_github_command_message(message: str) -> str:
@@ -78,9 +80,17 @@ def log_error(message: str, include_datetimestamp: bool = False) -> None:
     log_message("error", message, include_datetimestamp)
 
 
-def env_var_is_true(name: str) -> bool:
-    value = os.environ.get(name, "").strip().lower()
-    return value in TRUTHY_VALUES
+def env_var_to_bool(name: str) -> bool | None:
+    value = os.environ.get(name)
+    if value is None:
+        return None
+
+    normalized = value.strip().lower()
+    if normalized in TRUTHY_VALUES:
+        return True
+    if normalized in FALSY_VALUES:
+        return False
+    return None
 
 
 def format_duration(seconds: int) -> str:
@@ -201,7 +211,7 @@ def get_created_task_group_id(
     last_state = None
     last_error = None
 
-    for attempt in range(30):
+    for _ in range(30):
         try:
             # First wait for the decision task to complete
             status = queue.status(decision_task_id)
@@ -279,8 +289,9 @@ def main():
     )
     parser.add_argument(
         "--datetimestamp",
-        action="store_true",
-        help="Prefix log output with UTC date+timestamp",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Enable/disable UTC date+timestamp log prefix (default: enabled)",
     )
     parser.add_argument(
         "--poll-interval",
@@ -289,11 +300,14 @@ def main():
         help="Polling interval in seconds (default: 10)",
     )
     args = parser.parse_args()
-    include_datetimestamp = (
-        args.datetimestamp
-        or env_var_is_true("DATETIMESTAMP")
-        or env_var_is_true("DATE_TIMESTAMP")
-    )
+    include_datetimestamp = True
+    for env_name in ("DATETIMESTAMP", "DATE_TIMESTAMP"):
+        env_bool = env_var_to_bool(env_name)
+        if env_bool is not None:
+            include_datetimestamp = env_bool
+            break
+    if args.datetimestamp is not None:
+        include_datetimestamp = args.datetimestamp
 
     # Set default root URL if not provided
     if "TASKCLUSTER_ROOT_URL" not in os.environ:
