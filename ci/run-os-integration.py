@@ -24,6 +24,11 @@ Environment variables (required):
 Optional:
     TASKCLUSTER_ROOT_URL       - Defaults to https://firefox-ci-tc.services.mozilla.com
     GITHUB_STEP_SUMMARY        - GitHub Actions step summary file (auto-detected)
+
+Polling behavior:
+    Decision task polling: every 10 seconds
+    Task group polling: every 5 minutes
+    Task group status log output: every 10 minutes
 """
 
 import argparse
@@ -32,27 +37,50 @@ import os
 import re
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
 import taskcluster
 
 IN_GITHUB_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
+DECISION_TASK_POLL_INTERVAL_SECONDS = 10
+TASK_GROUP_POLL_INTERVAL_SECONDS = 300
+TASK_GROUP_LOG_INTERVAL_SECONDS = 600
 
 
-def gh_notice(message: str) -> None:
-    if IN_GITHUB_ACTIONS:
-        print(f"::notice::{message}")
+def _escape_github_command_message(message: str) -> str:
+    return message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
 
 
-def gh_warning(message: str) -> None:
-    if IN_GITHUB_ACTIONS:
-        print(f"::warning::{message}")
+def log_message(level: str, message: str, include_datetimestamp: bool = False) -> None:
+    if include_datetimestamp:
+        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        message = f"[{timestamp}] {message}"
+
+    if IN_GITHUB_ACTIONS and level in ("warning", "error"):
+        escaped_message = _escape_github_command_message(message)
+        print(f"::{level}::{escaped_message}")
+        return
+
+    if level == "error":
+        print(f"ERROR: {message}", file=sys.stderr)
+    elif level == "warning":
+        print(f"WARNING: {message}")
+    else:
+        print(message)
 
 
-def gh_error(message: str) -> None:
-    if IN_GITHUB_ACTIONS:
-        print(f"::error::{message}")
+def log_notice(message: str, include_datetimestamp: bool = False) -> None:
+    log_message("notice", message, include_datetimestamp)
+
+
+def log_warning(message: str, include_datetimestamp: bool = False) -> None:
+    log_message("warning", message, include_datetimestamp)
+
+
+def log_error(message: str, include_datetimestamp: bool = False) -> None:
+    log_message("error", message, include_datetimestamp)
 
 
 def format_duration(seconds: int) -> str:
@@ -160,16 +188,30 @@ def write_github_summary(
         f.write("\n".join(lines))
 
 
-def get_created_task_group_id(queue, decision_task_id: str) -> str | None:
+def get_created_task_group_id(
+    queue,
+    decision_task_id: str,
+    include_datetimestamp: bool = False,
+) -> str | None:
     """
     The decision task creates a new task group for integration tests.
     We need to parse the log to find the taskGroupId of the created tasks.
     """
-    for attempt in range(30):
+    last_state = None
+    last_error = None
+
+    for _ in range(30):
         try:
             # First wait for the decision task to complete
             status = queue.status(decision_task_id)
             state = status["status"]["state"]
+
+            if state != last_state:
+                log_notice(
+                    f"Decision task state changed: {state}",
+                    include_datetimestamp,
+                )
+                last_state = state
 
             if state in ("completed", "failed", "exception"):
                 # Get the log artifact
@@ -194,20 +236,26 @@ def get_created_task_group_id(queue, decision_task_id: str) -> str | None:
                         return matches[0]
 
                 if state == "failed":
-                    gh_error("Decision task failed")
-                    print("Decision task failed", file=sys.stderr)
+                    log_error("Decision task failed", include_datetimestamp)
                     return None
                 if state == "exception":
-                    gh_error("Decision task had an exception")
-                    print("Decision task had an exception", file=sys.stderr)
+                    log_error(
+                        "Decision task had an exception",
+                        include_datetimestamp,
+                    )
                     return None
 
-            print(f"Attempt {attempt + 1}/30: Decision task state: {state}")
-            time.sleep(10)
+            time.sleep(DECISION_TASK_POLL_INTERVAL_SECONDS)
 
         except taskcluster.exceptions.TaskclusterRestFailure as e:
-            print(f"Attempt {attempt + 1}/30: Waiting for decision task... ({e})")
-            time.sleep(10)
+            error_text = str(e)
+            if error_text != last_error:
+                log_warning(
+                    f"Waiting for decision task artifacts ({error_text})",
+                    include_datetimestamp,
+                )
+                last_error = error_text
+            time.sleep(DECISION_TASK_POLL_INTERVAL_SECONDS)
 
     return None
 
@@ -229,6 +277,7 @@ def main():
         help="Timeout in seconds (default: 7200, i.e. 2 hours)",
     )
     args = parser.parse_args()
+    include_datetimestamp = True
 
     # Set default root URL if not provided
     if "TASKCLUSTER_ROOT_URL" not in os.environ:
@@ -238,10 +287,10 @@ def main():
 
     # Validate credentials
     if not os.environ.get("TASKCLUSTER_CLIENT_ID"):
-        print("Error: TASKCLUSTER_CLIENT_ID is not set", file=sys.stderr)
+        log_error("TASKCLUSTER_CLIENT_ID is not set", include_datetimestamp)
         sys.exit(1)
     if not os.environ.get("TASKCLUSTER_ACCESS_TOKEN"):
-        print("Error: TASKCLUSTER_ACCESS_TOKEN is not set", file=sys.stderr)
+        log_error("TASKCLUSTER_ACCESS_TOKEN is not set", include_datetimestamp)
         sys.exit(1)
 
     options = taskcluster.optionsFromEnvironment()
@@ -249,9 +298,12 @@ def main():
     queue = taskcluster.Queue(options)
 
     # Trigger the hook
-    print(f"Triggering integration tests for image: {args.image_name}")
+    log_notice(
+        f"Triggering integration tests for image: {args.image_name}",
+        include_datetimestamp,
+    )
     payload = {"images": [args.image_name]}
-    print(f"Hook payload: {json.dumps(payload)}")
+    log_notice(f"Hook payload: {json.dumps(payload)}", include_datetimestamp)
 
     response = hooks.triggerHook(
         "project-releng",
@@ -263,35 +315,41 @@ def main():
     root_url = os.environ["TASKCLUSTER_ROOT_URL"].rstrip("/")
     decision_task_url = f"{root_url}/tasks/{decision_task_id}"
 
-    print(f"\nDecision Task ID: {decision_task_id}")
-    print(f"Decision Task URL: {decision_task_url}")
-    gh_notice(f"Decision task: {decision_task_url}")
+    log_notice(f"Decision Task ID: {decision_task_id}", include_datetimestamp)
+    log_notice(f"Decision Task URL: {decision_task_url}", include_datetimestamp)
 
     if args.no_wait:
-        print("\n--no-wait specified, exiting")
+        log_notice("--no-wait specified, exiting", include_datetimestamp)
         return
 
     # Wait for decision task to complete and get the created task group ID
-    print("\nWaiting for decision task to complete and create task group...")
-    task_group_id = get_created_task_group_id(queue, decision_task_id)
+    log_notice(
+        "Waiting for decision task to complete and create task group...",
+        include_datetimestamp,
+    )
+    task_group_id = get_created_task_group_id(
+        queue,
+        decision_task_id,
+        include_datetimestamp=include_datetimestamp,
+    )
 
     if not task_group_id:
-        gh_error(f"Failed to get task group ID from decision task: {decision_task_url}")
-        print("Failed to get task group ID from decision task", file=sys.stderr)
-        print(f"Check decision task: {decision_task_url}", file=sys.stderr)
+        log_error(
+            f"Failed to get task group ID from decision task: {decision_task_url}",
+            include_datetimestamp,
+        )
         sys.exit(1)
 
     test_results_url = f"{root_url}/tasks/groups/{task_group_id}"
 
-    print(f"\n{'=' * 60}")
-    print(f"Integration Task Group ID: {task_group_id}")
-    print(f"Integration Test Results:  {test_results_url}")
-    print(f"{'=' * 60}\n")
-    gh_notice(f"Task group: {test_results_url}")
+    log_notice(f"Integration Task Group ID: {task_group_id}", include_datetimestamp)
+    log_notice(f"Integration Test Results: {test_results_url}", include_datetimestamp)
 
     # Monitor task group (default behavior)
-    print("Monitoring task group for completion...")
+    log_notice("Monitoring task group for completion...", include_datetimestamp)
     start_time = time.time()
+    last_status_log_at: float | None = None
+    last_task_group_error = None
 
     while time.time() - start_time < args.timeout:
         try:
@@ -307,37 +365,56 @@ def main():
             exception = sum(1 for s in states if s == "exception")
             total = len(tasks)
 
-            print(
-                f"Status: {completed}/{total} completed, "
-                f"{failed} failed, {exception} exception, "
-                f"{pending_running} pending/running"
-            )
+            now = time.time()
+            if (
+                now - start_time >= TASK_GROUP_LOG_INTERVAL_SECONDS
+                and (
+                    last_status_log_at is None
+                    or now - last_status_log_at >= TASK_GROUP_LOG_INTERVAL_SECONDS
+                )
+            ):
+                elapsed = format_duration(int(time.time() - start_time))
+                log_notice(
+                    f"Status update ({elapsed}): {completed}/{total} completed, "
+                    f"{failed} failed, {exception} exception, "
+                    f"{pending_running} pending/running",
+                    include_datetimestamp,
+                )
+                last_status_log_at = now
+            last_task_group_error = None
 
             if pending_running == 0:
-                print()
-                print(f"{'=' * 60}")
-                print(f"Integration Task Group ID: {task_group_id}")
-                print(f"Integration Test Results:  {test_results_url}")
-                print(f"{'=' * 60}")
+                log_notice(
+                    f"Integration Task Group ID: {task_group_id}",
+                    include_datetimestamp,
+                )
+                log_notice(
+                    f"Integration Test Results: {test_results_url}",
+                    include_datetimestamp,
+                )
 
                 # Write GitHub Actions job summary
                 write_github_summary(tasks, task_group_id, args.image_name, root_url)
 
                 if failed > 0 or exception > 0:
                     msg = f"FAILED: {failed} failed, {exception} exception — {test_results_url}"
-                    print(msg)
-                    gh_error(msg)
+                    log_error(msg, include_datetimestamp)
                     sys.exit(1)
                 else:
                     msg = f"PASSED: All {completed} tasks completed successfully"
-                    print(msg)
-                    gh_notice(msg)
+                    log_notice(msg, include_datetimestamp)
                     sys.exit(0)
 
         except taskcluster.exceptions.TaskclusterRestFailure as e:
-            print(f"Error checking task group: {e}")
+            error_text = str(e)
+            if error_text != last_task_group_error:
+                log_warning(
+                    f"Error checking task group: {e}",
+                    include_datetimestamp,
+                )
+                last_task_group_error = error_text
 
-        time.sleep(10)
+        time.sleep(TASK_GROUP_POLL_INTERVAL_SECONDS)
 
     # Timeout - still write summary with current state
     try:
@@ -348,8 +425,7 @@ def main():
         pass
 
     msg = f"Timeout after {args.timeout}s — task group may still be running: {test_results_url}"
-    print(msg)
-    gh_error(msg)
+    log_error(msg, include_datetimestamp)
     sys.exit(1)
 
 
