@@ -27,6 +27,25 @@ tasks:
           - android-hw
           - macosx
 
+  gecko-builds:
+    description: "Run Gecko build tasks on alpha worker pools"
+    # Map build worker pools to their alpha equivalents.
+    # Non-mapped pools pass through unchanged.
+    worker-pool-mappings:
+      gecko-3/b-win2022: gecko-1/b-win2022-alpha
+    replicate:
+      target:
+        - gecko.v2.mozilla-central.latest.taskgraph.decision
+      include-attrs:
+        kind:
+          - build
+      # Exclude builds that don't have alpha pools configured
+      exclude-attrs:
+        build_platform:
+          - android
+          - macosx
+          - linux
+
   translations:
     description: "Run translations pipeline integration tests"
     replicate:
