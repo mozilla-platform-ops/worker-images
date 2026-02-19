@@ -40,7 +40,7 @@ tests:
   - suppress_dialog_boxes.tests.ps1
   - files_system_management.tests.ps1
   - firewall.tests.ps1
-  - network.tests.ps1
+  - enable_ipv6.tests.ps1
   - ntp.tests.ps1
   - power_management.tests.ps1
   - scheduled_tasks.tests.ps1
