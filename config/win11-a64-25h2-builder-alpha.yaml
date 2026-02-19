@@ -5,8 +5,8 @@ image:
   sku: win11-25h2-ent
   version: latest
 sharedimage:
-  gallery_name: "win11_a64_25h2_builder_alpha"
-  image_name: "win11_a64_25h2_builder_alpha"
+  gallery_name: "win11a6425h2builderalpha"
+  image_name: "win11a6425h2builderalpha"
   image_version: 1.0.0
 azure:
   managed_image_resource_group_name: rg-packer-worker-images

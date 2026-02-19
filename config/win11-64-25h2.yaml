@@ -5,8 +5,8 @@ image:
   sku: win11-25h2-ent
   version: latest
 sharedimage:
-  gallery_name: "win11_64_25h2"
-  image_name: "win11_64_25h2"
+  gallery_name: "win116425h2"
+  image_name: "win116425h2"
   image_version: "default"
 azure:
   managed_image_resource_group_name: "default"
