@@ -8,7 +8,7 @@ on:
         type: choice
         description: Choose which pool to build
         options:
-        - trusted-win11-64-25h2
+        - trusted-win11-a64-25h2-builder
         - trusted-win11-a64-24h2-builder
         - trusted-win2022-64-2009
 

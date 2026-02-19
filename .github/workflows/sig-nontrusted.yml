@@ -21,6 +21,10 @@ on:
         - win11-a64-24h2-tester
         - win11-a64-24h2-builder-alpha
         - win11-a64-24h2-builder
+        - win11-a64-25h2-tester-alpha
+        - win11-a64-25h2-tester
+        - win11-a64-25h2-builder-alpha
+        - win11-a64-25h2-builder
         - win2022-64-2009-alpha
         - win2022-64-2009-alpha-v6
         - win2022-64-2009
