@@ -22,7 +22,7 @@ vm:
     worker_pool_id: win2022-64-2009
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "master"
+    sourceBranch: "RELOPS-2211"
     deploymentId: "NA"
     managed_by: packer
 tests:
