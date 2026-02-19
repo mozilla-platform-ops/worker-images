@@ -7,3 +7,4 @@ repos:
     rev: v0.3.1
     hooks:
       - id: packer_fmt
+        args: ["-write=true"]
