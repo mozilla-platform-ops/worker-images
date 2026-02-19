@@ -5,8 +5,8 @@ image:
   sku: win11-25h2-ent
   version: latest
 sharedimage:
-  gallery_name: "win11_64_25h2_alpha"
-  image_name: "win11_64_25h2_alpha"
+  gallery_name: "win116425h2alpha"
+  image_name: "win116425h2alpha"
   image_version: 1.0.0
 azure:
   managed_image_resource_group_name: rg-packer-worker-images
@@ -25,10 +25,10 @@ vm:
   size: Standard_F8s_v2
   tags:
     base_image: win116425h2azure
-    worker_pool_id: win11-64-25h2
+    worker_pool_id: win11-64-25h2-alpha
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "master"
+    sourceBranch: "RELOPS-2211"
     deploymentId: "NA"
     managed_by: packer
 tests:
