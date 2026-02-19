@@ -10,6 +10,7 @@ on:
         options:
         - win2022-64-2009-alpha
         - win2022-64-2009
+        - trusted-win11-a64-25h2
         - trusted-win2022-64-2009
 
 jobs:
