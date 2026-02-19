@@ -18,6 +18,10 @@ Describe "WPTx64" {
             }
             "tester" {
                 switch ("${arch}/${displayVersion}") {
+                    "x64/25H2" {
+                        $expectedPackageName = "WPTx64 (DesktopEditions)"
+                        $expectedVersion = "10.1.22621.5040"
+                    }
                     "x64/24H2" {
                         $expectedPackageName = "WPTx64 (DesktopEditions)"
                         $expectedVersion = "10.1.22621.5040"
