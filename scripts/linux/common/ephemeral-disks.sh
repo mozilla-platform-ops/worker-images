@@ -48,7 +48,13 @@ else
     lvcreate -l 100%VG -i\${NVME_COUNT} -n lv_instance_storage instance_storage
 
     # Format the logical volume with ext4 filesystem
-    mkfs.ext4 /dev/instance_storage/lv_instance_storage
+    # Use lazy journal init to avoid zero'ing everything on the filesystem in advance
+    # From the man page:
+    # "This speeds up file system initialization noticeably, but carries some small risk if the
+    #  system crashes before the journal has been overwritten entirely one time."
+    # ....which seems like an acceptable risk to take on CI workers, where we don't care about
+    # data recovery.
+    mkfs.ext4 -E lazy_journal_init=1 /dev/instance_storage/lv_instance_storage
 
     # Unmount the current /home and /mnt if mounted
     umount /home || :
