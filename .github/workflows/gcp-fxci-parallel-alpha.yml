@@ -1,0 +1,117 @@
+name: FXCI - GCP Alpha Image Builds
+run-name: GCP Alpha - Parallel Builds
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  prepare-matrix:
+    name: Prepare GCP Alpha Matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+
+      - id: set-matrix
+        name: Extract GCP alpha configs
+        shell: pwsh
+        run: |
+          $configs = Get-ChildItem -Path ./config -File -Filter "*.yaml" |
+            ForEach-Object { $_.BaseName } |
+            Where-Object { $_ -match '^(trusted-)?gw-fxci-gcp-.*-alpha$' } |
+            Sort-Object
+
+          if (-not $configs -or $configs.Count -eq 0) {
+            Write-Host "::error ::No GCP alpha image configs found in ./config"
+            exit 1
+          }
+
+          $matrix = @{ config = @($configs) } | ConvertTo-Json -Compress
+          Write-Host "Generated matrix: $matrix"
+          "matrix=$matrix" >> $env:GITHUB_OUTPUT
+
+  check-access:
+    name: Verify User Access
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+      - name: Load Authorized Users and Check Access
+        shell: pwsh
+        run: |
+          $AUTHORIZED_USERS=$(Get-Content .github/relsre.json | Convertfrom-Json)
+          if ($authorized_users -contains "${{ github.actor }}") {
+            Write-host "User ${{ github.actor }} is authorized."
+          }
+          else {
+            Write-Host "User ${{ github.actor }} is unauthorized."
+            exit 1
+          }
+
+  packer:
+    needs: [check-access, prepare-matrix]
+    name: Build ${{ matrix.config }}
+    runs-on: ubuntu-latest
+    environment: prod
+    permissions:
+      contents: write
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+
+      - id: set-gcp-vars
+        name: Set project and image metadata
+        shell: pwsh
+        run: |
+          Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
+          Set-GCPWorkerImageName -Key '${{ matrix.config }}'
+          Set-GCPWorkerImageProject -Key '${{ matrix.config }}'
+
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
+        id: auth
+        with:
+          workload_identity_provider: "projects/324168772199/locations/global/workloadIdentityPools/github-actions/providers/github-actions"
+          service_account: "deploy-prod@${{ steps.set-gcp-vars.outputs.PROJECT }}.iam.gserviceaccount.com"
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db
+
+      - name: Run Packer
+        shell: pwsh
+        run: |
+          Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
+          $Vars = @{
+            github_token = "${{ secrets.GITHUB_TOKEN }}"
+            Key = '${{ matrix.config }}'
+          }
+          New-GCPWorkerImage @Vars
+
+      - name: Download Wiz CLI
+        if: ${{ success() && !contains(matrix.config, 'trusted') }}
+        run: curl -o wizcli https://downloads.wiz.io/wizcli/latest/wizcli-linux-amd64 && chmod +x wizcli
+
+      - name: Authenticate to Wiz
+        if: ${{ success() && !contains(matrix.config, 'trusted') }}
+        run: ./wizcli auth --id "$WIZ_CLIENT_ID" --secret "$WIZ_CLIENT_SECRET"
+        env:
+          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
+          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
+
+      - name: Run wiz-cli scan
+        if: ${{ success() && !contains(matrix.config, 'trusted') }}
+        run: |
+          ./wizcli vm-image scan \
+          --id ${{ steps.set-gcp-vars.outputs.IMAGENAME }} \
+          --region us-west1 \
+          --subscriptionId ${{ steps.set-gcp-vars.outputs.PROJECT }} \
+          --secrets \
+          --show-vulnerability-details \
+          --policy-hits-only
