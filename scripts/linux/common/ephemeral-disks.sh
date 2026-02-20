@@ -47,9 +47,8 @@ else
     # Create a logical volume
     lvcreate -l 100%VG -i\${NVME_COUNT} -n lv_instance_storage instance_storage
 
-    # Format the logical volume with ext4 filesystem.
-    # Use nodiscard and lazy init to reduce startup delays on slower hosts.
-    # Use a smaller journal to lower initial format cost.
+    # Format ext4 in a way that avoids the long first-boot mkfs path.
+    # Skip full-device discard, keep lazy init on, and use a smaller journal.
     mkfs.ext4 -E nodiscard,lazy_itable_init=1,lazy_journal_init=1 -J size=128 /dev/instance_storage/lv_instance_storage
 
     # Unmount the current /home and /mnt if mounted
@@ -93,13 +92,6 @@ User=root
 
 [Install]
 RequiredBy=multi-user.target
-EOF
-
-mkdir -p /etc/systemd/system/docker.service.d
-cat << EOF > /etc/systemd/system/docker.service.d/10-ephemeral-disks.conf
-[Unit]
-After=generic-worker-disk-setup.service
-RequiresMountsFor=/mnt/var/lib/docker
 EOF
 
 systemctl enable generic-worker-disk-setup
