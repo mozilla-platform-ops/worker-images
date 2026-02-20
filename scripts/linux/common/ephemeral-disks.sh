@@ -47,8 +47,9 @@ else
     # Create a logical volume
     lvcreate -l 100%VG -i\${NVME_COUNT} -n lv_instance_storage instance_storage
 
-    # Format the logical volume with ext4 filesystem
-    mkfs.ext4 /dev/instance_storage/lv_instance_storage
+    # Format the logical volume with ext4 filesystem.
+    # Use nodiscard to avoid long startup delays from full-device discard.
+    mkfs.ext4 -E nodiscard /dev/instance_storage/lv_instance_storage
 
     # Unmount the current /home and /mnt if mounted
     umount /home || :
