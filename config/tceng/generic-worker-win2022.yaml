@@ -15,6 +15,6 @@ vm:
   vm_size: Standard_D2s_v3
   bootstrapscript: "generic-worker-win2022"
   tc_arch: "amd64"
-  taskcluster_version: 96.5.0
+  taskcluster_version: 96.5.2
   tags:
     - image_set: markco-generic-worker-win2022
