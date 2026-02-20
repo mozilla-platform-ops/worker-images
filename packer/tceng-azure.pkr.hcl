@@ -103,7 +103,9 @@ build {
     ]
   }
 
-  provisioner "windows-restart" {}
+  provisioner "windows-restart" {
+    restart_timeout = "30m"
+  }
 
   provisioner "powershell" {
     inline = [
