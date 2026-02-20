@@ -80,11 +80,3 @@ patch /etc/docker/seccomp.json <<EOF
  				"set_mempolicy",
  				"set_mempolicy_home_node"
 EOF
-
-# Make docker wait for ephemeral disk setup so /mnt/var/lib/docker is ready.
-mkdir -p /etc/systemd/system/docker.service.d
-cat << EOF > /etc/systemd/system/docker.service.d/10-ephemeral-disks.conf
-[Unit]
-After=generic-worker-disk-setup.service
-RequiresMountsFor=/mnt/var/lib/docker
-EOF
