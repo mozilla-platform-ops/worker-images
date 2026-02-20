@@ -9,6 +9,27 @@ cat << EOF > "${disk_setup_script}"
 
 set -e
 
+IOSTAT_PID=
+
+start_iostat () {
+    if command -v iostat >/dev/null 2>&1; then
+        echo "Starting iostat sampling during ephemeral disk setup..."
+        iostat -x -y 1 180 &
+        IOSTAT_PID=\$!
+    else
+        echo "iostat not found; skipping ephemeral disk iostat sampling."
+    fi
+}
+
+stop_iostat () {
+    if [ -n "\$IOSTAT_PID" ]; then
+        kill "\$IOSTAT_PID" >/dev/null 2>&1 || :
+        wait "\$IOSTAT_PID" 2>/dev/null || :
+    fi
+}
+
+trap stop_iostat EXIT
+
 makedirs () {
     echo "Creating directories for generic-worker"
     # cachesDir
@@ -40,6 +61,8 @@ else
     fi
 
     echo "Found \$NVME_COUNT local SSD devices: \$NVME_DEVICES"
+
+    start_iostat
 
     # Create a volume group
     vgcreate -y instance_storage \${NVME_DEVICES}
