@@ -47,8 +47,8 @@ else
     # Create a logical volume
     lvcreate -l 100%VG -i\${NVME_COUNT} -n lv_instance_storage instance_storage
 
-    # Format ext4 in a way that avoids the long first-boot mkfs path.
-    # Skip full-device discard, keep lazy init on, and use a smaller journal.
+    # Format ext4 for quicker first boot on fresh instances.
+    # Skip discard, keep lazy init, and use a smaller journal.
     mkfs.ext4 -E nodiscard,lazy_itable_init=1,lazy_journal_init=1 -J size=128 /dev/instance_storage/lv_instance_storage
 
     # Unmount the current /home and /mnt if mounted

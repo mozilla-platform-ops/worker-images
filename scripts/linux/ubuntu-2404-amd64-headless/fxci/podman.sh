@@ -30,7 +30,7 @@ export DEBIAN_FRONTEND=noninteractive
 retry apt-get update
 retry apt-get install -y podman
 
-# Podman auto-update is not needed on worker images and can add boot noise.
+# Workers do not use podman auto-update. Disable it to avoid boot-time churn.
 systemctl disable --now podman-auto-update.timer || true
 
 # Configure podman registries to use docker.io by default
