@@ -319,6 +319,7 @@ build {
   provisioner "file" {
     source      = "${path.root}/scripts/windows/CustomFunctions/Bootstrap"
     destination = "C:/Windows/System32/WindowsPowerShell/v1.0/Modules/"
+    max_retries = 3
   }
 
   provisioner "powershell" {
@@ -333,11 +334,13 @@ build {
   provisioner "file" {
     source      = "${path.cwd}/tests/win/"
     destination = "C:/Tests"
+    max_retries = 3
   }
 
   provisioner "file" {
     source      = "${path.cwd}/config/"
     destination = "C:/Config"
+    max_retries = 3
   }
 
   provisioner "powershell" {
@@ -469,6 +472,7 @@ build {
     destination = "${path.root}/${local.sbom_name}.md"
     source      = "C:/${local.sbom_name}.md"
     direction   = "download"
+    max_retries = 3
   }
 
   provisioner "file" {
@@ -476,6 +480,7 @@ build {
     destination = "${path.root}/${local.sbom_name}-${var.sharedimage_version}.md"
     source      = "C:/${local.sbom_name}-${var.sharedimage_version}.md"
     direction   = "download"
+    max_retries = 3
   }
 
   provisioner "windows-restart" {
