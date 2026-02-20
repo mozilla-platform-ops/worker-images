@@ -31,7 +31,7 @@ images:
     - win11-64-24h2-alpha
     - win11-64-25h2-alpha
     - win11-a64-24h2-tester-alpha
-    - win11-a64-24h2-builder-alpha
+    #- win11-a64-24h2-builder-alpha
     - win11-a64-25h2-tester-alpha
-    - win11-a64-25h2-builder-alpha
+    #- win11-a64-25h2-builder-alpha
     - win2022-64-2009-alpha
