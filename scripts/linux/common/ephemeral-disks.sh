@@ -48,15 +48,16 @@ else
     lvcreate -l 100%VG -i\${NVME_COUNT} -n lv_instance_storage instance_storage
 
     # Format the logical volume with ext4 filesystem.
-    # Use nodiscard to avoid long startup delays from full-device discard.
-    mkfs.ext4 -E nodiscard /dev/instance_storage/lv_instance_storage
+    # Use nodiscard and lazy init to reduce startup delays on slower hosts.
+    # Use a smaller journal to lower initial format cost.
+    mkfs.ext4 -E nodiscard,lazy_itable_init=1,lazy_journal_init=1 -J size=128 /dev/instance_storage/lv_instance_storage
 
     # Unmount the current /home and /mnt if mounted
     umount /home || :
     umount /mnt || :
 
     # Mount the new logical volume to /mnt
-    mount -o 'rw,relatime,errors=panic,data=writeback,nobarrier,commit=60' /dev/instance_storage/lv_instance_storage /mnt
+    mount -o 'rw,noatime,errors=panic,data=writeback,nobarrier,commit=60' /dev/instance_storage/lv_instance_storage /mnt
 
     # Bind-mount to /home (generic-worker's tasksDir)
     cp -a /home /mnt/
@@ -65,7 +66,7 @@ else
     # Add the mounts to /etc/fstab for persistence
     if ! cat /etc/fstab | grep "/mnt "; then
         cat >> /etc/fstab <<END
-/dev/instance_storage/lv_instance_storage /mnt  ext4 rw,relatime,errors=panic,data=writeback,nobarrier,commit=60
+/dev/instance_storage/lv_instance_storage /mnt  ext4 rw,noatime,errors=panic,data=writeback,nobarrier,commit=60
 /mnt/home                                 /home none bind
 END
     fi
@@ -92,6 +93,13 @@ User=root
 
 [Install]
 RequiredBy=multi-user.target
+EOF
+
+mkdir -p /etc/systemd/system/docker.service.d
+cat << EOF > /etc/systemd/system/docker.service.d/10-ephemeral-disks.conf
+[Unit]
+After=generic-worker-disk-setup.service
+RequiresMountsFor=/mnt/var/lib/docker
 EOF
 
 systemctl enable generic-worker-disk-setup

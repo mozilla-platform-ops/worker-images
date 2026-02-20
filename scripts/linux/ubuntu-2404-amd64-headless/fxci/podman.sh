@@ -30,6 +30,9 @@ export DEBIAN_FRONTEND=noninteractive
 retry apt-get update
 retry apt-get install -y podman
 
+# Podman auto-update is not used on worker images and can add startup noise.
+systemctl disable --now podman-auto-update.timer || true
+
 # Configure podman registries to use docker.io by default
 mkdir -p /etc/containers
 cat > /etc/containers/registries.conf << 'EOF'
