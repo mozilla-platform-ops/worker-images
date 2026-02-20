@@ -28,7 +28,7 @@ vm:
     worker_pool_id: win11-64-2009
     sourceOrganization: "default"
     sourceRepository: "default"
-    sourceBranch: "RELOPS-2211"
+    sourceBranch: "win11a6425h2-arm64-puppet"
     deploymentId: "NA"
     managed_by: packer
 tests:
