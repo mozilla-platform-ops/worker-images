@@ -20,6 +20,9 @@ makedirs () {
     mkdir -p /mnt/var/lib/docker
 }
 
+# temp: install fio so we can check for perf of SSDs
+apt-get install -y fio
+
 # Main script logic
 if mount | grep -q "instance_storage"; then
     echo "/mnt is already using a local device."
@@ -32,6 +35,11 @@ else
     NVME_DEVICES=\$(ls /dev/disk/by-id/google-local-nvme-ssd-?)
     set -e
     NVME_COUNT=\$(echo "\$NVME_DEVICES" | wc -l)
+
+    # temp: check i/o performance of SSD
+    # we'll keep this for a short period of time to help assess whether workers that are slow to start
+    # actually have a slow disk, or if mkfs and other operations are slow for another reason
+    fio --name=seq-write --ioengine=libaio --rw=write --bs=1M --direct=1 --size=1G --filename=/dev/disk/by-id/google-local-nvme-ssd-0
 
     if [ -z "\$NVME_DEVICES" ]; then
         echo "No google-local-nvme-ssd devices found! Exiting..."
