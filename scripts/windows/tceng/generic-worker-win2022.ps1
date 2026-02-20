@@ -247,16 +247,16 @@ New-NetFirewallRule -DisplayName "Allow livelog PUT requests" -Direction Inbound
 New-NetFirewallRule -DisplayName "Allow livelog GET requests" -Direction Inbound -LocalPort 60023 -Protocol TCP -Action Allow
 
 # install go
-Run-Executable "choco" @("install", "-y", "golang", "--version", "1.23.6")
+Run-Executable "choco" @("install", "-y", "golang", "--version", "1.26.0")
 
 # install git
 Run-Executable "choco" @("install", "-y", "git")
 
 # install node
-Run-Executable "choco" @("install", "-y", "nodejs", "--version", "22.13.1")
+Run-Executable "choco" @("install", "-y", "nodejs", "--version", "24.13.0")
 
 # install python
-Run-Executable "choco" @("install", "-y", "python", "--version", "3.13.1")
+Run-Executable "choco" @("install", "-y", "python", "--version", "3.13.12")
 
 # refresh environment variables
 Import-Module $env:ChocolateyInstall\helpers\chocolateyProfile.psm1
