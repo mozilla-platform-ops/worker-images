@@ -7,6 +7,7 @@ from worker_images_taskgraph.util.fxci import get_worker_pool_images
 logger = logging.getLogger(__name__)
 transforms = TransformSequence()
 
+
 def normalize_image_name(image_name: str) -> str:
     return "".join(c for c in image_name.lower() if c.isalnum())
 
@@ -21,15 +22,19 @@ def pool_matches_images(pool_images: set[str], requested_images: set[str]) -> bo
     return bool(get_normalized_images(pool_images) & requested_images)
 
 
-def get_win11_64_variant(worker_type: str) -> str | None:
+def get_worker_pool_variant(worker_type: str) -> str | None:
     parts = worker_type.split("-")
 
     if len(parts) == 3 and parts[0] == "win11" and parts[1] == "64":
-        return "base"
+        return "win11-64-base"
 
     if len(parts) == 4 and parts[0] == "win11" and parts[1] == "64":
         if parts[3] in {"gpu", "source"}:
-            return parts[3]
+            return f"win11-64-{parts[3]}"
+
+    if len(parts) == 4 and parts[0] == "win11" and parts[1] == "a64":
+        if parts[3] in {"tester", "builder"}:
+            return f"win11-a64-{parts[3]}"
 
     return None
 
@@ -50,7 +55,7 @@ def get_image_compatible_alpha_worker_type(
     if not requested_images:
         return default_worker_type if default_pool in pool_images_by_pool else None
 
-    variant = get_win11_64_variant(worker_type)
+    variant = get_worker_pool_variant(worker_type)
     if variant is None:
         return default_worker_type if default_pool in pool_images_by_pool else None
 
@@ -62,7 +67,7 @@ def get_image_compatible_alpha_worker_type(
             continue
 
         candidate_base = candidate_worker_type[: -len("-alpha")]
-        if get_win11_64_variant(candidate_base) != variant:
+        if get_worker_pool_variant(candidate_base) != variant:
             continue
 
         if pool_matches_images(pool_images, requested_images):
