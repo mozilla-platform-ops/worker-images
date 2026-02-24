@@ -36,7 +36,7 @@ pools:
     src_Repository: "ronin_puppet"
     src_Branch: "master"
     hash: "7c32b79"
-    secret_date: "01-16-2025"
+    secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
     - t-nuc12-002
