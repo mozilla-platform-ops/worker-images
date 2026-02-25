@@ -7,7 +7,7 @@ image:
 sharedimage:
   gallery_name: "win116425h2"
   image_name: "win116425h2"
-  image_version: "default"
+  image_version: "1.0.0"
 azure:
   managed_image_resource_group_name: "default"
   managed_image_storage_account_type: "default"
