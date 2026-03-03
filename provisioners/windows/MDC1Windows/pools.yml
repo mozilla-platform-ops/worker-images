@@ -35,7 +35,7 @@ pools:
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "BUG2013985"
-    hash: "0485d5e"
+    hash: "44962a9"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
