@@ -34,8 +34,8 @@ pools:
     image: "win11-24H2-NUC-01-16-2025"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "BUG2013985"
-    hash: "1599b8b"
+    src_Branch: "BUG2013985-2"
+    hash: "91a726c"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
