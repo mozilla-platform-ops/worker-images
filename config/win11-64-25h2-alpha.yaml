@@ -28,8 +28,8 @@ vm:
     worker_pool_id: win11-64-25h2-alpha
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "RELOPS-2218-win11-25h2-gpu-a10-drivers"
-    deploymentId: "NA"
+    sourceBranch: "master"
+    deploymentId: "34ffdcc"
     managed_by: packer
 tests:
   - win11_sdk_tests.ps1
