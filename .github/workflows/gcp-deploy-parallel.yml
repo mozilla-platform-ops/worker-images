@@ -1,5 +1,5 @@
-name: FXCI - GCP Production Image Builds
-run-name: GCP Production - Parallel Builds
+name: FXCI - GCP Production Parallel Image Builds
+run-name: GCP Production Parallel - ${{ github.sha }}
 
 on:
   workflow_dispatch:

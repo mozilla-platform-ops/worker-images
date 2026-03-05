@@ -1,5 +1,5 @@
-name: FXCI - Azure Image Builds
-run-name: Azure Production - Parallel Builds
+name: FXCI - Azure Production Parallel Image Builds
+run-name: Azure Production Parallel - ${{ github.sha }}
 
 on:
   workflow_dispatch:
