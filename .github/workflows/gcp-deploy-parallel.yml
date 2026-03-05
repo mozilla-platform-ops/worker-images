@@ -1,5 +1,5 @@
-name: FXCI - GCP Alpha Parallel Images
-run-name: GCP Alpha Parallel - ${{ github.sha }}
+name: FXCI - GCP Prod Parallel Images
+run-name: GCP Production Parallel - ${{ github.sha }}
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   prepare-matrix:
-    name: Prepare GCP Alpha Matrix
+    name: Prepare GCP Production Matrix
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
       - id: set-matrix
-        name: Extract GCP alpha configs
+        name: Extract GCP production configs
         shell: pwsh
         run: |
           $configs = Get-ChildItem -Path ./config -File -Filter "*.yaml" |
@@ -28,7 +28,7 @@ jobs:
             Sort-Object
 
           if (-not $configs -or $configs.Count -eq 0) {
-            Write-Host "::error ::No GCP alpha image configs found in ./config"
+            Write-Host "::error ::No GCP production configs found in ./config"
             exit 1
           }
 
@@ -53,9 +53,9 @@ jobs:
             exit 1
           }
 
-  packer:
+  prodimage:
     needs: [check-access, prepare-matrix]
-    name: Build ${{ matrix.config }}
+    name: GCP ${{ matrix.config }}
     runs-on: ubuntu-latest
     environment: prod
     permissions:
@@ -68,7 +68,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
       - id: set-gcp-vars
-        name: Set project and image metadata
+        name: Get Project ID and Image Name from Config
         shell: pwsh
         run: |
           Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
@@ -84,34 +84,17 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db
 
-      - name: Run Packer
+      - name: Build Production Image
         shell: pwsh
         run: |
-          Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
-          $Vars = @{
-            github_token = "${{ secrets.GITHUB_TOKEN }}"
-            Key = '${{ matrix.config }}'
+          $date = Get-Date -Format "yyyy-MM-dd"
+          $ProdImageName = -join(('${{ steps.set-gcp-vars.outputs.IMAGENAME }}' -Replace "alpha"),$date)
+          $exists = gcloud compute images describe $ProdImageName
+          if ($exists) {
+            gcloud compute images delete $ProdImageName --quiet
           }
-          New-GCPWorkerImage @Vars
-
-      - name: Download Wiz CLI
-        if: ${{ success() && !contains(matrix.config, 'trusted') }}
-        run: curl -o wizcli https://downloads.wiz.io/wizcli/latest/wizcli-linux-amd64 && chmod +x wizcli
-
-      - name: Authenticate to Wiz
-        if: ${{ success() && !contains(matrix.config, 'trusted') }}
-        run: ./wizcli auth --id "$WIZ_CLIENT_ID" --secret "$WIZ_CLIENT_SECRET"
-        env:
-          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
-          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
-
-      - name: Run wiz-cli scan
-        if: ${{ success() && !contains(matrix.config, 'trusted') }}
-        run: |
-          ./wizcli vm-image scan \
-          --id ${{ steps.set-gcp-vars.outputs.IMAGENAME }} \
-          --region us-west1 \
-          --subscriptionId ${{ steps.set-gcp-vars.outputs.PROJECT }} \
-          --secrets \
-          --show-vulnerability-details \
-          --policy-hits-only
+          Write-Output "Creating image $ProdImageName"
+          gcloud compute images create $ProdImageName `
+          --source-image ${{ steps.set-gcp-vars.outputs.IMAGENAME }} `
+          --source-image-project ${{ steps.set-gcp-vars.outputs.PROJECT }} `
+          --force

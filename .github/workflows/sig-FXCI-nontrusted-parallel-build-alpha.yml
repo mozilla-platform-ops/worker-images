@@ -1,4 +1,5 @@
-name: FXCI - Azure Alpha Image Builds
+name: FXCI - Azure Alpha Parallel Images
+run-name: Azure Alpha Parallel - ${{ github.sha }}
 
 on:
   workflow_dispatch:
