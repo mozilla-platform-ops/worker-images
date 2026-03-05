@@ -1,0 +1,100 @@
+name: FXCI - GCP Production Image Builds
+run-name: GCP Production - Parallel Builds
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  prepare-matrix:
+    name: Prepare GCP Production Matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - id: set-matrix
+        name: Extract GCP production configs
+        shell: pwsh
+        run: |
+          $configs = Get-ChildItem -Path ./config -File -Filter "*.yaml" |
+            ForEach-Object { $_.BaseName } |
+            Where-Object { $_ -match '^(trusted-)?gw-fxci-gcp-.*-alpha$' } |
+            Sort-Object
+
+          if (-not $configs -or $configs.Count -eq 0) {
+            Write-Host "::error ::No GCP production configs found in ./config"
+            exit 1
+          }
+
+          $matrix = @{ config = @($configs) } | ConvertTo-Json -Compress
+          Write-Host "Generated matrix: $matrix"
+          "matrix=$matrix" >> $env:GITHUB_OUTPUT
+
+  check-access:
+    name: Verify User Access
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - name: Load Authorized Users and Check Access
+        shell: pwsh
+        run: |
+          $AUTHORIZED_USERS=$(Get-Content .github/relsre.json | Convertfrom-Json)
+          if ($authorized_users -contains "${{ github.actor }}") {
+            Write-host "User ${{ github.actor }} is authorized."
+          }
+          else {
+            Write-Host "User ${{ github.actor }} is unauthorized."
+            exit 1
+          }
+
+  prodimage:
+    needs: [check-access, prepare-matrix]
+    name: GCP ${{ matrix.config }}
+    runs-on: ubuntu-latest
+    environment: prod
+    permissions:
+      contents: write
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - id: set-gcp-vars
+        name: Get Project ID and Image Name from Config
+        shell: pwsh
+        run: |
+          Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
+          Set-GCPWorkerImageName -Key '${{ matrix.config }}'
+          Set-GCPWorkerImageProject -Key '${{ matrix.config }}'
+
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
+        id: auth
+        with:
+          workload_identity_provider: "projects/324168772199/locations/global/workloadIdentityPools/github-actions/providers/github-actions"
+          service_account: "deploy-prod@${{ steps.set-gcp-vars.outputs.PROJECT }}.iam.gserviceaccount.com"
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db
+
+      - name: Build Production Image
+        shell: pwsh
+        run: |
+          $date = Get-Date -Format "yyyy-MM-dd"
+          $ProdImageName = -join(('${{ steps.set-gcp-vars.outputs.IMAGENAME }}' -Replace "alpha"),$date)
+          $exists = gcloud compute images describe $ProdImageName
+          if ($exists) {
+            gcloud compute images delete $ProdImageName --quiet
+          }
+          Write-Output "Creating image $ProdImageName"
+          gcloud compute images create $ProdImageName `
+          --source-image ${{ steps.set-gcp-vars.outputs.IMAGENAME }} `
+          --source-image-project ${{ steps.set-gcp-vars.outputs.PROJECT }} `
+          --force
