@@ -1,4 +1,4 @@
-name: FXCI - GCP Alpha Parallel Image Builds
+name: FXCI - GCP Alpha Parallel Images
 run-name: GCP Alpha Parallel - ${{ github.sha }}
 
 on:

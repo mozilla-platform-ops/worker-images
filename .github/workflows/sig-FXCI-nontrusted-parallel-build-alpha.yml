@@ -1,4 +1,4 @@
-name: FXCI - Azure Alpha Parallel Image Builds
+name: FXCI - Azure Alpha Parallel Images
 run-name: Azure Alpha Parallel - ${{ github.sha }}
 
 on:

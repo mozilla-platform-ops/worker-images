@@ -1,4 +1,4 @@
-name: FXCI - Azure Production Parallel Image Builds
+name: FXCI - Azure Prod Parallel Images
 run-name: Azure Production Parallel - ${{ github.sha }}
 
 on:
