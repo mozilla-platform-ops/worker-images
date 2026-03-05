@@ -13,7 +13,7 @@ Builds virtual machine images for Mozilla's Taskcluster CI workers using Packer,
 1. **Config YAML** (`config/*.yaml`) defines each image: base OS, Azure/GCP settings, VM size, tags, and which Pester tests to run. Per-image configs inherit from `config/windows_production_defaults.yaml` (default values for shared image version, puppet version, git version, deployment ID, etc.).
 2. **Packer HCL templates** (`azure.pkr.hcl` for Azure/Windows, `gcp.pkr.hcl` for GCP/Linux, `packer/tceng-*.pkr.hcl` for TC Engineering pools) define the build steps.
 3. **PowerShell module** (`bin/WorkerImages/`) reads config YAML, merges with defaults, sets `PKR_VAR_*` environment variables, and invokes `packer build`. Key entry point: `New-AzSharedWorkerImage` for Azure SIG builds.
-4. **GitHub Actions** (`.github/workflows/`) orchestrate builds. Workflows read `windows_production_defaults.yaml` to generate build matrices. Key workflows:
+4. **GitHub Actions** (`.github/workflows/`) orchestrate builds. Workflow helper scripts in `ci/` handle matrix generation, auth checks, and Taskcluster integration triggers. Key workflows:
    - `sig-FXCI-parallel-build.yml` — Production Azure image builds (trusted + untrusted)
    - `sig-FXCI-nontrusted-parallel-build-alpha.yml` — Alpha Azure image builds
    - `gcp-fxci-parallel-alpha.yml` / `gcp-fxci.yml` — GCP Linux image builds

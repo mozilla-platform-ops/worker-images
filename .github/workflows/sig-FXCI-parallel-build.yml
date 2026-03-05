@@ -21,61 +21,12 @@ jobs:
 
       - name: Install PowerShell-YAML module
         shell: pwsh
-        run: |
-          Set-PSRepository PSGallery -InstallationPolicy Trusted
-          Install-Module powershell-yaml -Force
+        run: ./ci/install-powershell-yaml.ps1
 
       - id: set-matrix
         name: Extract Azure production configs
         shell: pwsh
-        run: |
-          $yaml = ConvertFrom-Yaml (Get-Content ./config/windows_production_defaults.yaml -Raw)
-          $prodImages = @($yaml.images.production | Sort-Object)
-          $trustedImages = @(
-            Get-ChildItem -Path ./config -File -Filter "trusted-*.yaml" |
-              ForEach-Object { $_.BaseName } |
-              Where-Object { $_ -match '^trusted-(?!gw-fxci-gcp).*' -and $_ -notmatch 'alpha' } |
-              Sort-Object
-          )
-
-          if (-not $prodImages -or $prodImages.Count -eq 0) {
-            Write-Host "::error ::No untrusted production images found in YAML"
-            exit 1
-          }
-
-          $matrixEntries = @()
-          foreach ($config in $prodImages) {
-            $matrixEntries += @{
-              config = $config
-              client_id_secret = 'AZURE_CLIENT_ID_FXCI'
-              subscription_id_secret = 'AZURE_SUBSCRIPTION_ID_UNTRUSTED'
-              application_id_secret = 'AZURE_APPLICATION_ID_FXCI'
-              run_os_integration = ($config -notmatch '^win2022' -and $config -notmatch '^win11-a64.*builder')
-            }
-          }
-
-          foreach ($config in $trustedImages) {
-            $matrixEntries += @{
-              config = $config
-              client_id_secret = 'AZURE_CLIENT_ID_FXCI_TRUSTED'
-              subscription_id_secret = 'AZURE_SUBSCRIPTION_ID_TRUSTED'
-              application_id_secret = 'AZURE_APPLICATION_ID_FXCI_TRUSTED'
-              run_os_integration = $false
-            }
-          }
-
-          $matrix = @{ include = @($matrixEntries) } | ConvertTo-Json -Compress -Depth 10
-          Write-Host "Generated matrix: $matrix"
-          "matrix=$matrix" >> $env:GITHUB_OUTPUT
-
-          $osIntEntries = @(
-            $matrixEntries |
-              Where-Object { $_.run_os_integration } |
-              ForEach-Object { @{ config = $_.config } }
-          )
-          $osIntMatrix = @{ include = @($osIntEntries) } | ConvertTo-Json -Compress -Depth 10
-          Write-Host "Generated os-integration matrix: $osIntMatrix"
-          "os_integration_matrix=$osIntMatrix" >> $env:GITHUB_OUTPUT
+        run: ./ci/get-azure-production-parallel-matrix.ps1
 
   check-access:
     name: "Verify User Access"
@@ -84,15 +35,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - name: Load Authorized Users and Check Access
         shell: pwsh
-        run: |
-          $AUTHORIZED_USERS=$(Get-Content .github/relsre.json | Convertfrom-Json)
-          if ($authorized_users -contains "${{ github.actor }}") {
-            Write-host "User ${{ github.actor }} is authorized."
-          }
-          else {
-            Write-Host "User ${{ github.actor }} is unauthorized."
-            exit 1
-          }
+        run: ./ci/check-authorized-user.ps1
 
   packer:
     needs: [check-access, prepare-matrix]
@@ -115,20 +58,16 @@ jobs:
           enable-AzPSSession: true
       - name: 'Run Packer'
         shell: pwsh
-        run: |
-          Import-Module .\bin\WorkerImages\WorkerImages.psm1
-          $Vars = @{
-            github_token = "${{ secrets.GITHUB_TOKEN }}"
-            Key = '${{ matrix.config }}'
-            Client_ID = "${{ secrets[matrix.client_id_secret] }}"
-            oidc_request_url = "${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}"
-            oidc_request_token = "${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}"
-            Subscription_ID = "${{ secrets[matrix.subscription_id_secret] }}"
-            Tenant_ID = "${{ secrets.AZURE_TENANT_ID }}"
-            Application_ID = "${{ secrets[matrix.application_id_secret] }}"
-          }
-          New-AzSharedWorkerImage @Vars
-          "sharedimageversion=$ENV:PKR_VAR_sharedimage_version" >> $env:GITHUB_ENV
+        env:
+          APPLICATION_ID: ${{ secrets[matrix.application_id_secret] }}
+          CLIENT_ID: ${{ secrets[matrix.client_id_secret] }}
+          CONFIG: ${{ matrix.config }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OIDC_REQUEST_TOKEN: ${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}
+          OIDC_REQUEST_URL: ${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}
+          SUBSCRIPTION_ID: ${{ secrets[matrix.subscription_id_secret] }}
+          TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        run: ./ci/build-azure-shared-worker-image.ps1
       - name: Upload Release Notes Artifact
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f
         with:
