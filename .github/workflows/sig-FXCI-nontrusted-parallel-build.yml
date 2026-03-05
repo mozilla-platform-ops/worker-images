@@ -1,4 +1,5 @@
 name: FXCI - Azure Image Builds
+run-name: Azure Production - Parallel Builds
 
 on:
   workflow_dispatch:
