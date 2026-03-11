@@ -16,7 +16,7 @@ azure:
     - centralus
 vm:
   puppet_version: 8.10.0
-  openvox_version: 8.19.2
+  openvox_version: 8.25.0
   git_version: 2.53.0
   size: Standard_E8pds_v5
   tags:

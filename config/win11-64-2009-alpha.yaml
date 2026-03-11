@@ -19,9 +19,9 @@ azure:
     - westus2
     - westus
 vm:
-  puppet_version: "default"
-  openvox_version: "default"
-  git_version: "default"
+  puppet_version: 8.10.0
+  git_version: 2.53.0
+  openvox_version: 8.25.0
   size: Standard_F8s_v2
   tags:
     base_image: win11642009azure
