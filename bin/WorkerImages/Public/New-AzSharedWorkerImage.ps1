@@ -182,14 +182,12 @@ function New-AzSharedWorkerImage {
     ## Set the github token for packer to use to install plugin from github
     $ENV:PACKER_GITHUB_API_TOKEN = $github_token
     if ($key -match "Trusted") {
-        Write-Host "Fetching CoT key for trusted image build"
-        $ENV:PKR_VAR_cotkey = az keyvault secret show --vault-name "kv-central-us-cot" --name "cotkey" --query value -o tsv
-        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($ENV:PKR_VAR_cotkey)) {
-            throw "Unable to fetch CoT key for trusted image build"
-        }
+        $ENV:PKR_VAR_use_keyvault = "true"
+        $ENV:PKR_VAR_vault_name = "kv-central-us-cot"
     }
     else {
-        $ENV:PKR_VAR_cotkey = ""
+        $ENV:PKR_VAR_use_keyvault = "false"
+        $ENV:PKR_VAR_vault_name = "kv-central-us-key"
     }
     packer init azure.pkr.hcl
     if ($PackerForceBuild) {
