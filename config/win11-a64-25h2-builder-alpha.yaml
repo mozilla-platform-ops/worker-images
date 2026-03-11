@@ -5,8 +5,8 @@ image:
   sku: win11-25h2-ent
   version: latest
 sharedimage:
-  gallery_name: "win11a6425h2builderalpha"
-  image_name: "win11a6425h2builderalpha"
+  gallery_name: "win11_a64_25h2_builder_alpha"
+  image_name: "win11_a64_25h2_builder_alpha"
   image_version: 1.0.0
 azure:
   managed_image_resource_group_name: rg-packer-worker-images
@@ -24,8 +24,8 @@ vm:
     worker_pool_id: win11-a64-25h2-builder-alpha
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "RELOPS-2252"
-    deploymentId: "NA"
+    sourceBranch: "master"
+    deploymentId: "96de7f5"
     managed_by: packer
 tests:
   - directx_sdk.tests.ps1

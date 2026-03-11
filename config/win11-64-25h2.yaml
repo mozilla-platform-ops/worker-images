@@ -5,8 +5,8 @@ image:
   sku: win11-25h2-ent
   version: latest
 sharedimage:
-  gallery_name: "win116425h2"
-  image_name: "win116425h2"
+  gallery_name: "win11_64_25h2"
+  image_name: "win11_64_25h2"
   image_version: "1.0.0"
 azure:
   managed_image_resource_group_name: "default"
@@ -21,8 +21,8 @@ vm:
     worker_pool_id: win11-64-25h2
     sourceOrganization: "default"
     sourceRepository: "default"
-    sourceBranch: "RELOPS-2218-win11-25h2-gpu-a10-drivers"
-    deploymentId: "NA"
+    sourceBranch: "master"
+    deploymentId: "96de7f5"
     managed_by: "default"
 tests:
   - win11_sdk_tests.ps1
