@@ -183,7 +183,10 @@ function New-AzSharedWorkerImage {
     $ENV:PACKER_GITHUB_API_TOKEN = $github_token
     if ($key -match "Trusted") {
         Write-Host "Fetching CoT key for trusted image build"
-        $ENV:PKR_VAR_cotkey = Get-AzKeyVaultSecret -VaultName "kv-central-us-cot" -Name "cotkey" -AsPlainText -ErrorAction Stop
+        $ENV:PKR_VAR_cotkey = az keyvault secret show --vault-name "kv-central-us-cot" --name "cotkey" --query value -o tsv
+        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($ENV:PKR_VAR_cotkey)) {
+            throw "Unable to fetch CoT key for trusted image build"
+        }
     }
     else {
         $ENV:PKR_VAR_cotkey = ""
