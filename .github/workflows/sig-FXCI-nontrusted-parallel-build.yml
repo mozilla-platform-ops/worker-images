@@ -90,8 +90,8 @@ jobs:
             github_token = "${{ secrets.GITHUB_TOKEN }}"
             Key = '${{ matrix.config }}'
             Client_ID = "${{ secrets.AZURE_CLIENT_ID_FXCI }}"
-            oidc_request_url = "${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}"
-            oidc_request_token = "${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}"
+            oidc_request_url = $env:ACTIONS_ID_TOKEN_REQUEST_URL
+            oidc_request_token = $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN
             Subscription_ID = "${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}"
             Tenant_ID = "${{ secrets.AZURE_TENANT_ID }}"
             Application_ID = "${{ secrets.AZURE_APPLICATION_ID_FXCI }}"

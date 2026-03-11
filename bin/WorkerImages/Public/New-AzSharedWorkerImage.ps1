@@ -116,8 +116,28 @@ function New-AzSharedWorkerImage {
     $ENV:PKR_VAR_application_id = $Application_ID
     $ENV:PKR_VAR_tenant_id = $Tenant_ID
     $ENV:PKR_VAR_subscription_id = $Subscription_ID
-    $ENV:PKR_VAR_oidc_request_url = $oidc_request_url
-    $ENV:PKR_VAR_oidc_request_token = $oidc_request_token
+
+    $EffectiveOidcRequestUrl = $oidc_request_url
+    if ([string]::IsNullOrWhiteSpace($EffectiveOidcRequestUrl)) {
+        $EffectiveOidcRequestUrl = $ENV:ACTIONS_ID_TOKEN_REQUEST_URL
+    }
+    if ([string]::IsNullOrWhiteSpace($EffectiveOidcRequestUrl)) {
+        Remove-Item Env:PKR_VAR_oidc_request_url -ErrorAction SilentlyContinue
+    }
+    else {
+        $ENV:PKR_VAR_oidc_request_url = $EffectiveOidcRequestUrl
+    }
+
+    $EffectiveOidcRequestToken = $oidc_request_token
+    if ([string]::IsNullOrWhiteSpace($EffectiveOidcRequestToken)) {
+        $EffectiveOidcRequestToken = $ENV:ACTIONS_ID_TOKEN_REQUEST_TOKEN
+    }
+    if ([string]::IsNullOrWhiteSpace($EffectiveOidcRequestToken)) {
+        Remove-Item Env:PKR_VAR_oidc_request_token -ErrorAction SilentlyContinue
+    }
+    else {
+        $ENV:PKR_VAR_oidc_request_token = $EffectiveOidcRequestToken
+    }
 
     # Set replication regions from config locations (HCL list format for Packer)
     $Locations = $Y.azure["locations"]
@@ -162,12 +182,11 @@ function New-AzSharedWorkerImage {
     ## Set the github token for packer to use to install plugin from github
     $ENV:PACKER_GITHUB_API_TOKEN = $github_token
     if ($key -match "Trusted") {
-        $ENV:PKR_VAR_use_keyvault = "true"
-        $ENV:PKR_VAR_vault_name = "kv-central-us-cot"
+        Write-Host "Fetching CoT key for trusted image build"
+        $ENV:PKR_VAR_cotkey = Get-AzKeyVaultSecret -VaultName "kv-central-us-cot" -Name "cotkey" -AsPlainText -ErrorAction Stop
     }
     else {
-        $ENV:PKR_VAR_use_keyvault = "false"
-        $ENV:PKR_VAR_vault_name = "kv-central-us-key"
+        $ENV:PKR_VAR_cotkey = ""
     }
     packer init azure.pkr.hcl
     if ($PackerForceBuild) {
