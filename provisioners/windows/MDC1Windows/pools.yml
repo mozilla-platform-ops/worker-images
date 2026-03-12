@@ -9,7 +9,7 @@ pools:
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "master"
-    hash: "a8e31e6"
+    hash: "4d4cdcd"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -121,7 +121,7 @@ pools:
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "master"
-    hash: "a8e31e6"
+    hash: "4d4cdcd"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -135,7 +135,7 @@ pools:
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "master"
-    hash: "a8e31e6"
+    hash: "4d4cdcd"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
