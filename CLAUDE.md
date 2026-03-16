@@ -13,12 +13,12 @@ Builds virtual machine images for Mozilla's Taskcluster CI workers using Packer,
 1. **Config YAML** (`config/*.yaml`) defines each image: base OS, Azure/GCP settings, VM size, tags, and which Pester tests to run. Per-image configs inherit from `config/windows_production_defaults.yaml` (default values for shared image version, puppet version, git version, deployment ID, etc.).
 2. **Packer HCL templates** (`azure.pkr.hcl` for Azure/Windows, `gcp.pkr.hcl` for GCP/Linux, `packer/tceng-*.pkr.hcl` for TC Engineering pools) define the build steps.
 3. **PowerShell module** (`bin/WorkerImages/`) reads config YAML, merges with defaults, sets `PKR_VAR_*` environment variables, and invokes `packer build`. Key entry point: `New-AzSharedWorkerImage` for Azure SIG builds.
-4. **GitHub Actions** (`.github/workflows/`) orchestrate builds. Workflows read `windows_production_defaults.yaml` to generate build matrices. Key workflows:
-   - `sig-FXCI-nontrusted-parallel-build.yml` — Production Azure image builds
+4. **GitHub Actions** (`.github/workflows/`) orchestrate builds. Workflow helper scripts in `ci/` handle matrix generation, auth checks, and Taskcluster integration triggers. Key workflows:
+   - `sig-FXCI-parallel-build.yml` — Production Azure image builds (trusted + untrusted)
    - `sig-FXCI-nontrusted-parallel-build-alpha.yml` — Alpha Azure image builds
    - `gcp-fxci-parallel-alpha.yml` / `gcp-fxci.yml` — GCP Linux image builds
    - `os-integration.yml` — Triggers Taskcluster integration tests after builds
-   - `sig-trusted.yml` / `nonsig-trusted.yml` — Trusted image builds (with Key Vault COT keys)
+   - `sig-trusted.yml` / `nonsig-trusted.yml` — Single-image trusted builds (with Key Vault COT keys)
 
 ### Provisioning
 
@@ -82,8 +82,8 @@ pytest test/
 Builds are triggered via GitHub Actions workflow dispatch (not locally). The general flow:
 
 1. **Alpha builds** (testing): Trigger `sig-FXCI-nontrusted-parallel-build-alpha.yml` (Azure/Windows) or `gcp-fxci-parallel-alpha.yml` (GCP/Linux). These read `windows_production_defaults.yaml` `images.alpha` list. Alpha builds always use `packer build -force` (overwrites existing image).
-2. **Production builds**: Trigger `sig-FXCI-nontrusted-parallel-build.yml` (Azure) or `gcp-fxci.yml` (GCP). These use `images.production` list. Production builds create versioned images in Azure Shared Image Gallery.
-3. **Trusted builds**: `sig-trusted.yml` / `nonsig-trusted.yml` for images that need COT signing keys (chain-of-trust for Taskcluster).
+2. **Production builds**: Trigger `sig-FXCI-parallel-build.yml` (Azure) or `gcp-fxci.yml` (GCP). The Azure workflow builds the untrusted configs from `images.production` plus any trusted Azure configs found in `config/`. Production builds create versioned images in Azure Shared Image Gallery.
+3. **Single-image trusted builds**: `sig-trusted.yml` / `nonsig-trusted.yml` remain available for one-off trusted images that need COT signing keys (chain-of-trust for Taskcluster).
 
 ### Azure/Windows Build Flow
 
@@ -137,18 +137,18 @@ Update `config/windows_production_defaults.yaml` with the values for this releas
 
 Per-image configs (`config/win11-64-24h2.yaml`, etc.) use `"default"` for most fields so they inherit from production defaults. Only override values that differ per image (VM size, base OS SKU, test lists, gallery names).
 
-### 2. Build Untrusted Images
+### 2. Build Production Images
 
-Trigger `sig-FXCI-nontrusted-parallel-build.yml` via workflow dispatch. This:
-1. Reads `images.production` from `windows_production_defaults.yaml` to build a matrix
+Trigger `sig-FXCI-parallel-build.yml` via workflow dispatch. This:
+1. Reads `images.production` from `windows_production_defaults.yaml` and auto-discovers trusted Azure configs in `config/` to build a matrix
 2. Checks the user is in `.github/relsre.json`
-3. Builds all production images in parallel via Packer into Azure Shared Image Gallery
+3. Builds all production images in parallel via Packer into Azure Shared Image Gallery, using the trusted or untrusted Azure subscription per config
 4. Each image is versioned (e.g., `win11_64_24h2` version `1.3.0`) and replicated to multiple Azure regions
 5. Downloads the generated SBOM markdown from each build VM
 6. Commits SBOMs to `sboms/` on main
-7. Triggers OS integration tests for each image (excluding `win2022` builders and `a64` builders)
+7. Triggers OS integration tests for untrusted tester images (excluding `win2022` builders and `a64` builders)
 
-### 3. Build Trusted Images
+### 3. Build Single Trusted Images
 
 Trigger `sig-trusted.yml` for each trusted image (dropdown selection). Trusted images run in a separate Azure subscription with access to Key Vault for COT signing keys. The workflow builds one image at a time and commits its SBOM.
 
