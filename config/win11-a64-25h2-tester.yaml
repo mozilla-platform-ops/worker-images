@@ -7,7 +7,7 @@ image:
 sharedimage:
   gallery_name: "win11_a64_25h2_tester"
   image_name: "win11_a64_25h2_tester"
-  image_version: "default"
+  image_version: 1.0.0
 azure:
   managed_image_resource_group_name: "default"
   managed_image_storage_account_type: "default"
@@ -21,8 +21,8 @@ vm:
     worker_pool_id: win11-a64-25h2-tester
     sourceOrganization: "default"
     sourceRepository: "default"
-    sourceBranch: "default"
-    deploymentId: "default"
+    sourceBranch: "master"
+    deploymentId: "82086a7"
     managed_by: "default"
 tests:
   - error_reporting.tests.ps1
