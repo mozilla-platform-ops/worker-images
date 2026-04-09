@@ -72,6 +72,7 @@ pools:
     nodes:
     - nuc13-004
     - nuc13-005
+    - nuc13-066
     - nuc13-159
     - nuc13-160
   - name: "win11-64-24h2-hw-alpha"
@@ -174,7 +175,6 @@ pools:
     - nuc13-063
     - nuc13-064
     - nuc13-065
-    - nuc13-066
     - nuc13-067
     - nuc13-068
     - nuc13-069
