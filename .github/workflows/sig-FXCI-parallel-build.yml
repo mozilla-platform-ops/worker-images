@@ -63,8 +63,6 @@ jobs:
           CLIENT_ID: ${{ secrets[matrix.client_id_secret] }}
           CONFIG: ${{ matrix.config }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OIDC_REQUEST_TOKEN: ${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}
-          OIDC_REQUEST_URL: ${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}
           SUBSCRIPTION_ID: ${{ secrets[matrix.subscription_id_secret] }}
           TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         run: ./ci/build-azure-shared-worker-image.ps1
