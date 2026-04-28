@@ -11,6 +11,21 @@ sharedimage:
 azure:
   managed_image_resource_group_name: "default"
   managed_image_storage_account_type: "default"
+  locations:
+    - canadacentral
+    - canadaeast
+    - centralindia
+    - eastus
+    - eastus2
+    - northcentralus
+    - northeurope
+    - southindia
+    - southcentralus
+    - southeastasia
+    - uksouth
+    - westus
+    - westus2
+    - westus3
 vm:
   puppet_version: "default"
   git_version: "default"
