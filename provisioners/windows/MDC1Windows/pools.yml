@@ -54,9 +54,7 @@ pools:
     secret_date: "01-20-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    - nuc13-001
-    - nuc13-002
-    - nuc13-003
+    - nuc13-901 # temp fake node — placeholder to prevent scripting failures on empty pool
   - name: "win11-64-24h2-hw-perf-debug"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
@@ -70,13 +68,7 @@ pools:
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    - nuc13-004
-    - nuc13-005
-    - nuc13-066
-    - nuc13-108
-    - nuc13-131
-    - nuc13-159
-    - nuc13-160
+    - nuc13-902 # temp fake node — placeholder to prevent scripting failures on empty pool
   - name: "win11-64-24h2-hw-alpha"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
@@ -91,30 +83,7 @@ pools:
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    - nuc13-006
-    - nuc13-007
-    - nuc13-008
-    - nuc13-009
-    - nuc13-010
-    - nuc13-011
-    - nuc13-012
-    - nuc13-013
-    - nuc13-014
-    - nuc13-015
-    - nuc13-016
-    - nuc13-017
-    - nuc13-018
-    - nuc13-019
-    - nuc13-020
-    - nuc13-022
-    - nuc13-023
-    - nuc13-024
-    - nuc13-025
-    - nuc13-026
-    - nuc13-027
-    - nuc13-028
-    - nuc13-029
-    - nuc13-030
+    - nuc13-903 # temp fake node — placeholder to prevent scripting failures on empty pool
   - name: "win11-64-24h2-hw-perf-sheriff"
     openvox_version: "8.19.2"
     puppet_version: "8.10.0"
@@ -142,6 +111,35 @@ pools:
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
+    - nuc13-001
+    - nuc13-002
+    - nuc13-003
+    - nuc13-004
+    - nuc13-005
+    - nuc13-006
+    - nuc13-007
+    - nuc13-008
+    - nuc13-009
+    - nuc13-010
+    - nuc13-011
+    - nuc13-012
+    - nuc13-013
+    - nuc13-014
+    - nuc13-015
+    - nuc13-016
+    - nuc13-017
+    - nuc13-018
+    - nuc13-019
+    - nuc13-020
+    - nuc13-022
+    - nuc13-023
+    - nuc13-024
+    - nuc13-025
+    - nuc13-026
+    - nuc13-027
+    - nuc13-028
+    - nuc13-029
+    - nuc13-030
     - nuc13-031
     - nuc13-032
     - nuc13-033
@@ -177,6 +175,7 @@ pools:
     - nuc13-063
     - nuc13-064
     - nuc13-065
+    - nuc13-066
     - nuc13-067
     - nuc13-068
     - nuc13-069
@@ -217,6 +216,7 @@ pools:
     - nuc13-104
     - nuc13-105
     - nuc13-106
+    - nuc13-108
     - nuc13-109
     - nuc13-110
     - nuc13-111
@@ -238,6 +238,7 @@ pools:
     - nuc13-128
     - nuc13-129
     - nuc13-130
+    - nuc13-131
     - nuc13-132
     - nuc13-133
     - nuc13-134
@@ -265,6 +266,8 @@ pools:
     - nuc13-156
     - nuc13-157
     - nuc13-158
+    - nuc13-159
+    - nuc13-160
 defaults:
   NV_domain: "mdc1.mozilla.com"
 Validate:
