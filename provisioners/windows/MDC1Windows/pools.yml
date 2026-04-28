@@ -53,7 +53,8 @@ pools:
     hash: "99589a8"
     secret_date: "01-20-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
-    nodes: []
+    nodes:
+    - nuc13-989 # temp fake node — placeholder to prevent scripting failures on empty pool
   - name: "win11-64-24h2-hw-perf-debug"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
@@ -66,7 +67,8 @@ pools:
     hash: "90c5aec"
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
-    nodes: []
+    nodes:
+    - nuc13-989 # temp fake node — placeholder to prevent scripting failures on empty pool
   - name: "win11-64-24h2-hw-alpha"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
@@ -80,7 +82,8 @@ pools:
     hash: "f11339d"
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
-    nodes: []
+    nodes:
+    - nuc13-989 # temp fake node — placeholder to prevent scripting failures on empty pool
   - name: "win11-64-24h2-hw-perf-sheriff"
     openvox_version: "8.19.2"
     puppet_version: "8.10.0"
