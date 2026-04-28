@@ -41,6 +41,8 @@ pools:
     nodes:
     - t-nuc12-002
     - t-nuc12-003
+  # Down / offline nodes — bad PSU, persistent SSH failures, or awaiting hardware replacement.
+  # These nodes are not expected to run production work. Pool name is a placeholder pending final naming.
   - name: "win11-64-24h2-hw-relops1213"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
@@ -88,6 +90,8 @@ pools:
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
     - nuc13-902 # temp fake node — placeholder to prevent scripting failures on empty pool
+  # Questionable nodes — CPU suppression confirmed or notable floor events detected in stress testing.
+  # Not cleared for high-priority CPU-intensive work. Pending PSU inspection/replacement.
   - name: "win11-64-24h2-hw-alpha"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
@@ -266,21 +270,21 @@ pools:
     - nuc13-152
     - nuc13-153
     - nuc13-160
-    - defaults:
-    - NV_domain:
-    - Validate:
-    - hw_class:
-    - "t-nuc12"
-    - "nuc13"
-    - Known-BAD:
-    - ##
-    - nuc13:
-    - ##
-    - ##
+defaults:
+  NV_domain: "mdc1.mozilla.com"
+Validate:
+    hw_class:
+        - "t-nuc12"
+        - "nuc13"
+Known-BAD:
+  ## Add comment comment above the name of the node
+  nuc13:
+    ## Dead.
+    ## https://mozilla-hub.atlassian.net/browse/RELOPS-1555?focusedCommentId=1076567
     - nuc13-112
-    - ##
-    - ##
+    ## TLS errors on PXE boot.
+    ## https://mozilla-hub.atlassian.net/browse/RELOPS-1555?focusedCommentId=1076567
     - nuc13-107
-    - ##
-    - ##
+    ## Dead
+    ## Different model as well
     - t-nuc12-001
