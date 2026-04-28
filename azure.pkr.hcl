@@ -197,6 +197,7 @@ variable "replication_regions" {
   description = "List of Azure regions to replicate the shared image to"
   default = [
     "canadacentral",
+    "canadaeast",
     "centralindia",
     "eastus",
     "eastus2",
@@ -204,6 +205,7 @@ variable "replication_regions" {
     "northeurope",
     "southindia",
     "southcentralus",
+    "southeastasia",
     "uksouth",
     "westus",
     "westus2",
