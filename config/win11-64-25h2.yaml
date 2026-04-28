@@ -2,15 +2,30 @@
 image:
   publisher: MicrosoftWindowsDesktop
   offer: Windows-11
-  sku: win11-25h2-ent
+  sku: win11-25h2-avd
   version: latest
 sharedimage:
-  gallery_name: "win116425h2"
-  image_name: "win116425h2"
-  image_version: "1.0.0"
+  gallery_name: "win11_64_25h2"
+  image_name: "win11_64_25h2"
+  image_version: "1.0.2"
 azure:
   managed_image_resource_group_name: "default"
   managed_image_storage_account_type: "default"
+  locations:
+    - canadacentral
+    - canadaeast
+    - centralindia
+    - eastus
+    - eastus2
+    - northcentralus
+    - northeurope
+    - southindia
+    - southcentralus
+    - southeastasia
+    - uksouth
+    - westus
+    - westus2
+    - westus3
 vm:
   puppet_version: "default"
   git_version: "default"
@@ -21,8 +36,8 @@ vm:
     worker_pool_id: win11-64-25h2
     sourceOrganization: "default"
     sourceRepository: "default"
-    sourceBranch: "RELOPS-2218-win11-25h2-gpu-a10-drivers"
-    deploymentId: "NA"
+    sourceBranch: "default"
+    deploymentId: "default"
     managed_by: "default"
 tests:
   - win11_sdk_tests.ps1

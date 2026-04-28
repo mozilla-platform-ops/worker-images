@@ -9,7 +9,7 @@ pools:
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "master"
-    hash: "9af2bb8"
+    hash: "4d4cdcd"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -34,8 +34,8 @@ pools:
     image: "win11-24H2-NUC-01-16-2025"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "RELOPS-1946-process"
-    hash: "4623277"
+    src_Branch: "RELOPS-2195-thermal"
+    hash: "e47164b"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -50,7 +50,7 @@ pools:
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "RELOPS-2235"
-    hash: "157b864"
+    hash: "99589a8"
     secret_date: "01-20-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -65,13 +65,16 @@ pools:
     image: "win11-24H2-NUC-01-16-2025"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "RELOPS-2195"
-    hash: "8ac7cf9"
+    src_Branch: "RELOPS-2321"
+    hash: "90c5aec"
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
     - nuc13-004
     - nuc13-005
+    - nuc13-066
+    - nuc13-108
+    - nuc13-131
     - nuc13-159
     - nuc13-160
   - name: "win11-64-24h2-hw-alpha"
@@ -83,8 +86,8 @@ pools:
     image: "win11-24H2-NUC-01-16-2025"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "RELOPS-1946-process"
-    hash: "4623277"
+    src_Branch: "RELOPS-2315"
+    hash: "f11339d"
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -121,7 +124,7 @@ pools:
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "master"
-    hash: "9effb8f"
+    hash: "7511c8e"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -135,7 +138,7 @@ pools:
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "master"
-    hash: "9effb8f"
+    hash: "7511c8e"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -174,7 +177,6 @@ pools:
     - nuc13-063
     - nuc13-064
     - nuc13-065
-    - nuc13-066
     - nuc13-067
     - nuc13-068
     - nuc13-069
@@ -215,7 +217,6 @@ pools:
     - nuc13-104
     - nuc13-105
     - nuc13-106
-    - nuc13-108
     - nuc13-109
     - nuc13-110
     - nuc13-111
@@ -237,7 +238,6 @@ pools:
     - nuc13-128
     - nuc13-129
     - nuc13-130
-    - nuc13-131
     - nuc13-132
     - nuc13-133
     - nuc13-134

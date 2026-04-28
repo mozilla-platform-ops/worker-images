@@ -130,7 +130,7 @@ A production deployment builds new versioned machine images and publishes them t
 ### 1. Prepare the Config
 
 Update `config/windows_production_defaults.yaml` with the values for this release:
-- `sharedimage.image_version` — Bump the version (e.g., `1.2.0` to `1.3.0`). All production images that set `image_version: "default"` inherit this.
+- `sharedimage.image_version` — Bump the version (e.g., `1.2.0` to `1.3.1`). All production images that set `image_version: "default"` inherit this.
 - `vm.tags.deploymentId` — Set to the ronin_puppet commit hash to pin.
 - `vm.tags.sourceBranch` — Typically `master` for production.
 - `vm.puppet_version`, `vm.git_version`, `vm.openvox_version` — Update tool versions as needed.
@@ -143,7 +143,7 @@ Trigger `sig-FXCI-parallel-build.yml` via workflow dispatch. This:
 1. Reads `images.production` from `windows_production_defaults.yaml` and auto-discovers trusted Azure configs in `config/` to build a matrix
 2. Checks the user is in `.github/relsre.json`
 3. Builds all production images in parallel via Packer into Azure Shared Image Gallery, using the trusted or untrusted Azure subscription per config
-4. Each image is versioned (e.g., `win11_64_24h2` version `1.3.0`) and replicated to multiple Azure regions
+4. Each image is versioned (e.g., `win11_64_24h2` version `1.3.1`) and replicated to multiple Azure regions
 5. Downloads the generated SBOM markdown from each build VM
 6. Commits SBOMs to `sboms/` on main
 7. Triggers OS integration tests for untrusted tester images (excluding `win2022` builders and `a64` builders)

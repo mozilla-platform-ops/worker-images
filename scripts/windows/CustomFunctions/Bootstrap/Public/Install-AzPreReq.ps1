@@ -78,20 +78,6 @@ function Install-AzPreReq {
         ## Create bootstrap directory
         $null = New-Item -Path $local_dir -ItemType Directory -Force
 
-        ## Setup azcopy
-        Write-host "Downloading azcopy to $ENV:systemdrive\"
-        Invoke-DownloadWithRetry -Url "https://aka.ms/downloadazcopy-v10-windows" -Path "$env:systemdrive\azcopy.zip"
-        if (-Not (Test-Path "$ENV:systemdrive\azcopy.zip")) {
-            Write-Host "Failed to download azcopy"
-            Write-Log -message ('{0} :: Failed to download azcopy' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-            exit 1
-        }
-        Write-host "Downloaded azcopy to $ENV:systemdrive\azcopy.zip"
-        Expand-Archive -Path "$env:systemdrive\azcopy.zip" -DestinationPath "$env:systemdrive\azcopy"
-        $azcopy_path = Get-ChildItem "$env:systemdrive\azcopy" -Recurse | Where-Object { $_.Name -eq "azcopy.exe" }
-        Copy-Item $azcopy_path.FullName -Destination "$env:systemdrive\"
-        Remove-Item "$env:systemdrive\azcopy.zip"
-
         ## Download puppet, git, and manifest
         Invoke-DownloadWithRetry -Url "$ext_src/$puppet" -Path "$env:systemdrive\$puppet"
         Invoke-DownloadWithRetry -Url $git_url -Path "$env:systemdrive\$git"

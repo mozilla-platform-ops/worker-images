@@ -19,16 +19,16 @@ azure:
     - westus2
     - westus
 vm:
-  puppet_version: "default"
-  openvox_version: "default"
-  git_version: "default"
+  puppet_version: 8.10.0
+  git_version: 2.53.0
+  openvox_version: 8.25.0
   size: Standard_F8s_v2
   tags:
     base_image: win11642009azure
     worker_pool_id: win11-64-2009
     sourceOrganization: "default"
     sourceRepository: "default"
-    sourceBranch: "RELOPS-2252"
+    sourceBranch: "RELOPS-2328"
     deploymentId: "NA"
     managed_by: packer
 tests:

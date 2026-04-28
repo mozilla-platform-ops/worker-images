@@ -5,8 +5,8 @@ image:
   sku: win11-25h2-ent
   version: latest
 sharedimage:
-  gallery_name: "win11a6425h2testeralpha"
-  image_name: "win11a6425h2testeralpha"
+  gallery_name: "win11_a64_25h2_tester_alpha"
+  image_name: "win11_a64_25h2_tester_alpha"
   image_version: 1.0.0
 azure:
   managed_image_resource_group_name: rg-packer-worker-images
@@ -16,7 +16,7 @@ azure:
     - centralus
 vm:
   puppet_version: 8.10.0
-  openvox_version: 8.19.2
+  openvox_version: 8.25.0
   git_version: 2.53.0
   size: Standard_E8pds_v5
   tags:
@@ -24,7 +24,7 @@ vm:
     worker_pool_id: win11-a64-25h2-tester
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "RELOPS-2252"
+    sourceBranch: "RELOPS-2328"
     deploymentId: "NA"
     managed_by: packer
 tests:

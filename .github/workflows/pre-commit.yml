@@ -23,7 +23,7 @@ jobs:
       run: pip install pre-commit
 
     - name: Cache pre-commit environments
-      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: ~/.cache/pre-commit
         key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
@@ -41,7 +41,7 @@ jobs:
 
     - name: Get changed shell files
       id: changed-shell-files
-      uses: tj-actions/changed-files@7dee1b0c1557f278e5c7dc244927139d78c0e22a # v47.0.4
+      uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
       with:
         files: |
           **/*.sh
@@ -71,7 +71,7 @@ jobs:
 
     - name: Get changed PowerShell test files
       id: changed-ps-files
-      uses: tj-actions/changed-files@7dee1b0c1557f278e5c7dc244927139d78c0e22a # v47.0.4
+      uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
       with:
         files: |
           tests/**/*.ps1
