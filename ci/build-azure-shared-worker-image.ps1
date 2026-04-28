@@ -1,6 +1,14 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+if (-not [Environment]::GetEnvironmentVariable("OIDC_REQUEST_URL")) {
+    $env:OIDC_REQUEST_URL = [Environment]::GetEnvironmentVariable("ACTIONS_ID_TOKEN_REQUEST_URL")
+}
+
+if (-not [Environment]::GetEnvironmentVariable("OIDC_REQUEST_TOKEN")) {
+    $env:OIDC_REQUEST_TOKEN = [Environment]::GetEnvironmentVariable("ACTIONS_ID_TOKEN_REQUEST_TOKEN")
+}
+
 $requiredVars = @(
     "CONFIG",
     "GITHUB_TOKEN",
