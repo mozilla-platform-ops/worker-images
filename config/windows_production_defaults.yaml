@@ -4,14 +4,14 @@ azure:
   managed_image_storage_account_type: Standard_LRS
 vm:
   puppet_version: 8.10.0
-  git_version: 2.53.0
+  git_version: 2.54.0
   openvox_version: 8.24.2
   tags:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: master
     managed_by: packer
-    deploymentId: "96de7f5"
+    deploymentId: "0e15b55"
 images:
   production:
     - win10-64-2009
