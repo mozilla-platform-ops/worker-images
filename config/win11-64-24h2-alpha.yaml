@@ -3,7 +3,7 @@ image:
   publisher: MicrosoftWindowsDesktop
   offer: Windows-11
   sku: win11-24h2-avd
-  version: 26100.7171.251109
+  version: 26100.8246.260413
 sharedimage:
   gallery_name: "win11_64_24h2_alpha"
   image_name: "win11_64_24h2_alpha"
@@ -28,7 +28,7 @@ vm:
     worker_pool_id: win11-64-24h2
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "RELOPS-2328"
+    sourceBranch: "RELOPS-2349"
     deploymentId: "NA"
     managed_by: packer
 tests:
