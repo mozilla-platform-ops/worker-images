@@ -101,8 +101,8 @@ pools:
     image: "win11-24H2-NUC-01-16-2025"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "RELOPS-2321-5"
-    hash: "2356dc6"
+    src_Branch: "RELOPS-2321-6"
+    hash: "c2d2cb6"
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
