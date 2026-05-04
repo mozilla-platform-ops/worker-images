@@ -241,6 +241,7 @@ build {
     execute_command     = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect   = true
     pause_before        = "30s"
+    pause_after         = "90s"
     start_retry_timeout = "30m"
     scripts = [
       "${path.cwd}/scripts/linux/common/reboot.sh"
@@ -252,8 +253,7 @@ build {
       "googlecompute.gw-fxci-gcp-l1-2404-headless-alpha",
       "googlecompute.gw-fxci-gcp-l1-2404-arm64-headless-alpha"
     ]
-    execute_command   = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-    expect_disconnect = true
+    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     scripts = [
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-headless/fxci/nvidia-container-toolkit.sh"
     ]
@@ -267,6 +267,7 @@ build {
     execute_command     = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect   = true
     pause_before        = "30s"
+    pause_after         = "90s"
     start_retry_timeout = "30m"
     scripts = [
       "${path.cwd}/scripts/linux/common/reboot.sh"

@@ -29,12 +29,15 @@ curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dear
     sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
     sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
 
-apt-get update
+retry apt-get update
 ## Install nvidia-container-toolkit
-apt-get install -y nvidia-container-toolkit
+retry apt-get install -y nvidia-container-toolkit
+command -v nvidia-ctk
+nvidia-ctk --version
 ## Configure docker to use nvidia container runtime
 nvidia-ctk runtime configure --runtime=docker
 ## Restart docker daemon to take effect
 systemctl restart docker
 ## export the docker daemon config
 cat /etc/docker/daemon.json
+grep -q '"nvidia"' /etc/docker/daemon.json
