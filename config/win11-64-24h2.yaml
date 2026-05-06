@@ -7,7 +7,7 @@ image:
 sharedimage:
   gallery_name: "win11_64_24h2"
   image_name: "win11_64_24h2"
-  image_version: "1.3.2"
+  image_version: "1.3.3"
 azure:
   managed_image_resource_group_name: "default"
   managed_image_storage_account_type: "default"
@@ -22,7 +22,7 @@ vm:
     sourceOrganization: "default"
     sourceRepository: "default"
     sourceBranch: "default"
-    deploymentId: "7c150a4"
+    deploymentId: "default"
     managed_by: "default"
 tests:
   - win11_sdk_tests.ps1

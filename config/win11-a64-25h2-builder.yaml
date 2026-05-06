@@ -7,7 +7,7 @@ image:
 sharedimage:
   gallery_name: "win11_a64_25h2_builder"
   image_name: "win11_a64_25h2_builder"
-  image_version: "1.0.2"
+  image_version: "1.0.3"
 azure:
   managed_image_resource_group_name: "default"
   managed_image_storage_account_type: "default"
