@@ -15,7 +15,6 @@ vm:
 images:
   production:
     - win10-64-2009
-    - win11-64-2009
     - win11-64-24h2
     - win11-64-25h2
     - win11-a64-24h2-tester
@@ -25,7 +24,6 @@ images:
     - win2022-64-2009
   alpha:
     - win10-64-2009-alpha
-    - win11-64-2009-alpha
     - win11-64-24h2-alpha
     - win11-64-25h2-alpha
     - win11-a64-24h2-tester-alpha
