@@ -3,7 +3,7 @@ image:
   publisher: MicrosoftWindowsDesktop
   offer: Windows-11
   sku: win11-25h2-avd
-  version: 26200.8037.260306
+  version: latest
 sharedimage:
   gallery_name: "win11_64_25h2_alpha"
   image_name: "win11_64_25h2_alpha"
@@ -28,7 +28,7 @@ vm:
     worker_pool_id: win11-64-25h2-alpha
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "RELOPS-2317"
+    sourceBranch: "master"
     deploymentId: "NA"
     managed_by: packer
 tests:
