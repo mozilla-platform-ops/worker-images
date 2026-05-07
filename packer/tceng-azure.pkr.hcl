@@ -92,6 +92,8 @@ build {
   }
 
   provisioner "powershell" {
+    elevated_password = ""
+    elevated_user     = "SYSTEM"
     environment_vars = [
       "TASKCLUSTER_REF=${var.taskcluster_ref}",
       "TASKCLUSTER_VERSION=${var.taskcluster_version}",
