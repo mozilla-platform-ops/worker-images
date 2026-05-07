@@ -222,7 +222,9 @@ foreach ($service in $servicesToDisable) {
     "\Microsoft\Windows\WindowsUpdate\"
     "\Microsoft\XblGameSave\"
 ) | ForEach-Object {
-    Get-ScheduledTask -TaskPath $_ -ErrorAction Ignore | Disable-ScheduledTask -ErrorAction Ignore
+    Get-ScheduledTask -TaskPath $_ -ErrorAction Ignore |
+        Where-Object { $_.TaskName -notlike "packer-*" } |
+        Disable-ScheduledTask -ErrorAction Ignore
 } | Out-Null
 
 # install chocolatey package manager
