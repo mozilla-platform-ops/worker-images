@@ -32,6 +32,9 @@ MISC_PACKAGES=()
 MISC_PACKAGES+=(build-essential curl git gnupg-agent jq mercurial)
 # python things
 MISC_PACKAGES+=(python3-pip python3-certifi python3-psutil)
+# PyAutoGUI imports MouseInfo on Linux, which requires tkinter. Keep
+# python3-dev available for packages that still need native extension headers.
+MISC_PACKAGES+=(python3-tk python3-dev)
 # zstd packages
 MISC_PACKAGES+=(zstd python3-zstd)
 # install zstandard to avoid installing via pip and breaking via PEP 668 https://peps.python.org/pep-0668/
