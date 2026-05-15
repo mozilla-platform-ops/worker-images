@@ -22,6 +22,8 @@ def _load_module():
     setattr(base_module, "TransformSequence", DummyTransformSequence)
     setattr(util_taskcluster_module, "find_task_id", lambda _: "stub-task-id")
     setattr(util_taskcluster_module, "get_artifact", lambda *_: {})
+    setattr(util_taskcluster_module, "get_ancestors", lambda _: {})
+    setattr(util_taskcluster_module, "get_task_definition", lambda _: {})
 
     sys.modules["taskgraph"] = taskgraph_module
     sys.modules["taskgraph.transforms"] = transforms_module
@@ -134,6 +136,52 @@ class TestIntegrationTestTransform(unittest.TestCase):
         self.assertEqual(result[0]["task"]["payload"]["env"]["FOO"], "bar")
         # translations tasks are left alone
         self.assertNotIn("GECKO_HEAD_REV", result[1]["task"]["payload"]["env"])
+
+    def test_expand_translations_ancestors_replaces_placeholder(self):
+        # Pretend replicate emitted a single placeholder translations task and
+        # one unrelated gecko task. Stub the ancestor expansion to return two
+        # synthetic build taskdescs.
+        gecko_task = {
+            "label": "gecko-test-foo",
+            "attributes": {"replicate": "gecko"},
+            "task": {},
+        }
+        translations_placeholder = {
+            "label": "translations-all-pipeline-ru-en-1",
+            "attributes": {"replicate": "translations"},
+            "task": {"workerType": "succeed"},
+        }
+        synthesized = [
+            {"label": "translations-build-ru-en", "attributes": {"replicate": "translations"}, "task": {}},
+            {"label": "translations-train-ru-en", "attributes": {"replicate": "translations"}, "task": {}},
+        ]
+        self.mod._fetch_translations_ancestor_taskdescs = lambda: synthesized
+
+        result = list(
+            self.mod.expand_translations_ancestors(
+                None, [gecko_task, translations_placeholder]
+            )
+        )
+
+        labels = [t["label"] for t in result]
+        # Placeholder is dropped; gecko untouched; synthesized translations added
+        self.assertIn("gecko-test-foo", labels)
+        self.assertNotIn("translations-all-pipeline-ru-en-1", labels)
+        self.assertIn("translations-build-ru-en", labels)
+        self.assertIn("translations-train-ru-en", labels)
+
+    def test_expand_translations_ancestors_skips_when_no_translations(self):
+        # No translations task in input => no upstream lookup, output equals input.
+        self.mod._fetch_translations_ancestor_taskdescs = lambda: [
+            {"label": "translations-should-not-appear", "attributes": {"replicate": "translations"}, "task": {}},
+        ]
+        gecko_only = [
+            {"label": "gecko-test-foo", "attributes": {"replicate": "gecko"}, "task": {}},
+        ]
+
+        result = list(self.mod.expand_translations_ancestors(None, gecko_only))
+
+        self.assertEqual([t["label"] for t in result], ["gecko-test-foo"])
 
     def test_restore_gecko_revision_env_does_not_overwrite_existing(self):
         self.mod._fetch_gecko_revision_env = lambda: {
