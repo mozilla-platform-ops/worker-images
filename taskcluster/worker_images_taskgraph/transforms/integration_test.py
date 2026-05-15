@@ -1,11 +1,43 @@
 import logging
+from functools import cache
 
 from taskgraph.transforms.base import TransformSequence
+from taskgraph.util.taskcluster import find_task_id, get_artifact
 
 from worker_images_taskgraph.util.fxci import get_worker_pool_images
 
 logger = logging.getLogger(__name__)
 transforms = TransformSequence()
+
+GECKO_OS_INTEGRATION_INDEX = (
+    "gecko.v2.mozilla-central.latest.taskgraph.decision-os-integration"
+)
+
+
+@cache
+def _fetch_gecko_revision_env() -> dict[str, str]:
+    """Return the gecko revision env vars from the mc os-integration decision.
+
+    `mozilla_taskgraph.transforms.replicate` strips every `*_REV` env var from
+    replicated tasks. `run-task-hg` then can't find the revision to check out
+    and refuses with "task should be defined in terms of non-symbolic
+    revision". Re-fetch them from the decision task's `task-graph.json` so
+    replicated tasks check out the same gecko revision the decision ran on.
+    """
+    try:
+        decision_task_id = find_task_id(GECKO_OS_INTEGRATION_INDEX)
+        task_graph = get_artifact(decision_task_id, "public/task-graph.json")
+    except Exception as e:
+        logger.warning(f"could not fetch gecko os-integration decision: {e}")
+        return {}
+
+    for task in task_graph.values():
+        env = task.get("task", {}).get("payload", {}).get("env", {})
+        revs = {k: v for k, v in env.items() if k.endswith("_REV")}
+        if revs:
+            return revs
+
+    return {}
 
 
 def normalize_image_name(image_name: str) -> str:
@@ -108,6 +140,24 @@ def change_worker_pool_to_alpha(config, tasks):
             task["task"]["scopes"] = [
                 scope.replace(old_pool, new_pool) for scope in task["task"]["scopes"]
             ]
+        yield task
+
+
+@transforms.add
+def restore_gecko_revision_env(config, tasks):
+    """Re-inject `*_REV` env vars stripped by mozilla_taskgraph's replicate."""
+    revs = None
+    for task in tasks:
+        if task.get("attributes", {}).get("replicate") != "gecko":
+            yield task
+            continue
+
+        if revs is None:
+            revs = _fetch_gecko_revision_env()
+
+        env = task["task"].setdefault("payload", {}).setdefault("env", {})
+        for k, v in revs.items():
+            env.setdefault(k, v)
         yield task
 
 
