@@ -108,6 +108,8 @@ jobs:
     name: "Filter matrices to successful packer builds"
     runs-on: ubuntu-latest
     if: ${{ !cancelled() }}
+    permissions:
+      actions: read
     outputs:
       wiz_matrix: ${{ steps.filter.outputs.wiz_matrix }}
       os_integration_matrix: ${{ steps.filter.outputs.os_integration_matrix }}
