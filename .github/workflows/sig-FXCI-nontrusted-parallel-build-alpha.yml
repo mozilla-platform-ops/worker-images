@@ -144,6 +144,7 @@ jobs:
 
   os-integration:
     needs: [prepare-matrix, packer]
+    if: ${{ !cancelled() }}
     name: "OS Integration Tests - ${{ matrix.config }}"
     strategy:
       fail-fast: false

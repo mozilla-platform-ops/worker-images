@@ -103,19 +103,40 @@ jobs:
           }
           New-GCPWorkerImage @Vars
 
+  wiz-scan:
+    needs: [prepare-matrix, packer]
+    name: "Wiz Scan - ${{ matrix.config }}"
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        if: ${{ !contains(matrix.config, 'trusted') }}
+
+      - id: set-gcp-vars
+        name: Set project and image metadata
+        if: ${{ !contains(matrix.config, 'trusted') }}
+        shell: pwsh
+        run: |
+          Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
+          Set-GCPWorkerImageName -Key '${{ matrix.config }}'
+          Set-GCPWorkerImageProject -Key '${{ matrix.config }}'
+
       - name: Download Wiz CLI
-        if: ${{ success() && !contains(matrix.config, 'trusted') }}
+        if: ${{ !contains(matrix.config, 'trusted') }}
         run: curl -o wizcli https://downloads.wiz.io/v1/wizcli/latest/wizcli-linux-amd64 && chmod +x wizcli
 
       - name: Authenticate to Wiz
-        if: ${{ success() && !contains(matrix.config, 'trusted') }}
+        if: ${{ !contains(matrix.config, 'trusted') }}
         run: ./wizcli auth --id "$WIZ_CLIENT_ID" --secret "$WIZ_CLIENT_SECRET"
         env:
           WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
           WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
 
       - name: Run wiz-cli scan
-        if: ${{ success() && !contains(matrix.config, 'trusted') }}
+        if: ${{ !contains(matrix.config, 'trusted') }}
         run: |
           ./wizcli vm-image scan \
           --id ${{ steps.set-gcp-vars.outputs.IMAGENAME }} \
@@ -130,6 +151,7 @@ jobs:
 
   os-integration:
     needs: [prepare-matrix, packer]
+    if: ${{ !cancelled() }}
     name: "OS Integration Tests - ${{ matrix.config }}"
     strategy:
       fail-fast: false
