@@ -21,6 +21,7 @@ tasks:
           - test
           - mochitest
           - browsertime
+          - snap-upstream-test
           - web-platform-tests
       exclude-attrs:
         test_platform:

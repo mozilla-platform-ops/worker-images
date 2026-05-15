@@ -17,6 +17,9 @@ on:
         - win11-a64-24h2-builder-alpha
         - win11-a64-25h2-builder-alpha
         - win2022-64-2009-alpha
+        - gw-fxci-gcp-l1-2404-gui-alpha
+        - gw-fxci-gcp-l1-2404-headless-alpha
+        - gw-fxci-gcp-l1-2404-arm64-headless-alpha
       image_name:
         type: string
         description: Optional shared image name override
@@ -70,11 +73,17 @@ jobs:
             Set-PSRepository PSGallery -InstallationPolicy Trusted
             Install-Module powershell-yaml -ErrorAction Stop
             $yaml = ConvertFrom-Yaml (Get-Content "config/$($env:CONFIG).yaml" -Raw)
-            $imageName = $yaml.sharedimage.image_name
+            # Windows configs use sharedimage.image_name (Azure Shared Image Gallery name).
+            # Linux GCP configs use image.image_name (GCP image name).
+            if ($yaml.sharedimage.image_name) {
+              $imageName = $yaml.sharedimage.image_name
+            } else {
+              $imageName = $yaml.image.image_name
+            }
           }
 
           if (-not $imageName) {
-            Write-Host "::error ::Unable to determine shared image name"
+            Write-Host "::error ::Unable to determine image name from config/$($env:CONFIG).yaml"
             exit 1
           }
 
