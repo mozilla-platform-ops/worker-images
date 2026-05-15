@@ -113,6 +113,8 @@ jobs:
     outputs:
       wiz_matrix: ${{ steps.filter.outputs.wiz_matrix }}
       os_integration_matrix: ${{ steps.filter.outputs.os_integration_matrix }}
+      has_wiz_targets: ${{ steps.filter.outputs.has_wiz_targets }}
+      has_os_integration_targets: ${{ steps.filter.outputs.has_os_integration_targets }}
     steps:
       - id: filter
         name: Query run jobs API for successful packer entries
@@ -131,22 +133,26 @@ jobs:
           Write-Host "Successful packer configs: $($successful -join ', ')"
 
           # Wiz runs against every successful non-trusted build.
-          $wizConfigs = $successful | Where-Object { $_ -notmatch '^trusted-' }
-          $wizMatrix = @{ config = @($wizConfigs) } | ConvertTo-Json -Compress
+          $wizConfigs = @($successful | Where-Object { $_ -notmatch '^trusted-' })
+          $wizMatrix = @{ config = $wizConfigs } | ConvertTo-Json -Compress
           Write-Host "wiz_matrix=$wizMatrix"
           "wiz_matrix=$wizMatrix" >> $env:GITHUB_OUTPUT
+          $hasWiz = if ($wizConfigs.Count -gt 0) { 'true' } else { 'false' }
+          "has_wiz_targets=$hasWiz" >> $env:GITHUB_OUTPUT
 
           # os-integration runs against configs that were both in the original
           # os_integration_matrix (level-1) AND succeeded in packer.
           $original = ConvertFrom-Json $env:ORIGINAL_OS_INT_MATRIX
-          $osIntConfigs = $original.config | Where-Object { $successful -contains $_ }
-          $osIntMatrix = @{ config = @($osIntConfigs) } | ConvertTo-Json -Compress
+          $osIntConfigs = @($original.config | Where-Object { $successful -contains $_ })
+          $osIntMatrix = @{ config = $osIntConfigs } | ConvertTo-Json -Compress
           Write-Host "os_integration_matrix=$osIntMatrix"
           "os_integration_matrix=$osIntMatrix" >> $env:GITHUB_OUTPUT
+          $hasOsInt = if ($osIntConfigs.Count -gt 0) { 'true' } else { 'false' }
+          "has_os_integration_targets=$hasOsInt" >> $env:GITHUB_OUTPUT
 
   wiz-scan:
     needs: [find-successful-builds]
-    if: ${{ fromJson(needs.find-successful-builds.outputs.wiz_matrix).config[0] != null }}
+    if: ${{ needs.find-successful-builds.outputs.has_wiz_targets == 'true' }}
     name: "Wiz Scan - ${{ matrix.config }}"
     runs-on: ubuntu-latest
     strategy:
@@ -187,7 +193,7 @@ jobs:
 
   os-integration:
     needs: [find-successful-builds]
-    if: ${{ fromJson(needs.find-successful-builds.outputs.os_integration_matrix).config[0] != null }}
+    if: ${{ needs.find-successful-builds.outputs.has_os_integration_targets == 'true' }}
     name: "OS Integration Tests - ${{ matrix.config }}"
     strategy:
       fail-fast: false
