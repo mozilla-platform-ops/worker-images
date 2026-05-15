@@ -151,7 +151,6 @@ jobs:
       actions: read
     outputs:
       os_integration_matrix: ${{ steps.filter.outputs.os_integration_matrix }}
-      has_os_integration_targets: ${{ steps.filter.outputs.has_os_integration_targets }}
     steps:
       - id: filter
         name: Query run jobs API for successful packer entries
@@ -172,14 +171,11 @@ jobs:
           $original = ConvertFrom-Json $env:ORIGINAL_OS_INT_MATRIX
           $osIntConfigs = @($original.config | Where-Object { $successful -contains $_ })
           $osIntMatrix = @{ config = $osIntConfigs } | ConvertTo-Json -Compress
-          Write-Host "os_integration_matrix=$osIntMatrix"
+          Write-Host "os_integration_matrix=$osIntMatrix (count=$($osIntConfigs.Count))"
           "os_integration_matrix=$osIntMatrix" >> $env:GITHUB_OUTPUT
-          $hasOsInt = if ($osIntConfigs.Count -gt 0) { 'true' } else { 'false' }
-          "has_os_integration_targets=$hasOsInt" >> $env:GITHUB_OUTPUT
 
   os-integration:
     needs: [find-successful-builds]
-    if: ${{ needs.find-successful-builds.outputs.has_os_integration_targets == 'true' }}
     name: "OS Integration Tests - ${{ matrix.config }}"
     strategy:
       fail-fast: false
