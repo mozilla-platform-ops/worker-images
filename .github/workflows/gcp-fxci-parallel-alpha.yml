@@ -103,21 +103,58 @@ jobs:
           }
           New-GCPWorkerImage @Vars
 
-  wiz-scan:
+  find-successful-builds:
     needs: [prepare-matrix, packer]
-    name: "Wiz Scan - ${{ matrix.config }}"
+    name: "Filter matrices to successful packer builds"
     runs-on: ubuntu-latest
     if: ${{ !cancelled() }}
+    outputs:
+      wiz_matrix: ${{ steps.filter.outputs.wiz_matrix }}
+      os_integration_matrix: ${{ steps.filter.outputs.os_integration_matrix }}
+    steps:
+      - id: filter
+        name: Query run jobs API for successful packer entries
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ORIGINAL_OS_INT_MATRIX: ${{ needs.prepare-matrix.outputs.os_integration_matrix }}
+        run: |
+          $allJobs = gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs" --paginate | ConvertFrom-Json
+          $successful = @()
+          foreach ($job in $allJobs.jobs) {
+            if ($job.name -match '^Build (.+)$' -and $job.conclusion -eq 'success') {
+              $successful += $matches[1]
+            }
+          }
+          Write-Host "Successful packer configs: $($successful -join ', ')"
+
+          # Wiz runs against every successful non-trusted build.
+          $wizConfigs = $successful | Where-Object { $_ -notmatch '^trusted-' }
+          $wizMatrix = @{ config = @($wizConfigs) } | ConvertTo-Json -Compress
+          Write-Host "wiz_matrix=$wizMatrix"
+          "wiz_matrix=$wizMatrix" >> $env:GITHUB_OUTPUT
+
+          # os-integration runs against configs that were both in the original
+          # os_integration_matrix (level-1) AND succeeded in packer.
+          $original = ConvertFrom-Json $env:ORIGINAL_OS_INT_MATRIX
+          $osIntConfigs = $original.config | Where-Object { $successful -contains $_ }
+          $osIntMatrix = @{ config = @($osIntConfigs) } | ConvertTo-Json -Compress
+          Write-Host "os_integration_matrix=$osIntMatrix"
+          "os_integration_matrix=$osIntMatrix" >> $env:GITHUB_OUTPUT
+
+  wiz-scan:
+    needs: [find-successful-builds]
+    if: ${{ fromJson(needs.find-successful-builds.outputs.wiz_matrix).config[0] != null }}
+    name: "Wiz Scan - ${{ matrix.config }}"
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
+      matrix: ${{ fromJson(needs.find-successful-builds.outputs.wiz_matrix) }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-        if: ${{ !contains(matrix.config, 'trusted') }}
 
       - id: set-gcp-vars
         name: Set project and image metadata
-        if: ${{ !contains(matrix.config, 'trusted') }}
         shell: pwsh
         run: |
           Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
@@ -125,18 +162,15 @@ jobs:
           Set-GCPWorkerImageProject -Key '${{ matrix.config }}'
 
       - name: Download Wiz CLI
-        if: ${{ !contains(matrix.config, 'trusted') }}
         run: curl -o wizcli https://downloads.wiz.io/v1/wizcli/latest/wizcli-linux-amd64 && chmod +x wizcli
 
       - name: Authenticate to Wiz
-        if: ${{ !contains(matrix.config, 'trusted') }}
         run: ./wizcli auth --id "$WIZ_CLIENT_ID" --secret "$WIZ_CLIENT_SECRET"
         env:
           WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
           WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
 
       - name: Run wiz-cli scan
-        if: ${{ !contains(matrix.config, 'trusted') }}
         run: |
           ./wizcli vm-image scan \
           --id ${{ steps.set-gcp-vars.outputs.IMAGENAME }} \
@@ -150,12 +184,12 @@ jobs:
           WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
 
   os-integration:
-    needs: [prepare-matrix, packer]
-    if: ${{ !cancelled() }}
+    needs: [find-successful-builds]
+    if: ${{ fromJson(needs.find-successful-builds.outputs.os_integration_matrix).config[0] != null }}
     name: "OS Integration Tests - ${{ matrix.config }}"
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.prepare-matrix.outputs.os_integration_matrix) }}
+      matrix: ${{ fromJson(needs.find-successful-builds.outputs.os_integration_matrix) }}
     uses: ./.github/workflows/os-integration.yml
     with:
       config: ${{ matrix.config }}
