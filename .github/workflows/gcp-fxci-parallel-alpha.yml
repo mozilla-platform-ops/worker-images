@@ -146,6 +146,7 @@ jobs:
 
   wiz-scan:
     needs: [find-successful-builds]
+    if: ${{ !cancelled() && needs.find-successful-builds.result == 'success' }}
     name: "Wiz Scan - ${{ matrix.config }}"
     runs-on: ubuntu-latest
     strategy:
@@ -186,6 +187,7 @@ jobs:
 
   os-integration:
     needs: [find-successful-builds]
+    if: ${{ !cancelled() && needs.find-successful-builds.result == 'success' }}
     name: "OS Integration Tests - ${{ matrix.config }}"
     strategy:
       fail-fast: false
