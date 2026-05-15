@@ -142,12 +142,45 @@ jobs:
           commit_message: "Update release notes"
           file_pattern: "sboms/*.md"
 
-  os-integration:
+  find-successful-builds:
     needs: [prepare-matrix, packer]
+    name: "Filter os-integration matrix to successful packer builds"
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() }}
+    permissions:
+      actions: read
+    outputs:
+      os_integration_matrix: ${{ steps.filter.outputs.os_integration_matrix }}
+    steps:
+      - id: filter
+        name: Query run jobs API for successful packer entries
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ORIGINAL_OS_INT_MATRIX: ${{ needs.prepare-matrix.outputs.os_integration_matrix }}
+        run: |
+          $allJobs = gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs" --paginate | ConvertFrom-Json
+          $successful = @()
+          foreach ($job in $allJobs.jobs) {
+            if ($job.name -match '^Build (.+)$' -and $job.conclusion -eq 'success') {
+              $successful += $matches[1]
+            }
+          }
+          Write-Host "Successful packer configs: $($successful -join ', ')"
+
+          $original = ConvertFrom-Json $env:ORIGINAL_OS_INT_MATRIX
+          $osIntConfigs = $original.config | Where-Object { $successful -contains $_ }
+          $osIntMatrix = @{ config = @($osIntConfigs) } | ConvertTo-Json -Compress
+          Write-Host "os_integration_matrix=$osIntMatrix"
+          "os_integration_matrix=$osIntMatrix" >> $env:GITHUB_OUTPUT
+
+  os-integration:
+    needs: [find-successful-builds]
+    if: ${{ fromJson(needs.find-successful-builds.outputs.os_integration_matrix).config[0] != null }}
     name: "OS Integration Tests - ${{ matrix.config }}"
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.prepare-matrix.outputs.os_integration_matrix) }}
+      matrix: ${{ fromJson(needs.find-successful-builds.outputs.os_integration_matrix) }}
     uses: ./.github/workflows/os-integration.yml
     with:
       config: ${{ matrix.config }}
