@@ -1,14 +1,8 @@
 import logging
-import re
 from functools import cache
 
 from taskgraph.transforms.base import TransformSequence
-from taskgraph.util.taskcluster import (
-    find_task_id,
-    get_ancestors,
-    get_artifact,
-    get_task_definition,
-)
+from taskgraph.util.taskcluster import find_task_id, get_artifact
 
 from worker_images_taskgraph.util.fxci import get_worker_pool_images
 
@@ -17,15 +11,6 @@ transforms = TransformSequence()
 
 GECKO_OS_INTEGRATION_INDEX = (
     "gecko.v2.mozilla-central.latest.taskgraph.decision-os-integration"
-)
-TRANSLATIONS_PIPELINE_INDEX = (
-    "translations.v2.translations.latest.taskgraph.decision-run-pipeline"
-)
-# Walk ancestors of the translations all-pipeline task. Skip the decision /
-# action / docker-image tasks (their definitions don't survive replication).
-# Mirrors `include-deps` in `taskcluster/kinds/integration-test/kind.yml`.
-TRANSLATIONS_INCLUDE_DEPS = re.compile(
-    r"^(?!(Decision|Action|PR action|build-docker-image|docker-image)).*"
 )
 
 
@@ -53,109 +38,6 @@ def _fetch_gecko_revision_env() -> dict[str, str]:
             return revs
 
     return {}
-
-
-def _rewrite_datestamps(task_def: dict) -> None:
-    """Make timestamps relative so the replicated task can be re-scheduled."""
-    task_def["created"] = {"relative-datestamp": "0 seconds"}
-    task_def["deadline"] = {"relative-datestamp": "1 day"}
-    task_def["expires"] = {"relative-datestamp": "1 month"}
-
-    payload = task_def.get("payload", {})
-    artifacts = payload.get("artifacts")
-    if isinstance(artifacts, dict):
-        for k in artifacts:
-            if "expires" in artifacts[k]:
-                artifacts[k]["expires"] = {"relative-datestamp": "1 month"}
-    elif isinstance(artifacts, list):
-        for a in artifacts:
-            if "expires" in a:
-                a["expires"] = {"relative-datestamp": "1 month"}
-
-
-def _remove_revisions(task_def: dict) -> None:
-    """Strip absolute `*_REV` env vars to avoid pointing at stale revisions."""
-    env = task_def.get("payload", {}).get("env", {})
-    for k in [k for k in env if k.endswith("_REV")]:
-        del env[k]
-
-
-def _replicate_ancestor_task(name_prefix: str, task_def: dict) -> dict:
-    """Normalize an upstream task definition into a replicated task description.
-
-    Matches the shape `mozilla_taskgraph.transforms.replicate` produces for the
-    original target tasks: name-prefixed, datestamps rewritten, scopes/level
-    dropped from 3 to 1, and no leftover dependencies.
-    """
-    _rewrite_datestamps(task_def)
-    _remove_revisions(task_def)
-
-    # taskQueueId never matches the staging cluster; let provisionerId/workerType
-    # be the source of truth.
-    task_def.pop("taskQueueId", None)
-    for key in ("provisionerId", "workerType"):
-        if key in task_def:
-            task_def[key] = task_def[key].replace("3", "1")
-
-    for i, scope in enumerate(task_def.get("scopes", [])):
-        task_def["scopes"][i] = scope.replace("gecko-level-3", "releng-level-1")
-
-    orig_name = task_def["metadata"]["name"]
-    task_def["metadata"]["name"] = f"{name_prefix}-{orig_name}"
-
-    return {
-        "label": task_def["metadata"]["name"],
-        "dependencies": {},
-        "description": task_def["metadata"].get("description", ""),
-        "task": task_def,
-        "attributes": {"replicate": name_prefix},
-    }
-
-
-@cache
-def _fetch_translations_ancestor_taskdescs() -> list[dict]:
-    """Return replicated taskdescs for ancestors of the translations pipeline.
-
-    `mozilla_taskgraph.transforms.replicate` doesn't honor `include-deps`, so
-    only the synthetic `all-pipeline` task (a `succeed` pseudo-worker) survives
-    the default flow. Walk that task's ancestors via Taskcluster's queue API
-    to pull in the real translations build/run tasks, mirroring the logic in
-    `fxci_config_taskgraph.util.integration.find_tasks`.
-    """
-    try:
-        decision_task_id = find_task_id(TRANSLATIONS_PIPELINE_INDEX)
-        task_graph = get_artifact(decision_task_id, "public/task-graph.json")
-    except Exception as e:
-        logger.warning(f"could not fetch translations decision: {e}")
-        return []
-
-    # Different ancestor task IDs can share the same task name (eg. cached
-    # toolchain-cuda-toolkit tasks from different decision runs). Replicating
-    # both would produce duplicate `translations-<name>` labels and crash
-    # taskgraph generation. Dedupe by label, keeping the first task ID seen.
-    ancestor_id_by_label: dict[str, str] = {}
-    for tid, t in task_graph.items():
-        if t.get("attributes", {}).get("stage") != "all-pipeline":
-            continue
-        try:
-            ancestors = get_ancestors(tid)
-        except Exception as e:
-            logger.warning(f"get_ancestors failed for {tid}: {e}")
-            continue
-        for aid, label in ancestors.items():
-            if TRANSLATIONS_INCLUDE_DEPS.match(label):
-                ancestor_id_by_label.setdefault(label, aid)
-
-    taskdescs: list[dict] = []
-    for aid in ancestor_id_by_label.values():
-        try:
-            task_def = get_task_definition(aid)
-        except Exception as e:
-            logger.warning(f"get_task_definition failed for {aid}: {e}")
-            continue
-        taskdescs.append(_replicate_ancestor_task("translations", task_def))
-
-    return taskdescs
 
 
 def normalize_image_name(image_name: str) -> str:
@@ -227,45 +109,11 @@ def get_image_compatible_alpha_worker_type(
 
 
 @transforms.add
-def expand_translations_ancestors(config, tasks):
-    """Replace replicate's translations output with ancestor-walked tasks.
-
-    `mozilla_taskgraph.transforms.replicate` silently ignores `include-deps`, so
-    the translations entry in `kind.yml` only ever produces a single
-    `succeed`-typed placeholder (no `-alpha` pool exists for the built-in
-    `succeed` worker, so even that gets dropped downstream and translations
-    effectively never validates anything). Drop replicate's translations
-    placeholder and emit replicated taskdescs for the real ancestor tasks
-    (build/pipeline steps) instead.
-    """
-    has_translations = False
-    for task in tasks:
-        if task.get("attributes", {}).get("replicate") == "translations":
-            has_translations = True
-            continue
-        yield task
-
-    if not has_translations:
-        return
-
-    for taskdesc in _fetch_translations_ancestor_taskdescs():
-        yield taskdesc
-
-
-@transforms.add
 def change_worker_pool_to_alpha(config, tasks):
     pool_images_by_pool = get_worker_pool_images()
     requested_images = get_normalized_images(list(config.params.get("images") or []))
 
     for task in tasks:
-        # Translations build pools don't have `-alpha` variants and aren't
-        # what we're validating in an image bump anyway. Keep them on the
-        # prod pool (already level-1 from the replicate step), matching
-        # the fxci-config PR behavior of "drop level, don't append -alpha".
-        if task.get("attributes", {}).get("replicate") == "translations":
-            yield task
-            continue
-
         provisioner_id = task["task"]["provisionerId"]
         worker_type = task["task"]["workerType"]
         old_pool = f"{provisioner_id}/{worker_type}"
