@@ -11,11 +11,6 @@ from worker_images_taskgraph.util.fxci import get_worker_pool_images
 class IntegrationTestStrategy(OptimizationStrategy):
 
     def should_remove_task(self, task, params, _) -> bool:
-        # Translations tasks stay on their prod pool (no `-alpha` retargeting),
-        # so the candidate image filter doesn't apply to them. Always keep them.
-        if task.attributes.get("replicate") == "translations":
-            return False
-
         task_queue_id = f"{task.task['provisionerId']}/{task.task['workerType']}"
         pool_images = get_worker_pool_images().get(task_queue_id, set())
 
