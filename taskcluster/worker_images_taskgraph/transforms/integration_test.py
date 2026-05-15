@@ -129,7 +129,11 @@ def _fetch_translations_ancestor_taskdescs() -> list[dict]:
         logger.warning(f"could not fetch translations decision: {e}")
         return []
 
-    ancestor_ids: set[str] = set()
+    # Different ancestor task IDs can share the same task name (eg. cached
+    # toolchain-cuda-toolkit tasks from different decision runs). Replicating
+    # both would produce duplicate `translations-<name>` labels and crash
+    # taskgraph generation. Dedupe by label, keeping the first task ID seen.
+    ancestor_id_by_label: dict[str, str] = {}
     for tid, t in task_graph.items():
         if t.get("attributes", {}).get("stage") != "all-pipeline":
             continue
@@ -140,10 +144,10 @@ def _fetch_translations_ancestor_taskdescs() -> list[dict]:
             continue
         for aid, label in ancestors.items():
             if TRANSLATIONS_INCLUDE_DEPS.match(label):
-                ancestor_ids.add(aid)
+                ancestor_id_by_label.setdefault(label, aid)
 
     taskdescs: list[dict] = []
-    for aid in ancestor_ids:
+    for aid in ancestor_id_by_label.values():
         try:
             task_def = get_task_definition(aid)
         except Exception as e:
