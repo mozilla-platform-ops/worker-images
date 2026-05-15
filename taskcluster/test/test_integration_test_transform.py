@@ -63,6 +63,43 @@ class TestIntegrationTestTransform(unittest.TestCase):
 
         self.assertEqual(selected, "win11-a64-25h2-tester-alpha")
 
+    def test_change_worker_pool_to_alpha_rewrites_pool_bound_scopes(self):
+        # `change_worker_pool_to_alpha` imported get_worker_pool_images via
+        # `from ... import`, so patch the binding in the transform module itself.
+        self.mod.get_worker_pool_images = lambda: {
+            "gecko-t/t-linux-2404-wayland-snap-alpha": {
+                "gw-fxci-gcp-l1-2404-amd64-gui-googlecompute-alpha"
+            },
+        }
+
+        class DummyConfig:
+            kind = "integration-test"
+            params = {"images": ["gw-fxci-gcp-l1-2404-amd64-gui-googlecompute-alpha"]}
+
+        task = {
+            "task": {
+                "provisionerId": "gecko-t",
+                "workerType": "t-linux-2404-wayland-snap",
+                "scopes": [
+                    "generic-worker:os-group:gecko-t/t-linux-2404-wayland-snap/snap_sudo",
+                    "queue:scheduler-id:relops-level-1",
+                ],
+            }
+        }
+
+        result = list(self.mod.change_worker_pool_to_alpha(DummyConfig(), [task]))
+
+        self.assertEqual(len(result), 1)
+        out = result[0]["task"]
+        self.assertEqual(out["workerType"], "t-linux-2404-wayland-snap-alpha")
+        self.assertEqual(
+            out["scopes"],
+            [
+                "generic-worker:os-group:gecko-t/t-linux-2404-wayland-snap-alpha/snap_sudo",
+                "queue:scheduler-id:relops-level-1",
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -98,7 +98,16 @@ def change_worker_pool_to_alpha(config, tasks):
             )
             continue
 
+        new_pool = f"{provisioner_id}/{new_worker_type}"
         task["task"]["workerType"] = new_worker_type
+        # Pool-bound scopes (eg. generic-worker:os-group:<pool>/<group>)
+        # reference the original prod pool id. Rewrite them to the alpha
+        # pool so the alpha worker honors them and the decision task can
+        # create the task with scopes it actually holds.
+        if old_pool != new_pool and "scopes" in task["task"]:
+            task["task"]["scopes"] = [
+                scope.replace(old_pool, new_pool) for scope in task["task"]["scopes"]
+            ]
         yield task
 
 
