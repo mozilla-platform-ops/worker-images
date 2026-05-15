@@ -254,6 +254,14 @@ def change_worker_pool_to_alpha(config, tasks):
     requested_images = get_normalized_images(list(config.params.get("images") or []))
 
     for task in tasks:
+        # Translations build pools don't have `-alpha` variants and aren't
+        # what we're validating in an image bump anyway. Keep them on the
+        # prod pool (already level-1 from the replicate step), matching
+        # the fxci-config PR behavior of "drop level, don't append -alpha".
+        if task.get("attributes", {}).get("replicate") == "translations":
+            yield task
+            continue
+
         provisioner_id = task["task"]["provisionerId"]
         worker_type = task["task"]["workerType"]
         old_pool = f"{provisioner_id}/{worker_type}"

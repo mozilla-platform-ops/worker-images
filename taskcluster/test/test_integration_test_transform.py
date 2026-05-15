@@ -137,6 +137,33 @@ class TestIntegrationTestTransform(unittest.TestCase):
         # translations tasks are left alone
         self.assertNotIn("GECKO_HEAD_REV", result[1]["task"]["payload"]["env"])
 
+    def test_change_worker_pool_to_alpha_skips_translations_tasks(self):
+        # Translations build pools don't have `-alpha` variants. Make sure
+        # the transform leaves translations tasks alone instead of dropping
+        # them via the "no -alpha pool" code path.
+        self.mod.get_worker_pool_images = lambda: {}
+
+        class DummyConfig:
+            kind = "integration-test"
+            params = {"images": ["whatever"]}
+
+        trans = {
+            "attributes": {"replicate": "translations"},
+            "task": {
+                "provisionerId": "translations-1",
+                "workerType": "b-linux-large-gcp-d2g",
+                "scopes": [],
+            },
+        }
+
+        result = list(self.mod.change_worker_pool_to_alpha(DummyConfig(), [trans]))
+
+        self.assertEqual(len(result), 1)
+        # Worker-type / scopes unchanged
+        self.assertEqual(
+            result[0]["task"]["workerType"], "b-linux-large-gcp-d2g"
+        )
+
     def test_expand_translations_ancestors_replaces_placeholder(self):
         # Pretend replicate emitted a single placeholder translations task and
         # one unrelated gecko task. Stub the ancestor expansion to return two
