@@ -35,6 +35,10 @@ MISC_PACKAGES+=(python3-pip python3-certifi python3-psutil)
 # PyAutoGUI imports MouseInfo on Linux, which requires tkinter. Keep
 # python3-dev available for packages that still need native extension headers.
 MISC_PACKAGES+=(python3-tk python3-dev)
+# Xlib events are not respected by Wayland even with Xwayland, so DTE tests
+# drive input through Wayland directly. wtype handles keystrokes, xdotool
+# covers the Xwayland path, and wayland-utils ships diagnostic helpers.
+MISC_PACKAGES+=(wtype wayland-utils xdotool)
 # zstd packages
 MISC_PACKAGES+=(zstd python3-zstd)
 # install zstandard to avoid installing via pip and breaking via PEP 668 https://peps.python.org/pep-0668/
