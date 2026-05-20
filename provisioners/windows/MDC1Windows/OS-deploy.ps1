@@ -108,12 +108,23 @@ function Update-GetBoot {
     write-host "Invoke-WebRequest @bootstrapSplat"
     write-host $bootstrapSplat.URI
 
-    $splat = @{
-        Url  = $bootstrapSplat.URI
-        Path = $bootstrapSplat.OutFile
-    }
+    if (-Not (Test-Path "D:\Secrets\pat.txt")) {
+        $splat = @{
+            Url  = $bootstrapSplat.URI
+            Path = $bootstrapSplat.OutFile
+        }
 
-    Invoke-DownloadWithRetry @splat
+        Invoke-DownloadWithRetry @splat
+    }
+    else {
+        $splat = @{
+            Url  = $bootstrapSplat.URI
+            Path = $bootstrapSplat.OutFile
+            PAT  = Get-Content "D:\Secrets\pat.txt"
+        }
+
+        Invoke-DownloadWithRetryGithub @splat
+    }
 
     $replacements = @(
         @{ OldString = "WorkerPoolId"; NewString = $WorkerPool },
@@ -306,17 +317,13 @@ function Invoke-DownloadWithRetry {
         $attemptStartTime = Get-Date
 
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-
-        Invoke-WebRequest `
-            -UseBasicParsing `
-            -Uri $Url `
-            -OutFile $Path `
-            -Headers @{ 'User-Agent' = 'Mozilla/5.0' }
+        Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $Path
 
         $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
         Write-Host "Package downloaded in $attemptSeconds seconds"
+        #Write-Log -message ('{0} :: Package downloaded in {1} seconds - {2:o}' -f $($MyInvocation.MyCommand.Name), $attemptSeconds, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
         break
-    }  
+    }   
         catch {
             $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
             Write-Warning "Package download failed in $attemptSeconds seconds"
@@ -400,22 +407,11 @@ function Invoke-DownloadWithRetryGithub {
     for ($retries = 20; $retries -gt 0; $retries--) {
         try {
             $attemptStartTime = Get-Date
-
-            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-
-            $headers = @{
-                'Accept'               = 'application/vnd.github+json'
-                'Authorization'        = "Bearer $($PAT)"
-                'X-GitHub-Api-Version' = '2022-11-28'
-                'User-Agent'           = 'Mozilla/5.0'
-            }
-
-            Invoke-WebRequest `
-                -UseBasicParsing `
-                -Uri $Url `
-                -OutFile $Path `
-                -Headers $headers
-
+            $webClient = New-Object System.Net.WebClient
+            $webClient.Headers.Add("Accept", "application/vnd.github+json")
+            $webClient.Headers.Add("Authorization", "Bearer $($PAT)")
+            $webClient.Headers.Add("X-GitHub-Api-Version", "2022-11-28")
+            $webClient.DownloadFile($Url, $Path)
             $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
             Write-Host "Package downloaded in $attemptSeconds seconds"
             #Write-Log -message ('{0} :: Package downloaded in {1} seconds - {2:o}' -f $($MyInvocation.MyCommand.Name), $attemptSeconds, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
@@ -697,11 +693,12 @@ if (!(Test-Path $setup)) {
     net use Z: /delete
 
     $splat = @{
-        Url  = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/$branch/provisioners/windows/MDC1Windows/base-autounattend.xml"
+        Url  = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$branch/provisioners/windows/MDC1Windows/base-autounattend.xml"
         Path = $unattend
+        PAT  = Get-Content $PATsecret_file
     }
 
-    Invoke-DownloadWithRetry @splat
+    Invoke-DownloadWithRetryGithub @splat
 
     $secret_YAML = Convertfrom-Yaml (Get-Content $secret_file -raw)
 
