@@ -411,11 +411,22 @@ function Invoke-DownloadWithRetryGithub {
     for ($retries = 20; $retries -gt 0; $retries--) {
         try {
             $attemptStartTime = Get-Date
-            $webClient = New-Object System.Net.WebClient
-            $webClient.Headers.Add("Accept", "application/vnd.github+json")
-            $webClient.Headers.Add("Authorization", "Bearer $($PAT)")
-            $webClient.Headers.Add("X-GitHub-Api-Version", "2022-11-28")
-            $webClient.DownloadFile($Url, $Path)
+
+            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+            $headers = @{
+                'Accept'               = 'application/vnd.github+json'
+                'Authorization'        = "Bearer $($PAT)"
+                'X-GitHub-Api-Version' = '2022-11-28'
+                'User-Agent'           = 'Mozilla/5.0'
+            }
+
+            Invoke-WebRequest `
+                -UseBasicParsing `
+                -Uri $Url `
+                -OutFile $Path `
+                -Headers $headers
+
             $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
             Write-Host "Package downloaded in $attemptSeconds seconds"
             #Write-Log -message ('{0} :: Package downloaded in {1} seconds - {2:o}' -f $($MyInvocation.MyCommand.Name), $attemptSeconds, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
