@@ -28,7 +28,7 @@ vm:
     worker_pool_id: win11-64-25h2-alpha
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "RELOPS-2372"
+    sourceBranch: "fix/azure-maintainsystem-inmutable"
     deploymentId: "NA"
     managed_by: packer
 tests:
