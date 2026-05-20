@@ -708,12 +708,11 @@ if (!(Test-Path $setup)) {
     net use Z: /delete
 
     $splat = @{
-        Url  = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$branch/provisioners/windows/MDC1Windows/base-autounattend.xml"
+        Url  = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/$branch/provisioners/windows/MDC1Windows/base-autounattend.xml"
         Path = $unattend
-        PAT  = Get-Content $PATsecret_file
     }
 
-    Invoke-DownloadWithRetryGithub @splat
+    Invoke-DownloadWithRetry @splat
 
     $secret_YAML = Convertfrom-Yaml (Get-Content $secret_file -raw)
 
