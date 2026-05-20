@@ -72,7 +72,15 @@ function Invoke-DownloadWithRetry {
     for ($retries = 20; $retries -gt 0; $retries--) {
         try {
             $attemptStartTime = Get-Date
-            (New-Object System.Net.WebClient).DownloadFile($Url, $Path)
+
+            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+            Invoke-WebRequest `
+                -UseBasicParsing `
+                -Uri $Url `
+                -OutFile $Path `
+                -Headers @{ 'User-Agent' = 'Mozilla/5.0' }
+
             $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
             Write-Host "Package downloaded in $attemptSeconds seconds"
             Write-Log -message ('{0} :: Package downloaded in {1} seconds - {2:o}' -f $($MyInvocation.MyCommand.Name), $attemptSeconds, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
@@ -369,13 +377,8 @@ Install-Choco
 
 # Fetch bootstrap.ps1
 $local_bootstrap = "C:\bootstrap\bootstrap.ps1"
-if (-Not (Test-Path "D:\Secrets\pat.txt")) {
-    $splat = @{ Url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/main/provisioners/windows/MDC1Windows/bootstrap.ps1"; Path = $local_bootstrap }
-    Invoke-DownloadWithRetry @splat
-} else {
-    $splat = @{ Url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/main/provisioners/windows/MDC1Windows/bootstrap.ps1"; Path = $local_bootstrap; PAT = Get-Content "D:\Secrets\pat.txt" }
-    Invoke-DownloadWithRetryGithub @splat
-}
+$splat = @{ Url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/main/provisioners/windows/MDC1Windows/bootstrap.ps1"; Path = $local_bootstrap }
+Invoke-DownloadWithRetry @splat
 
 # If we still don't have bootstrap, PXE fallback
 if (-Not (Test-Path -Path $local_bootstrap)) {
