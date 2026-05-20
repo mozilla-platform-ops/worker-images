@@ -106,11 +106,14 @@ pools:
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
+    - nuc13-001
     - nuc13-010
     - nuc13-015
     - nuc13-019
+    - nuc13-025
     - nuc13-027
     - nuc13-032
+    - nuc13-050
     - nuc13-058
     - nuc13-063
     - nuc13-065
@@ -118,10 +121,14 @@ pools:
     - nuc13-077
     - nuc13-079
     - nuc13-080
+    - nuc13-092
     - nuc13-097
     - nuc13-106
+    - nuc13-117
     - nuc13-120
+    - nuc13-134
     - nuc13-139
+    - nuc13-142
     - nuc13-145
     - nuc13-147
     - nuc13-148
@@ -154,7 +161,6 @@ pools:
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    - nuc13-001
     - nuc13-002
     - nuc13-003
     - nuc13-004
@@ -173,7 +179,6 @@ pools:
     - nuc13-020
     - nuc13-022
     - nuc13-023
-    - nuc13-025
     - nuc13-026
     - nuc13-028
     - nuc13-029
@@ -193,7 +198,6 @@ pools:
     - nuc13-047
     - nuc13-048
     - nuc13-049
-    - nuc13-050
     - nuc13-051
     - nuc13-052
     - nuc13-053
@@ -222,7 +226,6 @@ pools:
     - nuc13-089
     - nuc13-090
     - nuc13-091
-    - nuc13-092
     - nuc13-093
     - nuc13-094
     - nuc13-095
@@ -242,7 +245,6 @@ pools:
     - nuc13-114
     - nuc13-115
     - nuc13-116
-    - nuc13-117
     - nuc13-118
     - nuc13-119
     - nuc13-121
@@ -255,14 +257,12 @@ pools:
     - nuc13-129
     - nuc13-131
     - nuc13-133
-    - nuc13-134
     - nuc13-135
     - nuc13-136
     - nuc13-137
     - nuc13-138
     - nuc13-140
     - nuc13-141
-    - nuc13-142
     - nuc13-143
     - nuc13-144
     - nuc13-146
