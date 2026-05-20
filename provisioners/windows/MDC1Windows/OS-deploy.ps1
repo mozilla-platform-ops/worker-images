@@ -327,7 +327,7 @@ function Invoke-DownloadWithRetry {
         $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
         Write-Host "Package downloaded in $attemptSeconds seconds"
         break
-    }   
+    }  
         catch {
             $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
             Write-Warning "Package download failed in $attemptSeconds seconds"
