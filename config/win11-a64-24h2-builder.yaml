@@ -11,6 +11,7 @@ sharedimage:
 azure:
   managed_image_resource_group_name: "default"
   managed_image_storage_account_type: "default"
+  build_location: westus2
 vm:
   puppet_version: "default"
   git_version: "default"
