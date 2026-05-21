@@ -11,10 +11,6 @@ sharedimage:
 azure:
   managed_image_resource_group_name: "default"
   managed_image_storage_account_type: "default"
-  # Pin build region away from centralus/eastus: 6 consecutive packer runs
-  # failed here at Exec[install_net_framework3.5] because DISM could not pull
-  # the NetFx3 SxS payload from the Microsoft Update CDN edge serving those
-  # regions. Other a64 builders that landed elsewhere succeeded.
   build_location: westus2
 vm:
   puppet_version: "default"
