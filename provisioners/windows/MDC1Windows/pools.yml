@@ -144,6 +144,7 @@ pools:
     - nuc13-080
     - nuc13-084
     - nuc13-085
+    - nuc13-087
     - nuc13-092
     - nuc13-094
     - nuc13-095
@@ -169,6 +170,7 @@ pools:
     - nuc13-138
     - nuc13-139
     - nuc13-140
+    - nuc13-141
     - nuc13-142
     - nuc13-143
     - nuc13-144
@@ -178,6 +180,7 @@ pools:
     - nuc13-152
     - nuc13-158
     - nuc13-159
+    - nuc13-160
   - name: "win11-64-24h2-hw-perf-sheriff"
     openvox_version: "8.19.2"
     puppet_version: "8.10.0"
@@ -242,7 +245,6 @@ pools:
     - nuc13-082
     - nuc13-083
     - nuc13-086
-    - nuc13-087
     - nuc13-088
     - nuc13-089
     - nuc13-090
@@ -265,11 +267,9 @@ pools:
     - nuc13-128
     - nuc13-135
     - nuc13-136
-    - nuc13-141
     - nuc13-145
     - nuc13-151
     - nuc13-153
-    - nuc13-160
 defaults:
   NV_domain: "mdc1.mozilla.com"
 Validate:
