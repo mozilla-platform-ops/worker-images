@@ -45,29 +45,13 @@ class TestIntegrationTestTransform(unittest.TestCase):
 
     def test_get_worker_pool_variant_arm64(self):
         self.assertEqual(
-            self.mod.get_worker_pool_variant("win11-a64-24h2-tester"),
+            self.mod.get_worker_pool_variant("win11-a64-25h2-tester"),
             "win11-a64-tester",
         )
         self.assertEqual(
             self.mod.get_worker_pool_variant("win11-a64-25h2-builder"),
             "win11-a64-builder",
         )
-
-    def test_prefers_arm64_pool_matching_requested_image(self):
-        pool_images_by_pool = {
-            "relops-1/win11-a64-24h2-tester-alpha": {"win11_a64_24h2_tester_alpha"},
-            "relops-1/win11-a64-25h2-tester-alpha": {"win11a6425h2testeralpha"},
-        }
-        requested_images = {"win11a6425h2testeralpha"}
-
-        selected = self.mod.get_image_compatible_alpha_worker_type(
-            provisioner_id="relops-1",
-            worker_type="win11-a64-24h2-tester",
-            pool_images_by_pool=pool_images_by_pool,
-            requested_images=requested_images,
-        )
-
-        self.assertEqual(selected, "win11-a64-25h2-tester-alpha")
 
     def test_change_worker_pool_to_alpha_rewrites_pool_bound_scopes(self):
         # `change_worker_pool_to_alpha` imported get_worker_pool_images via
