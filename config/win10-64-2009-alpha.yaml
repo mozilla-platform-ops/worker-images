@@ -19,7 +19,7 @@ vm:
   puppet_version: 8.10.0
   git_version: 2.53.0
   openvox_version: 8.25.0
-  size: Standard_F8s_v2
+  size: Standard_D8ads_v5
   tags:
     base_image: win10642009azure
     worker_pool_id: win10-64-2009
