@@ -17,14 +17,14 @@ azure:
 vm:
   puppet_version: 8.10.0
   openvox_version: 8.25.0
-  git_version: 2.53.0
-  size: Standard_D8ads_v5
+  git_version: 2.54.0
+  size: Standard_E8pds_v5
   tags:
     base_image: win11a6425h2azuretester
     worker_pool_id: win11-a64-25h2-tester
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "relops-azure-temp-dev-drive"
+    sourceBranch: "master"
     deploymentId: "NA"
     managed_by: packer
 tests:
@@ -40,7 +40,7 @@ tests:
   - logging.tests.ps1
   - mercurial.tests.ps1
   - git.tests.ps1
-  - mozilla_build_v2.tests.ps1
+  - mozilla_build.tests.ps1
   - mozilla_maintenance_service.tests.ps1
   - windows_worker_runner.tests.ps1
   - disable_services.tests.ps1
