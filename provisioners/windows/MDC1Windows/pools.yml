@@ -80,26 +80,9 @@ pools:
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    - nuc13-001
     - nuc13-024
-    - nuc13-029
-    - nuc13-036
-    - nuc13-044
     - nuc13-059
-    - nuc13-061
-    - nuc13-062
-    - nuc13-070
-    - nuc13-074
-    - nuc13-085
-    - nuc13-096
-    - nuc13-105
     - nuc13-119
-    - nuc13-130
-    - nuc13-137
-    - nuc13-144
-    - nuc13-149
-    - nuc13-154
-    - nuc13-156
   # Questionable nodes — CPU suppression confirmed or notable floor events detected in stress testing.
   # Not cleared for high-priority CPU-intensive work. Pending PSU inspection/replacement.
   - name: "win11-64-24h2-hw-alpha"
@@ -116,11 +99,13 @@ pools:
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
+    - nuc13-002
     - nuc13-019
     - nuc13-020
     - nuc13-022
     - nuc13-023
     - nuc13-025
+    - nuc13-026
     - nuc13-028
     - nuc13-030
     - nuc13-031
@@ -129,10 +114,12 @@ pools:
     - nuc13-039
     - nuc13-042
     - nuc13-043
+    - nuc13-047
     - nuc13-050
     - nuc13-051
     - nuc13-052
     - nuc13-053
+    - nuc13-054
     - nuc13-055
     - nuc13-058
     - nuc13-063
@@ -152,7 +139,9 @@ pools:
     - nuc13-092
     - nuc13-094
     - nuc13-095
+    - nuc13-098
     - nuc13-099
+    - nuc13-100
     - nuc13-102
     - nuc13-103
     - nuc13-106
@@ -168,6 +157,7 @@ pools:
     - nuc13-131
     - nuc13-133
     - nuc13-134
+    - nuc13-136
     - nuc13-138
     - nuc13-139
     - nuc13-140
@@ -208,7 +198,7 @@ pools:
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    - nuc13-002
+    - nuc13-001
     - nuc13-003
     - nuc13-004
     - nuc13-005
@@ -225,36 +215,41 @@ pools:
     - nuc13-016
     - nuc13-017
     - nuc13-018
-    - nuc13-026
     - nuc13-027
+    - nuc13-029
     - nuc13-032
     - nuc13-033
+    - nuc13-036
     - nuc13-038
     - nuc13-040
     - nuc13-041
+    - nuc13-044
     - nuc13-046
-    - nuc13-047
     - nuc13-048
     - nuc13-049
-    - nuc13-054
     - nuc13-056
     - nuc13-057
+    - nuc13-061
+    - nuc13-062
     - nuc13-064
     - nuc13-066
+    - nuc13-070
+    - nuc13-074
     - nuc13-081
     - nuc13-082
     - nuc13-083
+    - nuc13-085
     - nuc13-086
     - nuc13-088
     - nuc13-089
     - nuc13-090
     - nuc13-091
     - nuc13-093
+    - nuc13-096
     - nuc13-097
-    - nuc13-098
-    - nuc13-100
     - nuc13-101
     - nuc13-104
+    - nuc13-105
     - nuc13-108
     - nuc13-109
     - nuc13-110
@@ -265,11 +260,16 @@ pools:
     - nuc13-126
     - nuc13-127
     - nuc13-128
+    - nuc13-130
     - nuc13-135
-    - nuc13-136
+    - nuc13-137
+    - nuc13-144
     - nuc13-145
+    - nuc13-149
     - nuc13-151
     - nuc13-153
+    - nuc13-154
+    - nuc13-156
 defaults:
   NV_domain: "mdc1.mozilla.com"
 Validate:
