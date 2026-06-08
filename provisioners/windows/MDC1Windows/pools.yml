@@ -82,7 +82,9 @@ pools:
     nodes:
     - nuc13-024
     - nuc13-059
+    - nuc13-099
     - nuc13-119
+    - nuc13-138
   # Questionable nodes — CPU suppression confirmed or notable floor events detected in stress testing.
   # Not cleared for high-priority CPU-intensive work. Pending PSU inspection/replacement.
   - name: "win11-64-24h2-hw-alpha"
@@ -140,7 +142,6 @@ pools:
     - nuc13-094
     - nuc13-095
     - nuc13-098
-    - nuc13-099
     - nuc13-100
     - nuc13-102
     - nuc13-103
@@ -158,7 +159,6 @@ pools:
     - nuc13-133
     - nuc13-134
     - nuc13-136
-    - nuc13-138
     - nuc13-139
     - nuc13-140
     - nuc13-141
