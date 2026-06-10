@@ -28,7 +28,7 @@ vm:
     worker_pool_id: win11-64-25h2-alpha
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "master"
+    sourceBranch: "relops-azure-temp-dev-drive"
     deploymentId: "NA"
     managed_by: packer
 tests:
