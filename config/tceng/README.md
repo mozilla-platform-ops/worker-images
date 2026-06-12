@@ -73,6 +73,24 @@ The following files and directories are shared infrastructure and require a **PR
 
 ---
 
+## AWS Account Selection
+
+The TCEng AWS workflow can build AMIs in either the community worker account or
+the RelOps AWS production account:
+
+- `community-tc-workers`: `arn:aws:iam::885316786408:role/GitHubActionsRole`
+- `relops-aws-prod`: `arn:aws:iam::961225894672:role/GitHubActionsRole`
+
+For RELOPS-1606 fuzzing migration builds, run the AWS workflow with:
+
+```text
+config: generic-worker-ubuntu-24-04-staging
+aws_account: relops-aws-prod
+region: us-east-1
+```
+
+---
+
 ## 🧾 YAML Structure
 
 Each YAML file under `config/tceng/` defines an image and follows this structure:
