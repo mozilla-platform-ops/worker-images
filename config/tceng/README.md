@@ -85,10 +85,12 @@ image:
   version: latest                        # Use latest published version
 
 azure:
+  subscription: tceng                         # Optional; defaults to tceng if omitted
   locations:                             # Azure regions to replicate the image to
     - centralus
     - eastus
   managed_image_resource_group_name: "rg-tc-eng-images"   # Destination image resource group
+  # managed_image_name_suffix: fuzzing    # Optional; only needed when consumers expect a suffix
   managed_image_storage_account_type: "Standard_LRS"      # Type of storage for managed image
 
 vm:
@@ -110,6 +112,16 @@ To test or work on new image builds that are **not explicitly listed in the work
 This config allows for temporary or experimental image builds without requiring updates to the workflow’s `config` input options.
 
 You can manually run the workflow and supply `"image_development"` as the build key to use this file.
+
+---
+
+## Azure Subscription Selection
+
+TCEng Azure configs default to the TCEng Azure subscription when `azure.subscription` is omitted or set to `tceng`.
+
+Use `azure.subscription: fxci-untrusted` for images that must be consumed by the `azure2` provider in `fxci-config`. Those images are built with the FXCI untrusted Azure credentials, and the destination resource group should be one that exists in that subscription, such as `rg-packer-worker-images`.
+
+If `fxci-config` references the image with `version: NA` and a `deployment_id`, set `azure.managed_image_name_suffix` to the same deployment ID. The TCEng Azure build uses UUID-based managed image names, and the suffix keeps the final Azure image name aligned with what `fxci-config` generates.
 
 ---
 

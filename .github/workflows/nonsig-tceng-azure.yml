@@ -64,6 +64,9 @@ jobs:
           Set-AzWorkerImageLocation @Vars
     outputs:
       LOCATIONS: ${{ steps.set-matrix.outputs.LOCATIONS }}
+      CLIENT_ID_SECRET: ${{ steps.set-matrix.outputs.CLIENT_ID_SECRET }}
+      SUBSCRIPTION_ID_SECRET: ${{ steps.set-matrix.outputs.SUBSCRIPTION_ID_SECRET }}
+      APPLICATION_ID_SECRET: ${{ steps.set-matrix.outputs.APPLICATION_ID_SECRET }}
 
   packer:
     needs: config
@@ -82,9 +85,9 @@ jobs:
       - name: Azure Login
         uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID_TCENG }}
+          client-id: ${{ secrets[needs.config.outputs.CLIENT_ID_SECRET] }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_TCENG }}
+          subscription-id: ${{ secrets[needs.config.outputs.SUBSCRIPTION_ID_SECRET] }}
           enable-AzPSSession: true
 
       - name: "Remove current images"
@@ -107,11 +110,11 @@ jobs:
             team               = "tceng"
             Location           = "${{ matrix.LOCATIONS }}"
             Key                = '${{ github.event.inputs.config }}'
-            Client_ID          = "${{ secrets.AZURE_CLIENT_ID_TCENG }}"
+            Client_ID          = "${{ secrets[needs.config.outputs.CLIENT_ID_SECRET] }}"
             oidc_request_url   = $env:ACTIONS_ID_TOKEN_REQUEST_URL
             oidc_request_token = $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN
-            Subscription_ID    = "${{ secrets.AZURE_SUBSCRIPTION_ID_TCENG }}"
+            Subscription_ID    = "${{ secrets[needs.config.outputs.SUBSCRIPTION_ID_SECRET] }}"
             Tenant_ID          = "${{ secrets.AZURE_TENANT_ID }}"
-            Application_ID     = "${{ secrets.AZURE_APPLICATION_ID_TCENG }}"
+            Application_ID     = "${{ secrets[needs.config.outputs.APPLICATION_ID_SECRET] }}"
           }
           New-AzWorkerImage @Vars
