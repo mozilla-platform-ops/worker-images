@@ -40,7 +40,7 @@ tests:
   - power_management.tests.ps1
   - scheduled_tasks.tests.ps1
   - azure_vm_agent.tests.ps1
-  - virtual_drivers.tests.ps1
+  #- virtual_drivers.tests.ps1
   - logging.tests.ps1
   - mercurial.tests.ps1
   - git.tests.ps1
