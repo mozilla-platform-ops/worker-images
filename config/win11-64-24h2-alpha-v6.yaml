@@ -28,7 +28,7 @@ vm:
     worker_pool_id: win11-64-24h2
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "relops-azure-temp-dev-drive"
+    sourceBranch: "relops/remove-vac-azure-cloud-workers"
     deploymentId: "NA"
     managed_by: packer
 tests:
