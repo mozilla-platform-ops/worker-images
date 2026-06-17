@@ -7,6 +7,9 @@ image:
 azure:
   subscription: fxci-untrusted
   locations:
+    - eastus
+    - eastus2
+    - southcentralus
     - westus2
   managed_image_resource_group_name: "rg-packer-worker-images"
   managed_image_name_suffix: fuzzing
