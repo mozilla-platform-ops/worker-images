@@ -17,7 +17,7 @@ on:
         default: community-tc-workers
         options:
           - community-tc-workers
-          - relops-aws-prod
+          - taskcluster
       region:
         type: choice
         description: Choose the AWS region to build in
@@ -35,7 +35,7 @@ permissions:
 
 env:
   COMMUNITY_TC_WORKERS_AWS_ROLE_ARN: arn:aws:iam::885316786408:role/GitHubActionsRole
-  RELOPS_AWS_PROD_ROLE_ARN: arn:aws:iam::961225894672:role/GitHubActionsRole
+  TASKCLUSTER_AWS_ROLE_ARN: arn:aws:iam::692406183521:role/GitHubActionsRole
 
 jobs:
   check-access:
@@ -78,8 +78,8 @@ jobs:
             community-tc-workers)
               echo "role-arn=${COMMUNITY_TC_WORKERS_AWS_ROLE_ARN}" >> "${GITHUB_OUTPUT}"
               ;;
-            relops-aws-prod)
-              echo "role-arn=${RELOPS_AWS_PROD_ROLE_ARN}" >> "${GITHUB_OUTPUT}"
+            taskcluster)
+              echo "role-arn=${TASKCLUSTER_AWS_ROLE_ARN}" >> "${GITHUB_OUTPUT}"
               ;;
             *)
               echo "Unsupported AWS account: ${{ github.event.inputs.aws_account }}" >&2
