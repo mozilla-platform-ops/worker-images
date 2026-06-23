@@ -24,8 +24,8 @@ vm:
     worker_pool_id: win11-a64-25h2-tester
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "relops/remove-vac-azure-cloud-workers"
-    deploymentId: "NA"
+    sourceBranch: "master"
+    deploymentId: "default"
     managed_by: packer
 tests:
   - error_reporting.tests.ps1
