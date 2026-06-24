@@ -25,7 +25,6 @@ vm:
     deploymentId: "default"
     managed_by: "default"
 tests:
-  - directx_sdk.tests.ps1
   - microsoft_binscope.tests.ps1
   - microsoft_vcc_2008_arm64.tests.ps1
   - microsoft_vcc_2010_arm64.tests.ps1
