@@ -416,8 +416,12 @@ build {
   provisioner "powershell" {
     elevated_password = ""
     elevated_user     = "SYSTEM"
+    environment_vars = [
+      "worker_pool_id=${var.worker_pool_id}"
+    ]
     inline = [
       "Import-Module BootStrap -Force;",
+      "Get-MozillaUnified;",
       "Disable-Services"
     ]
   }

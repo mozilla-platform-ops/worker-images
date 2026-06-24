@@ -45,6 +45,7 @@ tests:
   - scheduled_tasks.tests.ps1
   - azure_vm_agent.tests.ps1
   - mercurial.tests.ps1
+  - cache_vcs_checkout.tests.ps1
   - logging.tests.ps1
   - sevenzip.tests.ps1
   - google_auth.tests.ps1
