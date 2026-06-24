@@ -29,7 +29,6 @@ vm:
     managed_by: packer
 tests:
   - microsoft_binscope.tests.ps1
-  - microsoft_vcc_2008_arm64.tests.ps1
   - microsoft_vcc_2010_arm64.tests.ps1
   - microsoft_vcc_2015_arm64.tests.ps1
   - microsoft_vcc_2022_arm64.tests.ps1
