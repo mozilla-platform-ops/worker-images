@@ -40,3 +40,9 @@ $vars = @{
 }
 
 New-AzSharedWorkerImage @vars
+
+if (-not $env:GITHUB_ENV) {
+    throw "GITHUB_ENV is not set."
+}
+
+"sharedimageversion=$ENV:PKR_VAR_sharedimage_version" | Out-File -FilePath $env:GITHUB_ENV -Append

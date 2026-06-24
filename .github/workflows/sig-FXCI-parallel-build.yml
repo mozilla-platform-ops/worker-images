@@ -70,7 +70,7 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: release-notes-${{ matrix.config }}
-          path: ${{ matrix.config }}.md
+          path: ${{ matrix.config }}-${{ env.sharedimageversion }}.md
           overwrite: true
           retention-days: 1
           if-no-files-found: error

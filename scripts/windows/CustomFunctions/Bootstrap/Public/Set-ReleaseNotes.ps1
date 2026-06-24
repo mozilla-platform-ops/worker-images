@@ -203,8 +203,14 @@ function Set-ReleaseNotes {
         Write-Log -message ('{0} :: {1} - {2:o}' -f $($MyInvocation.MyCommand.Name), $reason, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
     }
 
-    Write-Log -message ('{0} :: Copying software_report.md to {1} - {2:o}' -f $($MyInvocation.MyCommand.Name), "(C:\$($Config).md)", (Get-Date).ToUniversalTime()) -severity 'DEBUG'
-    Copy-Item -Path "C:\software_report.md" -Destination "C:\$($Config).md"
+    if ($Version) {
+        Write-Log -message ('{0} :: Copying software_report.md to {1} - {2:o}' -f $($MyInvocation.MyCommand.Name), "(C:\$($Config)-$($Version).md)", (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+        Copy-Item -Path "C:\software_report.md" -Destination "C:\$($Config)-$($Version).md"
+    }
+    else {
+        Write-Log -message ('{0} :: Copying software_report.md to {1} - {2:o}' -f $($MyInvocation.MyCommand.Name), "(C:\$($Config).md)", (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+        Copy-Item -Path "C:\software_report.md" -Destination "C:\$($Config).md"
+    }
 
     $stopwatch.Stop()
     $elapsedMinutes = [int][math]::Floor($stopwatch.Elapsed.TotalMinutes)
