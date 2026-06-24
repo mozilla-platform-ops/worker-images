@@ -97,12 +97,11 @@ jobs:
             Application_ID = "${{ secrets.AZURE_APPLICATION_ID_FXCI }}"
           }
           New-AzSharedWorkerImage @Vars
-          "sharedimageversion=$ENV:PKR_VAR_sharedimage_version" >> $env:GITHUB_ENV
       - name: Upload Release Notes Artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: release-notes-${{ matrix.config }}
-          path: ${{ matrix.config }}-${{ env.sharedimageversion }}.md
+          path: ${{ matrix.config }}.md
           overwrite: true
           retention-days: 1
           if-no-files-found: error
@@ -110,37 +109,8 @@ jobs:
   sbom:
     if: ${{ always() }}
     needs: [prepare-matrix, packer]
-    name: "Upload release notes"
-    runs-on: ubuntu-latest
     permissions: write-all
-    concurrency:
-      group: release-notes-main
-      cancel-in-progress: false
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
-        with:
-          path: sboms
-          pattern: release-notes-*
-          merge-multiple: true
-      - name: "Validate downloaded release notes"
-        shell: bash
-        run: |
-          if ls sboms/*.md >/dev/null 2>&1; then
-            echo "Downloaded release notes:"
-            ls -1 sboms/*.md
-          else
-            echo "No release notes were downloaded from successful packer jobs."
-            exit 1
-          fi
-      - name: "Pull latest main"
-        run: git pull --rebase --autostash origin main
-      - name: "Commit release notes to main"
-        uses: stefanzweifel/git-auto-commit-action@04702edda442b2e678b25b537cec683a1493fcb9
-        with:
-          branch: main
-          commit_message: "Update release notes"
-          file_pattern: "sboms/*.md"
+    uses: ./.github/workflows/upload-release-notes.yml
 
   find-successful-builds:
     needs: [prepare-matrix, packer]
