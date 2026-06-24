@@ -1,19 +1,18 @@
-## CLEAN-UP Version should be in Hiera
-
-Describe "Virtual Audio Cable" {
-    BeforeDiscovery {
-        $Hiera = $Data.Hiera
-    }
-
+Describe "VB-CABLE Virtual Audio Device" {
     BeforeAll {
-        $Software = Get-InstalledSoftware | Where-Object {
-            $PSItem.DisplayName -like "Virtual Audio Cable*"
-        }
+        # ronin_puppet RELOPS-2437 (#1234) replaced Virtual Audio Cable 4.64
+        # with VB-CABLE pack 45, which registers as a system driver and a
+        # MEDIA PnP device rather than an entry in installed software.
+        $ServiceName = "VBAudioVACMME"
+        $DeviceName  = "VB-Audio Virtual Cable"
+        $Driver = Get-CimInstance Win32_SystemDriver -Filter "Name='$ServiceName'" -ErrorAction SilentlyContinue
+        $Device = Get-PnpDevice -Class MEDIA -ErrorAction SilentlyContinue |
+            Where-Object { $PSItem.FriendlyName -eq $DeviceName }
     }
-    It "Virtual Audio Cable is installed" {
-        $Software.DisplayName | Should -Not -Be $Null
+    It "VB-CABLE system driver ($ServiceName) is installed" {
+        $Driver | Should -Not -BeNullOrEmpty
     }
-    It "Virtual Audio Cable is version 4.64" {
-        $Software.DisplayVersion | Should -Be "4.64"
+    It "VB-Audio Virtual Cable MEDIA device is present" {
+        $Device | Should -Not -BeNullOrEmpty
     }
 }
