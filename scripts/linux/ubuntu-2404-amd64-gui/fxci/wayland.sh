@@ -27,6 +27,11 @@ idle-delay=uint32 0
 # /org/gnome/desktop/lockdown/disable-lock-screen
 [org/gnome/desktop/lockdown]
 disable-lock-screen=true
+
+# Keep moz-icon:// fallback resolution deterministic. nsIconChannel falls back
+# to the GTK "unknown" icon, which Ubuntu's Yaru icon theme provides.
+[org/gnome/desktop/interface]
+icon-theme='Yaru'
 EOF
 
 # make dbus read the new configuration
@@ -84,7 +89,11 @@ echo ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select tr
 # install stuff
 apt install -y \
   gnome-screenshot \
+  yaru-theme-icon \
   ubuntu-restricted-extras
+
+# Verify the icon fallback used by moz-icon:// exists in the selected theme.
+test -e /usr/share/icons/Yaru/16x16/mimetypes/unknown.png
 
 # test that gnome-screenshot is present
 ls -la "$(which gnome-screenshot)"
