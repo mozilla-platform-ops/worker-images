@@ -36,8 +36,24 @@ function Set-ReleaseNotes {
     }
     Write-Log -message ('{0} :: Processing {1} {2} - {3:o}' -f $($MyInvocation.MyCommand.Name), $Config, $Version, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
 
-    ## Let's install markdownPS just in case it isn't installed
-    Set-MarkdownPSModule
+    function ConvertTo-MarkdownTable {
+        param([object[]] $Rows)
+
+        $Rows = @($Rows)
+        if ($Rows.Count -eq 0) {
+            return ""
+        }
+
+        $Properties = @($Rows[0].PSObject.Properties.Name)
+        $Header = "| " + ($Properties -join " | ") + " |"
+        $Separator = "| " + (($Properties | ForEach-Object { "---" }) -join " | ") + " |"
+        $Body = $Rows | ForEach-Object {
+            $Row = $_
+            "| " + (($Properties | ForEach-Object { [string]$Row.$_ }) -join " | ") + " |"
+        }
+
+        return (@($Header, $Separator) + $Body) -join "`n"
+    }
 
     ## Let's get specific information about the OS
     $OSBuild = Get-OSVersionMarkDown
@@ -127,8 +143,7 @@ function Set-ReleaseNotes {
         Write-Log -message ('{0} :: {1} - {2:o}' -f $($MyInvocation.MyCommand.Name), $reason, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
     }
 
-    $markdown += New-MDHeader -Text $Header -Level 1
-    $markdown += "`n"
+    $markdown += "# $Header`n`n"
     $lines = @(
         "Config: $($Config)",
         "OS Name: $($Header) $($OSVersionExtended.DisplayVersion)",
@@ -139,39 +154,38 @@ function Set-ReleaseNotes {
         "DeploymentId: $($DeploymentId)"
     )
 
-    $markdown += New-MDList -Lines $lines -Style Unordered
+    $markdown += (($lines | ForEach-Object { "- $_" }) -join "`n")
+    $markdown += "`n`n"
 
-    $markdown += New-MDHeader "Mozilla Build" -Level 2
-    $markdown += "`n"
+    $markdown += "## Mozilla Build`n`n"
     $lines2 = @(
         "Find more information about Mozilla Build on [Wiki](https://wiki.mozilla.org/MozillaBuild#Technical_Details)"
     )
-    $markdown += New-MDAlert -Lines $lines2 -Style Important
+    $markdown += "> [!IMPORTANT]`n"
+    $markdown += (($lines2 | ForEach-Object { "> $_" }) -join "`n")
+    $markdown += "`n`n"
 
     $lines3 = @(
         "Mozilla Build: $($mozillabuild.custom_win_mozbld_version)"
     )
 
-    $markdown += New-MDList -Lines $lines3 -Style Unordered
+    $markdown += (($lines3 | ForEach-Object { "- $_" }) -join "`n")
+    $markdown += "`n`n"
 
-    $markdown += New-MDHeader "Taskcluster Packages Installed" -Level 3
-    $markdown += "`n"
-    $markdown += Show-TaskclusterBinaries | New-MDTable
-    $markdown += "`n"
+    $markdown += "### Taskcluster Packages Installed`n`n"
+    $markdown += ConvertTo-MarkdownTable -Rows @(Show-TaskclusterBinaries)
+    $markdown += "`n`n"
 
-    $markdown += New-MDHeader "Python Packages" -Level 3
-    $markdown += "`n"
-    $markdown += $pythonPackages | New-MDTable
-    $markdown += "`n"
+    $markdown += "### Python Packages`n`n"
+    $markdown += ConvertTo-MarkdownTable -Rows @($pythonPackages)
+    $markdown += "`n`n"
 
-    $markdown += New-MDHeader "Installed Software (Not Microsoft)" -Level 2
-    $markdown += "`n"
-    $markdown += $InstalledSoftware_NotMicrosoft | New-MDTable
-    $markdown += "`n"
+    $markdown += "## Installed Software (Not Microsoft)`n`n"
+    $markdown += ConvertTo-MarkdownTable -Rows @($InstalledSoftware_NotMicrosoft)
+    $markdown += "`n`n"
 
-    $markdown += New-MDHeader "Installed Software (Microsoft)" -Level 2
-    $markdown += "`n"
-    $markdown += $InstalledSoftware_Microsoft | New-MDTable
+    $markdown += "## Installed Software (Microsoft)`n`n"
+    $markdown += ConvertTo-MarkdownTable -Rows @($InstalledSoftware_Microsoft)
 
     $markdown | Out-File "C:\software_report.md"
 
@@ -191,11 +205,10 @@ function Set-ReleaseNotes {
 
     if ($Version) {
         Write-Log -message ('{0} :: Copying software_report.md to {1} - {2:o}' -f $($MyInvocation.MyCommand.Name), "(C:\$($Config)-$($Version).md)", (Get-Date).ToUniversalTime()) -severity 'DEBUG'
-        ## Now copy the software markdown file elsewhere to prep for uploading to azure
         Copy-Item -Path "C:\software_report.md" -Destination "C:\$($Config)-$($Version).md"
     }
     else {
-        ## Now copy the software markdown file elsewhere to prep for uploading to azure
+        Write-Log -message ('{0} :: Copying software_report.md to {1} - {2:o}' -f $($MyInvocation.MyCommand.Name), "(C:\$($Config).md)", (Get-Date).ToUniversalTime()) -severity 'DEBUG'
         Copy-Item -Path "C:\software_report.md" -Destination "C:\$($Config).md"
     }
 

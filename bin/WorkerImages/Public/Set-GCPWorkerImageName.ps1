@@ -18,14 +18,7 @@ function Set-GCPWorkerImageName {
     $YAML = ConvertFrom-Yaml (Get-Content $YamlPath -Raw)
 
     if ($Team -and $Team -ieq "tceng") {
-        $uuidBytes = [System.Text.Encoding]::UTF8.GetString(
-            [System.Convert]::FromBase64String(
-                [System.Convert]::ToBase64String(
-                    (1..256 | ForEach-Object { Get-Random -Minimum 97 -Maximum 122 } | ForEach-Object { [byte]$_ })
-                )
-            )
-        )
-        $uuid = ($uuidBytes -replace '[^a-z0-9]', '')[0..19] -join ''
+        $uuid = ([guid]::NewGuid().ToString('N')).Substring(0, 20)
         $ImageName = "imageset-$uuid"
         if ($env:GITHUB_ENV) {
             "PKR_VAR_uuid=$uuid" | Out-File -FilePath $env:GITHUB_ENV -Append
