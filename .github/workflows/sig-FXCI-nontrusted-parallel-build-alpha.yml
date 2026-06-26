@@ -110,7 +110,9 @@ jobs:
   sbom:
     if: ${{ always() }}
     needs: [prepare-matrix, packer]
-    permissions: write-all
+    permissions:
+      actions: read
+      contents: write
     uses: ./.github/workflows/upload-release-notes.yml
 
   find-successful-builds:

@@ -74,7 +74,9 @@ jobs:
           if-no-files-found: error
   sbom:
     needs: packer
-    permissions: write-all
+    permissions:
+      actions: read
+      contents: write
     uses: ./.github/workflows/upload-release-notes.yml
     with:
       artifact_pattern: release-notes-${{ github.event.inputs.config }}
