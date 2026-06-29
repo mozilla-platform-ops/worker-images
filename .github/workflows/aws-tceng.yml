@@ -88,7 +88,7 @@ jobs:
           esac
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@e7f100cf4c008499ea8adda475de1042d6975c7b
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b
         with:
           role-to-assume: ${{ steps.aws-role.outputs.role-arn }}
           aws-region: ${{ github.event.inputs.region }}
