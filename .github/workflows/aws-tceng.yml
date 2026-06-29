@@ -95,7 +95,7 @@ jobs:
           role-session-name: github-actions-packer-build
 
       - name: Setup Packer
-        uses: hashicorp/setup-packer@3286471d6cc6756d056a0b199fea5e0becdbc189
+        uses: hashicorp/setup-packer@ce93c3c08a6c2ff2275bf4b54ff0d9a75f6c9789
 
       - name: Run Packer
         shell: pwsh
