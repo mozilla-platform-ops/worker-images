@@ -100,6 +100,8 @@ pools:
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
     - nuc13-002
+    - nuc13-013
+    - nuc13-014
     - nuc13-019
     - nuc13-020
     - nuc13-022
@@ -209,8 +211,6 @@ pools:
     - nuc13-010
     - nuc13-011
     - nuc13-012
-    - nuc13-013
-    - nuc13-014
     - nuc13-015
     - nuc13-016
     - nuc13-017
