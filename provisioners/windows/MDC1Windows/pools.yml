@@ -99,6 +99,9 @@ pools:
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
+    # Known-good nodes moved from win11-64-24h2-hw for fleetbench testing.
+    - nuc13-001
+    - nuc13-003
     - nuc13-002
     - nuc13-013
     - nuc13-014
@@ -200,8 +203,6 @@ pools:
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    - nuc13-001
-    - nuc13-003
     - nuc13-004
     - nuc13-005
     - nuc13-006
