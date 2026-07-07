@@ -56,8 +56,6 @@ pools:
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    # Bi-modal node moved from win11-64-24h2-hw.
-    - nuc13-038
     - nuc13-035
     - nuc13-045
     - nuc13-060
@@ -105,6 +103,7 @@ pools:
     - nuc13-001
     - nuc13-003
     - nuc13-027
+    - nuc13-038
     - nuc13-082
     - nuc13-126
     - nuc13-002
