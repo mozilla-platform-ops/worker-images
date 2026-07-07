@@ -46,16 +46,18 @@ pools:
   - name: "win11-64-24h2-hw-relops1213"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
-    git_version: "2.50.0"
+    git_version: "2.50.1"
     Description: "NUC12 Hardware Performance Staging/Testing Pool"
     image: "win11-24H2-NUC-01-16-2025"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "RELOPS-2235"
-    hash: "99589a8"
-    secret_date: "01-20-2026"
+    src_Branch: "RELOPS-2402-fleetbench"
+    hash: "74e8909"
+    secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
+    # Bi-modal node moved from win11-64-24h2-hw.
+    - nuc13-038
     - nuc13-035
     - nuc13-045
     - nuc13-060
@@ -102,6 +104,9 @@ pools:
     # Known-good nodes moved from win11-64-24h2-hw for fleetbench testing.
     - nuc13-001
     - nuc13-003
+    - nuc13-027
+    - nuc13-082
+    - nuc13-126
     - nuc13-002
     - nuc13-013
     - nuc13-014
@@ -216,12 +221,10 @@ pools:
     - nuc13-016
     - nuc13-017
     - nuc13-018
-    - nuc13-027
     - nuc13-029
     - nuc13-032
     - nuc13-033
     - nuc13-036
-    - nuc13-038
     - nuc13-040
     - nuc13-041
     - nuc13-044
@@ -237,7 +240,6 @@ pools:
     - nuc13-070
     - nuc13-074
     - nuc13-081
-    - nuc13-082
     - nuc13-083
     - nuc13-085
     - nuc13-086
@@ -258,7 +260,6 @@ pools:
     - nuc13-118
     - nuc13-121
     - nuc13-123
-    - nuc13-126
     - nuc13-127
     - nuc13-128
     - nuc13-130
