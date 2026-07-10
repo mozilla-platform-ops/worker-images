@@ -57,7 +57,7 @@ pools:
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
     # Moved from alpha.
-    - nuc13-159
+    - nuc13-160
     - nuc13-035
     - nuc13-060
     - nuc13-068
@@ -182,7 +182,7 @@ pools:
     # Belongs in alpha; was previously misplaced.
     - nuc13-045
     # New PSUs installed — may be good.
-    - nuc13-160
+    - nuc13-159
   - name: "win11-64-24h2-hw-perf-sheriff"
     openvox_version: "8.19.2"
     puppet_version: "8.10.0"
