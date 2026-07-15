@@ -76,8 +76,8 @@ pools:
     image: "win11-24H2-NUC-01-16-2025"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "RELOPS-2396-defender"
-    hash: "95e899d"
+    src_Branch: "RELOPS-2467-xperf-dynamic-trace"
+    hash: "a22e7ac"
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
