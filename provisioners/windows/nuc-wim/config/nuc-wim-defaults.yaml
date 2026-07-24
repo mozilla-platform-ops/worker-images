@@ -1,0 +1,32 @@
+---
+# Shared defaults for the NUC baked-WIM pipeline. Any field set to the literal
+# string "default" in a per-image config (config/<image>.yaml) resolves to the
+# value here. Mirrors worker-images config/windows_production_defaults.yaml.
+#
+# Source of truth for tool versions is worker-images
+# config/windows_production_defaults.yaml — keep these in sync.
+
+storage:
+  account: nucwimfxci
+  base_container: base          # bring-your-own base WIMs (<os>-base-install.wim)
+  captured_container: captured  # golden output (captured/<image>/<image>-<buildid>.wim)
+
+ronin:
+  org: mozilla-platform-ops
+  repo: ronin_puppet
+  # Public assets blob with the pinned prerequisite installers (openvox/puppet/git).
+  ext_src: https://roninpuppetassets.blob.core.windows.net/binaries/prerequisites
+
+vm:
+  puppet_version: "8.10.0"
+  git_version: "2.54.0"
+  openvox_version: "8.24.2"
+  cpus: 4
+  memory_mb: 8192
+  # Hyper-V switch on the build host; override per host if not the default.
+  switch_name: "Default Switch"
+
+tags:
+  sourceOrganization: mozilla-platform-ops
+  sourceRepository: ronin_puppet
+  managed_by: wim-packer

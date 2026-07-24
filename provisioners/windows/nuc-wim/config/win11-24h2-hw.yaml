@@ -1,0 +1,42 @@
+---
+# Baked NUC install.wim: Windows 11 24H2, generic hardware (hw) bake.
+#
+# Build:  .\bin\NucWim\New-NucWim.ps1 -Image win11-24h2-hw
+#
+# Naming is scalable across two dimensions — OS version AND specialized worker
+# pool. The image id is this file's basename (win11-24h2-hw). Add a new WIM by
+# dropping in another config/<image>.yaml, e.g.:
+#   - win11-25h2-hw.yaml        (new OS version; new base_wim)
+#   - win11-24h2-perf.yaml      (same base_wim, specialized bake_role/pool)
+#   - win2022-hw.yaml           (new OS)
+# Several variants can share one base_wim but differ in bake_role/worker_pool_id.
+
+base:
+  # Blob in the 'base' container. Convention: <os>-base-install.wim
+  wim: win11-24h2-base-install.wim
+  index: 1                      # image index inside the WIM (Get-WindowsImage to list)
+
+ronin:
+  org: default
+  repo: default
+  branch: wim-bake-role         # feature branch carrying the bake role (until merged)
+  hash: ""                      # optional pinned commit; "" = branch HEAD
+  bake_role: win116424h2hwbake  # trimmed hw role that performs the one-time AppX/catalog bake
+
+vm:
+  puppet_version: default
+  git_version: default
+  openvox_version: default
+  cpus: default
+  memory_mb: default
+  switch_name: default
+
+# Deploy-side metadata (informational; used for output tagging / provenance).
+sharedimage:
+  worker_pool_id: win11-64-24h2-hw
+
+tags:
+  base_image: win11-24h2-base-install.wim
+  sourceOrganization: default
+  sourceRepository: default
+  sourceBranch: wim-bake-role
