@@ -1,15 +1,15 @@
-name: NUC WIM Build
-run-name: "NUC WIM build - ${{ inputs.image }} @ ${{ inputs.pipeline_ref }}"
+name: Windows HW WIM Build
+run-name: "Windows HW WIM build - ${{ inputs.image }} @ ${{ inputs.pipeline_ref }}"
 
-# Kicks off a baked NUC install.wim build on the Azure nested-virt build host.
+# Kicks off a baked Windows HW install.wim build on the Azure nested-virt build host.
 # The pipeline itself lives on a feature branch (default: nuc-wim-pipeline) under
-# provisioners/windows/nuc-wim/ — this workflow points the build at that branch.
+# provisioners/windows/win-hw-wim/ — this workflow points the build at that branch.
 #
 # Prerequisites (one-time):
-#   - The Azure build VM exists (provisioners/windows/nuc-wim/New-NucWimBuildVm.ps1).
+#   - The Azure build VM exists (provisioners/windows/win-hw-wim/New-WinHwWimBuildVm.ps1).
 #   - An OIDC service principal with a federated credential for this repo, granted
 #     Virtual Machine Contributor on rg-central-us-nuc-wim. Wire its ids as secrets:
-#       NUC_WIM_AZURE_CLIENT_ID, NUC_WIM_AZURE_SUBSCRIPTION_ID, AZURE_TENANT_ID (existing).
+#       WIN_HW_WIM_AZURE_CLIENT_ID, WIN_HW_WIM_AZURE_SUBSCRIPTION_ID, AZURE_TENANT_ID (existing).
 
 on:
   workflow_dispatch:
@@ -19,7 +19,7 @@ on:
         type: string
         default: win11-24h2-hw
       pipeline_ref:
-        description: "worker-images branch holding provisioners/windows/nuc-wim"
+        description: "worker-images branch holding provisioners/windows/win-hw-wim"
         type: string
         default: nuc-wim-pipeline
       build_id:
@@ -49,7 +49,7 @@ jobs:
       id-token: write
       contents: read
     steps:
-      # Check out the pipeline branch — it carries ci/kickoff-nuc-wim-build.ps1
+      # Check out the pipeline branch — it carries ci/kickoff-win-hw-wim-build.ps1
       # (the kickoff logic lives with the pipeline, not in this workflow's PR).
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
@@ -58,14 +58,14 @@ jobs:
       - name: Azure Login
         uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43
         with:
-          client-id: ${{ secrets.NUC_WIM_AZURE_CLIENT_ID }}
+          client-id: ${{ secrets.WIN_HW_WIM_AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.NUC_WIM_AZURE_SUBSCRIPTION_ID }}
+          subscription-id: ${{ secrets.WIN_HW_WIM_AZURE_SUBSCRIPTION_ID }}
 
-      - name: Kick off NUC WIM build
+      - name: Kick off Windows HW WIM build
         shell: pwsh
         env:
           IMAGE: ${{ inputs.image }}
           PIPELINE_REF: ${{ inputs.pipeline_ref }}
           BUILD_ID: ${{ inputs.build_id }}
-        run: ./ci/kickoff-nuc-wim-build.ps1
+        run: ./ci/kickoff-win-hw-wim-build.ps1
