@@ -1,16 +1,17 @@
 name: Windows HW WIM Build
 run-name: "Windows HW WIM build - ${{ inputs.image }} @ ${{ inputs.pipeline_ref }}"
 
-# Kicks off a baked Windows HW install.wim build on the Azure nested-virt build host.
-# The pipeline itself lives on a feature branch (default: nuc-wim-pipeline) under
-# provisioners/windows/win-hw-wim/ — this workflow points the build at that branch.
+# Builds a baked Windows HW install.wim. Spins up an EPHEMERAL nested-virt Azure VM
+# for the run, builds on it, and tears it down afterward (if: always()) — no idle cost,
+# no pre-provisioned host. The pipeline lives on a feature branch (default:
+# nuc-wim-pipeline) under provisioners/windows/win-hw-wim/; this points the build there.
 #
-# Prerequisites (one-time):
-#   - The Azure build VM exists (provisioners/windows/win-hw-wim/New-WinHwWimBuildVm.ps1).
+# Prerequisites:
 #   - Reuses the existing FXCI (nontrusted) image-creation OIDC credentials — the same
 #     SP/secrets as sig-nontrusted.yml: AZURE_CLIENT_ID_FXCI, AZURE_SUBSCRIPTION_ID_UNTRUSTED,
-#     AZURE_TENANT_ID. That SP must be able to start + run-command the build VM in
-#     rg-central-us-nuc-wim (Virtual Machine Contributor there, if not already covered).
+#     AZURE_TENANT_ID. That SP must be able to create/delete VMs + run-command in
+#     rg-central-us-nuc-wim and assign the Storage Blob Data role (Contributor +
+#     Role Based Access Control Administrator/User Access Administrator there).
 
 on:
   workflow_dispatch:
@@ -46,16 +47,20 @@ jobs:
         shell: pwsh
         run: ./ci/check-authorized-user.ps1
 
-  kickoff:
-    name: Kick off build on Azure host
+  build:
+    name: Build on ephemeral Azure VM
     needs: check-access
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
+    env:
+      RESOURCE_GROUP: rg-central-us-nuc-wim
+      # Run-scoped VM name so parallel runs don't collide and teardown is exact.
+      VM_NAME: win-hw-wim-build-${{ github.run_id }}
     steps:
-      # Check out the pipeline branch — it carries ci/kickoff-win-hw-wim-build.ps1
-      # (the kickoff logic lives with the pipeline, not in this workflow's PR).
+      # Check out the pipeline branch — it carries the ci/ + provisioner scripts
+      # (the build logic lives with the pipeline, not in this workflow's PR).
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           ref: ${{ inputs.pipeline_ref }}
@@ -67,10 +72,20 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}
 
-      - name: Kick off Windows HW WIM build
+      - name: Create ephemeral build VM
+        shell: pwsh
+        run: ./ci/win-hw-wim-vm.ps1 -Action create -VmName $env:VM_NAME -ResourceGroup $env:RESOURCE_GROUP
+
+      - name: Build (kick off + wait)
         shell: pwsh
         env:
           IMAGE: ${{ inputs.image }}
           PIPELINE_REF: ${{ inputs.pipeline_ref }}
           BUILD_ID: ${{ inputs.build_id }}
         run: ./ci/kickoff-win-hw-wim-build.ps1
+
+      # Always tear the VM down — success, failure, or cancel — so there is no idle cost.
+      - name: Destroy ephemeral build VM
+        if: always()
+        shell: pwsh
+        run: ./ci/win-hw-wim-vm.ps1 -Action destroy -VmName $env:VM_NAME -ResourceGroup $env:RESOURCE_GROUP
