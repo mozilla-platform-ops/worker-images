@@ -45,7 +45,10 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
-function Az { $o = az @args 2>&1; if ($LASTEXITCODE) { throw "az $($args -join ' ') failed:`n$o" }; return $o }
+# Resolve the real az executable — a function named "Az" would otherwise shadow
+# "az" (PowerShell is case-insensitive) and recurse infinitely.
+$azExe = (Get-Command az -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
+function Az { $o = & $azExe @args 2>&1; if ($LASTEXITCODE) { throw "az $($args -join ' ') failed:`n$o" }; return $o }
 
 $sub = (Az account show --query id -o tsv)
 Write-Host "== Subscription: $sub =="

@@ -34,8 +34,11 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
-function Az { $o = az @args 2>&1; if ($LASTEXITCODE) { throw "az $($args -join ' ') failed:`n$o" }; return $o }
-function AzTry { az @args 2>&1 | Out-Null }   # best-effort (teardown)
+# Resolve the real az executable — PowerShell is case-insensitive, so a function
+# named "Az" would otherwise shadow "az" and recurse infinitely.
+$azExe = (Get-Command az -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
+function Az { $o = & $azExe @args 2>&1; if ($LASTEXITCODE) { throw "az $($args -join ' ') failed:`n$o" }; return $o }
+function AzTry { & $azExe @args 2>&1 | Out-Null }   # best-effort (teardown)
 
 if ($Action -eq 'create') {
     $subnetId = (Az network vnet subnet show -g $ResourceGroup --vnet-name $VnetName -n $SubnetName --query id -o tsv)
@@ -48,7 +51,7 @@ if ($Action -eq 'create') {
     Az vm create -g $ResourceGroup -n $VmName `
         --image $Image --size $Size `
         --admin-username nucadmin --admin-password $pw `
-        --subnet $subnetId --public-ip-address '""' --nsg '""' `
+        --subnet $subnetId --public-ip-address "" --nsg "" `
         --assign-identity $uamiId `
         --os-disk-size-gb 128 --storage-sku Premium_LRS `
         --data-disk-sizes-gb $DataDiskGB --output none
@@ -75,9 +78,10 @@ if ($Action -eq 'create') {
 else {
     Write-Host "== Destroying ephemeral VM $VmName (best-effort) =="
     # Capture child resource ids before deleting the VM (az vm delete doesn't cascade).
-    $diskId = (az vm show -g $ResourceGroup -n $VmName --query "storageProfile.osDisk.managedDisk.id" -o tsv 2>$null)
-    $nicIds = (az vm show -g $ResourceGroup -n $VmName --query "networkProfile.networkInterfaces[].id" -o tsv 2>$null)
-    $dataDisks = (az vm show -g $ResourceGroup -n $VmName --query "storageProfile.dataDisks[].managedDisk.id" -o tsv 2>$null)
+    # Use $azExe directly (best-effort; the VM may not exist) — not the throwing Az wrapper.
+    $diskId = (& $azExe vm show -g $ResourceGroup -n $VmName --query "storageProfile.osDisk.managedDisk.id" -o tsv 2>$null)
+    $nicIds = (& $azExe vm show -g $ResourceGroup -n $VmName --query "networkProfile.networkInterfaces[].id" -o tsv 2>$null)
+    $dataDisks = (& $azExe vm show -g $ResourceGroup -n $VmName --query "storageProfile.dataDisks[].managedDisk.id" -o tsv 2>$null)
     # The UAMI is persistent (Terraform-managed) and just attached — nothing to detach/remove here.
 
     AzTry vm delete -g $ResourceGroup -n $VmName --yes
