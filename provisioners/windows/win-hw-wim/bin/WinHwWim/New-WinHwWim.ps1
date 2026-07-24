@@ -101,7 +101,8 @@ $capCont   = $def['storage']['captured_container']
 $baseWim   = $cfg['base']['wim']
 $edition   = $cfg['base']['edition']
 
-$drvInject = [bool](Get-Val 'drivers' 'inject')
+# Robust bool: handles real YAML booleans AND quoted strings ("true"/"false").
+$drvInject = ("$(Get-Val 'drivers' 'inject')".Trim() -match '^(true|1|yes)$')
 $drvCabUrl = [string](Get-Val 'drivers' 'cab_url')
 
 $roninOrg  = Get-Val 'ronin' 'org'

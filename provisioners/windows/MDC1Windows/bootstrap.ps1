@@ -612,7 +612,12 @@ function Get-PreRequ {
             }
             Start-Process msiexec -ArgumentList @("/qn", "/norestart", "/i", "$env:systemdrive\$puppet") -Wait
             $agentInstalled = Get-InstalledVersion -NameLike $agentNames
-            if (-Not (Test-VersionAtLeast -Installed $agentInstalled -Minimum $agentMin)) {
+            # Fall back to the bin-dir check (original behavior) so a registry
+            # DisplayName miss can't fail a deploy where the agent installed fine.
+            $agentOk = (Test-VersionAtLeast -Installed $agentInstalled -Minimum $agentMin) -or
+                       (Test-Path 'C:\Program Files\Puppet Labs\Puppet\bin') -or
+                       (Test-Path 'C:\Program Files\OpenVox\Puppet\bin')
+            if (-Not $agentOk) {
                 Write-Host ('Did not install {0} to minimum {1} (got {2})' -f $agentLabel, $agentMin, $agentInstalled)
                 Write-Log -message  ('{0} :: {1} did not meet minimum {2} (got {3})' -f $($MyInvocation.MyCommand.Name), $agentLabel, $agentMin, $agentInstalled) -severity 'ERROR'
                 exit 1
@@ -638,7 +643,9 @@ function Get-PreRequ {
             }
             Start-Process "$env:systemdrive\$git" -ArgumentList "/verysilent" -Wait -NoNewWindow
             $gitInstalled = Get-InstalledVersion -NameLike @('Git version*', 'Git')
-            if (-Not (Test-VersionAtLeast -Installed $gitInstalled -Minimum $git_version)) {
+            # Bin-dir fallback (original behavior) guards against a registry detection miss.
+            $gitOk = (Test-VersionAtLeast -Installed $gitInstalled -Minimum $git_version) -or (Test-Path 'C:\Program Files\Git\bin')
+            if (-Not $gitOk) {
                 Write-Host "Git not installed to minimum $git_version (got $gitInstalled)"
                 Write-Log -message  ('{0} :: Git did not meet minimum {1} (got {2})' -f $($MyInvocation.MyCommand.Name), $git_version, $gitInstalled) -severity 'ERROR'
                 exit 1
