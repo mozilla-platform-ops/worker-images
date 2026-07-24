@@ -86,9 +86,9 @@ build {
       "OPENVOX_VERSION=${var.openvox_version}",
       "RONIN_EXT_SRC=${var.ronin_ext_src}",
     ]
-    scripts           = ["${path.root}/scripts/bake-bootstrap.ps1"]
+    scripts = ["${path.root}/scripts/bake-bootstrap.ps1"]
     # puppet apply returns 2 when it applied changes — that is success here.
-    valid_exit_codes  = [0, 2]
+    valid_exit_codes = [0, 2]
   }
 
   provisioner "windows-restart" {

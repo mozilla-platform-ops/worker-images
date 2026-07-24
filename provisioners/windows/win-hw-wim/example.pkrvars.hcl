@@ -3,11 +3,11 @@
 # and generates work/<image>/build.pkrvars.hcl for you — you don't edit this file.
 # Do NOT commit real values (.gitignore ignores *.pkrvars.hcl except this example).
 
-source_vm_name = "win-hw-wim-base"                # created by register-base-vm.ps1
-switch_name    = "Default Switch"              # or your external switch with internet
+source_vm_name = "win-hw-wim-base" # created by register-base-vm.ps1
+switch_name    = "Default Switch"  # or your external switch with internet
 
 winrm_username = "packer"
-winrm_password = "CHANGE-ME-build-only"        # build-scoped; scrubbed before capture
+winrm_password = "CHANGE-ME-build-only" # build-scoped; scrubbed before capture
 
 cpus      = 4
 memory_mb = 8192
@@ -16,7 +16,7 @@ memory_mb = 8192
 ronin_org    = "mozilla-platform-ops"
 ronin_repo   = "ronin_puppet"
 ronin_branch = "wim-bake-role"
-ronin_hash   = ""                              # optional pinned commit
+ronin_hash   = "" # optional pinned commit
 bake_role    = "win116424h2hwbake"
 
 # Pinned to worker-images config/windows_production_defaults.yaml (source of truth).
