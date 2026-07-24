@@ -30,8 +30,14 @@
 param(
     [Parameter(Mandatory)] [string] $SourceWim,
     [Parameter(Mandatory)] [string] $OutVhdx,
-    [int] $Index = 1,
+    # Pick the image inside the WIM by edition NAME (resolved to an index via
+    # Get-WindowsImage). Falls back to -Index when -Edition is not given.
+    [string] $Edition,
+    [int] $Index = 0,
     [int] $SizeGB = 80,
+    # Optional offline driver injection (DISM /Add-Driver) into the applied image.
+    [switch] $InjectDrivers,
+    [string] $DriverCabUrl,
     # Build-only WinRM account injected via unattend so Packer can connect.
     # Scrubbed by sysprep-generalize.ps1 before capture — never ships in the WIM.
     [string] $WinRMUser = 'packer',
@@ -59,6 +65,21 @@ $outDir = Split-Path -Parent $OutVhdx
 if ($outDir -and -not (Test-Path -LiteralPath $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
 $OutVhdx = [System.IO.Path]::GetFullPath((Join-Path (Get-Location) $OutVhdx))
 if (Test-Path -LiteralPath $OutVhdx) { throw "OutVhdx already exists (refusing to overwrite): $OutVhdx" }
+
+# Resolve the image index from the edition name when provided.
+if ($Edition) {
+    $all = Get-WindowsImage -ImagePath $SourceWim
+    $match = $all | Where-Object { $_.ImageName -eq $Edition }
+    if (-not $match) {
+        $list = ($all | ForEach-Object { '[{0}] {1}' -f $_.ImageIndex, $_.ImageName }) -join '; '
+        throw "Edition '$Edition' not found in $SourceWim. Available: $list"
+    }
+    $Index = [int]($match | Select-Object -First 1).ImageIndex
+    Write-Host "== Resolved edition '$Edition' -> index $Index =="
+}
+elseif ($Index -le 0) {
+    $Index = 1
+}
 
 Write-Host "== Validating source WIM index $Index =="
 $img = Get-WindowsImage -ImagePath $SourceWim -Index $Index
@@ -88,6 +109,22 @@ try {
 
     Write-Host "== Applying image (DISM /Apply-Image index $Index) to W:\ =="
     Expand-WindowsImage -ImagePath $SourceWim -Index $Index -ApplyPath 'W:\' | Out-Null
+
+    # --- Optional: offline driver injection (default OFF) ---
+    if ($InjectDrivers) {
+        if (-not $DriverCabUrl) { throw 'InjectDrivers set but -DriverCabUrl is empty.' }
+        $drvDir = Join-Path $env:TEMP ("winhwdrv-" + [System.IO.Path]::GetRandomFileName())
+        New-Item -ItemType Directory -Path $drvDir -Force | Out-Null
+        $cab = Join-Path $drvDir 'drivers.cab'
+        Write-Host "== Downloading driver cab: $DriverCabUrl =="
+        Invoke-WebRequest -Uri $DriverCabUrl -OutFile $cab -UseBasicParsing
+        Write-Host "== Expanding cab -> $drvDir =="
+        & expand.exe -F:* "$cab" "$drvDir" | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "expand.exe failed rc=$LASTEXITCODE" }
+        Write-Host "== DISM /Add-Driver (recurse) -> W:\ =="
+        & dism.exe /Image:W:\ /Add-Driver /Driver:"$drvDir" /Recurse
+        if ($LASTEXITCODE -ne 0) { throw "DISM /Add-Driver failed rc=$LASTEXITCODE" }
+    }
 
     Write-Host "== Injecting build-only unattend (WinRM + admin) into Panther =="
     $tmpl = Join-Path $PSScriptRoot 'unattend\unattend.xml.template'

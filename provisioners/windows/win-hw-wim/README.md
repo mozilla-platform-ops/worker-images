@@ -35,7 +35,7 @@ your base install.wim
 | Path | Purpose |
 | --- | --- |
 | `config/win-hw-wim-defaults.yaml` | Shared defaults (storage, ronin, versions, VM size). Fields set to `"default"` in an image config resolve here. |
-| `config/<image>.yaml` | **One file per WIM.** Base WIM, index, bake role, branch, versions. Adding a WIM = adding a file. |
+| `config/<image>.yaml` | **One file per WIM.** Base WIM, edition, optional driver injection, bake role, branch, versions. Adding a WIM = adding a file. |
 | `New-WinHwWimBuildVm.ps1` | Provision the Azure nested-virt build host (managed identity + Hyper-V + tooling). |
 | `scripts/bootstrap-build-host.ps1` | On-VM bootstrap (Hyper-V + Packer/ADK/azcopy/git), run by the provisioner. |
 | `bin/WinHwWim/New-WinHwWim.ps1` | **Orchestrator.** `-Image <name>` runs prep → build → publish with per-image namespacing. |
@@ -116,6 +116,22 @@ Publishing to the MDT share for a canary deploy is still a deliberate step:
      e.g. `win11-24h2-perf.yaml`.
 3. `.\bin\WinHwWim\New-WinHwWim.ps1 -Image <image>`. Names (VHDX, VM, output, blob) are
    namespaced by image id, so builds never collide.
+
+### `base.edition` and `drivers` (per-image config)
+
+- **`base.edition`** — the edition NAME inside the WIM (a multi-edition `install.wim`
+  has several indexes). `prepare-base-vhdx.ps1` resolves it to the index via
+  `Get-WindowsImage`; if the name isn't found it fails and lists what's available. Run
+  `dism /Get-WimInfo /WimFile:<wim>` to see the names.
+- **`drivers`** — optional offline driver injection, **OFF by default**:
+  ```yaml
+  drivers:
+    inject: true
+    cab_url: https://.../NUC13-drivers.cab   # .cab that expands to an .inf tree
+  ```
+  When `inject: true`, `prepare-base-vhdx.ps1` downloads the cab, expands it, and runs
+  `DISM /Add-Driver /Recurse` into the applied image **before capture**, so the drivers
+  land in the golden WIM.
 
 Everything is parameterized; nothing is hardcoded to a machine. Review each script
 before running — these touch disks and Sysprep.

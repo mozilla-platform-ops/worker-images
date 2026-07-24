@@ -26,6 +26,11 @@ vm:
   # Hyper-V switch on the build host; override per host if not the default.
   switch_name: "Default Switch"
 
+# Offline driver injection defaults (per-image config may override). OFF by default.
+drivers:
+  inject: false
+  cab_url: ""
+
 tags:
   sourceOrganization: mozilla-platform-ops
   sourceRepository: ronin_puppet

@@ -99,7 +99,10 @@ $baseCont  = $def['storage']['base_container']
 $capCont   = $def['storage']['captured_container']
 
 $baseWim   = $cfg['base']['wim']
-$wimIndex  = [int]$cfg['base']['index']
+$edition   = $cfg['base']['edition']
+
+$drvInject = [bool](Get-Val 'drivers' 'inject')
+$drvCabUrl = [string](Get-Val 'drivers' 'cab_url')
 
 $roninOrg  = Get-Val 'ronin' 'org'
 $roninRepo = Get-Val 'ronin' 'repo'
@@ -128,7 +131,7 @@ New-Item -ItemType Directory -Path $work -Force | Out-Null
 
 Write-Host "==================================================================="
 Write-Host " Image      : $Image   (build $BuildId)"
-Write-Host " Base WIM   : $baseCont/$baseWim  (index $wimIndex)"
+Write-Host " Base WIM   : $baseCont/$baseWim  (edition '$edition')"
 Write-Host " Bake role  : $bakeRole   ronin $roninOrg/$roninRepo@$roninBr"
 Write-Host " Versions   : puppet $puppetV / git $gitV / openvox $openvoxV"
 Write-Host " Output     : $goldenWim  ->  $capCont/$capBlob"
@@ -154,7 +157,12 @@ if ($Stages -contains 'prep') {
         Write-Host '  (generated a build-only WinRM password)'
     }
     if (Test-Path $vhdx) { Remove-Item $vhdx -Force }
-    & $ps 'prepare-base-vhdx.ps1' @('-SourceWim', $localBase, '-OutVhdx', $vhdx, '-Index', $wimIndex, '-WinRMPassword', $WinRMPassword, '-ComputerName', 'nuc-bake')
+    $prepArgs = @('-SourceWim', $localBase, '-OutVhdx', $vhdx, '-Edition', $edition, '-WinRMPassword', $WinRMPassword, '-ComputerName', 'nuc-bake')
+    if ($drvInject) {
+        Write-Host "  driver injection ON -> $drvCabUrl"
+        $prepArgs += @('-InjectDrivers', '-DriverCabUrl', $drvCabUrl)
+    }
+    & $ps 'prepare-base-vhdx.ps1' $prepArgs
 
     if (Get-VM -Name $vmName -ErrorAction SilentlyContinue) { Remove-VM -Name $vmName -Force }
     & $ps 'register-base-vm.ps1' @('-VmName', $vmName, '-Vhdx', $vhdx, '-SwitchName', $switch, '-Cpus', $cpus, '-MemoryStartupMB', $memMb)

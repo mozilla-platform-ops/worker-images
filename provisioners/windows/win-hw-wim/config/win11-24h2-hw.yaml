@@ -14,7 +14,16 @@
 base:
   # Blob in the 'base' container. Convention: <os>-base-install.wim
   wim: win11-24h2-base-install.wim
-  index: 1                      # image index inside the WIM (Get-WindowsImage to list)
+  # Edition NAME inside the WIM; prepare-base-vhdx resolves it to the image index
+  # via Get-WindowsImage (a multi-edition install.wim has several indexes).
+  edition: "Windows 11 Pro"
+
+# Optional offline driver injection into the applied base image (DISM /Add-Driver
+# before capture, so drivers land in the golden WIM). Default: OFF. When inject is
+# true, cab_url must point to a driver .cab that expands to an .inf tree.
+drivers:
+  inject: false
+  cab_url: ""
 
 ronin:
   org: default
