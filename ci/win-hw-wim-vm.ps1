@@ -28,14 +28,14 @@ param(
     [string] $Size           = 'Standard_D8s_v5',
     [string] $Image          = 'MicrosoftWindowsServer:WindowsServer:2022-datacenter-azure-edition:latest',
     [int]    $DataDiskGB     = 512,
-    [string] $StorageAccount = 'nucwimfxci'
+    # Pre-provisioned user-assigned identity (Terraform) attached to the VM for blob
+    # access — so no per-run role assignment (and no role-assignment rights) is needed.
+    [string] $BuilderIdentityName = 'id-central-us-wim-builder'
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 function Az { $o = az @args 2>&1; if ($LASTEXITCODE) { throw "az $($args -join ' ') failed:`n$o" }; return $o }
 function AzTry { az @args 2>&1 | Out-Null }   # best-effort (teardown)
-
-$storageId = (Az storage account show -g $ResourceGroup -n $StorageAccount --query id -o tsv)
 
 if ($Action -eq 'create') {
     $subnetId = (Az network vnet subnet show -g $ResourceGroup --vnet-name $VnetName -n $SubnetName --query id -o tsv)
@@ -43,19 +43,15 @@ if ($Action -eq 'create') {
     Add-Type -AssemblyName System.Web
     $pw = [System.Web.Security.Membership]::GeneratePassword(32, 8)   # never used (no RDP); required by az
 
-    Write-Host "== Creating ephemeral VM $VmName ($Size, no public IP) =="
+    $uamiId = (Az identity show -g $ResourceGroup -n $BuilderIdentityName --query id -o tsv)
+    Write-Host "== Creating ephemeral VM $VmName ($Size, no public IP; identity $BuilderIdentityName) =="
     Az vm create -g $ResourceGroup -n $VmName `
         --image $Image --size $Size `
         --admin-username nucadmin --admin-password $pw `
         --subnet $subnetId --public-ip-address '""' --nsg '""' `
-        --assign-identity '[system]' `
+        --assign-identity $uamiId `
         --os-disk-size-gb 128 --storage-sku Premium_LRS `
         --data-disk-sizes-gb $DataDiskGB --output none
-
-    $principalId = (Az vm show -g $ResourceGroup -n $VmName --query identity.principalId -o tsv)
-    Write-Host "== Granting Storage Blob Data Contributor to VM identity $principalId =="
-    Az role assignment create --assignee-object-id $principalId --assignee-principal-type ServicePrincipal `
-        --role 'Storage Blob Data Contributor' --scope $storageId --output none
 
     $boot = Join-Path $PSScriptRoot '..\provisioners\windows\win-hw-wim\scripts\bootstrap-build-host.ps1'
     Write-Host '== Bootstrap phase 1: Hyper-V =='
@@ -82,12 +78,8 @@ else {
     $diskId = (az vm show -g $ResourceGroup -n $VmName --query "storageProfile.osDisk.managedDisk.id" -o tsv 2>$null)
     $nicIds = (az vm show -g $ResourceGroup -n $VmName --query "networkProfile.networkInterfaces[].id" -o tsv 2>$null)
     $dataDisks = (az vm show -g $ResourceGroup -n $VmName --query "storageProfile.dataDisks[].managedDisk.id" -o tsv 2>$null)
-    $principalId = (az vm show -g $ResourceGroup -n $VmName --query "identity.principalId" -o tsv 2>$null)
+    # The UAMI is persistent (Terraform-managed) and just attached — nothing to detach/remove here.
 
-    if ($principalId) {
-        Write-Host "  removing role assignment for $principalId"
-        AzTry role assignment delete --assignee-object-id $principalId --scope $storageId
-    }
     AzTry vm delete -g $ResourceGroup -n $VmName --yes
     foreach ($nic in ($nicIds -split "`n" | Where-Object { $_ })) { Write-Host "  deleting nic $nic"; AzTry network nic delete --ids $nic }
     foreach ($d in (@($diskId) + ($dataDisks -split "`n") | Where-Object { $_ })) { Write-Host "  deleting disk $d"; AzTry disk delete --ids $d --yes }
