@@ -1,64 +1,43 @@
 <#
 .SYNOPSIS
-  Kick off a Windows HW install.wim build on the Azure nested-virt build host. Runs on the
-  GitHub Actions runner (pwsh + az, already authenticated by azure/login).
+  Run a Windows HW WIM build on the ephemeral Azure build VM and WAIT for it. Runs on
+  the GitHub Actions runner (pwsh + az, already authenticated by azure/login).
 
 .DESCRIPTION
-  The WIM build needs nested Hyper-V, which GitHub-hosted runners can't do, so this
-  drives the pre-provisioned Azure build VM (see
-  provisioners/windows/win-hw-wim/New-WinHwWimBuildVm.ps1):
+  The build needs nested Hyper-V (can't run on the GH-hosted runner) and exceeds the
+  ~90-min az vm run-command limit, so this:
+    1. has the VM check out worker-images at PIPELINE_REF and launch the build as a
+       detached scheduled task (provisioners/.../scripts/run-build-task.ps1, which
+       writes C:\win-hw-wim-build\build.done with the exit code when finished), then
+    2. polls that marker until the build finishes, streaming the tail of the log,
+    3. exits with the build's result so the workflow job passes/fails accordingly.
 
-    1. ensure the builder VM is running,
-    2. via `az vm run-command`, have it clone/checkout worker-images at the pipeline
-       branch and launch New-WinHwWim.ps1 as a SCHEDULED TASK (so the long build
-       survives past the run-command window), then return.
+  The workflow creates the VM before this step and destroys it after (if: always()).
 
-  It's a fire-and-forth kickoff: progress is on the VM
-  (C:\win-hw-wim-build\logs) and the result lands in the captured/ blob container.
-
-  Inputs come from env (set by the workflow):
-    IMAGE          config/<image>.yaml to build (e.g. win11-24h2-hw)
-    PIPELINE_REF   worker-images branch holding provisioners/windows/win-hw-wim
-    BUILD_ID       optional build id (default: timestamp on the VM)
-    VM_NAME        default win-hw-wim-builder
-    RESOURCE_GROUP default rg-central-us-nuc-wim
+  Env (set by the workflow):
+    IMAGE, PIPELINE_REF, BUILD_ID (optional), VM_NAME, RESOURCE_GROUP
 #>
 [CmdletBinding()]
 param()
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-$image = $env:IMAGE;        if (-not $image) { throw 'IMAGE not set' }
-$ref   = $env:PIPELINE_REF; if (-not $ref)   { throw 'PIPELINE_REF not set' }
+$image   = $env:IMAGE;        if (-not $image) { throw 'IMAGE not set' }
+$ref     = $env:PIPELINE_REF; if (-not $ref)   { throw 'PIPELINE_REF not set' }
 $buildId = $env:BUILD_ID
-$vm    = if ($env:VM_NAME) { $env:VM_NAME } else { 'win-hw-wim-builder' }
-$rg    = if ($env:RESOURCE_GROUP) { $env:RESOURCE_GROUP } else { 'rg-central-us-nuc-wim' }
+$vm      = if ($env:VM_NAME) { $env:VM_NAME } else { 'win-hw-wim-builder' }
+$rg      = if ($env:RESOURCE_GROUP) { $env:RESOURCE_GROUP } else { 'rg-central-us-nuc-wim' }
 
-# Inputs flow into a remote script — allow only safe identifier characters.
-foreach ($v in @($image, $ref)) {
-    if ($v -notmatch '^[A-Za-z0-9._/-]+$') { throw "Illegal characters in input: '$v'" }
-}
+# Inputs flow into a remote script — allow only safe characters.
+foreach ($v in @($image, $ref)) { if ($v -notmatch '^[A-Za-z0-9._/-]+$') { throw "Illegal input: '$v'" } }
 if ($buildId -and $buildId -notmatch '^[A-Za-z0-9._-]+$') { throw "Illegal BUILD_ID: '$buildId'" }
 
-Write-Host "== Ensuring $vm is running =="
-$state = (az vm get-instance-view -g $rg -n $vm --query "instanceView.statuses[?starts_with(code,'PowerState/')].code" -o tsv)
-if ($state -ne 'PowerState/running') {
-    Write-Host "   current: $state -> starting"
-    az vm start -g $rg -n $vm --only-show-errors | Out-Null
-}
+$buildArg = if ($buildId) { "-BuildId '$buildId'" } else { '' }
 
-$buildArg = if ($buildId) { "-BuildId $buildId" } else { '' }
-
-# Script executed ON the builder VM.
-$remote = @"
+# --- Start the build (checkout repo + register/start the scheduled task) -------
+$start = @"
 `$ErrorActionPreference = 'Stop'
 `$repo = 'C:\worker-images'
-`$log  = 'C:\win-hw-wim-build\logs'
-New-Item -ItemType Directory -Path `$log -Force | Out-Null
-
-# Build host authenticates with its system-assigned managed identity.
-az login --identity --only-show-errors | Out-Null
-
 if (Test-Path `$repo) {
     git -C `$repo fetch --all --prune
     git -C `$repo checkout '$ref'
@@ -66,21 +45,37 @@ if (Test-Path `$repo) {
 } else {
     git clone --branch '$ref' https://github.com/mozilla-platform-ops/worker-images.git `$repo
 }
-
-`$nuc = Join-Path `$repo 'provisioners\windows\win-hw-wim'
-`$stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-`$logf = Join-Path `$log "$image-`$stamp.log"
-
-# Run the build detached as a scheduled task so it outlives this run-command.
-`$cmd = "& '`$nuc\bin\WinHwWim\New-WinHwWim.ps1' -Image '$image' $buildArg *>&1 | Tee-Object -FilePath '`$logf'"
-`$action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -ExecutionPolicy Bypass -Command `"`$cmd`""
-Register-ScheduledTask -TaskName 'win-hw-wim-build' -Action `$action -RunLevel Highest -User 'SYSTEM' -Force | Out-Null
+`$task = Join-Path `$repo 'provisioners\windows\win-hw-wim\scripts\run-build-task.ps1'
+`$arg  = "-NoProfile -ExecutionPolicy Bypass -File `"`$task`" -Image '$image' $buildArg"
+`$act  = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument `$arg
+Register-ScheduledTask -TaskName 'win-hw-wim-build' -Action `$act -RunLevel Highest -User 'SYSTEM' -Force | Out-Null
 Start-ScheduledTask -TaskName 'win-hw-wim-build'
-Write-Output "kicked off build of $image ($ref) on `$env:COMPUTERNAME; log: `$logf"
+Write-Output "started build of $image ($ref)"
 "@
 
-Write-Host "== Kicking off build of '$image' from ref '$ref' on $vm =="
-$out = az vm run-command invoke -g $rg -n $vm --command-id RunPowerShellScript --scripts "$remote" `
-    --query "value[0].message" -o tsv
+Write-Host "== Starting build '$image' (ref '$ref') on $vm =="
+$out = az vm run-command invoke -g $rg -n $vm --command-id RunPowerShellScript --scripts "$start" --query "value[0].message" -o tsv
 Write-Host $out
-Write-Host "== Kickoff complete. Build runs on $vm; output -> captured/$image/ =="
+
+# --- Poll the completion marker -----------------------------------------------
+$intervalSec = 60
+$maxMinutes  = 300   # hard cap (~5h) so a hung build can't run the job forever
+$poll = "if (Test-Path 'C:\win-hw-wim-build\build.done') { 'DONE:' + (Get-Content 'C:\win-hw-wim-build\build.done' -Raw).Trim() } else { 'RUNNING' }"
+$rc = $null
+for ($elapsed = 0; $elapsed -lt ($maxMinutes * 60); $elapsed += $intervalSec) {
+    Start-Sleep -Seconds $intervalSec
+    $status = (az vm run-command invoke -g $rg -n $vm --command-id RunPowerShellScript --scripts "$poll" --query "value[0].message" -o tsv 2>$null)
+    if ($status -match 'DONE:(-?\d+)') { $rc = [int]$Matches[1]; break }
+    Write-Host ("... building ({0} min elapsed)" -f [int]($elapsed / 60))
+}
+
+# --- Fetch the log tail for visibility ----------------------------------------
+Write-Host "== Build log (tail) =="
+$tail = (az vm run-command invoke -g $rg -n $vm --command-id RunPowerShellScript `
+        --scripts "if (Test-Path 'C:\win-hw-wim-build\build.log') { Get-Content 'C:\win-hw-wim-build\build.log' -Tail 120 -ErrorAction SilentlyContinue }" `
+        --query "value[0].message" -o tsv 2>$null)
+Write-Host $tail
+
+if ($null -eq $rc) { throw "Build did not finish within $maxMinutes minutes (timed out; VM will be torn down)." }
+if ($rc -ne 0) { throw "Build FAILED (exit $rc). See log above." }
+Write-Host "== Build succeeded: $image -> captured/$image/ =="
