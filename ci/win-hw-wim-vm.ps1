@@ -43,8 +43,9 @@ function AzTry { & $azExe @args 2>&1 | Out-Null }   # best-effort (teardown)
 if ($Action -eq 'create') {
     $subnetId = (Az network vnet subnet show -g $ResourceGroup --vnet-name $VnetName -n $SubnetName --query id -o tsv)
 
-    Add-Type -AssemblyName System.Web
-    $pw = [System.Web.Security.Membership]::GeneratePassword(32, 8)   # never used (no RDP); required by az
+    # Random admin password (never used — no RDP; az just requires one). Portable:
+    # System.Web isn't available in pwsh 7 on Linux. Guid hex + 'Aa1!' meets Azure complexity.
+    $pw = 'Aa1!' + [guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N').Substring(0, 12)
 
     $uamiId = (Az identity show -g $ResourceGroup -n $BuilderIdentityName --query id -o tsv)
     Write-Host "== Creating ephemeral VM $VmName ($Size, no public IP; identity $BuilderIdentityName) =="

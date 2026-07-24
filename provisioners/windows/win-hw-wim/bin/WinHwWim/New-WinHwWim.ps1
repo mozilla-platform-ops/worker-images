@@ -165,8 +165,8 @@ if ($Stages -contains 'prep') {
     & $ps 'download-wim.ps1' @('-Blob', "$baseCont/$baseWim", '-Dest', $localBase, '-Account', $account)
 
     if (-not $WinRMPassword) {
-        Add-Type -AssemblyName System.Web
-        $WinRMPassword = ([System.Web.Security.Membership]::GeneratePassword(24, 6))
+        # Portable random password (avoid the Windows-only System.Web assembly).
+        $WinRMPassword = 'Aa1!' + [guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N').Substring(0, 12)
         Write-Host '  (generated a build-only WinRM password)'
     }
     if (Test-Path $vhdx) { Remove-Item $vhdx -Force }

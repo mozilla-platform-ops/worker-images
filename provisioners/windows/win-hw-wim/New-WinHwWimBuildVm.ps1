@@ -57,8 +57,8 @@ $subnetId  = (Az network vnet subnet show -g $ResourceGroup --vnet-name $VnetNam
 $storageId = (Az storage account show -g $ResourceGroup -n $StorageAccount --query id -o tsv)
 
 if (-not $AdminPassword) {
-    Add-Type -AssemblyName System.Web
-    $AdminPassword = [System.Web.Security.Membership]::GeneratePassword(24, 6)
+    # Portable random password (System.Web is Windows-only / absent in pwsh 7).
+    $AdminPassword = 'Aa1!' + [guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N').Substring(0, 12)
     Write-Host "== Generated admin password (save it now): $AdminPassword =="
 }
 
