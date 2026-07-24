@@ -16,7 +16,8 @@ base:
   wim: win11-24h2-base-install.wim
   # Edition NAME inside the WIM; prepare-base-vhdx resolves it to the image index
   # via Get-WindowsImage (a multi-edition install.wim has several indexes).
-  edition: "Windows 11 Pro"
+  # Verify the exact name with: dism /Get-WimInfo /WimFile:<wim>
+  edition: "Windows 11 Enterprise"
 
 # Optional offline driver injection into the applied base image (DISM /Add-Driver
 # before capture, so drivers land in the golden WIM). Default: OFF. When inject is
