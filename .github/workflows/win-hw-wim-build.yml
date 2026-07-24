@@ -16,8 +16,12 @@ on:
     inputs:
       image:
         description: "Image config to build (config/<image>.yaml)"
-        type: string
+        type: choice
         default: win11-24h2-hw
+        # Keep in sync with provisioners/windows/win-hw-wim/config/*.yaml on the pipeline branch.
+        options:
+          - win11-24h2-hw
+          - win11-24h2-hw-test
       pipeline_ref:
         description: "worker-images branch holding provisioners/windows/win-hw-wim"
         type: string
