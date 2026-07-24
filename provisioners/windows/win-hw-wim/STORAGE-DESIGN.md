@@ -1,56 +1,57 @@
-# WIM storage design (Azure Blob, Tier-1 private)
+# WIM storage design (Azure Blob, Entra-only)
 
-Decision (2026-07-21): store both the base and captured WIMs in **Azure Blob**,
-locked down as a **Tier-1 private** account — public endpoint retained but
-**deny-by-default firewall + required auth**, which the user confirmed is
-acceptable ("as long as there is an auth method"). This avoids building an
-Azure↔MDC1 VPN, which does not exist today.
+Store both the base and captured WIMs in an **Azure Blob** account
+(`nucwimfxci`, Central US). Access is **Entra-only**: the account has a public
+endpoint open to all networks, but no anonymous access and **no shared account
+keys** — every caller must present an Entra identity holding a Storage Blob Data
+RBAC role. This avoids building an Azure↔MDC1 VPN (which does not exist today).
+
+> History: this started as a Tier-1 IP-firewalled account, but split-tunnel VPN
+> made per-workstation IP allow-listing unworkable, so it moved to Entra-only
+> (RBAC gates access regardless of source network).
 
 ## Why not reuse `roninpuppetassets`
 It's fully public (`container_access_type = "blob"`, anonymous read). WIMs must
-not be anonymously downloadable, so we use a **new, network-restricted** account.
+not be anonymously downloadable, so we use a **separate, Entra-gated** account.
 
-## What was provisioned (Terraform, branch `win-hw-wim-storage`, NOT pushed)
-`relops_infra_as_code/terraform/azure_fxci/win-hw-wim-storage.tf`:
-- RG `rg-central-us-nuc-wim`, VNet `vn-central-us-nuc-wim` (10.20.0.0/24), Packer
-  subnet `sn-central-us-nuc-wim-packer` (10.20.0.0/26) with the
-  `Microsoft.Storage` **service endpoint**.
-- Storage account **`nucwimfxci`** (Central US, StorageV2, LRS):
-  `public_network_access_enabled = true` but `network_rules.default_action = Deny`,
-  allowing only the Packer subnet + `var.mdc1_egress_cidrs`; no anonymous access
-  (`allow_nested_items_to_be_public = false`); TLS1.2; HTTPS-only.
+## What is provisioned (Terraform)
+`relops_infra_as_code/terraform/azure_fxci/nuc-wim-storage.tf` (branch
+`nuc-wim-storage`, **PR #313**) — applied to the FXCI DevTest subscription:
+- RG `rg-central-us-nuc-wim`, VNet `vn-central-us-nuc-wim` + subnet
+  `sn-central-us-nuc-wim-packer` (retained; not required for access now).
+- Storage account **`nucwimfxci`** (StorageV2, LRS): `network_rules.default_action
+  = Allow` (no IP firewall), `shared_access_key_enabled = false` (no key/SAS),
+  `allow_nested_items_to_be_public = false`, TLS1.2, HTTPS-only. Managed via an
+  aliased `azurerm` provider with `storage_use_azuread = true` (keys disabled).
 - Containers `base` (BYO starting WIM) and `captured` (baked output), both private.
-- RBAC: Packer SP (`worker_images` object id) = **Storage Blob Data Contributor**;
-  MDC1 downloader SP = **Storage Blob Data Reader** on `captured` only.
+- RBAC: Packer/`worker_images` SP = **Blob Data Contributor**; MDC1 downloader SP
+  = **Blob Data Reader** on `captured` only; **Relops group** = Blob Data
+  Owner + Contributor (+ Queue/File Data roles so Terraform can read service
+  properties via AAD).
 
 `relops_infra_as_code/terraform/azure_ad/sp_nuc_wim_downloader.tf`:
-- Entra app/SP `sp-relops-win-hw-wim-downloader` for the on-site server + a client
-  secret (store in `kv-central-us-key`, do not commit).
+- Entra app/SP `sp-relops-nuc-wim-downloader` for the on-site MDC1 server + a
+  client secret. **Not** stored in Key Vault (MDC1 isn't Entra-joined) — kept as a
+  local file on the box; lives only in Terraform state.
 
-## Access paths
-- **Packer build VM** (Azure): launches in the Packer subnet → allowed by the
-  firewall via the service endpoint → reads `base`, writes `captured` using its
-  SP (Entra `--auth-mode login`). No secret needed (managed control-plane SP).
-- **On-site MDC1 server**: reaches the public FQDN from its allow-listed egress
-  IP; authenticates with the downloader SP (client_id+secret from Key Vault) or a
-  read-only SAS. Downloads from `captured`.
+## Access paths (all Entra `--auth-mode login`, any network)
+- **Azure build VM**: authenticates with its **system-assigned managed identity**
+  (granted Blob Data Contributor by `New-WinHwWimBuildVm.ps1`) — reads `base`,
+  writes `captured`. No secret on the box.
+- **On-site MDC1 server**: `az login --service-principal` with the downloader SP
+  (needs outbound reach to `login.microsoftonline.com`), reads `captured`.
+- **Operators**: their own Entra identity via the Relops group.
 
 ## Pipeline wiring
-- Host, before build: `download-wim.ps1` pulls the base WIM from `base/` →
-  feed to `prepare-base-vhdx.ps1`.
-- Host, after capture: `upload-wim.ps1` pushes `install.wim` (+ `.sha256`) to
-  `captured/`.
+- Build host, before build: `download-wim.ps1` pulls the base WIM from `base/` →
+  `prepare-base-vhdx.ps1`.
+- Build host, after capture: `upload-wim.ps1` pushes the WIM (+ `.sha256`) to
+  `captured/<image>/`.
 - Deploy: MDC1 server `download-wim.ps1` pulls from `captured/` to the MDT share,
   then the existing PXE dance applies it.
 
-## Open confirmations (parameterized, not blocking)
-1. **MDC1 egress IP** — `var.mdc1_egress_cidrs` defaults to `63.245.208.251/32`
-   (the MDC1 gateway used by the AWS S2S VPN). Confirm with netops.
-2. **Auth method for MDC1** — SP+secret (default, RBAC wired) vs read-only SAS
-   (set `nuc_wim_downloader_object_id = ""` to skip the RBAC grant and use a SAS
-   from Key Vault instead).
-
-## Apply order
-1. `azure_ad`: apply → get `nuc_wim_downloader_object_id` output.
-2. `azure_fxci`: apply with `-var nuc_wim_downloader_object_id=<that>` (and
-   `-var 'mdc1_egress_cidrs=[...]'` if different). Both via PR, never main.
+## Notes
+- Verified: anonymous → `PublicAccessNotPermitted`; account-key → `KeyBasedAuthenticationNotPermitted`;
+  Entra identity + Blob Data role → works from any network.
+- Deployed resource names keep the `nuc-wim` label (can't rename in place); the
+  pipeline tooling uses the generic `win-hw-wim` naming.

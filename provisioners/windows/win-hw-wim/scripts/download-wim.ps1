@@ -9,7 +9,8 @@
     -AuthMode login : Entra SP/managed identity (run `az login --service-principal`
                       first). Preferred.
     -AuthMode sas   : append a read-only SAS token (from Key Vault) via -Sas.
-  The account firewall must allow the caller's network / egress IP.
+  Storage is Entra-only (no IP firewall, no keys): the caller needs an Entra
+  identity with a Storage Blob Data role (managed identity, SP, or a Relops member).
 
 .EXAMPLE
   # Packer host, Entra:

@@ -3,9 +3,10 @@
   Upload a WIM (+ its .sha256) to the private Windows HW WIM storage account.
 
 .DESCRIPTION
-  Uses azcopy with Entra auth (az login as the Packer/uploader SP, then
-  --auth-mode login). The account firewall must already allow the caller's
-  network (Packer subnet service endpoint, or an allow-listed egress IP).
+  Uses azcopy with Entra auth (--auth-mode login). Storage is Entra-only (no IP
+  firewall, no keys): the caller needs an Entra identity with a Storage Blob Data
+  Contributor role — the build VM's managed identity, the uploader SP, or a Relops
+  member (az login / az login --identity first).
 
 .PARAMETER Wim
   Local WIM path (e.g. .\output\install.wim).
