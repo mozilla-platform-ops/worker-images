@@ -12,7 +12,7 @@
   The puppet run applies the bake role, which (via disable_services) performs the
   AppX removal ONCE here at bake time instead of on every NUC deploy.
 
-  Inputs come from environment variables set by nuc-wim.pkr.hcl:
+  Inputs come from environment variables set by win-hw-wim.pkr.hcl:
     RONIN_ORG RONIN_REPO RONIN_BRANCH RONIN_HASH BAKE_ROLE
     PUPPET_VERSION GIT_VERSION OPENVOX_VERSION
 

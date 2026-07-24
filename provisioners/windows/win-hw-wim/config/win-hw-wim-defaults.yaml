@@ -1,5 +1,5 @@
 ---
-# Shared defaults for the NUC baked-WIM pipeline. Any field set to the literal
+# Shared defaults for the Windows HW baked-WIM pipeline. Any field set to the literal
 # string "default" in a per-image config (config/<image>.yaml) resolves to the
 # value here. Mirrors worker-images config/windows_production_defaults.yaml.
 #

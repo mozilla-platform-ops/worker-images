@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Download a WIM from the private NUC WIM storage account (base or captured).
+  Download a WIM from the private Windows HW WIM storage account (base or captured).
   Used on the Packer host (fetch base) and on the on-site MDC1 server (fetch
   captured -> MDT share).
 

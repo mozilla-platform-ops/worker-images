@@ -1,9 +1,9 @@
 # REFERENCE ONLY for a manual `packer build -var-file=...` run.
-# Normal builds go through bin/NucWim/New-NucWim.ps1, which reads config/<image>.yaml
+# Normal builds go through bin/WinHwWim/New-WinHwWim.ps1, which reads config/<image>.yaml
 # and generates work/<image>/build.pkrvars.hcl for you — you don't edit this file.
 # Do NOT commit real values (.gitignore ignores *.pkrvars.hcl except this example).
 
-source_vm_name = "nuc-wim-base"                # created by register-base-vm.ps1
+source_vm_name = "win-hw-wim-base"                # created by register-base-vm.ps1
 switch_name    = "Default Switch"              # or your external switch with internet
 
 winrm_username = "packer"

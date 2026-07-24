@@ -1,12 +1,12 @@
 <#
 .SYNOPSIS
-  Provision the Azure VM that builds NUC install.wim images with Packer (nested
+  Provision the Azure VM that builds Windows HW install.wim images with Packer (nested
   Hyper-V). The "scripting in worker-images" entry point for standing up the
-  build host; the WIM build itself stays Packer (bin/NucWim/New-NucWim.ps1).
+  build host; the WIM build itself stays Packer (bin/WinHwWim/New-WinHwWim.ps1).
 
 .DESCRIPTION
   Creates a nested-virtualization-capable Windows Server VM in the existing
-  nuc-wim network (rg-central-us-nuc-wim / sn-central-us-nuc-wim-packer, from the
+  win-hw-wim network (rg-central-us-nuc-wim / sn-central-us-nuc-wim-packer, from the
   storage Terraform), attaches a Premium data disk for build artifacts, gives it a
   system-assigned managed identity, grants that identity Storage Blob Data
   Contributor on nucwimfxci (so azcopy --auth-mode login works with no secrets),
@@ -16,20 +16,20 @@
   default Standard_D8s_v5.
 
   After it finishes: RDP in (or `az vm run-command`) and run the build:
-    cd C:\worker-images\provisioners\windows\nuc-wim   # (clone the repo there)
+    cd C:\worker-images\provisioners\windows\win-hw-wim   # (clone the repo there)
     az login --identity
-    .\bin\NucWim\New-NucWim.ps1 -Image win11-24h2-hw
+    .\bin\WinHwWim\New-WinHwWim.ps1 -Image win11-24h2-hw
 
 .PARAMETER AllowRdpFrom
   CIDR(s) allowed to RDP (NSG). Default: Mozilla VPN netblocks. Pass your real
   egress if VPN is split-tunnel. Use -NoPublicIp to skip inbound entirely.
 
 .EXAMPLE
-  ./New-NucWimBuildVm.ps1 -AllowRdpFrom 63.245.208.132/32
+  ./New-WinHwWimBuildVm.ps1 -AllowRdpFrom 63.245.208.132/32
 #>
 [CmdletBinding()]
 param(
-    [string]   $VmName         = 'nuc-wim-builder',
+    [string]   $VmName         = 'win-hw-wim-builder',
     [string]   $ResourceGroup  = 'rg-central-us-nuc-wim',
     [string]   $Location       = 'centralus',
     [string]   $VnetName       = 'vn-central-us-nuc-wim',
@@ -103,4 +103,4 @@ Write-Host "   VM      : $VmName ($Size)   RDP: $ip   user: $AdminUsername"
 Write-Host "   Identity: $principalId  (Storage Blob Data Contributor on $StorageAccount)"
 Write-Host "   Next    : RDP in, clone worker-images, then:"
 Write-Host "             az login --identity"
-Write-Host "             .\provisioners\windows\nuc-wim\bin\NucWim\New-NucWim.ps1 -Image win11-24h2-hw"
+Write-Host "             .\provisioners\windows\win-hw-wim\bin\WinHwWim\New-WinHwWim.ps1 -Image win11-24h2-hw"

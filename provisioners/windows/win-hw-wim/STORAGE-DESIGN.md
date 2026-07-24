@@ -10,8 +10,8 @@ Azure↔MDC1 VPN, which does not exist today.
 It's fully public (`container_access_type = "blob"`, anonymous read). WIMs must
 not be anonymously downloadable, so we use a **new, network-restricted** account.
 
-## What was provisioned (Terraform, branch `nuc-wim-storage`, NOT pushed)
-`relops_infra_as_code/terraform/azure_fxci/nuc-wim-storage.tf`:
+## What was provisioned (Terraform, branch `win-hw-wim-storage`, NOT pushed)
+`relops_infra_as_code/terraform/azure_fxci/win-hw-wim-storage.tf`:
 - RG `rg-central-us-nuc-wim`, VNet `vn-central-us-nuc-wim` (10.20.0.0/24), Packer
   subnet `sn-central-us-nuc-wim-packer` (10.20.0.0/26) with the
   `Microsoft.Storage` **service endpoint**.
@@ -24,7 +24,7 @@ not be anonymously downloadable, so we use a **new, network-restricted** account
   MDC1 downloader SP = **Storage Blob Data Reader** on `captured` only.
 
 `relops_infra_as_code/terraform/azure_ad/sp_nuc_wim_downloader.tf`:
-- Entra app/SP `sp-relops-nuc-wim-downloader` for the on-site server + a client
+- Entra app/SP `sp-relops-win-hw-wim-downloader` for the on-site server + a client
   secret (store in `kv-central-us-key`, do not commit).
 
 ## Access paths

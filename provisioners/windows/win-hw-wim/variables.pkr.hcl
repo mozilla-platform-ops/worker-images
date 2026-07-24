@@ -1,4 +1,4 @@
-# Input variables for the NUC baked-WIM Packer build.
+# Input variables for the Windows HW baked-WIM Packer build.
 # Copy example.auto.pkrvars.hcl to <name>.auto.pkrvars.hcl and set values.
 
 variable "source_vm_name" {

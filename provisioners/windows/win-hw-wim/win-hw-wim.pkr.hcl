@@ -1,5 +1,5 @@
 # =============================================================================
-# nuc-wim.pkr.hcl  —  Standalone Hyper-V bake for a golden NUC install.wim
+# win-hw-wim.pkr.hcl  —  Standalone Hyper-V bake for a golden Windows HW install.wim
 #
 # Flow: clone a pristine VM (built from your BYO base VHDX) -> WinRM in ->
 #       run the ronin BAKE role -> Sysprep /generalize /shutdown ->
@@ -49,7 +49,7 @@ source "hyperv-vmcx" "nuc" {
 }
 
 build {
-  name    = "nuc-wim-bake"
+  name    = "win-hw-wim-bake"
   sources = ["source.hyperv-vmcx.nuc"]
 
   # ---- 1. Windows updates (bake them in, so deploy doesn't fight WU) ----

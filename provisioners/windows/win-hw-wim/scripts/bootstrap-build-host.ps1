@@ -1,8 +1,8 @@
 <#
 .SYNOPSIS
-  Prepare an Azure VM to be a nuc-wim build host: nested Hyper-V + the tooling the
+  Prepare an Azure VM to be a win-hw-wim build host: nested Hyper-V + the tooling the
   Packer WIM pipeline needs. Runs ON the VM (via az vm run-command from
-  New-NucWimBuildVm.ps1, or manually).
+  New-WinHwWimBuildVm.ps1, or manually).
 
 .DESCRIPTION
   Two phases because enabling Hyper-V needs a reboot:

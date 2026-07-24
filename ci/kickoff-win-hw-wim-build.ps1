@@ -1,26 +1,26 @@
 <#
 .SYNOPSIS
-  Kick off a NUC install.wim build on the Azure nested-virt build host. Runs on the
+  Kick off a Windows HW install.wim build on the Azure nested-virt build host. Runs on the
   GitHub Actions runner (pwsh + az, already authenticated by azure/login).
 
 .DESCRIPTION
   The WIM build needs nested Hyper-V, which GitHub-hosted runners can't do, so this
   drives the pre-provisioned Azure build VM (see
-  provisioners/windows/nuc-wim/New-NucWimBuildVm.ps1):
+  provisioners/windows/win-hw-wim/New-WinHwWimBuildVm.ps1):
 
     1. ensure the builder VM is running,
     2. via `az vm run-command`, have it clone/checkout worker-images at the pipeline
-       branch and launch New-NucWim.ps1 as a SCHEDULED TASK (so the long build
+       branch and launch New-WinHwWim.ps1 as a SCHEDULED TASK (so the long build
        survives past the run-command window), then return.
 
   It's a fire-and-forth kickoff: progress is on the VM
-  (C:\nuc-wim-build\logs) and the result lands in the captured/ blob container.
+  (C:\win-hw-wim-build\logs) and the result lands in the captured/ blob container.
 
   Inputs come from env (set by the workflow):
     IMAGE          config/<image>.yaml to build (e.g. win11-24h2-hw)
-    PIPELINE_REF   worker-images branch holding provisioners/windows/nuc-wim
+    PIPELINE_REF   worker-images branch holding provisioners/windows/win-hw-wim
     BUILD_ID       optional build id (default: timestamp on the VM)
-    VM_NAME        default nuc-wim-builder
+    VM_NAME        default win-hw-wim-builder
     RESOURCE_GROUP default rg-central-us-nuc-wim
 #>
 [CmdletBinding()]
@@ -31,7 +31,7 @@ Set-StrictMode -Version Latest
 $image = $env:IMAGE;        if (-not $image) { throw 'IMAGE not set' }
 $ref   = $env:PIPELINE_REF; if (-not $ref)   { throw 'PIPELINE_REF not set' }
 $buildId = $env:BUILD_ID
-$vm    = if ($env:VM_NAME) { $env:VM_NAME } else { 'nuc-wim-builder' }
+$vm    = if ($env:VM_NAME) { $env:VM_NAME } else { 'win-hw-wim-builder' }
 $rg    = if ($env:RESOURCE_GROUP) { $env:RESOURCE_GROUP } else { 'rg-central-us-nuc-wim' }
 
 # Inputs flow into a remote script — allow only safe identifier characters.
@@ -53,7 +53,7 @@ $buildArg = if ($buildId) { "-BuildId $buildId" } else { '' }
 $remote = @"
 `$ErrorActionPreference = 'Stop'
 `$repo = 'C:\worker-images'
-`$log  = 'C:\nuc-wim-build\logs'
+`$log  = 'C:\win-hw-wim-build\logs'
 New-Item -ItemType Directory -Path `$log -Force | Out-Null
 
 # Build host authenticates with its system-assigned managed identity.
@@ -67,15 +67,15 @@ if (Test-Path `$repo) {
     git clone --branch '$ref' https://github.com/mozilla-platform-ops/worker-images.git `$repo
 }
 
-`$nuc = Join-Path `$repo 'provisioners\windows\nuc-wim'
+`$nuc = Join-Path `$repo 'provisioners\windows\win-hw-wim'
 `$stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 `$logf = Join-Path `$log "$image-`$stamp.log"
 
 # Run the build detached as a scheduled task so it outlives this run-command.
-`$cmd = "& '`$nuc\bin\NucWim\New-NucWim.ps1' -Image '$image' $buildArg *>&1 | Tee-Object -FilePath '`$logf'"
+`$cmd = "& '`$nuc\bin\WinHwWim\New-WinHwWim.ps1' -Image '$image' $buildArg *>&1 | Tee-Object -FilePath '`$logf'"
 `$action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -ExecutionPolicy Bypass -Command `"`$cmd`""
-Register-ScheduledTask -TaskName 'nuc-wim-build' -Action `$action -RunLevel Highest -User 'SYSTEM' -Force | Out-Null
-Start-ScheduledTask -TaskName 'nuc-wim-build'
+Register-ScheduledTask -TaskName 'win-hw-wim-build' -Action `$action -RunLevel Highest -User 'SYSTEM' -Force | Out-Null
+Start-ScheduledTask -TaskName 'win-hw-wim-build'
 Write-Output "kicked off build of $image ($ref) on `$env:COMPUTERNAME; log: `$logf"
 "@
 

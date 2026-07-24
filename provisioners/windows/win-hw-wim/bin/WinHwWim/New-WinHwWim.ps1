@@ -1,12 +1,12 @@
 <#
 .SYNOPSIS
-  Build a golden NUC install.wim from a per-image YAML config. The scalable entry
+  Build a golden Windows HW install.wim from a per-image YAML config. The scalable entry
   point for the wim-packer pipeline (one config = one WIM). Mirrors the
   worker-images bin/WorkerImages driver + config/*.yaml convention.
 
 .DESCRIPTION
   Given -Image <name>, reads config/<name>.yaml (falling back to
-  config/nuc-wim-defaults.yaml for any field set to the string "default"),
+  config/win-hw-wim-defaults.yaml for any field set to the string "default"),
   derives per-image namespaced names so many WIMs coexist, and runs the pipeline:
 
     prep    : download base WIM  -> prepare-base-vhdx -> register-base-vm
@@ -44,11 +44,11 @@
 
 .EXAMPLE
   # Full build of the Win11 24H2 hw image:
-  .\bin\NucWim\New-NucWim.ps1 -Image win11-24h2-hw
+  .\bin\WinHwWim\New-WinHwWim.ps1 -Image win11-24h2-hw
 
 .EXAMPLE
   # Just re-publish an already-captured WIM:
-  .\bin\NucWim\New-NucWim.ps1 -Image win11-24h2-hw -Stages publish -BuildId 20260723-101500
+  .\bin\WinHwWim\New-WinHwWim.ps1 -Image win11-24h2-hw -Stages publish -BuildId 20260723-101500
 #>
 [CmdletBinding()]
 param(
@@ -67,7 +67,7 @@ $Root      = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path   # wim-packe
 $ConfigDir = Join-Path $Root 'config'
 $ScriptDir = Join-Path $Root 'scripts'
 $imgCfg    = Join-Path $ConfigDir "$Image.yaml"
-$defCfg    = Join-Path $ConfigDir 'nuc-wim-defaults.yaml'
+$defCfg    = Join-Path $ConfigDir 'win-hw-wim-defaults.yaml'
 foreach ($p in @($imgCfg, $defCfg)) { if (-not (Test-Path $p)) { throw "Config not found: $p" } }
 
 # --- YAML ---------------------------------------------------------------------
@@ -192,8 +192,8 @@ capture_name     = "$Image-$BuildId"
 
     Push-Location $Root
     try {
-        & packer init nuc-wim.pkr.hcl; if ($LASTEXITCODE) { throw "packer init rc=$LASTEXITCODE" }
-        & packer build -var-file="$varFile" nuc-wim.pkr.hcl; if ($LASTEXITCODE) { throw "packer build rc=$LASTEXITCODE" }
+        & packer init win-hw-wim.pkr.hcl; if ($LASTEXITCODE) { throw "packer init rc=$LASTEXITCODE" }
+        & packer build -var-file="$varFile" win-hw-wim.pkr.hcl; if ($LASTEXITCODE) { throw "packer build rc=$LASTEXITCODE" }
     }
     finally { Pop-Location }
     if (-not (Test-Path $goldenWim)) { throw "build finished but golden WIM missing: $goldenWim" }

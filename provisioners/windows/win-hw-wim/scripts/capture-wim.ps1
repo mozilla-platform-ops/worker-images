@@ -62,7 +62,7 @@ try {
 
     Write-Host "== DISM /Capture-Image -> $OutWim =="
     New-WindowsImage -ImagePath $OutWim -CapturePath $root -Name $Name `
-        -Description "Baked NUC CI image (ronin bake role)" -CompressionType Max -Verify | Out-Null
+        -Description "Baked Windows HW CI image (ronin bake role)" -CompressionType Max -Verify | Out-Null
 }
 finally {
     if ($mounted) { Dismount-VHD -Path $mounted -ErrorAction SilentlyContinue }

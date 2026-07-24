@@ -7,11 +7,11 @@
 .DESCRIPTION
   Run on the Windows host, elevated, after prepare-base-vhdx.ps1. Creates a
   Generation 2 VM pointing at the VHDX, sets firmware to boot from the disk, and
-  configures Secure Boot to match nuc-wim.pkr.hcl (MicrosoftWindows template).
+  configures Secure Boot to match win-hw-wim.pkr.hcl (MicrosoftWindows template).
   The VM is left OFF; Packer clones and boots a copy.
 
 .EXAMPLE
-  .\register-base-vm.ps1 -VmName nuc-wim-base -Vhdx .\output\base.vhdx -SwitchName "Default Switch"
+  .\register-base-vm.ps1 -VmName win-hw-wim-base -Vhdx .\output\base.vhdx -SwitchName "Default Switch"
 #>
 [CmdletBinding()]
 param(

@@ -1,7 +1,7 @@
 ---
-# Baked NUC install.wim: Windows 11 24H2, generic hardware (hw) bake.
+# Baked Windows HW install.wim: Windows 11 24H2, generic hardware (hw) bake.
 #
-# Build:  .\bin\NucWim\New-NucWim.ps1 -Image win11-24h2-hw
+# Build:  .\bin\WinHwWim\New-WinHwWim.ps1 -Image win11-24h2-hw
 #
 # Naming is scalable across two dimensions — OS version AND specialized worker
 # pool. The image id is this file's basename (win11-24h2-hw). Add a new WIM by

@@ -15,7 +15,7 @@
   Panther logs on failure.
 
   IMPORTANT: capture must happen AFTER this scrub (it does — capture is a
-  post-build step in nuc-wim.pkr.hcl).
+  post-build step in win-hw-wim.pkr.hcl).
 #>
 [CmdletBinding()]
 param()

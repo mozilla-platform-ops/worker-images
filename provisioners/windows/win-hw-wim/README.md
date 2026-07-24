@@ -1,4 +1,4 @@
-# nuc-wim — Baked `install.wim` pipeline for NUC Windows CI workers
+# win-hw-wim — Baked `install.wim` pipeline for Windows HW CI workers
 
 A Packer (**nested Hyper-V**) workflow that starts from **your own base
 `install.wim`** (BYO, from the `nucwimfxci` `base/` blob), runs the ronin Puppet
@@ -9,8 +9,8 @@ Goal: move the ~30-min deploy-time AppX removal (and most of the ~36-min Puppet
 run) into a pre-baked image, cutting NUC deploy time from ~63 min toward ~20–25 min.
 
 The build runs on an **Azure VM** (nested-virtualization SKU) stood up by
-`New-NucWimBuildVm.ps1`; the WIM build itself is Packer (`bin/NucWim/New-NucWim.ps1`).
-Lives in worker-images at `provisioners/windows/nuc-wim/`.
+`New-WinHwWimBuildVm.ps1`; the WIM build itself is Packer (`bin/WinHwWim/New-WinHwWim.ps1`).
+Lives in worker-images at `provisioners/windows/win-hw-wim/`.
 
 > Constraint: nothing here pushes to `main`/`master`. The one ronin change (the
 > `win116424h2hwbake` role) is authored on a feature branch in the `ronin_puppet`
@@ -21,7 +21,7 @@ Lives in worker-images at `provisioners/windows/nuc-wim/`.
 ```
 your base install.wim
   1. prepare-base-vhdx.ps1   apply WIM -> bootable VHDX (DISM /Apply-Image + bcdboot)
-  2. packer build nuc-wim    Hyper-V boots VHDX
+  2. packer build win-hw-wim    Hyper-V boots VHDX
   3.   bake-bootstrap.ps1    install puppet/git, clone ronin, AppX (provisioned) removal,
                              WU/choco, puppet apply of the BAKE role
   4.   sysprep-generalize    scrub machine state + Sysprep /generalize /shutdown
@@ -34,12 +34,12 @@ your base install.wim
 
 | Path | Purpose |
 | --- | --- |
-| `config/nuc-wim-defaults.yaml` | Shared defaults (storage, ronin, versions, VM size). Fields set to `"default"` in an image config resolve here. |
+| `config/win-hw-wim-defaults.yaml` | Shared defaults (storage, ronin, versions, VM size). Fields set to `"default"` in an image config resolve here. |
 | `config/<image>.yaml` | **One file per WIM.** Base WIM, index, bake role, branch, versions. Adding a WIM = adding a file. |
-| `New-NucWimBuildVm.ps1` | Provision the Azure nested-virt build host (managed identity + Hyper-V + tooling). |
+| `New-WinHwWimBuildVm.ps1` | Provision the Azure nested-virt build host (managed identity + Hyper-V + tooling). |
 | `scripts/bootstrap-build-host.ps1` | On-VM bootstrap (Hyper-V + Packer/ADK/azcopy/git), run by the provisioner. |
-| `bin/NucWim/New-NucWim.ps1` | **Orchestrator.** `-Image <name>` runs prep → build → publish with per-image namespacing. |
-| `nuc-wim.pkr.hcl` | Packer Hyper-V template (build + provision + capture) |
+| `bin/WinHwWim/New-WinHwWim.ps1` | **Orchestrator.** `-Image <name>` runs prep → build → publish with per-image namespacing. |
+| `win-hw-wim.pkr.hcl` | Packer Hyper-V template (build + provision + capture) |
 | `variables.pkr.hcl` | Input variable declarations |
 | `example.pkrvars.hcl` | Reference only — the orchestrator generates the real var-file per build |
 | `scripts/prepare-base-vhdx.ps1` | BYO WIM → bootable VHDX (Windows host, admin) |
@@ -74,10 +74,10 @@ The build runs on an Azure VM with **nested virtualization** (for Hyper-V). Stan
 up from any machine with `az`:
 
 ```powershell
-./New-NucWimBuildVm.ps1 -AllowRdpFrom <your-egress-cidr>
+./New-WinHwWimBuildVm.ps1 -AllowRdpFrom <your-egress-cidr>
 ```
 
-That creates `nuc-wim-builder` (Standard_D8s_v5) in `rg-central-us-nuc-wim` on the
+That creates `win-hw-wim-builder` (Standard_D8s_v5) in `rg-central-us-nuc-wim` on the
 existing `sn-central-us-nuc-wim-packer` subnet, attaches a Premium data disk, gives it
 a **system-assigned managed identity** granted *Storage Blob Data Contributor* on
 `nucwimfxci` (no secrets on the box), and bootstraps Hyper-V + Packer + ADK + azcopy +
@@ -91,7 +91,7 @@ uses its managed identity, so just:
 
 ```powershell
 az login --identity                 # storage is Entra-only
-.\bin\NucWim\New-NucWim.ps1 -Image win11-24h2-hw
+.\bin\WinHwWim\New-WinHwWim.ps1 -Image win11-24h2-hw
 ```
 
 That runs, per `config/win11-24h2-hw.yaml`:
@@ -114,7 +114,7 @@ Publishing to the MDT share for a canary deploy is still a deliberate step:
    - **New OS version:** point `base.wim` at the new base, e.g. `win11-25h2-hw.yaml`.
    - **Specialized pool:** reuse the same `base.wim`, change `bake_role` / `worker_pool_id`,
      e.g. `win11-24h2-perf.yaml`.
-3. `.\bin\NucWim\New-NucWim.ps1 -Image <image>`. Names (VHDX, VM, output, blob) are
+3. `.\bin\WinHwWim\New-WinHwWim.ps1 -Image <image>`. Names (VHDX, VM, output, blob) are
    namespaced by image id, so builds never collide.
 
 Everything is parameterized; nothing is hardcoded to a machine. Review each script

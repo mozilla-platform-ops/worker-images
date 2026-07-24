@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Upload a WIM (+ its .sha256) to the private NUC WIM storage account.
+  Upload a WIM (+ its .sha256) to the private Windows HW WIM storage account.
 
 .DESCRIPTION
   Uses azcopy with Entra auth (az login as the Packer/uploader SP, then
