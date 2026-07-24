@@ -145,10 +145,16 @@ Write-Host " Output     : $goldenWim  ->  $capCont/$capBlob"
 Write-Host " Stages     : $($Stages -join ', ')"
 Write-Host "==================================================================="
 
-# --- Auth (SP if creds present; else existing az login) -----------------------
+# --- Auth: SP if creds present; else managed identity if nothing logged in ----
+# azcopy reuses the az CLI identity (scripts set AZCOPY_AUTO_LOGIN_TYPE=AZCLI), so
+# az must be logged in. On the build VM (headless) fall back to its managed identity.
 if ($env:AZ_CLIENT_ID -and $env:AZ_CLIENT_SECRET -and $env:AZ_TENANT) {
     Write-Host '== az login (service principal) =='
     az login --service-principal -u $env:AZ_CLIENT_ID -p $env:AZ_CLIENT_SECRET --tenant $env:AZ_TENANT --only-show-errors | Out-Null
+}
+elseif (-not (az account show 2>$null)) {
+    Write-Host '== az login (managed identity) =='
+    az login --identity --only-show-errors | Out-Null
 }
 
 $ps = { param($f, $a) & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ScriptDir $f) @a; if ($LASTEXITCODE) { throw "$f failed rc=$LASTEXITCODE" } }

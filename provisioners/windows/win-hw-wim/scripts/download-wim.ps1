@@ -39,6 +39,9 @@ if ($AuthMode -eq 'sas') {
     $sep = ($Sas.StartsWith('?')) ? '' : '?'
     & azcopy copy "$url$sep$Sas" "$Dest" --overwrite=ifSourceNewer
 } else {
+    # azcopy has its own credential store — it does NOT inherit `az login`. Tell it
+    # to reuse the az CLI identity (the VM's managed identity, an SP, or a user).
+    if (-not $env:AZCOPY_AUTO_LOGIN_TYPE) { $env:AZCOPY_AUTO_LOGIN_TYPE = 'AZCLI' }
     & azcopy copy "$url" "$Dest" --auth-mode login --overwrite=ifSourceNewer
 }
 if ($LASTEXITCODE -ne 0) { throw "azcopy download failed rc=$LASTEXITCODE" }

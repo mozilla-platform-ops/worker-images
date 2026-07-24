@@ -35,6 +35,9 @@ if (-not (Test-Path -LiteralPath $Wim)) { throw "WIM not found: $Wim" }
 if (-not (Get-Command azcopy -ErrorAction SilentlyContinue)) { throw 'azcopy not on PATH.' }
 
 if (-not $BlobName) { $BlobName = Split-Path -Leaf $Wim }
+# azcopy has its own credential store — it does NOT inherit `az login`. Tell it to
+# reuse the az CLI identity (the build VM's managed identity, an SP, or a user).
+if (-not $env:AZCOPY_AUTO_LOGIN_TYPE) { $env:AZCOPY_AUTO_LOGIN_TYPE = 'AZCLI' }
 $base = "https://$Account.blob.core.windows.net/$Container"
 # Upload the WIM and its .sha256 sidecar under the same blob name.
 foreach ($pair in @(@{ Src = $Wim; Dest = $BlobName }, @{ Src = "$Wim.sha256"; Dest = "$BlobName.sha256" })) {
