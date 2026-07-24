@@ -48,9 +48,13 @@ if ($Action -eq 'create') {
     $pw = 'Aa1!' + [guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N').Substring(0, 12)
 
     $uamiId = (Az identity show -g $ResourceGroup -n $BuilderIdentityName --query id -o tsv)
-    Write-Host "== Creating ephemeral VM $VmName ($Size, no public IP; identity $BuilderIdentityName) =="
+    # Windows computer name is capped at 15 chars, so derive a short one from the
+    # (longer) run-scoped VM resource name. It's just an ephemeral standalone host.
+    $computerName = ($VmName -replace '[^a-zA-Z0-9]', '')
+    if ($computerName.Length -gt 15) { $computerName = $computerName.Substring(0, 15) }
+    Write-Host "== Creating ephemeral VM $VmName ($Size, no public IP; computer $computerName; identity $BuilderIdentityName) =="
     Az vm create -g $ResourceGroup -n $VmName `
-        --image $Image --size $Size `
+        --image $Image --size $Size --computer-name $computerName `
         --admin-username nucadmin --admin-password $pw `
         --subnet $subnetId --public-ip-address "" --nsg "" `
         --assign-identity $uamiId `
