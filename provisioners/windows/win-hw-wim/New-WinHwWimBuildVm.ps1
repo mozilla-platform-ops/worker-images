@@ -92,9 +92,21 @@ Az vm run-command invoke -g $ResourceGroup -n $VmName --command-id RunPowerShell
     --scripts "@$boot" --parameters 'Phase=Hyperv' --output none
 Write-Host '== Rebooting for Hyper-V =='
 Az vm restart -g $ResourceGroup -n $VmName --output none
+Start-Sleep -Seconds 30   # let the guest agent come back before run-command
 Write-Host '== Bootstrap phase 2: install Packer/ADK/azcopy/git/az + powershell-yaml =='
-Az vm run-command invoke -g $ResourceGroup -n $VmName --command-id RunPowerShellScript `
-    --scripts "@$boot" --parameters 'Phase=Tooling' --output none
+$phase2 = $false
+for ($i = 1; $i -le 5; $i++) {
+    try {
+        Az vm run-command invoke -g $ResourceGroup -n $VmName --command-id RunPowerShellScript `
+            --scripts "@$boot" --parameters 'Phase=Tooling' --output none
+        $phase2 = $true; break
+    }
+    catch {
+        Write-Warning "phase 2 attempt $i failed (guest agent may still be starting); retrying in 30s"
+        Start-Sleep -Seconds 30
+    }
+}
+if (-not $phase2) { throw 'Bootstrap phase 2 (tooling) failed after retries.' }
 
 $ip = if ($NoPublicIp) { '(no public IP — use Bastion/jumpbox)' } else { (Az vm show -d -g $ResourceGroup -n $VmName --query publicIps -o tsv) }
 Write-Host ""

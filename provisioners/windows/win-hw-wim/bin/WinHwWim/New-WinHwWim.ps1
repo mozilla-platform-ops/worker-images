@@ -119,6 +119,12 @@ $cpus      = [int](Get-Val 'vm' 'cpus')
 $memMb     = [int](Get-Val 'vm' 'memory_mb')
 $switch    = Get-Val 'vm' 'switch_name'
 
+# --- Validate required inputs (fail fast, before touching disks/Azure) ---------
+if (-not $baseWim) { throw "config/$Image.yaml: base.wim is required." }
+if (-not $edition) { throw "config/$Image.yaml: base.edition is required (the WIM edition name; empty would silently default to index 1)." }
+if (-not $bakeRole) { throw "config/$Image.yaml: ronin.bake_role is required." }
+if ($drvInject -and -not $drvCabUrl) { throw "config/$Image.yaml: drivers.inject is true but drivers.cab_url is empty." }
+
 # --- Derived, per-image names -------------------------------------------------
 $work      = Join-Path $Root "work\$Image"
 $localBase = Join-Path $work $baseWim
