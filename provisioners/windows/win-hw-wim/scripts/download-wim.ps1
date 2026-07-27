@@ -41,8 +41,9 @@ if ($AuthMode -eq 'sas') {
 } else {
     # azcopy has its own credential store — it does NOT inherit `az login`. Tell it
     # to reuse the az CLI identity (the VM's managed identity, an SP, or a user).
+    # (azcopy 10.32 dropped --auth-mode on copy; AZCOPY_AUTO_LOGIN_TYPE drives OAuth.)
     if (-not $env:AZCOPY_AUTO_LOGIN_TYPE) { $env:AZCOPY_AUTO_LOGIN_TYPE = 'AZCLI' }
-    & azcopy copy "$url" "$Dest" --auth-mode login --overwrite=ifSourceNewer
+    & azcopy copy "$url" "$Dest" --overwrite=ifSourceNewer
 }
 if ($LASTEXITCODE -ne 0) { throw "azcopy download failed rc=$LASTEXITCODE" }
 

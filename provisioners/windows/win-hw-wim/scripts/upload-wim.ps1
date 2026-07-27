@@ -43,7 +43,7 @@ $base = "https://$Account.blob.core.windows.net/$Container"
 foreach ($pair in @(@{ Src = $Wim; Dest = $BlobName }, @{ Src = "$Wim.sha256"; Dest = "$BlobName.sha256" })) {
     if (Test-Path -LiteralPath $pair.Src) {
         Write-Host "== Uploading $($pair.Src) -> $base/$($pair.Dest) =="
-        & azcopy copy "$($pair.Src)" "$base/$($pair.Dest)" --auth-mode login --overwrite=ifSourceNewer
+        & azcopy copy "$($pair.Src)" "$base/$($pair.Dest)" --overwrite=ifSourceNewer
         if ($LASTEXITCODE -ne 0) { throw "azcopy upload failed rc=$LASTEXITCODE ($($pair.Dest))" }
     }
 }
