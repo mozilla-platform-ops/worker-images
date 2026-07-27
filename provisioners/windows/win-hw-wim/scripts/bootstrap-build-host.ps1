@@ -39,7 +39,7 @@ if (-not (Get-WindowsFeature -Name Hyper-V).Installed) {
 # Initialize + mount the data disk (if a raw disk is attached) for build artifacts.
 $raw = Get-Disk | Where-Object PartitionStyle -eq 'RAW' | Select-Object -First 1
 if ($raw) {
-    Write-Host "== Initializing data disk #$($raw.Number) as $DataDriveLetter: =="
+    Write-Host "== Initializing data disk #$($raw.Number) as ${DataDriveLetter}: =="
     $raw | Initialize-Disk -PartitionStyle GPT -PassThru |
         New-Partition -DriveLetter $DataDriveLetter -UseMaximumSize |
         Format-Volume -FileSystem NTFS -NewFileSystemLabel 'build' -Confirm:$false | Out-Null
