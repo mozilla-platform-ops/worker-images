@@ -63,7 +63,11 @@ $SourceWim = (Resolve-Path -LiteralPath $SourceWim).Path
 # Resolve output path (may not exist yet) and ensure parent dir.
 $outDir = Split-Path -Parent $OutVhdx
 if ($outDir -and -not (Test-Path -LiteralPath $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
-$OutVhdx = [System.IO.Path]::GetFullPath((Join-Path (Get-Location) $OutVhdx))
+# Make relative paths absolute against the CWD, but leave an already-rooted path
+# alone — Join-Path'ing a rooted path onto the CWD yields 'C:\cwd\C:\...' which
+# GetFullPath rejects ("path's format is not supported").
+if (-not [System.IO.Path]::IsPathRooted($OutVhdx)) { $OutVhdx = Join-Path (Get-Location) $OutVhdx }
+$OutVhdx = [System.IO.Path]::GetFullPath($OutVhdx)
 if (Test-Path -LiteralPath $OutVhdx) { throw "OutVhdx already exists (refusing to overwrite): $OutVhdx" }
 
 # Resolve the image index from the edition name when provided.
