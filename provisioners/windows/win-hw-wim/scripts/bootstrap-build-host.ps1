@@ -9,7 +9,7 @@
   the caller prepends `$Phase = 'Hyperv'` (or 'Tooling') as a separate --scripts line.
 
     Hyperv  : enable the Hyper-V role (caller reboots afterward).
-    Tooling : install Packer, Windows ADK (DISM), azcopy, git, az CLI, powershell-yaml.
+    Tooling : install Packer, azcopy, git, az CLI (DISM is native), powershell-yaml.
 
   On success each phase prints the sentinel BOOTSTRAP_PHASE_OK — the caller asserts it,
   because `az vm run-command` returns exit 0 even when the inner script throws.
@@ -55,7 +55,9 @@ if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
     if (-not (Get-Command choco -ErrorAction SilentlyContinue)) { throw 'Chocolatey install failed.' }
 }
 
-foreach ($pkg in 'packer', 'azcopy10', 'git', 'azure-cli', 'windows-adk-deploymenttools') {
+# DISM is built into Windows (System32) — no ADK package needed for the WIM
+# apply/capture cmdlets (Expand-WindowsImage / New-WindowsImage) the pipeline uses.
+foreach ($pkg in 'packer', 'azcopy10', 'git', 'azure-cli') {
     Write-Host "== choco install $pkg =="
     & choco install $pkg -y --no-progress --limit-output
     if ($LASTEXITCODE -notin 0, 3010) { throw "choco install $pkg failed rc=$LASTEXITCODE" }
