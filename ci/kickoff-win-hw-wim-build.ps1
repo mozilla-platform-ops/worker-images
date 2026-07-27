@@ -50,7 +50,7 @@ if (Test-Path `$repo) {
 }
 if (-not (Test-Path (Join-Path `$repo 'provisioners\windows\win-hw-wim\scripts\run-build-task.ps1'))) { throw 'repo checkout missing run-build-task.ps1' }
 `$task = Join-Path `$repo 'provisioners\windows\win-hw-wim\scripts\run-build-task.ps1'
-`$arg  = "-NoProfile -ExecutionPolicy Bypass -File `"`$task`" -Image '$image' $buildArg"
+`$arg  = "-NoProfile -ExecutionPolicy Bypass -File ""`$task"" -Image '$image' $buildArg"
 `$act  = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument `$arg
 Register-ScheduledTask -TaskName 'win-hw-wim-build' -Action `$act -RunLevel Highest -User 'SYSTEM' -Force | Out-Null
 Start-ScheduledTask -TaskName 'win-hw-wim-build'
