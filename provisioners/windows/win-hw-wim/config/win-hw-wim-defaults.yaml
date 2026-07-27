@@ -23,8 +23,10 @@ vm:
   openvox_version: "8.24.2"
   cpus: 4
   memory_mb: 8192
-  # Hyper-V switch on the build host; override per host if not the default.
-  switch_name: "Default Switch"
+  # Hyper-V switch on the build host. The bootstrap creates an internal NAT switch
+  # 'wim-nat' (Windows Server has no client "Default Switch"); the bake guest gets a
+  # matching static IP via the injected unattend. Override per host if needed.
+  switch_name: "wim-nat"
 
 # Offline driver injection defaults (per-image config may override). OFF by default.
 drivers:

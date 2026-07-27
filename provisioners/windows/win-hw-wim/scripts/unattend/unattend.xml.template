@@ -53,6 +53,11 @@
       <FirstLogonCommands>
         <SynchronousCommand wcm:action="add">
           <Order>1</Order>
+          <Description>Static IP on the NAT switch (no DHCP) so Packer/host can reach WinRM and the VM has outbound internet</Description>
+          <CommandLine>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$a = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' } | Select-Object -First 1; if (-not $a) { $a = Get-NetAdapter | Select-Object -First 1 }; New-NetIPAddress -InterfaceIndex $a.ifIndex -IPAddress 192.168.234.10 -PrefixLength 24 -DefaultGateway 192.168.234.1 -ErrorAction SilentlyContinue; Set-DnsClientServerAddress -InterfaceIndex $a.ifIndex -ServerAddresses '8.8.8.8','1.1.1.1'"</CommandLine>
+        </SynchronousCommand>
+        <SynchronousCommand wcm:action="add">
+          <Order>2</Order>
           <Description>Enable WinRM for Packer</Description>
           <CommandLine>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Enable-PSRemoting -Force; Set-Item -Path WSMan:\localhost\Service\Auth\Basic -Value $true; Set-Item -Path WSMan:\localhost\Service\AllowUnencrypted -Value $true; New-NetFirewallRule -DisplayName 'WinRM-HTTP-In-TCP-5985' -Direction Inbound -Action Allow -Protocol TCP -LocalPort 5985; Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -Name LocalAccountTokenFilterPolicy -Value 1 -Type DWord; Set-Service -Name WinRM -StartupType Automatic; Start-Service WinRM"</CommandLine>
         </SynchronousCommand>

@@ -36,6 +36,28 @@ if (-not (Get-WindowsFeature -Name Hyper-V).Installed) {
     throw 'Hyper-V not installed yet. Run Phase Hyperv and reboot first.'
 }
 
+# Nested-VM network: an INTERNAL switch + NAT. Windows Server has no client
+# "Default Switch", and an Azure host can't bridge a nested VM onto the vnet, so
+# the bake VM gets outbound internet (ronin/git/choco/Windows Update) and a
+# host-reachable IP for Packer WinRM through NAT. The guest gets a matching STATIC
+# IP via the injected unattend (scripts/unattend/unattend.xml.template) because a
+# NAT switch has no DHCP. Keep these in sync with that template.
+$SwitchName = 'wim-nat'
+$HostNatIp  = '192.168.234.1'
+$NatPrefix  = '192.168.234.0/24'
+if (-not (Get-VMSwitch -Name $SwitchName -ErrorAction SilentlyContinue)) {
+    Write-Host "== Creating internal NAT switch $SwitchName =="
+    New-VMSwitch -Name $SwitchName -SwitchType Internal | Out-Null
+}
+$ifAlias = "vEthernet ($SwitchName)"
+if (-not (Get-NetIPAddress -InterfaceAlias $ifAlias -IPAddress $HostNatIp -ErrorAction SilentlyContinue)) {
+    New-NetIPAddress -InterfaceAlias $ifAlias -IPAddress $HostNatIp -PrefixLength 24 | Out-Null
+}
+if (-not (Get-NetNat -Name $SwitchName -ErrorAction SilentlyContinue)) {
+    New-NetNat -Name $SwitchName -InternalIPInterfaceAddressPrefix $NatPrefix | Out-Null
+}
+Write-Host "== NAT switch $SwitchName ready ($NatPrefix via $HostNatIp) =="
+
 # Initialize + mount the data disk (if a raw disk is attached) for build artifacts.
 $raw = Get-Disk | Where-Object PartitionStyle -eq 'RAW' | Select-Object -First 1
 if ($raw) {
