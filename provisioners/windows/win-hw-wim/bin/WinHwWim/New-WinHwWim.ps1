@@ -56,6 +56,10 @@ param(
     [ValidateSet('prep', 'build', 'publish')] [string[]] $Stages = @('prep', 'build', 'publish'),
     [string] $WinRMPassword,
     [string] $BuildId,
+    # Client ID of the user-assigned managed identity to log in with on the build VM.
+    # The VM is attached a USER-assigned identity (no system-assigned), so bare
+    # `az login --identity` fails ("Please run az login") — it must be told which one.
+    [string] $IdentityClientId,
     [switch] $KeepArtifacts
 )
 
@@ -157,8 +161,17 @@ if ($env:AZ_CLIENT_ID -and $env:AZ_CLIENT_SECRET -and $env:AZ_TENANT) {
     az login --service-principal -u $env:AZ_CLIENT_ID -p $env:AZ_CLIENT_SECRET --tenant $env:AZ_TENANT --only-show-errors | Out-Null
 }
 elseif (-not (az account show 2>$null)) {
-    Write-Host '== az login (managed identity) =='
-    az login --identity --only-show-errors | Out-Null
+    # The build VM has a USER-assigned identity (no system-assigned), so bare
+    # `az login --identity` fails — pass the UAMI client id via --username.
+    if ($IdentityClientId) {
+        Write-Host "== az login (user-assigned managed identity $IdentityClientId) =="
+        az login --identity --username $IdentityClientId --only-show-errors | Out-Null
+    }
+    else {
+        Write-Host '== az login (managed identity) =='
+        az login --identity --only-show-errors | Out-Null
+    }
+    if (-not (az account show 2>$null)) { throw 'az login (managed identity) failed — no active account.' }
 }
 
 $ps = { param($f, $a) & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ScriptDir $f) @a; if ($LASTEXITCODE) { throw "$f failed rc=$LASTEXITCODE" } }

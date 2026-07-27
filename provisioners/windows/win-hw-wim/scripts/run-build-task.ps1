@@ -13,7 +13,8 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)] [string] $Image,
-    [string] $BuildId
+    [string] $BuildId,
+    [string] $IdentityClientId
 )
 $base = 'C:\win-hw-wim-build'
 New-Item -ItemType Directory -Path $base -Force | Out-Null
@@ -30,6 +31,7 @@ $rc = 0
 try {
     $a = @('-Image', $Image)
     if ($BuildId) { $a += @('-BuildId', $BuildId) }
+    if ($IdentityClientId) { $a += @('-IdentityClientId', $IdentityClientId) }
     # Run in a child process so we get a reliable exit code (New-WinHwWim uses -EA Stop).
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $nuc @a *>&1 | Tee-Object -FilePath $log
     $rc = if ($null -eq $LASTEXITCODE) { 0 } else { $LASTEXITCODE }

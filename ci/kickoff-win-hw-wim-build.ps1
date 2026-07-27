@@ -38,6 +38,14 @@ if ($buildId -and $buildId -notmatch '^[A-Za-z0-9._-]+$') { throw "Illegal BUILD
 # validated to [A-Za-z0-9._/-]+ (no spaces), so they need no quoting.
 $buildArg = if ($buildId) { "-BuildId $buildId" } else { '' }
 
+# The build VM has only a USER-assigned managed identity, so New-WinHwWim must log in
+# with `az login --identity --username <clientId>`. Resolve that client id here (this
+# runner is az-authenticated via OIDC) and pass it through to the build.
+$idName = if ($env:BUILDER_IDENTITY_NAME) { $env:BUILDER_IDENTITY_NAME } else { 'id-central-us-wim-builder' }
+$idClientId = (az identity show -g $rg -n $idName --query clientId -o tsv 2>$null)
+if ($idClientId) { $buildArg = "$buildArg -IdentityClientId $idClientId".Trim() }
+else { Write-Warning "Could not resolve client id for identity '$idName' in '$rg'; build may fail to az login." }
+
 # --- Start the build (checkout repo + register/start the scheduled task) -------
 $start = @"
 `$ErrorActionPreference = 'Stop'
