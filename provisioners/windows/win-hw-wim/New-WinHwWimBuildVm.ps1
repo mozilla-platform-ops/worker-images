@@ -34,7 +34,7 @@ param(
     [string]   $Location       = 'centralus',
     [string]   $VnetName       = 'vn-central-us-nuc-wim',
     [string]   $SubnetName     = 'sn-central-us-nuc-wim-packer',
-    [string]   $Size           = 'Standard_D96ads_v5',   # AMD, 96 vCPU/384 GiB, nested-virt capable
+    [string]   $Size           = 'Standard_D64ads_v5',   # AMD, 64 vCPU/256 GiB, nested-virt capable (fits DADSv5 64-core quota)
     # Plain WS2025 gen2 (azure-edition forces Trusted Launch, which breaks nested virt).
     [string]   $Image          = 'MicrosoftWindowsServer:WindowsServer:2025-datacenter-g2:latest',
     [int]      $DataDiskGB     = 512,

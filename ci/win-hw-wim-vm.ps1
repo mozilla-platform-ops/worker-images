@@ -25,7 +25,7 @@ param(
     [string] $ResourceGroup  = 'rg-central-us-nuc-wim',
     [string] $VnetName       = 'vn-central-us-nuc-wim',
     [string] $SubnetName     = 'sn-central-us-nuc-wim-packer',
-    [string] $Size           = 'Standard_D96ads_v5',   # AMD, 96 vCPU/384 GiB, nested-virt capable
+    [string] $Size           = 'Standard_D64ads_v5',   # AMD, 64 vCPU/256 GiB, nested-virt capable (fits DADSv5 64-core quota)
     # Plain Windows Server 2025 gen2 (NOT azure-edition — azure-edition pushes Trusted
     # Launch, which is incompatible with nested virtualization).
     [string] $Image          = 'MicrosoftWindowsServer:WindowsServer:2025-datacenter-g2:latest',
