@@ -58,7 +58,7 @@ Write-Output 'KICKOFF_OK'
 "@
 
 Write-Host "== Starting build '$image' (ref '$ref') on $vm =="
-$out = az vm run-command invoke -g $rg -n $vm --command-id RunPowerShellScript --scripts "$start" --query "value[0].message" -o tsv
+$out = az vm run-command invoke -g $rg -n $vm --command-id RunPowerShellScript --scripts "$start" --query "join('`n', value[].message)" -o tsv
 Write-Host $out
 # az vm run-command returns 0 even if the inner script threw — assert the sentinel so a
 # failed checkout/register fails fast instead of polling a build that never started.

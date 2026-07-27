@@ -72,8 +72,10 @@ if ($Action -eq 'create') {
     # literal line with @file, or --parameters -> params, proved unreliable).
     function Invoke-Phase([string]$Ph) {
         $script = "`$Phase = '$Ph'`n" + $bootBody
+        # Capture ALL message streams (value[0]=stdout, value[1]=stderr) — a thrown
+        # error lands in stderr, so querying only value[0] hid the real failure.
         $msg = Az vm run-command invoke -g $ResourceGroup -n $VmName --command-id RunPowerShellScript `
-            --scripts $script --query "value[0].message" -o tsv
+            --scripts $script --query "join('`n', value[].message)" -o tsv
         if ("$msg" -notmatch 'BOOTSTRAP_PHASE_OK') { throw "bootstrap phase '$Ph' did not succeed:`n$msg" }
         Write-Host "  phase $Ph OK"
     }
