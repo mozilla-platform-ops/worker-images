@@ -36,7 +36,7 @@ if ($destDir -and -not (Test-Path $destDir)) { New-Item -ItemType Directory -Pat
 
 if ($AuthMode -eq 'sas') {
     if (-not $Sas) { throw '-Sas required when -AuthMode sas' }
-    $sep = ($Sas.StartsWith('?')) ? '' : '?'
+    $sep = if ($Sas.StartsWith('?')) { '' } else { '?' }
     & azcopy copy "$url$sep$Sas" "$Dest" --overwrite=ifSourceNewer
 } else {
     # azcopy has its own credential store — it does NOT inherit `az login`. Tell it
