@@ -61,15 +61,19 @@ if ($Action -eq 'create') {
         --os-disk-size-gb 128 --storage-sku Premium_LRS `
         --data-disk-sizes-gb $DataDiskGB --output none
 
-    $boot = Join-Path $PSScriptRoot '..\provisioners\windows\win-hw-wim\scripts\bootstrap-build-host.ps1'
+    # Forward slashes so the path resolves on the Linux runner too.
+    $boot = "$PSScriptRoot/../provisioners/windows/win-hw-wim/scripts/bootstrap-build-host.ps1"
+    if (-not (Test-Path $boot)) { throw "bootstrap script not found: $boot" }
+    $bootBody = Get-Content -Raw $boot
 
     # Run a bootstrap phase and ASSERT its success sentinel. `az vm run-command` returns
     # exit 0 even if the inner script throws, so we can't rely on the az exit code.
-    # Pass the phase by prepending a `$Phase = '<phase>'` script line (--parameters mapping
-    # to script params is unreliable).
+    # Inline the phase assignment + script content as ONE --scripts value (mixing a
+    # literal line with @file, or --parameters -> params, proved unreliable).
     function Invoke-Phase([string]$Ph) {
+        $script = "`$Phase = '$Ph'`n" + $bootBody
         $msg = Az vm run-command invoke -g $ResourceGroup -n $VmName --command-id RunPowerShellScript `
-            --scripts "`$Phase = '$Ph'" "@$boot" --query "value[0].message" -o tsv
+            --scripts $script --query "value[0].message" -o tsv
         if ("$msg" -notmatch 'BOOTSTRAP_PHASE_OK') { throw "bootstrap phase '$Ph' did not succeed:`n$msg" }
         Write-Host "  phase $Ph OK"
     }
