@@ -25,8 +25,10 @@ param(
     [string] $ResourceGroup  = 'rg-central-us-nuc-wim',
     [string] $VnetName       = 'vn-central-us-nuc-wim',
     [string] $SubnetName     = 'sn-central-us-nuc-wim-packer',
-    [string] $Size           = 'Standard_D8s_v5',
-    [string] $Image          = 'MicrosoftWindowsServer:WindowsServer:2022-datacenter-azure-edition:latest',
+    [string] $Size           = 'Standard_D96ads_v5',   # AMD, 96 vCPU/384 GiB, nested-virt capable
+    # Plain Windows Server 2025 gen2 (NOT azure-edition — azure-edition pushes Trusted
+    # Launch, which is incompatible with nested virtualization).
+    [string] $Image          = 'MicrosoftWindowsServer:WindowsServer:2025-datacenter-g2:latest',
     [int]    $DataDiskGB     = 512,
     # Pre-provisioned user-assigned identity (Terraform) attached to the VM for blob
     # access — so no per-run role assignment (and no role-assignment rights) is needed.
@@ -55,6 +57,7 @@ if ($Action -eq 'create') {
     Write-Host "== Creating ephemeral VM $VmName ($Size, no public IP; computer $computerName; identity $BuilderIdentityName) =="
     Az vm create -g $ResourceGroup -n $VmName `
         --image $Image --size $Size --computer-name $computerName `
+        --security-type Standard `
         --admin-username nucadmin --admin-password $pw `
         --subnet $subnetId --public-ip-address "" --nsg "" `
         --assign-identity $uamiId `

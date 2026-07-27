@@ -34,8 +34,9 @@ param(
     [string]   $Location       = 'centralus',
     [string]   $VnetName       = 'vn-central-us-nuc-wim',
     [string]   $SubnetName     = 'sn-central-us-nuc-wim-packer',
-    [string]   $Size           = 'Standard_D8s_v5',   # nested-virt capable
-    [string]   $Image          = 'MicrosoftWindowsServer:WindowsServer:2022-datacenter-azure-edition:latest',
+    [string]   $Size           = 'Standard_D96ads_v5',   # AMD, 96 vCPU/384 GiB, nested-virt capable
+    # Plain WS2025 gen2 (azure-edition forces Trusted Launch, which breaks nested virt).
+    [string]   $Image          = 'MicrosoftWindowsServer:WindowsServer:2025-datacenter-g2:latest',
     [int]      $DataDiskGB     = 512,
     [string]   $StorageAccount = 'nucwimfxci',
     [string]   $AdminUsername  = 'nucadmin',
@@ -66,7 +67,7 @@ Write-Host "== Creating VM $VmName ($Size, nested-virt) in $SubnetName =="
 $pip = if ($NoPublicIp) { '""' } else { "$VmName-pip" }
 Az vm create `
     -g $ResourceGroup -n $VmName -l $Location `
-    --image $Image --size $Size `
+    --image $Image --size $Size --security-type Standard `
     --admin-username $AdminUsername --admin-password $AdminPassword `
     --subnet $subnetId --public-ip-address $pip --nsg "$VmName-nsg" `
     --assign-identity '[system]' `
