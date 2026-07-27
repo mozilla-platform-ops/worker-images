@@ -100,5 +100,15 @@ else {
     AzTry vm delete -g $ResourceGroup -n $VmName --yes
     foreach ($nic in ($nicIds -split "`n" | Where-Object { $_ })) { Write-Host "  deleting nic $nic"; AzTry network nic delete --ids $nic }
     foreach ($d in (@($diskId) + ($dataDisks -split "`n") | Where-Object { $_ })) { Write-Host "  deleting disk $d"; AzTry disk delete --ids $d --yes }
+
+    # Sweep by name prefix — catches resources az created before a FAILED 'vm create'
+    # (the VM never existed, so 'az vm show' above found nothing). az's default NIC is
+    # <VmName>VMNic; disks are <VmName>_*.
+    foreach ($n in ((& $azExe network nic list -g $ResourceGroup --query "[?starts_with(name,'$VmName')].name" -o tsv 2>$null) -split "`n" | Where-Object { $_ })) {
+        Write-Host "  deleting leaked nic $n"; AzTry network nic delete -g $ResourceGroup -n $n
+    }
+    foreach ($d in ((& $azExe disk list -g $ResourceGroup --query "[?starts_with(name,'$VmName')].name" -o tsv 2>$null) -split "`n" | Where-Object { $_ })) {
+        Write-Host "  deleting leaked disk $d"; AzTry disk delete -g $ResourceGroup -n $d --yes
+    }
     Write-Host "== Teardown complete for $VmName =="
 }
