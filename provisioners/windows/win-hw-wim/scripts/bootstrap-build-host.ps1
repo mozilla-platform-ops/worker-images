@@ -65,6 +65,12 @@ foreach ($pkg in 'packer', 'azcopy10', 'git', 'azure-cli') {
 
 Write-Host '== Installing powershell-yaml module =='
 if (-not (Get-Module -ListAvailable powershell-yaml)) {
+    # In a non-interactive run-command session, Install-Module HANGS forever
+    # prompting to bootstrap the NuGet provider / trust the PSGallery repo.
+    # Pre-install the provider and mark PSGallery trusted so nothing prompts.
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force | Out-Null
+    Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
     Install-Module powershell-yaml -Scope AllUsers -Force -Confirm:$false
 }
 

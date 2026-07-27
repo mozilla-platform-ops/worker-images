@@ -73,6 +73,10 @@ foreach ($p in @($imgCfg, $defCfg)) { if (-not (Test-Path $p)) { throw "Config n
 # --- YAML ---------------------------------------------------------------------
 if (-not (Get-Module -ListAvailable -Name powershell-yaml)) {
     Write-Host '== Installing powershell-yaml module =='
+    # Avoid the non-interactive NuGet-provider / PSGallery-trust prompt hang.
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force | Out-Null
+    Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
     Install-Module powershell-yaml -Scope CurrentUser -Force -Confirm:$false
 }
 Import-Module powershell-yaml
