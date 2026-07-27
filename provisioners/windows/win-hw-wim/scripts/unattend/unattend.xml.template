@@ -1,41 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   Build-only unattend injected into the base VHDX at W:\Windows\Panther\unattend.xml
-  by prepare-base-vhdx.ps1. Its ONLY job is to let Packer connect: create a local
-  admin, auto-logon once, enable WinRM. This account/config is scrubbed by
-  sysprep-generalize.ps1 before capture, so it never ships in the golden WIM.
+  by prepare-base-vhdx.ps1. Its ONLY job is to make the bake VM boot FULLY UNATTENDED
+  and let Packer connect: auto-answer region/keyboard, bypass the Win11 24H2 network/
+  MSA requirement, create a local admin, auto-logon once, set a static IP on the NAT
+  switch, and enable WinRM. This account/config is scrubbed by sysprep-generalize.ps1
+  before capture, so it never ships in the golden WIM.
+
+  Modeled on the proven MDC1Windows/base-autounattend.xml (NUC installs). We DISM-apply
+  the image ourselves, so the windowsPE (Setup) pass is intentionally omitted.
 
   Tokens replaced by prepare-base-vhdx.ps1: @@WINRM_USER@@, @@WINRM_PASSWORD@@, @@COMPUTERNAME@@
 -->
-<unattend xmlns="urn:schemas-microsoft-com:unattend">
+<unattend xmlns="urn:schemas-microsoft-com:unattend" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
   <settings pass="specialize">
     <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64"
-               publicKeyToken="31bf3856ad364e35"
-               language="neutral" versionScope="nonSxS"
-               xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS"
                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
       <ComputerName>@@COMPUTERNAME@@</ComputerName>
+    </component>
+    <!-- Bypass the Win11 24H2 "must connect to a network / Microsoft account" OOBE gate. -->
+    <component name="Microsoft-Windows-Deployment" processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <RunSynchronous>
+        <RunSynchronousCommand wcm:action="add">
+          <Order>1</Order>
+          <Path>reg.exe add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE" /v BypassNRO /t REG_DWORD /d 1 /f</Path>
+        </RunSynchronousCommand>
+      </RunSynchronous>
     </component>
   </settings>
 
   <settings pass="oobeSystem">
-    <!-- Auto-answer the language/region/keyboard OOBE pages (otherwise Win11 stops
-         at country selection waiting for a human). -->
+    <!-- Auto-answer language/region/keyboard so OOBE never stops for input. -->
     <component name="Microsoft-Windows-International-Core" processorArchitecture="amd64"
-               publicKeyToken="31bf3856ad364e35"
-               language="neutral" versionScope="nonSxS"
-               xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
-               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-      <InputLocale>en-US</InputLocale>
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <InputLocale>0409:00000409</InputLocale>
       <SystemLocale>en-US</SystemLocale>
       <UILanguage>en-US</UILanguage>
-      <UILanguageFallback>en-US</UILanguageFallback>
       <UserLocale>en-US</UserLocale>
     </component>
     <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64"
-               publicKeyToken="31bf3856ad364e35"
-               language="neutral" versionScope="nonSxS"
-               xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS"
                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
       <UserAccounts>
         <LocalAccounts>
@@ -59,11 +65,9 @@
         <LogonCount>2</LogonCount>
       </AutoLogon>
       <OOBE>
-        <HideEULAPage>true</HideEULAPage>
-        <HideLocalAccountScreen>true</HideLocalAccountScreen>
-        <HideOnlineAccountScreens>true</HideOnlineAccountScreens>
-        <HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
         <ProtectYourPC>3</ProtectYourPC>
+        <HideEULAPage>true</HideEULAPage>
+        <HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
       </OOBE>
       <FirstLogonCommands>
         <SynchronousCommand wcm:action="add">
