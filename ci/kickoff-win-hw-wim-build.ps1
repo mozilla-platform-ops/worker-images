@@ -32,7 +32,11 @@ $rg      = if ($env:RESOURCE_GROUP) { $env:RESOURCE_GROUP } else { 'rg-central-u
 foreach ($v in @($image, $ref)) { if ($v -notmatch '^[A-Za-z0-9._/-]+$') { throw "Illegal input: '$v'" } }
 if ($buildId -and $buildId -notmatch '^[A-Za-z0-9._-]+$') { throw "Illegal BUILD_ID: '$buildId'" }
 
-$buildArg = if ($buildId) { "-BuildId '$buildId'" } else { '' }
+# NOTE: no quotes around the values below. This becomes a scheduled-task -Argument
+# string parsed by powershell.exe -File via CommandLineToArgvW, which strips double
+# quotes but keeps single quotes LITERAL (they'd end up in $Image). Inputs are already
+# validated to [A-Za-z0-9._/-]+ (no spaces), so they need no quoting.
+$buildArg = if ($buildId) { "-BuildId $buildId" } else { '' }
 
 # --- Start the build (checkout repo + register/start the scheduled task) -------
 $start = @"
@@ -50,7 +54,7 @@ if (Test-Path `$repo) {
 }
 if (-not (Test-Path (Join-Path `$repo 'provisioners\windows\win-hw-wim\scripts\run-build-task.ps1'))) { throw 'repo checkout missing run-build-task.ps1' }
 `$task = Join-Path `$repo 'provisioners\windows\win-hw-wim\scripts\run-build-task.ps1'
-`$arg  = "-NoProfile -ExecutionPolicy Bypass -File ""`$task"" -Image '$image' $buildArg"
+`$arg  = "-NoProfile -ExecutionPolicy Bypass -File ""`$task"" -Image $image $buildArg"
 `$act  = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument `$arg
 Register-ScheduledTask -TaskName 'win-hw-wim-build' -Action `$act -RunLevel Highest -User 'SYSTEM' -Force | Out-Null
 Start-ScheduledTask -TaskName 'win-hw-wim-build'
