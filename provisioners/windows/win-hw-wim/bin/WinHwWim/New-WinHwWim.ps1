@@ -165,7 +165,8 @@ elseif (-not (az account show 2>$null)) {
     # `az login --identity` fails — pass the UAMI client id via --username.
     if ($IdentityClientId) {
         Write-Host "== az login (user-assigned managed identity $IdentityClientId) =="
-        az login --identity --username $IdentityClientId --only-show-errors | Out-Null
+        # az CLI >= 2.88 requires --client-id (not --username) for a user-assigned MI.
+        az login --identity --client-id $IdentityClientId --only-show-errors | Out-Null
     }
     else {
         Write-Host '== az login (managed identity) =='
