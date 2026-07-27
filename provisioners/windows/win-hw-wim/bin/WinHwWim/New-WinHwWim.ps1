@@ -231,8 +231,10 @@ capture_name     = "$Image-$BuildId"
 
     Push-Location $Root
     try {
-        & packer init win-hw-wim.pkr.hcl; if ($LASTEXITCODE) { throw "packer init rc=$LASTEXITCODE" }
-        & packer build -var-file="$varFile" win-hw-wim.pkr.hcl; if ($LASTEXITCODE) { throw "packer build rc=$LASTEXITCODE" }
+        # Pass the DIRECTORY (.), not a single file: `packer build foo.pkr.hcl` loads
+        # only that file and ignores variables.pkr.hcl, so var.* declarations go missing.
+        & packer init .; if ($LASTEXITCODE) { throw "packer init rc=$LASTEXITCODE" }
+        & packer build -var-file="$varFile" .; if ($LASTEXITCODE) { throw "packer build rc=$LASTEXITCODE" }
     }
     finally { Pop-Location }
     if (-not (Test-Path $goldenWim)) { throw "build finished but golden WIM missing: $goldenWim" }
