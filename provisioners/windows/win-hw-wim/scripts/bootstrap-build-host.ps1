@@ -1,40 +1,39 @@
 <#
 .SYNOPSIS
-  Prepare an Azure VM to be a win-hw-wim build host: nested Hyper-V + the tooling the
-  Packer WIM pipeline needs. Runs ON the VM (via az vm run-command from
-  New-WinHwWimBuildVm.ps1, or manually).
+  Prepare an Azure VM to be a win-hw-wim build host: nested Hyper-V + tooling.
+  Runs ON the VM via `az vm run-command`.
 
 .DESCRIPTION
-  Two phases because enabling Hyper-V needs a reboot:
-    -Phase Hyperv   : enable the Hyper-V role (no auto-reboot; caller restarts).
-    -Phase Tooling  : install Packer, Windows ADK (DISM), azcopy, git, az CLI,
-                      and the powershell-yaml module. Safe to re-run.
+  Driven by a script-scope $Phase variable (NOT a param) because
+  `az vm run-command --parameters` does not reliably map to script parameters —
+  the caller prepends `$Phase = 'Hyperv'` (or 'Tooling') as a separate --scripts line.
 
-  Requires a nested-virtualization-capable VM SKU (Dv3/Dv4/Dv5, Ev3+, Fsv2, ...).
+    Hyperv  : enable the Hyper-V role (caller reboots afterward).
+    Tooling : install Packer, Windows ADK (DISM), azcopy, git, az CLI, powershell-yaml.
 
-.EXAMPLE
-  .\bootstrap-build-host.ps1 -Phase Hyperv   ; Restart-Computer
-  .\bootstrap-build-host.ps1 -Phase Tooling
+  On success each phase prints the sentinel BOOTSTRAP_PHASE_OK — the caller asserts it,
+  because `az vm run-command` returns exit 0 even when the inner script throws.
+  Needs a nested-virtualization-capable SKU (Dv3/Dv4/Dv5, Ev3+, Fsv2, ...).
 #>
-[CmdletBinding()]
-param(
-    [Parameter(Mandatory)][ValidateSet('Hyperv', 'Tooling')] [string] $Phase,
-    [string] $DataDriveLetter = 'F'   # large disk for build artifacts (work/)
-)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+
+if (-not $Phase) { throw "Set `$Phase to 'Hyperv' or 'Tooling' before running this script." }
+if ($Phase -notin @('Hyperv', 'Tooling')) { throw "Invalid `$Phase '$Phase' (expected Hyperv or Tooling)." }
+$DataDriveLetter = 'F'
 
 if ($Phase -eq 'Hyperv') {
     Write-Host '== Enabling Hyper-V role (reboot required afterwards) =='
     $r = Install-WindowsFeature -Name Hyper-V -IncludeManagementTools
     Write-Host "  Success=$($r.Success) RestartNeeded=$($r.RestartNeeded)"
-    Write-Host '== Done. Caller must reboot before -Phase Tooling. =='
+    if (-not $r.Success) { throw "Install-WindowsFeature Hyper-V failed: $($r | Out-String)" }
+    Write-Output 'BOOTSTRAP_PHASE_OK'
     return
 }
 
 # ---- Phase: Tooling ----------------------------------------------------------
 if (-not (Get-WindowsFeature -Name Hyper-V).Installed) {
-    throw 'Hyper-V not installed yet. Run -Phase Hyperv and reboot first.'
+    throw 'Hyper-V not installed yet. Run Phase Hyperv and reboot first.'
 }
 
 # Initialize + mount the data disk (if a raw disk is attached) for build artifacts.
@@ -46,19 +45,20 @@ if ($raw) {
         Format-Volume -FileSystem NTFS -NewFileSystemLabel 'build' -Confirm:$false | Out-Null
 }
 
-# Chocolatey (simplest reliable installer source for packer/azcopy/git/az on Windows).
+# Chocolatey.
 if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
     Write-Host '== Installing Chocolatey =='
     Set-ExecutionPolicy Bypass -Scope Process -Force
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     Invoke-Expression ((New-Object Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
     $env:Path += ";$env:ProgramData\chocolatey\bin"
+    if (-not (Get-Command choco -ErrorAction SilentlyContinue)) { throw 'Chocolatey install failed.' }
 }
 
 foreach ($pkg in 'packer', 'azcopy10', 'git', 'azure-cli', 'windows-adk-deploymenttools') {
     Write-Host "== choco install $pkg =="
     & choco install $pkg -y --no-progress --limit-output
-    if ($LASTEXITCODE -notin 0, 3010) { Write-Warning "choco $pkg rc=$LASTEXITCODE" }
+    if ($LASTEXITCODE -notin 0, 3010) { throw "choco install $pkg failed rc=$LASTEXITCODE" }
 }
 
 Write-Host '== Installing powershell-yaml module =='
@@ -66,4 +66,15 @@ if (-not (Get-Module -ListAvailable powershell-yaml)) {
     Install-Module powershell-yaml -Scope AllUsers -Force -Confirm:$false
 }
 
-Write-Host '== Build host ready. Verify: packer version; azcopy --version; dism /? ; az version =='
+# Refresh PATH from the machine env so the just-installed tools resolve now.
+$env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
+
+# Verify the toolchain actually installed (fail loudly — run-command hides inner errors).
+$missing = @()
+foreach ($t in 'packer', 'git', 'azcopy', 'az', 'dism') {
+    if (-not (Get-Command $t -ErrorAction SilentlyContinue)) { $missing += $t }
+}
+if ($missing) { throw "Tooling missing after install: $($missing -join ', ')" }
+
+Write-Host '== Build host ready (packer/git/azcopy/az/dism present). =='
+Write-Output 'BOOTSTRAP_PHASE_OK'

@@ -62,22 +62,30 @@ if ($Action -eq 'create') {
         --data-disk-sizes-gb $DataDiskGB --output none
 
     $boot = Join-Path $PSScriptRoot '..\provisioners\windows\win-hw-wim\scripts\bootstrap-build-host.ps1'
+
+    # Run a bootstrap phase and ASSERT its success sentinel. `az vm run-command` returns
+    # exit 0 even if the inner script throws, so we can't rely on the az exit code.
+    # Pass the phase by prepending a `$Phase = '<phase>'` script line (--parameters mapping
+    # to script params is unreliable).
+    function Invoke-Phase([string]$Ph) {
+        $msg = Az vm run-command invoke -g $ResourceGroup -n $VmName --command-id RunPowerShellScript `
+            --scripts "`$Phase = '$Ph'" "@$boot" --query "value[0].message" -o tsv
+        if ("$msg" -notmatch 'BOOTSTRAP_PHASE_OK') { throw "bootstrap phase '$Ph' did not succeed:`n$msg" }
+        Write-Host "  phase $Ph OK"
+    }
+
     Write-Host '== Bootstrap phase 1: Hyper-V =='
-    Az vm run-command invoke -g $ResourceGroup -n $VmName --command-id RunPowerShellScript `
-        --scripts "@$boot" --parameters 'Phase=Hyperv' --output none
+    Invoke-Phase 'Hyperv'
     Write-Host '== Reboot for Hyper-V =='
     Az vm restart -g $ResourceGroup -n $VmName --output none
     Start-Sleep -Seconds 30
-    Write-Host '== Bootstrap phase 2: tooling =='
+    Write-Host '== Bootstrap phase 2: tooling (retry for guest-agent readiness) =='
     $ok = $false
     for ($i = 1; $i -le 5; $i++) {
-        try {
-            Az vm run-command invoke -g $ResourceGroup -n $VmName --command-id RunPowerShellScript `
-                --scripts "@$boot" --parameters 'Phase=Tooling' --output none
-            $ok = $true; break
-        } catch { Write-Warning "phase 2 attempt $i failed; retry in 30s"; Start-Sleep 30 }
+        try { Invoke-Phase 'Tooling'; $ok = $true; break }
+        catch { Write-Warning "phase 2 attempt $i failed; retry in 30s. $_"; Start-Sleep 30 }
     }
-    if (-not $ok) { throw 'Bootstrap phase 2 failed after retries.' }
+    if (-not $ok) { throw 'Bootstrap phase 2 (tooling) failed after retries.' }
     Write-Host "== Ephemeral build VM $VmName ready =="
 }
 else {

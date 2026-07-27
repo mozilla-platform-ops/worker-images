@@ -37,6 +37,9 @@ $buildArg = if ($buildId) { "-BuildId '$buildId'" } else { '' }
 # --- Start the build (checkout repo + register/start the scheduled task) -------
 $start = @"
 `$ErrorActionPreference = 'Stop'
+# Refresh PATH from the machine env — tools installed by choco after the guest agent
+# started (no reboot since) aren't on this run-command's inherited PATH otherwise.
+`$env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')
 `$repo = 'C:\worker-images'
 if (Test-Path `$repo) {
     git -C `$repo fetch --all --prune
@@ -45,17 +48,21 @@ if (Test-Path `$repo) {
 } else {
     git clone --branch '$ref' https://github.com/mozilla-platform-ops/worker-images.git `$repo
 }
+if (-not (Test-Path (Join-Path `$repo 'provisioners\windows\win-hw-wim\scripts\run-build-task.ps1'))) { throw 'repo checkout missing run-build-task.ps1' }
 `$task = Join-Path `$repo 'provisioners\windows\win-hw-wim\scripts\run-build-task.ps1'
 `$arg  = "-NoProfile -ExecutionPolicy Bypass -File `"`$task`" -Image '$image' $buildArg"
 `$act  = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument `$arg
 Register-ScheduledTask -TaskName 'win-hw-wim-build' -Action `$act -RunLevel Highest -User 'SYSTEM' -Force | Out-Null
 Start-ScheduledTask -TaskName 'win-hw-wim-build'
-Write-Output "started build of $image ($ref)"
+Write-Output 'KICKOFF_OK'
 "@
 
 Write-Host "== Starting build '$image' (ref '$ref') on $vm =="
 $out = az vm run-command invoke -g $rg -n $vm --command-id RunPowerShellScript --scripts "$start" --query "value[0].message" -o tsv
 Write-Host $out
+# az vm run-command returns 0 even if the inner script threw — assert the sentinel so a
+# failed checkout/register fails fast instead of polling a build that never started.
+if ("$out" -notmatch 'KICKOFF_OK') { throw "Failed to start the build on $vm (no KICKOFF_OK):`n$out" }
 
 # --- Poll the completion marker -----------------------------------------------
 $intervalSec = 60
