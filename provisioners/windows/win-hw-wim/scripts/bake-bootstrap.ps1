@@ -146,19 +146,77 @@ New-Item -ItemType Directory -Path $manifestDir -Force | Out-Null
 [System.IO.File]::WriteAllText((Join-Path $roninDir 'manifests\nodes.pp'),
   "node default {`n    include roles_profiles::roles::$role`n}`n", $utf8NoBom)
 
-# --- 7. puppet apply (this is where the AppX removal + stable catalog bake) ---
-Step 'Running puppet apply (bake catalog)'
-Push-Location $roninDir
+# --- 7. puppet apply AS SYSTEM (this is where the AppX removal + stable catalog bake) ---
+# Puppet MUST run as NT AUTHORITY\SYSTEM. The bake role disables protected services
+# (e.g. NgcCtnrSvc / Microsoft Passport Container) whose SCM handle an ordinary admin
+# cannot open for write ("Access is denied", sc.exe rc=5) — only SYSTEM/TrustedInstaller
+# can. Packer's WinRM session runs as the local 'packer' admin, so we relaunch the apply
+# under a SYSTEM scheduled task, mirroring ronin .kitchen/provision_windows.ps1
+# (Invoke-AsSystem) and production maintainsystem.ps1 (which runs puppet as SYSTEM).
+#
 # Use hiera.yaml (the role-aware config: has the roles/%{facts.custom_win_role}.yaml
 # level that loads data/roles/<role>.yaml). win_hiera.yaml has NO roles/ level, so the
-# role's win-worker.* data would not resolve. This matches production maintainsystem.ps1.
-# Log to BOTH the console (so puppet output streams into the packer/build log and is
-# visible even if the VM is later cleaned up) and a file (for on-box inspection).
-& puppet apply manifests\nodes.pp --onetime --verbose --detailed-exitcodes `
-    --modulepath="modules;r10k_modules" --hiera_config=hiera.yaml `
-    --logdest console --logdest (Join-Path $log 'bake-puppet.log')
-$rc = $LASTEXITCODE
-Pop-Location
+# role's win-worker.* data would not resolve.
+Step 'Running puppet apply (bake catalog) as SYSTEM'
+$puppetLog = Join-Path $log 'bake-puppet.log'
+$sysScript = 'C:\bake\run-puppet-system.ps1'
+$exitFile  = 'C:\bake\bake-puppet.exitcode'
+Remove-Item $puppetLog, $exitFile -ErrorAction SilentlyContinue
+
+# Child script executed by the SYSTEM task. Written BOM-less. A fresh SYSTEM process does
+# not inherit this WinRM session's env, so it re-resolves PATH from the machine env,
+# forwards the build-scoped GitHub token to the catalog (tooltool), and sets the role fact
+# explicitly. Puppet writes to console; Tee-Object captures it to the shared log the parent
+# tails (so output still streams into the packer/build log even if the VM is cleaned up).
+$child = @"
+`$ErrorActionPreference = 'Continue'
+`$env:Path = [Environment]::GetEnvironmentVariable('Path','Machine')
+foreach (`$e in 'C:\Program Files\Puppet Labs\Puppet\bin','C:\Program Files\OpenVox\Puppet\bin','C:\Program Files\Git\cmd') { if (Test-Path `$e) { `$env:Path = `$e + ';' + `$env:Path } }
+`$env:custom_win_github_pat = '$($env:custom_win_github_pat)'
+`$env:FACTER_custom_win_role = '$role'
+Set-Location '$roninDir'
+& puppet apply manifests\nodes.pp --onetime --verbose --detailed-exitcodes --modulepath="modules;r10k_modules" --hiera_config=hiera.yaml --logdest console *>&1 | Tee-Object -FilePath '$puppetLog'
+Set-Content -Path '$exitFile' -Value `$LASTEXITCODE
+"@
+[System.IO.File]::WriteAllText($sysScript, $child, $utf8NoBom)
+
+# Stream new bytes of a growing log file to this console (so puppet output reaches the
+# packer/build log live). Shared-read so it doesn't block the SYSTEM writer.
+function Write-NewLog {
+  param([string]$Path, [ref]$Offset)
+  if (-not (Test-Path $Path)) { return }
+  $fs = [System.IO.File]::Open($Path, 'Open', 'Read', 'ReadWrite')
+  try {
+    if ($fs.Length -lt $Offset.Value) { $Offset.Value = 0 }
+    if ($fs.Length -eq $Offset.Value) { return }
+    $fs.Seek($Offset.Value, 'Begin') | Out-Null
+    $sr = New-Object System.IO.StreamReader($fs)
+    try {
+      $content = $sr.ReadToEnd()
+      if ($content) { $content.TrimEnd("`r", "`n").Split(@("`r`n", "`n"), [System.StringSplitOptions]::None) | ForEach-Object { if ($_) { Write-Host $_ } } }
+    } finally { $Offset.Value = $fs.Position; $sr.Dispose() }
+  } finally { $fs.Dispose() }
+}
+
+$taskName  = 'BakePuppetAsSystem'
+Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue
+$action    = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$sysScript`""
+$principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
+$settings  = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Hours 2)
+Register-ScheduledTask -TaskName $taskName -Action $action -Principal $principal -Settings $settings -Force | Out-Null
+Start-ScheduledTask -TaskName $taskName
+
+# Wait for the SYSTEM task to record its exit code, tailing the puppet log meanwhile.
+$deadline = (Get-Date).AddHours(2)
+$offset = [long]0
+while (-not (Test-Path $exitFile)) {
+  if ((Get-Date) -gt $deadline) { throw 'Timed out waiting for the SYSTEM puppet-apply task.' }
+  Write-NewLog -Path $puppetLog -Offset ([ref]$offset)
+  Start-Sleep -Seconds 5
+}
+Write-NewLog -Path $puppetLog -Offset ([ref]$offset)   # flush the final chunk
+$rc = [int]((Get-Content $exitFile -Raw).Trim())
+Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue
 Stop-Transcript | Out-Null
 
 # detailed-exitcodes: 0 = no changes, 2 = changes applied (both OK), 4/6 = failures.

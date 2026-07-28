@@ -33,6 +33,11 @@ Write-Output 'WIM-WATCHDOG-STOP: sysprep starting; the guest power-off from here
 # --- Secret + identity scrub ---
 Step 'Scrubbing bake secrets and identity'
 Remove-Item 'C:\ronin\data\secrets\vault.yaml' -Force -ErrorAction SilentlyContinue
+# Remove the whole bake work dir. It holds the SYSTEM puppet-apply helper
+# (C:\bake\run-puppet-system.ps1) which EMBEDS the build-scoped GitHub token
+# (custom_win_github_pat) when one is supplied, plus prereq installers and puppet logs.
+# None of it belongs in the golden WIM — drop it before capture.
+Remove-Item 'C:\bake' -Recurse -Force -ErrorAction SilentlyContinue
 $ron = 'HKLM:\SOFTWARE\Mozilla\ronin_puppet'
 if (Test-Path $ron) {
   foreach ($v in 'role','workerType','worker_pool_id','GITHASH','secret_date') {
