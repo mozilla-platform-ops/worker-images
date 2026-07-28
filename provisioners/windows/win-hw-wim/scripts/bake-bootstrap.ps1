@@ -123,32 +123,39 @@ Set-ItemProperty -Path $ron -Name worker_pool_id  -Value 'bake' -Type String
 Set-ItemProperty -Path $ron -Name image_provisioner -Value 'wim-packer' -Type String
 Set-ItemProperty -Path $ron -Name bootstrap_stage -Value 'inprogress' -Type String
 
-# --- 5. Placeholder bake vault.yaml (only secrets referenced by BAKED profiles) ---
-# No worker-registration secrets are baked (windows_worker_runner is excluded from
-# the bake role). marlin_pw is referenced by hardware_observability; a non-functional
-# placeholder satisfies the lookup and is scrubbed by sysprep-generalize.ps1.
+# --- 5. Placeholder bake vault.yaml (secret-free) ---
+# The bake role references NO Vault secrets (windows_worker_runner,
+# hardware_observability, and windows_datacenter_administrator are all excluded — see
+# ronin roles/win116424h2hwbake.pp), so this is an empty placeholder that just satisfies
+# hiera's secrets/vault.yaml level. It contains no secrets and is scrubbed by
+# sysprep-generalize.ps1 before capture. MUST be written WITHOUT a UTF-8 BOM — WinPS 5.1
+# `Set-Content -Encoding utf8` emits a BOM, which the YAML parser rejects.
 Step 'Writing placeholder bake vault.yaml'
 $secretsDir = Join-Path $roninDir 'data\secrets'
 New-Item -ItemType Directory -Path $secretsDir -Force | Out-Null
-@'
----
-marlin_pw: "bake-placeholder-scrubbed-before-capture"
-'@ | Set-Content -Path (Join-Path $secretsDir 'vault.yaml') -Encoding utf8
+$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+[System.IO.File]::WriteAllText((Join-Path $secretsDir 'vault.yaml'),
+  "---`n# bake placeholder - no secrets; scrubbed before capture`n", $utf8NoBom)
 
 # --- 6. Generate nodes.pp for the bake role ---
+# WITHOUT a BOM: puppet's parser rejects a leading UTF-8 BOM ("Illegal UTF-8 Byte Order
+# mark"), which is exactly what `Set-Content -Encoding utf8` produces on WinPS 5.1.
 Step "Generating nodes.pp -> roles::$role"
 $manifestDir = Join-Path $roninDir 'manifests\nodes'
 New-Item -ItemType Directory -Path $manifestDir -Force | Out-Null
-"node default {`n    include roles_profiles::roles::$role`n}" |
-  Set-Content -Path (Join-Path $roninDir 'manifests\nodes.pp') -Encoding utf8
+[System.IO.File]::WriteAllText((Join-Path $roninDir 'manifests\nodes.pp'),
+  "node default {`n    include roles_profiles::roles::$role`n}`n", $utf8NoBom)
 
 # --- 7. puppet apply (this is where the AppX removal + stable catalog bake) ---
 Step 'Running puppet apply (bake catalog)'
 Push-Location $roninDir
+# Use hiera.yaml (the role-aware config: has the roles/%{facts.custom_win_role}.yaml
+# level that loads data/roles/<role>.yaml). win_hiera.yaml has NO roles/ level, so the
+# role's win-worker.* data would not resolve. This matches production maintainsystem.ps1.
 # Log to BOTH the console (so puppet output streams into the packer/build log and is
 # visible even if the VM is later cleaned up) and a file (for on-box inspection).
 & puppet apply manifests\nodes.pp --onetime --verbose --detailed-exitcodes `
-    --modulepath="modules;r10k_modules" --hiera_config=win_hiera.yaml `
+    --modulepath="modules;r10k_modules" --hiera_config=hiera.yaml `
     --logdest console --logdest (Join-Path $log 'bake-puppet.log')
 $rc = $LASTEXITCODE
 Pop-Location
