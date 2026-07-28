@@ -50,13 +50,30 @@ for ($i = 0; $i -lt 60; $i++) {
 
 if (-not $assigned) { Write-BakeLog 'WARNING: never assigned static IP (no Up adapter?)' }
 
-# Classify the NAT link as Private. It comes up 'Public' (no gateway/domain), which
-# makes several WinRM/firewall operations refuse to run ("...set to Public..."). Packer
-# authenticates with NTLM (see winrm_use_ntlm in the pkr template), so we do NOT need
-# Basic/AllowUnencrypted — NTLM is message-encrypted and needs no plaintext exception.
-Get-NetConnectionProfile -ErrorAction SilentlyContinue | ForEach-Object {
-    Set-NetConnectionProfile -InterfaceIndex $_.InterfaceIndex -NetworkCategory Private -ErrorAction SilentlyContinue
+# Classify the NAT link as Private. This is THE critical WinRM enabler: the NAT link
+# comes up 'Public' (no gateway/domain for NLA to identify), and on a Public network
+# NTLM auth to a local account fails with 0x8009030d ("A specified logon session does
+# not exist") — which is exactly what makes Packer hang at "Waiting for WinRM". With the
+# profile Private (+ LocalAccountTokenFilterPolicy set in the specialize pass), NTLM to
+# the local build account works. Set-NetConnectionProfile only takes once NLA has
+# actually categorized the adapter, which lags first logon, so RETRY until it sticks.
+for ($j = 0; $j -lt 30; $j++) {
+    Get-NetConnectionProfile -ErrorAction SilentlyContinue | ForEach-Object {
+        Set-NetConnectionProfile -InterfaceIndex $_.InterfaceIndex -NetworkCategory Private -ErrorAction SilentlyContinue
+    }
+    $cats = @(Get-NetConnectionProfile -ErrorAction SilentlyContinue | Select-Object -Expand NetworkCategory)
+    if ($cats.Count -gt 0 -and -not ($cats | Where-Object { $_ -ne 'Private' })) { break }
+    Start-Sleep -Seconds 3
 }
+Write-BakeLog ("network profile(s): " + ((Get-NetConnectionProfile -ErrorAction SilentlyContinue | ForEach-Object { $_.Name + '=' + $_.NetworkCategory }) -join ', '))
+
+# Belt-and-suspenders: WinRM service policy keys enable Basic + unencrypted regardless
+# of the network profile (they bypass the interactive 'network is Public' guard), so a
+# Basic-auth fallback also works if NTLM/Private ever fails. Harmless with NTLM.
+$winrmPol = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service'
+New-Item -Path $winrmPol -Force -ErrorAction SilentlyContinue | Out-Null
+Set-ItemProperty -Path $winrmPol -Name AllowBasic -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue
+Set-ItemProperty -Path $winrmPol -Name AllowUnencryptedTraffic -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue
 
 # Bring up the WinRM HTTP listener. Explicit `winrm create Listener` (unlike
 # Enable-PSRemoting / winrm quickconfig) does NOT check the network-connection profile,

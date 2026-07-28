@@ -24,6 +24,12 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 function Step($m) { Write-Host "== $m ==" }
 
+# Signal the host-side boot watchdog (New-WinHwWim.ps1) to STOP restarting the guest:
+# from here we deliberately Sysprep /shutdown, and that power-off is what Packer waits
+# for to capture the VHDX. Write-Output (not Write-Host) so it reaches Packer's captured
+# stdout stream and lands in packer-build.log where the watchdog greps for it.
+Write-Output 'WIM-WATCHDOG-STOP: sysprep starting; the guest power-off from here is expected (capture).'
+
 # --- Secret + identity scrub ---
 Step 'Scrubbing bake secrets and identity'
 Remove-Item 'C:\ronin\data\secrets\vault.yaml' -Force -ErrorAction SilentlyContinue

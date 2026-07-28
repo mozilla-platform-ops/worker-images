@@ -242,33 +242,38 @@ capture_name     = "$Image-$BuildId"
 "@ | Set-Content -Path $varFile -Encoding utf8
 
     # --- Boot watchdog --------------------------------------------------------
-    # Windows Setup's post-specialize reboot lands as a full power-OFF on this Gen2
-    # clone (observed 2026-07-28), and Packer does NOT restart a VM that powered
-    # itself off while it waits for WinRM -> the build would otherwise hang at
-    # "Waiting for WinRM" forever. Run a background watchdog that (re)starts the
-    # clone whenever it is Off, UNTIL WinRM first becomes reachable — after which
-    # Packer owns the VM lifecycle. Scoped to this pre-connect window so it can
-    # never fight the intended sysprep /shutdown at capture time. (The mid-bake
-    # windows-restart provisioners do a soft `shutdown /r`, which stays Running in
-    # Hyper-V, so they don't need the watchdog.)
+    # EVERY guest-initiated reboot on this Gen2 clone lands as a full power-OFF, not a
+    # soft reboot (nested-virt reboot behavior, observed 2026-07-28 on both the
+    # post-specialize reboot AND the mid-bake windows-restart provisioners). Packer
+    # never restarts a VM that powered itself off, so it hangs at "Waiting for WinRM"
+    # / "Waiting for machine to restart". Run a background watchdog that (re)starts the
+    # clone whenever it is Off, for the WHOLE build, UNTIL the sysprep provisioner
+    # announces its intended /shutdown (the 'WIM-WATCHDOG-STOP' marker emitted at the
+    # top of sysprep-generalize.ps1, streamed by Packer into $pkrLog). After that the
+    # power-off is expected and Packer captures the VHDX, so the watchdog must NOT
+    # restart it.
     $cloneVm = 'packer-nuc'   # hyperv builder default vm_name = packer-<source name 'nuc'>
+    $pkrLog  = Join-Path $work 'packer-build.log'
+    Remove-Item $pkrLog -Force -ErrorAction SilentlyContinue
     $watchdog = Start-Job -Name 'wim-boot-watchdog' -ScriptBlock {
-        param($vm, $probeIp)
-        $deadline = (Get-Date).AddMinutes(45)
-        while ((Get-Date) -lt $deadline) {
-            if (Test-NetConnection -ComputerName $probeIp -Port 5985 -InformationLevel Quiet -WarningAction SilentlyContinue) { break }
+        param($vm, $log)
+        while ($true) {
+            if ((Test-Path $log) -and (Select-String -Path $log -Pattern 'WIM-WATCHDOG-STOP' -SimpleMatch -Quiet)) { break }
             $v = Get-VM -Name $vm -ErrorAction SilentlyContinue
             if ($v -and $v.State -eq 'Off') { Start-VM -Name $vm -ErrorAction SilentlyContinue }
-            Start-Sleep -Seconds 8
+            Start-Sleep -Seconds 6
         }
-    } -ArgumentList $cloneVm, '192.168.234.10'
+    } -ArgumentList $cloneVm, $pkrLog
 
     Push-Location $Root
     try {
         # Pass the DIRECTORY (.), not a single file: `packer build foo.pkr.hcl` loads
         # only that file and ignores variables.pkr.hcl, so var.* declarations go missing.
         & packer init .; if ($LASTEXITCODE) { throw "packer init rc=$LASTEXITCODE" }
-        & packer build -var-file="$varFile" .; if ($LASTEXITCODE) { throw "packer build rc=$LASTEXITCODE" }
+        # Tee Packer's output to $pkrLog so the watchdog can see the sysprep marker.
+        # (Tee-Object is a cmdlet, so $LASTEXITCODE still reflects packer's exit code.)
+        & packer build -var-file="$varFile" . 2>&1 | Tee-Object -FilePath $pkrLog
+        if ($LASTEXITCODE) { throw "packer build rc=$LASTEXITCODE" }
     }
     finally {
         Pop-Location
