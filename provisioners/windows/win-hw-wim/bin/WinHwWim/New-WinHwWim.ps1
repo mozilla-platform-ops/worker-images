@@ -134,7 +134,11 @@ if (-not $bakeRole) { throw "config/$Image.yaml: ronin.bake_role is required." }
 if ($drvInject -and -not $drvCabUrl) { throw "config/$Image.yaml: drivers.inject is true but drivers.cab_url is empty." }
 
 # --- Derived, per-image names -------------------------------------------------
-$work      = Join-Path $Root "work\$Image"
+# Large artifacts (base WIM ~5.6 GB, base VHDX, packer's clone/export, captured WIM)
+# go on the big data disk (F:, 512 GB) when present — the C: OS disk (128 GB) is far
+# too small to hold them all. bootstrap-build-host.ps1 formats F: as the data disk.
+$workRoot  = if (Test-Path 'F:\') { 'F:\wim-work' } else { Join-Path $Root 'work' }
+$work      = Join-Path $workRoot $Image
 $localBase = Join-Path $work $baseWim
 $vhdx      = Join-Path $work 'base.vhdx'
 $vmName    = "wim-bake-$Image"

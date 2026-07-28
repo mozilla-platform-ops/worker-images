@@ -21,8 +21,11 @@ vm:
   puppet_version: "8.10.0"
   git_version: "2.54.0"
   openvox_version: "8.24.2"
-  cpus: 4
-  memory_mb: 8192
+  # The build host is a dedicated single-purpose nested-virt VM (Standard_D64ads_v5:
+  # 64 vCPU / 256 GiB), so give the bake guest almost everything and leave only a
+  # modest slice (8 vCPU / 32 GiB) for the Hyper-V root partition + DISM/packer.
+  cpus: 56
+  memory_mb: 229376
   # Hyper-V switch on the build host. The bootstrap creates an internal NAT switch
   # 'wim-nat' (Windows Server has no client "Default Switch"); the bake guest gets a
   # matching static IP via the injected unattend. Override per host if needed.
