@@ -40,11 +40,16 @@ source "hyperv-vmcx" "nuc" {
   enable_secure_boot   = true
   secure_boot_template = "MicrosoftWindows"
 
-  # WinRM — enabled by the unattend injected into the base VHDX (see
-  # scripts/unattend/autounattend.xml + prepare-base-vhdx.ps1).
+  # WinRM — the HTTP listener + static NAT IP are set up at first logon by
+  # scripts/unattend/set-bake-network.ps1 (dropped in by prepare-base-vhdx.ps1).
+  # Use NTLM (message-encrypted), NOT Basic-over-HTTP: the NAT link is classified
+  # a 'Public' network, and WinRM refuses to enable AllowUnencrypted there (the
+  # firewall-exception guard blocks it), so Basic/plaintext auth can't be turned
+  # on. NTLM needs no AllowUnencrypted and works with the local build account.
   communicator   = "winrm"
   winrm_username = var.winrm_username
   winrm_password = var.winrm_password
+  winrm_use_ntlm = true
   winrm_timeout  = "60m"
 
   # Sysprep in the last provisioner shuts the VM down; let Packer treat that as done.

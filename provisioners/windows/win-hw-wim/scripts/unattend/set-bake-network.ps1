@@ -50,15 +50,22 @@ for ($i = 0; $i -lt 60; $i++) {
 
 if (-not $assigned) { Write-BakeLog 'WARNING: never assigned static IP (no Up adapter?)' }
 
-# Re-assert WinRM regardless — idempotent, and a safety net if the specialize-pass
-# listener setup did not stick. Explicit `winrm create Listener` (unlike
-# Enable-PSRemoting / winrm quickconfig) does NOT check the network-connection
-# profile, so it works even when the NAT link is classified 'Public'.
+# Classify the NAT link as Private. It comes up 'Public' (no gateway/domain), which
+# makes several WinRM/firewall operations refuse to run ("...set to Public..."). Packer
+# authenticates with NTLM (see winrm_use_ntlm in the pkr template), so we do NOT need
+# Basic/AllowUnencrypted — NTLM is message-encrypted and needs no plaintext exception.
+Get-NetConnectionProfile -ErrorAction SilentlyContinue | ForEach-Object {
+    Set-NetConnectionProfile -InterfaceIndex $_.InterfaceIndex -NetworkCategory Private -ErrorAction SilentlyContinue
+}
+
+# Bring up the WinRM HTTP listener. Explicit `winrm create Listener` (unlike
+# Enable-PSRemoting / winrm quickconfig) does NOT check the network-connection profile,
+# so it works regardless. Idempotent.
 cmd.exe /c 'sc config WinRM start= auto' | Out-Null
 cmd.exe /c 'net start WinRM' 2>$null | Out-Null
 cmd.exe /c 'winrm create winrm/config/Listener?Address=*+Transport=HTTP' 2>$null | Out-Null
-cmd.exe /c 'winrm set winrm/config/service/auth @{Basic="true"}' 2>$null | Out-Null
-cmd.exe /c 'winrm set winrm/config/service @{AllowUnencrypted="true"}' 2>$null | Out-Null
 netsh advfirewall firewall add rule name="WinRM-HTTP-In-5985" dir=in action=allow protocol=TCP localport=5985 | Out-Null
 
-Write-BakeLog 'set-bake-network: done'
+$ok = $false
+try { $ok = [bool](Get-NetFirewallRule -DisplayName 'WinRM-HTTP-In-5985' -ErrorAction SilentlyContinue) } catch {}
+Write-BakeLog ("set-bake-network: done (ip_assigned={0}, fw_rule={1})" -f $assigned, $ok)

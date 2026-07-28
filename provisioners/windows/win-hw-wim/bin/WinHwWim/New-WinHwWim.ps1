@@ -237,6 +237,28 @@ output_wim       = "$($goldenWim -replace '\\','/')"
 capture_name     = "$Image-$BuildId"
 "@ | Set-Content -Path $varFile -Encoding utf8
 
+    # --- Boot watchdog --------------------------------------------------------
+    # Windows Setup's post-specialize reboot lands as a full power-OFF on this Gen2
+    # clone (observed 2026-07-28), and Packer does NOT restart a VM that powered
+    # itself off while it waits for WinRM -> the build would otherwise hang at
+    # "Waiting for WinRM" forever. Run a background watchdog that (re)starts the
+    # clone whenever it is Off, UNTIL WinRM first becomes reachable — after which
+    # Packer owns the VM lifecycle. Scoped to this pre-connect window so it can
+    # never fight the intended sysprep /shutdown at capture time. (The mid-bake
+    # windows-restart provisioners do a soft `shutdown /r`, which stays Running in
+    # Hyper-V, so they don't need the watchdog.)
+    $cloneVm = 'packer-nuc'   # hyperv builder default vm_name = packer-<source name 'nuc'>
+    $watchdog = Start-Job -Name 'wim-boot-watchdog' -ScriptBlock {
+        param($vm, $probeIp)
+        $deadline = (Get-Date).AddMinutes(45)
+        while ((Get-Date) -lt $deadline) {
+            if (Test-NetConnection -ComputerName $probeIp -Port 5985 -InformationLevel Quiet -WarningAction SilentlyContinue) { break }
+            $v = Get-VM -Name $vm -ErrorAction SilentlyContinue
+            if ($v -and $v.State -eq 'Off') { Start-VM -Name $vm -ErrorAction SilentlyContinue }
+            Start-Sleep -Seconds 8
+        }
+    } -ArgumentList $cloneVm, '192.168.234.10'
+
     Push-Location $Root
     try {
         # Pass the DIRECTORY (.), not a single file: `packer build foo.pkr.hcl` loads
@@ -244,7 +266,10 @@ capture_name     = "$Image-$BuildId"
         & packer init .; if ($LASTEXITCODE) { throw "packer init rc=$LASTEXITCODE" }
         & packer build -var-file="$varFile" .; if ($LASTEXITCODE) { throw "packer build rc=$LASTEXITCODE" }
     }
-    finally { Pop-Location }
+    finally {
+        Pop-Location
+        if ($watchdog) { Stop-Job $watchdog -ErrorAction SilentlyContinue; Remove-Job $watchdog -Force -ErrorAction SilentlyContinue }
+    }
     if (-not (Test-Path $goldenWim)) { throw "build finished but golden WIM missing: $goldenWim" }
 }
 
