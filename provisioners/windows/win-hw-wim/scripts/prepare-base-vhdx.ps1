@@ -142,6 +142,16 @@ try {
     # Write UTF-8 without BOM (Windows Setup is picky about the unattend encoding).
     [System.IO.File]::WriteAllText((Join-Path $panther 'unattend.xml'), $xml, (New-Object System.Text.UTF8Encoding($false)))
 
+    # Drop the first-logon network bring-up helper. The unattend's FirstLogonCommands
+    # invokes this to assign the static NAT IP + WinRM (see set-bake-network.ps1 for the
+    # why — specialize runs too early, before the NIC is Up). Build-only; sysprep scrubs it.
+    Write-Host "== Injecting first-logon network helper (Setup\Scripts) =="
+    $netHelperSrc = Join-Path $PSScriptRoot 'unattend\set-bake-network.ps1'
+    if (-not (Test-Path -LiteralPath $netHelperSrc)) { throw "network helper not found: $netHelperSrc" }
+    $setupScripts = 'W:\Windows\Setup\Scripts'
+    New-Item -ItemType Directory -Path $setupScripts -Force | Out-Null
+    Copy-Item -LiteralPath $netHelperSrc -Destination (Join-Path $setupScripts 'set-bake-network.ps1') -Force
+
     Write-Host "== Writing UEFI boot files (bcdboot) =="
     $bcd = & "$env:SystemRoot\System32\bcdboot.exe" 'W:\Windows' '/s' 'S:' '/f' 'UEFI'
     if ($LASTEXITCODE -ne 0) { throw "bcdboot failed rc=$LASTEXITCODE`n$bcd" }

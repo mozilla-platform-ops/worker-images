@@ -19,10 +19,15 @@
                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
       <ComputerName>@@COMPUTERNAME@@</ComputerName>
     </component>
-    <!-- Everything Packer needs is set up HERE, in specialize: deterministic, runs as
-         SYSTEM before OOBE, and does NOT depend on interactive autologon (the old
-         FirstLogonCommands approach did, and its Enable-PSRemoting wouldn't create the
-         listener on the NAT 'Public' network). Order matters. -->
+    <!-- Keep the specialize pass MINIMAL and known-good: only short reg.exe commands,
+         mirroring the proven MDC1Windows/base-autounattend.xml. Do NOT put long or
+         complex commands here: Microsoft-Windows-Deployment's RunSynchronousCommand
+         <Path> has a length limit (~259 chars), and an over-long value makes Setup
+         reject the ENTIRE specialize pass with 0x80220005 "answer file is invalid" —
+         Setup then halts at "Getting ready" before OOBE, so no account is created and
+         Packer hangs forever at "Waiting for WinRM". All WinRM/firewall/static-IP
+         bring-up is done at first logon by set-bake-network.ps1 (see FirstLogonCommands
+         below), where the network stack is fully up and there is no length limit. -->
     <component name="Microsoft-Windows-Deployment" processorArchitecture="amd64"
                publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
       <RunSynchronous>
@@ -31,43 +36,10 @@
           <Order>1</Order>
           <Path>reg.exe add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE" /v BypassNRO /t REG_DWORD /d 1 /f</Path>
         </RunSynchronousCommand>
-        <!-- Static IP on the NAT switch (no DHCP) so the host can reach WinRM + the VM has internet. -->
-        <RunSynchronousCommand wcm:action="add">
-          <Order>2</Order>
-          <Path>powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$a = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' } | Select-Object -First 1; if (-not $a) { $a = Get-NetAdapter | Select-Object -First 1 }; New-NetIPAddress -InterfaceIndex $a.ifIndex -IPAddress 192.168.234.10 -PrefixLength 24 -DefaultGateway 192.168.234.1 -ErrorAction SilentlyContinue; Set-DnsClientServerAddress -InterfaceIndex $a.ifIndex -ServerAddresses '8.8.8.8','1.1.1.1'"</Path>
-        </RunSynchronousCommand>
         <!-- Allow local-account admin tokens over the network (Packer auth). -->
         <RunSynchronousCommand wcm:action="add">
-          <Order>3</Order>
+          <Order>2</Order>
           <Path>reg.exe add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v LocalAccountTokenFilterPolicy /t REG_DWORD /d 1 /f</Path>
-        </RunSynchronousCommand>
-        <!-- WinRM service on. -->
-        <RunSynchronousCommand wcm:action="add">
-          <Order>4</Order>
-          <Path>cmd.exe /c sc config WinRM start= auto</Path>
-        </RunSynchronousCommand>
-        <RunSynchronousCommand wcm:action="add">
-          <Order>5</Order>
-          <Path>cmd.exe /c net start WinRM</Path>
-        </RunSynchronousCommand>
-        <!-- Create the HTTP listener EXPLICITLY. Unlike Enable-PSRemoting/winrm quickconfig,
-             this does NOT check the network-connection profile, so it works on 'Public'. -->
-        <RunSynchronousCommand wcm:action="add">
-          <Order>6</Order>
-          <Path>cmd.exe /c winrm create winrm/config/Listener?Address=*+Transport=HTTP</Path>
-        </RunSynchronousCommand>
-        <RunSynchronousCommand wcm:action="add">
-          <Order>7</Order>
-          <Path>cmd.exe /c winrm set winrm/config/service/auth @{Basic="true"}</Path>
-        </RunSynchronousCommand>
-        <RunSynchronousCommand wcm:action="add">
-          <Order>8</Order>
-          <Path>cmd.exe /c winrm set winrm/config/service @{AllowUnencrypted="true"}</Path>
-        </RunSynchronousCommand>
-        <!-- Open 5985 for ALL firewall profiles (NAT net classifies as Public). -->
-        <RunSynchronousCommand wcm:action="add">
-          <Order>9</Order>
-          <Path>netsh advfirewall firewall add rule name="WinRM-HTTP-In-5985" dir=in action=allow protocol=TCP localport=5985</Path>
         </RunSynchronousCommand>
       </RunSynchronous>
     </component>
@@ -111,9 +83,20 @@
         <HideEULAPage>true</HideEULAPage>
         <HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
       </OOBE>
-      <!-- WinRM + static IP are set up deterministically in the specialize pass above,
-           so no FirstLogonCommands are needed here. Autologon just drives OOBE to a
-           finished/idle state; the packer account below is what Packer authenticates as. -->
+      <!-- All build-only network bring-up happens here at first logon, where the network
+           stack is fully up and there is no unattend length limit: set-bake-network.ps1
+           (dropped into Setup\Scripts by prepare-base-vhdx.ps1) assigns the static NAT IP
+           (retry loop — the NIC isn't reliably Up during specialize) and creates the WinRM
+           HTTP listener via explicit `winrm create Listener` (profile-independent, unlike
+           Enable-PSRemoting). Autologon fires this; the packer account below is what Packer
+           authenticates as. Specialize is kept minimal (reg.exe only) so it always parses. -->
+      <FirstLogonCommands>
+        <SynchronousCommand wcm:action="add">
+          <Order>1</Order>
+          <CommandLine>powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Windows\Setup\Scripts\set-bake-network.ps1"</CommandLine>
+          <Description>Assign static NAT IP and ensure WinRM (build-only)</Description>
+        </SynchronousCommand>
+      </FirstLogonCommands>
     </component>
   </settings>
 </unattend>

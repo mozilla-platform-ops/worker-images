@@ -51,6 +51,15 @@ Remove-ItemProperty -Path $wl -Name DefaultPassword -ErrorAction SilentlyContinu
 # the image. Either remove it here via a SetupComplete script, or ensure the
 # deploy-time autounattend/first-boot removes non-worker local accounts.
 
+# --- Remove the build-only first-logon network helper ---
+# set-bake-network.ps1 (dropped by prepare-base-vhdx.ps1 and invoked by the build
+# unattend's FirstLogonCommands) is build-only. It is inert in a deployed image (a
+# bare .ps1 in Setup\Scripts is not auto-run; only SetupComplete.cmd is), but it must
+# not ship in the golden WIM. Also drop its log.
+Step 'Removing build-only network helper'
+Remove-Item 'C:\Windows\Setup\Scripts\set-bake-network.ps1' -Force -ErrorAction SilentlyContinue
+Remove-Item 'C:\Windows\Temp\bake-network.log' -Force -ErrorAction SilentlyContinue
+
 # --- Guard: no per-user AppX should remain (the classic Sysprep blocker) ---
 Step 'Checking for leftover per-user AppX (Sysprep blocker)'
 try {
