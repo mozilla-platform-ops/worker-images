@@ -88,6 +88,12 @@ variable "output_directory" {
   description = "Where Packer writes the cloned VM + generalized VHDX."
 }
 
+variable "temp_path" {
+  type        = string
+  default     = ""
+  description = "Where the hyperv builder creates the working VM (clone + its RAM-sized memory-state file). Must be on a disk large enough for the VHDX clone + the VM's memory file (= memory_mb). Set to the big data disk; empty = system temp (C:, too small)."
+}
+
 variable "output_wim" {
   type        = string
   default     = "./output/install.wim"

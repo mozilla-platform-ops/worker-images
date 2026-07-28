@@ -209,6 +209,9 @@ if ($Stages -contains 'build') {
     if (-not $WinRMPassword) { throw 'build stage needs -WinRMPassword (the one used in prep).' }
     if (Test-Path $buildDir) { Remove-Item $buildDir -Recurse -Force }
     if (Test-Path $goldenWim) { Remove-Item $goldenWim -Force }
+    # Packer builds the working VM (+ its RAM-sized memory file) under temp_path.
+    $pkrTmp = Join-Path $work 'pkrtmp'
+    New-Item -ItemType Directory -Path $pkrTmp -Force | Out-Null
 
     # Per-image var-file (gitignored under work/). winrm_password is sensitive.
     $varFile = Join-Path $work 'build.pkrvars.hcl'
@@ -229,6 +232,7 @@ git_version      = "$gitV"
 openvox_version  = "$openvoxV"
 ronin_ext_src    = "$extSrc"
 output_directory = "$($buildDir -replace '\\','/')"
+temp_path        = "$($pkrTmp -replace '\\','/')"
 output_wim       = "$($goldenWim -replace '\\','/')"
 capture_name     = "$Image-$BuildId"
 "@ | Set-Content -Path $varFile -Encoding utf8

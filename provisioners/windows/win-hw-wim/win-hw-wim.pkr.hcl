@@ -32,6 +32,9 @@ source "hyperv-vmcx" "nuc" {
   memory           = var.memory_mb
   switch_name      = var.switch_name
   output_directory = var.output_directory
+  # Build the working VM (clone + its RAM-sized memory-state file) on the big data
+  # disk; the default (C: system temp) is too small for a 32 GB memory file.
+  temp_path        = var.temp_path
 
   # Gen2 UEFI. Secure Boot template must match how the base VHDX was prepared.
   enable_secure_boot   = true
