@@ -22,10 +22,11 @@ vm:
   git_version: "2.54.0"
   openvox_version: "8.24.2"
   # The build host is a dedicated single-purpose nested-virt VM (Standard_D64ads_v5:
-  # 64 vCPU / 256 GiB), so give the bake guest almost everything and leave only a
-  # modest slice (8 vCPU / 32 GiB) for the Hyper-V root partition + DISM/packer.
+  # 64 vCPU / 256 GiB), so give the bake guest as much as we can. NOTE: the Packer
+  # hyperv builder hard-caps memory at 32768 MB (32 GiB) — that's the ceiling here,
+  # not the host. CPUs aren't capped by the plugin, so take 56 (leave 8 for root).
   cpus: 56
-  memory_mb: 229376
+  memory_mb: 32768
   # Hyper-V switch on the build host. The bootstrap creates an internal NAT switch
   # 'wim-nat' (Windows Server has no client "Default Switch"); the bake guest gets a
   # matching static IP via the injected unattend. Override per host if needed.
