@@ -145,13 +145,18 @@ New-Item -ItemType Directory -Path $manifestDir -Force | Out-Null
 # --- 7. puppet apply (this is where the AppX removal + stable catalog bake) ---
 Step 'Running puppet apply (bake catalog)'
 Push-Location $roninDir
+# Log to BOTH the console (so puppet output streams into the packer/build log and is
+# visible even if the VM is later cleaned up) and a file (for on-box inspection).
 & puppet apply manifests\nodes.pp --onetime --verbose --detailed-exitcodes `
     --modulepath="modules;r10k_modules" --hiera_config=win_hiera.yaml `
-    --logdest (Join-Path $log 'bake-puppet.log')
+    --logdest console --logdest (Join-Path $log 'bake-puppet.log')
 $rc = $LASTEXITCODE
 Pop-Location
 Stop-Transcript | Out-Null
 
-# detailed-exitcodes: 0 = no changes, 2 = changes applied (both OK), 4/6 = failures
+# detailed-exitcodes: 0 = no changes, 2 = changes applied (both OK), 4/6 = failures.
+# rc=1 = puppet failed to run/compile the catalog (not a resource-level failure).
 if ($rc -eq 0 -or $rc -eq 2) { Write-Host "Bake puppet apply OK (rc=$rc)"; exit $rc }
+Write-Host "----- bake-puppet.log (tail 120) -----"
+Get-Content (Join-Path $log 'bake-puppet.log') -Tail 120 -ErrorAction SilentlyContinue
 throw "Bake puppet apply FAILED rc=$rc"

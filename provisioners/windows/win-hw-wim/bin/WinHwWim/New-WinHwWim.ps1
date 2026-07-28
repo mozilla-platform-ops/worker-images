@@ -272,7 +272,10 @@ capture_name     = "$Image-$BuildId"
         & packer init .; if ($LASTEXITCODE) { throw "packer init rc=$LASTEXITCODE" }
         # Tee Packer's output to $pkrLog so the watchdog can see the sysprep marker.
         # (Tee-Object is a cmdlet, so $LASTEXITCODE still reflects packer's exit code.)
-        & packer build -var-file="$varFile" . 2>&1 | Tee-Object -FilePath $pkrLog
+        # -on-error=abort leaves the failed VM + dirs in place so the bake (esp. the
+        # puppet apply) can be inspected / iterated via PowerShell Direct instead of a
+        # ~40-min rebuild. Successful runs still clean up normally.
+        & packer build -on-error=abort -var-file="$varFile" . 2>&1 | Tee-Object -FilePath $pkrLog
         if ($LASTEXITCODE) { throw "packer build rc=$LASTEXITCODE" }
     }
     finally {
