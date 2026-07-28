@@ -71,21 +71,11 @@ Step 'Removing build-only network helper'
 Remove-Item 'C:\Windows\Setup\Scripts\set-bake-network.ps1' -Force -ErrorAction SilentlyContinue
 Remove-Item 'C:\Windows\Temp\bake-network.log' -Force -ErrorAction SilentlyContinue
 
-# --- Guard: no per-user AppX should remain (the classic Sysprep blocker) ---
-Step 'Checking for leftover per-user AppX (Sysprep blocker)'
-try {
-  $leftover = @(Get-AppxPackage -AllUsers -ErrorAction Stop |
-      Where-Object { -not $_.NonRemovable } |
-      Select-Object -ExpandProperty Name -Unique)
-  if ($leftover.Count -gt 0) {
-    $list = $leftover -join ', '
-    Write-Warning ('Per-user AppX still present (may block Sysprep): ' + $list)
-  }
-}
-catch {
-  $msg = $_.Exception.Message
-  Write-Host ('  (AppXSvc disabled by bake - enumeration skipped: ' + $msg + ')')
-}
+# NOTE: there is deliberately no pre-Sysprep leftover-AppX enumeration here. The bake
+# disables AppXSvc (win_disable_services::disable_appxsvc), and Get-AppxPackage needs that
+# service, so any such check post-bake can only ever fail/no-op. If a per-user AppX
+# Sysprep blocker is ever suspected, check it inside bake-bootstrap.ps1 (right after
+# puppet apply) where AppXSvc is still running.
 
 # --- Sysprep generalize + shutdown ---
 Step 'Running Sysprep /generalize /oobe /shutdown'
