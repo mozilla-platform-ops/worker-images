@@ -74,14 +74,17 @@ Remove-Item 'C:\Windows\Temp\bake-network.log' -Force -ErrorAction SilentlyConti
 # --- Guard: no per-user AppX should remain (the classic Sysprep blocker) ---
 Step 'Checking for leftover per-user AppX (Sysprep blocker)'
 try {
-  $leftover = Get-AppxPackage -AllUsers -ErrorAction Stop |
-    Where-Object { -not $_.NonRemovable } | Select-Object -Expand Name -Unique
-  if ($leftover) {
-    $nl = [Environment]::NewLine
-    Write-Warning ('Per-user AppX still present (may block Sysprep):' + $nl + '  ' + ($leftover -join ($nl + '  ')))
+  $leftover = @(Get-AppxPackage -AllUsers -ErrorAction Stop |
+      Where-Object { -not $_.NonRemovable } |
+      Select-Object -ExpandProperty Name -Unique)
+  if ($leftover.Count -gt 0) {
+    $list = $leftover -join ', '
+    Write-Warning ('Per-user AppX still present (may block Sysprep): ' + $list)
   }
-} catch {
-  Write-Host "  (AppXSvc disabled by bake — enumeration skipped: $($_.Exception.Message))"
+}
+catch {
+  $msg = $_.Exception.Message
+  Write-Host ('  (AppXSvc disabled by bake - enumeration skipped: ' + $msg + ')')
 }
 
 # --- Sysprep generalize + shutdown ---
