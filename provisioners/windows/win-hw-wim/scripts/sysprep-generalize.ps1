@@ -76,7 +76,10 @@ Step 'Checking for leftover per-user AppX (Sysprep blocker)'
 try {
   $leftover = Get-AppxPackage -AllUsers -ErrorAction Stop |
     Where-Object { -not $_.NonRemovable } | Select-Object -Expand Name -Unique
-  if ($leftover) { Write-Warning "Per-user AppX still present (may block Sysprep):`n  $($leftover -join "`n  ")" }
+  if ($leftover) {
+    $nl = [Environment]::NewLine
+    Write-Warning ('Per-user AppX still present (may block Sysprep):' + $nl + '  ' + ($leftover -join ($nl + '  ')))
+  }
 } catch {
   Write-Host "  (AppXSvc disabled by bake — enumeration skipped: $($_.Exception.Message))"
 }
