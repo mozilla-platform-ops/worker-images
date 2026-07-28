@@ -93,7 +93,7 @@ $sp = "$env:SystemRoot\System32\Sysprep"
 Remove-Item (Join-Path $sp 'unattend.xml') -Force -ErrorAction SilentlyContinue
 & (Join-Path $sp 'Sysprep.exe') /generalize /oobe /shutdown /quiet
 if ($LASTEXITCODE -ne 0) {
-  Write-Warning "Sysprep returned rc=$LASTEXITCODE — dumping Panther errors:"
+  Write-Warning "Sysprep returned rc=$LASTEXITCODE - dumping Panther errors:"
   Get-Content (Join-Path $sp 'Panther\setuperr.log') -ErrorAction SilentlyContinue | Select-Object -Last 40
   throw "Sysprep failed rc=$LASTEXITCODE"
 }
