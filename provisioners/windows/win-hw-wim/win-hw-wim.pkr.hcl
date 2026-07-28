@@ -98,6 +98,11 @@ build {
       "GIT_VERSION=${var.git_version}",
       "OPENVOX_VERSION=${var.openvox_version}",
       "RONIN_EXT_SRC=${var.ronin_ext_src}",
+      # Build-scoped GitHub token for puppet's tooltool download (ronin fact
+      # custom_win_github_pat falls back to this env var when there is no D: secrets
+      # drive). Empty is fine — tooltool.py is public and the download works without a
+      # token. Never written to disk / not captured into the WIM.
+      "custom_win_github_pat=${var.github_pat}",
     ]
     scripts = ["${path.root}/scripts/bake-bootstrap.ps1"]
     # puppet apply returns 2 when it applied changes — that is success here.

@@ -60,6 +60,10 @@ param(
     # The VM is attached a USER-assigned identity (no system-assigned), so bare
     # `az login --identity` fails ("Please run az login") — it must be told which one.
     [string] $IdentityClientId,
+    # Build-scoped GitHub token for puppet's tooltool download in the bake. Defaults to
+    # $env:GITHUB_TOKEN / $env:PACKER_GITHUB_API_TOKEN (CI sets these). Empty is OK —
+    # tooltool.py is public and downloads without a token. Not baked into the WIM.
+    [string] $GithubPat = ($env:GITHUB_TOKEN, $env:PACKER_GITHUB_API_TOKEN, '' | Where-Object { $_ } | Select-Object -First 1),
     [switch] $KeepArtifacts
 )
 
@@ -234,6 +238,7 @@ puppet_version   = "$puppetV"
 git_version      = "$gitV"
 openvox_version  = "$openvoxV"
 ronin_ext_src    = "$extSrc"
+github_pat       = "$GithubPat"
 windows_update   = $($winUpdate.ToString().ToLower())
 output_directory = "$($buildDir -replace '\\','/')"
 temp_path        = "$($pkrTmp -replace '\\','/')"

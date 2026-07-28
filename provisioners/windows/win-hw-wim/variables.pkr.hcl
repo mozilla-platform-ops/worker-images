@@ -23,6 +23,13 @@ variable "winrm_password" {
   description = "Password for the build-only WinRM account (build-scoped; not baked into the final image)."
 }
 
+variable "github_pat" {
+  type        = string
+  default     = ""
+  sensitive   = true
+  description = "Build-scoped GitHub token for puppet's tooltool download (exposed to the bake as env custom_win_github_pat). Empty is OK — tooltool.py is public. Not baked into the WIM."
+}
+
 variable "windows_update" {
   type        = bool
   default     = false

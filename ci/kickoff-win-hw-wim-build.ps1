@@ -46,9 +46,20 @@ $idClientId = (az identity show -g $rg -n $idName --query clientId -o tsv 2>$nul
 if ($idClientId) { $buildArg = "$buildArg -IdentityClientId $idClientId".Trim() }
 else { Write-Warning "Could not resolve client id for identity '$idName' in '$rg'; build may fail to az login." }
 
+# Forward a GitHub token (build-scoped) so puppet's tooltool download in the bake can
+# authenticate. Set it as a MACHINE env var so the SYSTEM scheduled task inherits it and
+# New-WinHwWim's -GithubPat default ($env:GITHUB_TOKEN) picks it up. Empty is fine —
+# tooltool.py is public and downloads without a token.
+$ghToken = ($env:GITHUB_TOKEN, $env:PACKER_GITHUB_API_TOKEN, '' | Where-Object { $_ } | Select-Object -First 1)
+$ghTokenLine = if ($ghToken) {
+    "[Environment]::SetEnvironmentVariable('GITHUB_TOKEN', '$ghToken', 'Machine'); `$env:GITHUB_TOKEN = '$ghToken'"
+}
+else { "# no GitHub token provided; tooltool downloads unauthenticated (public)" }
+
 # --- Start the build (checkout repo + register/start the scheduled task) -------
 $start = @"
 `$ErrorActionPreference = 'Stop'
+$ghTokenLine
 # Refresh PATH from the machine env — tools installed by choco after the guest agent
 # started (no reboot since) aren't on this run-command's inherited PATH otherwise.
 `$env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')
