@@ -61,13 +61,18 @@ build {
   sources = ["source.hyperv-vmcx.nuc"]
 
   # ---- 1. Windows updates (bake them in, so deploy doesn't fight WU) ----
+  # Controlled by var.windows_update (per-image config; default OFF for fast
+  # iteration, ON for production). Packer HCL can't conditionally include a
+  # provisioner, so when disabled we search already-installed updates and exclude
+  # everything -> the provisioner finds nothing to install and returns in seconds.
   provisioner "windows-update" {
-    # Keep the storm out of the deploy path: fully patch at bake time.
-    search_criteria = "IsInstalled=0"
-    filters = [
+    # Enabled: latest applicable, not-yet-installed, non-Preview KBs (single pass).
+    # Disabled: a no-op search that installs nothing.
+    search_criteria = var.windows_update ? "IsInstalled=0" : "IsInstalled=1"
+    filters = var.windows_update ? [
       "exclude:$_.Title -like '*Preview*'",
       "include:$true",
-    ]
+    ] : ["exclude:$true"]
   }
   provisioner "windows-restart" {
     restart_timeout = "30m"

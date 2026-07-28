@@ -126,6 +126,8 @@ $openvoxV  = Get-Val 'vm' 'openvox_version'
 $cpus      = [int](Get-Val 'vm' 'cpus')
 $memMb     = [int](Get-Val 'vm' 'memory_mb')
 $switch    = Get-Val 'vm' 'switch_name'
+# Robust bool (real YAML bool OR quoted string). Shared default is false.
+$winUpdate = ("$(Get-Val 'vm' 'windows_update')".Trim() -match '^(true|1|yes)$')
 
 # --- Validate required inputs (fail fast, before touching disks/Azure) ---------
 if (-not $baseWim) { throw "config/$Image.yaml: base.wim is required." }
@@ -153,6 +155,7 @@ Write-Host " Image      : $Image   (build $BuildId)"
 Write-Host " Base WIM   : $baseCont/$baseWim  (edition '$edition')"
 Write-Host " Bake role  : $bakeRole   ronin $roninOrg/$roninRepo@$roninBr"
 Write-Host " Versions   : puppet $puppetV / git $gitV / openvox $openvoxV"
+Write-Host " WindowsUpd : $(if ($winUpdate) { 'ON (full online patch pass)' } else { 'OFF (skipped)' })"
 Write-Host " Output     : $goldenWim  ->  $capCont/$capBlob"
 Write-Host " Stages     : $($Stages -join ', ')"
 Write-Host "==================================================================="
@@ -231,6 +234,7 @@ puppet_version   = "$puppetV"
 git_version      = "$gitV"
 openvox_version  = "$openvoxV"
 ronin_ext_src    = "$extSrc"
+windows_update   = $($winUpdate.ToString().ToLower())
 output_directory = "$($buildDir -replace '\\','/')"
 temp_path        = "$($pkrTmp -replace '\\','/')"
 output_wim       = "$($goldenWim -replace '\\','/')"

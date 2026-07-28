@@ -30,6 +30,9 @@ vm:
   cpus: default
   memory_mb: default
   switch_name: default
+  # Testing: skip the slow full Windows Update pass for fast iteration (also the
+  # shared default). Flip to true to validate the production WU path.
+  windows_update: false
 
 # Deploy-side metadata — test pool label so this never looks like production.
 sharedimage:

@@ -23,6 +23,12 @@ variable "winrm_password" {
   description = "Password for the build-only WinRM account (build-scoped; not baked into the final image)."
 }
 
+variable "windows_update" {
+  type        = bool
+  default     = false
+  description = "Run a full online Windows Update pass during the bake. Default OFF (fast iteration); production images set this true via config. See the windows-update provisioner in win-hw-wim.pkr.hcl."
+}
+
 variable "cpus" {
   type    = number
   default = 4

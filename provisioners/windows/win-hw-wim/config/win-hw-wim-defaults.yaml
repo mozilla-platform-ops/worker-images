@@ -31,6 +31,11 @@ vm:
   # 'wim-nat' (Windows Server has no client "Default Switch"); the bake guest gets a
   # matching static IP via the injected unattend. Override per host if needed.
   switch_name: "wim-nat"
+  # Run a full online Windows Update pass during the bake. Default OFF (fast bakes /
+  # pipeline iteration); production images opt IN per config (windows_update: true).
+  # A full pass pulls the latest non-Preview cumulative/SSU/.NET/Defender KBs but is
+  # slow (large download over the NAT link) and a single pass (see win-hw-wim.pkr.hcl).
+  windows_update: false
 
 # Offline driver injection defaults (per-image config may override). OFF by default.
 drivers:

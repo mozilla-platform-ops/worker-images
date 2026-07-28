@@ -40,6 +40,8 @@ vm:
   cpus: default
   memory_mb: default
   switch_name: default
+  # Production image: fully patch at bake time (shared default is OFF).
+  windows_update: true
 
 # Deploy-side metadata (informational; used for output tagging / provenance).
 sharedimage:
