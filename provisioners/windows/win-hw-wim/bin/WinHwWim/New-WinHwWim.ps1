@@ -167,11 +167,30 @@ Write-Host "==================================================================="
 # --- Auth: SP if creds present; else managed identity if nothing logged in ----
 # azcopy reuses the az CLI identity (scripts set AZCOPY_AUTO_LOGIN_TYPE=AZCLI), so
 # az must be logged in. On the build VM (headless) fall back to its managed identity.
+#
+# IMPORTANT: `az` writes routine diagnostics (incl. the "Please run 'az login'" notice)
+# to stderr. Under this script's $ErrorActionPreference='Stop', WinPS 5.1 turns any
+# native-command stderr into a TERMINATING NativeCommandError - even when redirected with
+# 2>$null - so a harmless "am I logged in?" probe was aborting the whole build. Probe via
+# exit code with the preference relaxed, and only hard-fail on a genuine login failure.
+function Test-AzLoggedIn {
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'SilentlyContinue'
+    try {
+        az account show 1>$null 2>$null
+        return ($LASTEXITCODE -eq 0)
+    }
+    finally { $ErrorActionPreference = $prev }
+}
+
 if ($env:AZ_CLIENT_ID -and $env:AZ_CLIENT_SECRET -and $env:AZ_TENANT) {
     Write-Host '== az login (service principal) =='
+    $ErrorActionPreference = 'Continue'
     az login --service-principal -u $env:AZ_CLIENT_ID -p $env:AZ_CLIENT_SECRET --tenant $env:AZ_TENANT --only-show-errors | Out-Null
+    $ErrorActionPreference = 'Stop'
+    if (-not (Test-AzLoggedIn)) { throw 'az login (service principal) failed - no active account.' }
 }
-elseif (-not (az account show 2>$null)) {
+elseif (-not (Test-AzLoggedIn)) {
     # The build VM has a USER-assigned identity (no system-assigned), so bare
     # `az login --identity` fails - the UAMI client id must be passed explicitly
     # (az CLI >= 2.88 uses --client-id, not --username). Retry: on a freshly created
@@ -183,13 +202,16 @@ elseif (-not (az account show 2>$null)) {
     Write-Host "== az login (user-assigned managed identity $IdentityClientId) =="
     $loggedIn = $false
     for ($attempt = 1; $attempt -le 6; $attempt++) {
+        $ErrorActionPreference = 'Continue'
         $out = az login --identity --client-id $IdentityClientId 2>&1
-        if ($LASTEXITCODE -eq 0 -and (az account show 2>$null)) { $loggedIn = $true; break }
-        Write-Warning "az login --identity attempt $attempt/6 failed (rc=$LASTEXITCODE): $($out -join ' ')"
+        $rc = $LASTEXITCODE
+        $ErrorActionPreference = 'Stop'
+        if ($rc -eq 0 -and (Test-AzLoggedIn)) { $loggedIn = $true; break }
+        Write-Warning "az login --identity attempt $attempt/6 failed (rc=$rc): $($out -join ' ')"
         Start-Sleep -Seconds 10
     }
     if (-not $loggedIn) { throw "az login (managed identity $IdentityClientId) failed after 6 attempts." }
-    Write-Host "== az login OK ($(az account show --query user.name -o tsv 2>$null)) =="
+    Write-Host '== az login OK =='
 }
 
 $ps = { param($f, $a) & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ScriptDir $f) @a; if ($LASTEXITCODE) { throw "$f failed rc=$LASTEXITCODE" } }
