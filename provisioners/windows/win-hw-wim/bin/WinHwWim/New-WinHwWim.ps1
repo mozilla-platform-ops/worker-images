@@ -173,17 +173,23 @@ if ($env:AZ_CLIENT_ID -and $env:AZ_CLIENT_SECRET -and $env:AZ_TENANT) {
 }
 elseif (-not (az account show 2>$null)) {
     # The build VM has a USER-assigned identity (no system-assigned), so bare
-    # `az login --identity` fails — pass the UAMI client id via --username.
-    if ($IdentityClientId) {
-        Write-Host "== az login (user-assigned managed identity $IdentityClientId) =="
-        # az CLI >= 2.88 requires --client-id (not --username) for a user-assigned MI.
-        az login --identity --client-id $IdentityClientId --only-show-errors | Out-Null
+    # `az login --identity` fails - the UAMI client id must be passed explicitly
+    # (az CLI >= 2.88 uses --client-id, not --username). Retry: on a freshly created
+    # VM the identity/IMDS token endpoint can lag a bit behind first boot, and errors
+    # are surfaced (not hidden) so a real failure is diagnosable in the build log.
+    if (-not $IdentityClientId) {
+        throw 'No active az session and no -IdentityClientId supplied; cannot authenticate on the build VM.'
     }
-    else {
-        Write-Host '== az login (managed identity) =='
-        az login --identity --only-show-errors | Out-Null
+    Write-Host "== az login (user-assigned managed identity $IdentityClientId) =="
+    $loggedIn = $false
+    for ($attempt = 1; $attempt -le 6; $attempt++) {
+        $out = az login --identity --client-id $IdentityClientId 2>&1
+        if ($LASTEXITCODE -eq 0 -and (az account show 2>$null)) { $loggedIn = $true; break }
+        Write-Warning "az login --identity attempt $attempt/6 failed (rc=$LASTEXITCODE): $($out -join ' ')"
+        Start-Sleep -Seconds 10
     }
-    if (-not (az account show 2>$null)) { throw 'az login (managed identity) failed — no active account.' }
+    if (-not $loggedIn) { throw "az login (managed identity $IdentityClientId) failed after 6 attempts." }
+    Write-Host "== az login OK ($(az account show --query user.name -o tsv 2>$null)) =="
 }
 
 $ps = { param($f, $a) & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ScriptDir $f) @a; if ($LASTEXITCODE) { throw "$f failed rc=$LASTEXITCODE" } }
