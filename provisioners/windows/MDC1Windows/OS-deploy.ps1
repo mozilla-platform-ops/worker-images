@@ -777,13 +777,35 @@ else {
         throw "No setup.exe and no baked WIM at '$wim' - nothing to deploy for image '$neededImage'."
     }
 
-    ## diskpart assigns these in both the single- and two-disk layouts:
-    $winVol = "C:"   # Windows target (primary NTFS)
-    $efiVol = "S:"   # EFI system partition (FAT32)
+    $winVol = "C:"   # Windows target (primary NTFS; diskpart 'assign letter=C')
 
     Write-Host "== DISM /Apply-Image '$wim' (index 1) -> $winVol\ =="
     dism.exe /Apply-Image /ImageFile:"$wim" /Index:1 /ApplyDir:"$winVol\"
     if ($LASTEXITCODE -ne 0) { throw "DISM /Apply-Image failed rc=$LASTEXITCODE" }
+
+    ## bcdboot writes the UEFI boot files (\EFI\Microsoft\Boot + BCD) to the EFI System
+    ## Partition, and /s can only address it by drive letter. diskpart does 'assign
+    ## letter=S' at partition time, but that letter does NOT reliably persist on a GPT
+    ## system partition (observed: list volume shows the ESP with no letter -> bcdboot
+    ## /s S: fails rc=87). So locate the ESP on the SAME disk as C: and give it a letter
+    ## right here. Targeting C:'s disk explicitly means a leftover/stale ESP on another
+    ## disk can't be picked. (TODO/disk-clutter: diskpart may not be fully cleaning the
+    ## disk - a ~644 MB leftover partition was seen on nuc13-160; see WORKLOG follow-up.)
+    $espGuid = '{c12a7328-f81f-11d2-ba4b-00a0c93ec93b}'
+    $cDisk = (Get-Partition -DriveLetter C).DiskNumber
+    $esp = Get-Partition -DiskNumber $cDisk |
+        Where-Object { $_.GptType -eq $espGuid } | Select-Object -First 1
+    if (-not $esp) { throw "No EFI System Partition on disk $cDisk - cannot run bcdboot." }
+    if ($esp.DriveLetter) {
+        $efiVol = "$($esp.DriveLetter):"
+    }
+    else {
+        $espDp = "select disk $cDisk`r`nselect partition $($esp.PartitionNumber)`r`nassign letter=S`r`nexit"
+        $espDp | Out-File -FilePath "$env:TEMP\assign_esp.txt" -Encoding ASCII
+        Start-Process "diskpart.exe" -ArgumentList "/s $env:TEMP\assign_esp.txt" -Wait
+        $efiVol = "S:"
+    }
+    Write-Host "== ESP = disk $cDisk / partition $($esp.PartitionNumber) -> $efiVol =="
 
     Write-Host "== bcdboot $winVol\Windows /s $efiVol /f UEFI =="
     bcdboot.exe "$winVol\Windows" /s $efiVol /f UEFI
