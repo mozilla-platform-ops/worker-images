@@ -70,6 +70,10 @@ Remove-ItemProperty -Path $wl -Name DefaultPassword -ErrorAction SilentlyContinu
 Step 'Removing build-only network helper'
 Remove-Item 'C:\Windows\Setup\Scripts\set-bake-network.ps1' -Force -ErrorAction SilentlyContinue
 Remove-Item 'C:\Windows\Temp\bake-network.log' -Force -ErrorAction SilentlyContinue
+# The helper self-registers a SYSTEM 'BakeNetwork' startup task (re-asserts network/WinRM
+# on every boot so mid-bake restarts don't strand Packer). Build-only - unregister it so
+# it never ships in the golden WIM.
+Unregister-ScheduledTask -TaskName 'BakeNetwork' -Confirm:$false -ErrorAction SilentlyContinue
 
 # NOTE: there is deliberately no pre-Sysprep leftover-AppX enumeration here. The bake
 # disables AppXSvc (win_disable_services::disable_appxsvc), and Get-AppxPackage needs that

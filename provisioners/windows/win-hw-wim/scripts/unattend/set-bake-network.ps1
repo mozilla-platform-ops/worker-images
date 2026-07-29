@@ -25,6 +25,22 @@ function Write-BakeLog([string] $m) {
 
 Write-BakeLog 'set-bake-network: start'
 
+# Re-assert this bring-up on EVERY boot, not just first logon. The bake's windows-restart
+# provisioners reboot the guest mid-build; the NAT NIC then re-classifies as 'Public' and
+# NTLM WinRM stops answering, so Packer times out at "waiting for machine to restart".
+# A SYSTEM startup task re-runs this script each boot so WinRM is back before Packer
+# reconnects. Idempotent (self-registers on first logon); removed by sysprep-generalize.ps1.
+$self = if ($PSCommandPath) { $PSCommandPath } else { 'C:\Windows\Setup\Scripts\set-bake-network.ps1' }
+try {
+    $act = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument ('-NoProfile -ExecutionPolicy Bypass -File "{0}"' -f $self)
+    $trg = New-ScheduledTaskTrigger -AtStartup
+    $pri = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
+    $st  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
+    Register-ScheduledTask -TaskName 'BakeNetwork' -Action $act -Trigger $trg -Principal $pri -Settings $st -Force | Out-Null
+    Write-BakeLog 'registered BakeNetwork startup task (re-asserts network/WinRM on every boot)'
+}
+catch { Write-BakeLog ('WARN: could not register BakeNetwork startup task: ' + $_.Exception.Message) }
+
 $assigned = $false
 for ($i = 0; $i -lt 60; $i++) {
     $a = Get-NetAdapter -Physical -ErrorAction SilentlyContinue | Where-Object { $_.Status -eq 'Up' } | Select-Object -First 1
