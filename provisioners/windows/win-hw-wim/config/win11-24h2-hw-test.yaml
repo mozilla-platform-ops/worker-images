@@ -1,0 +1,46 @@
+---
+# TEMP / TESTING variant of win11-24h2-hw — a throwaway image for validating the
+# pipeline and bake changes WITHOUT touching the production win11-24h2-hw output.
+#
+# Build:  .\bin\WinHwWim\New-WinHwWim.ps1 -Image win11-24h2-hw-test
+#
+# Same base WIM + edition + bake role as win11-24h2-hw; differs only in identity
+# so it captures to its own namespace (captured/win11-24h2-hw-test/…) and tracks
+# the bake-role branch HEAD for fast iteration. Delete this file when done testing.
+
+base:
+  wim: win11-24h2-base-install.wim
+  edition: "Windows 11 Enterprise"
+
+drivers:
+  inject: false
+  cab_url: ""
+
+ronin:
+  org: default
+  repo: default
+  branch: wim-bake-role         # bake role branch
+  hash: ""                      # testing: track branch HEAD (no pin) so iterations don't need a bump
+  bake_role: win116424h2hwbake
+
+vm:
+  puppet_version: default
+  git_version: default
+  openvox_version: default
+  cpus: default
+  memory_mb: default
+  switch_name: default
+  # Testing: skip the slow full Windows Update pass for fast iteration (also the
+  # shared default). Flip to true to validate the production WU path.
+  windows_update: false
+
+# Deploy-side metadata — test pool label so this never looks like production.
+sharedimage:
+  worker_pool_id: win11-64-24h2-hw-test
+
+tags:
+  base_image: win11-24h2-base-install.wim
+  sourceOrganization: default
+  sourceRepository: default
+  sourceBranch: wim-bake-role
+  temp: "true"

@@ -509,6 +509,47 @@ function Get-PSModules {
     }
 }
 
+# Return the highest installed version (as [version]) matching any of the given
+# Uninstall-registry DisplayName patterns, or $null if not installed.
+function Get-InstalledVersion {
+    param (
+        [Parameter(Mandatory)]
+        [string[]] $NameLike
+    )
+    $uninstallKeys = @(
+        'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
+        'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
+    )
+    $found = $null
+    $entries = Get-ItemProperty $uninstallKeys -ErrorAction SilentlyContinue
+    foreach ($pattern in $NameLike) {
+        foreach ($e in ($entries | Where-Object { $_.DisplayName -like $pattern -and $_.DisplayVersion })) {
+            # Normalise e.g. "2.54.0.windows.1" / "8.19.2" -> a comparable [version].
+            $m = [regex]::Match([string]$e.DisplayVersion, '\d+(\.\d+){1,3}')
+            if ($m.Success) {
+                try {
+                    $v = [version]$m.Value
+                    if ($null -eq $found -or $v -gt $found) { $found = $v }
+                }
+                catch { }
+            }
+        }
+    }
+    return $found
+}
+
+# True when $Installed is present and >= the $Minimum version string.
+function Test-VersionAtLeast {
+    param (
+        [version] $Installed,
+        [string]  $Minimum
+    )
+    if ($null -eq $Installed) { return $false }
+    $m = [regex]::Match([string]$Minimum, '\d+(\.\d+){1,3}')
+    if (-not $m.Success) { return $false }
+    try { return ($Installed -ge [version]$m.Value) } catch { return $false }
+}
+
 function Get-PreRequ {
     param (
         [string]
@@ -524,11 +565,21 @@ function Get-PreRequ {
         Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
     }
     process {
+        # The versions passed in (from pools.yml) are treated as a MINIMUM. With the
+        # pre-baked install.wim these tools are already present at the win defaults, so
+        # we detect the installed version and only download/install when the box is
+        # missing the tool or is below the pools.yml minimum.
         if ($openvox_version) {
-            $puppet = "openvox-agent-$openvox_version-x64.msi"
+            $puppet     = "openvox-agent-$openvox_version-x64.msi"
+            $agentMin   = $openvox_version
+            $agentNames = @('OpenVox Agent*', 'Openvox*', '*openvox-agent*')
+            $agentLabel = 'OpenVox agent'
         }
         else {
-            $puppet = ("puppet-agent-{0}-x64.msi") -f $puppet_version
+            $puppet     = ("puppet-agent-{0}-x64.msi") -f $puppet_version
+            $agentMin   = $puppet_version
+            $agentNames = @('Puppet Agent*', '*puppet-agent*')
+            $agentLabel = 'Puppet agent'
         }
 
         switch ($env:PROCESSOR_ARCHITECTURE) {
@@ -544,43 +595,73 @@ function Get-PreRequ {
         }
         $git_url = "https://github.com/git-for-windows/git/releases/download/v$($git_version).windows.1/$($git)"
 
-        if (-Not (Test-Path "$env:systemdrive\$puppet")) {
-            Write-Log -Message ('{0} :: Downloading Puppet' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-            Invoke-DownloadWithRetry "$ext_src/$puppet" -Path "$env:systemdrive\$puppet"
+        # --- Agent (Puppet/OpenVox): skip when baked WIM already meets the minimum ---
+        $agentInstalled = Get-InstalledVersion -NameLike $agentNames
+        if (Test-VersionAtLeast -Installed $agentInstalled -Minimum $agentMin) {
+            Write-Log -Message ('{0} :: {1} {2} already present (>= min {3}); skipping install' -f $($MyInvocation.MyCommand.Name), $agentLabel, $agentInstalled, $agentMin) -severity 'DEBUG'
+            Write-Host ('{0} :: {1} {2} satisfies minimum {3}; skipping install' -f $($MyInvocation.MyCommand.Name), $agentLabel, $agentInstalled, $agentMin)
+        }
+        else {
+            Write-Log -Message ('{0} :: {1} install needed (installed={2}, min={3})' -f $($MyInvocation.MyCommand.Name), $agentLabel, $agentInstalled, $agentMin) -severity 'DEBUG'
             if (-Not (Test-Path "$env:systemdrive\$puppet")) {
-                Write-Log -Message ('{0} :: Puppet failed to download' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
+                Invoke-DownloadWithRetry "$ext_src/$puppet" -Path "$env:systemdrive\$puppet"
             }
-        }
-
-        if (-Not (Test-Path "$env:systemdrive\$git")) {
-            Write-Log -Message ('{0} :: Downloading Git from {1}' -f $($MyInvocation.MyCommand.Name), $git_url) -severity 'DEBUG'
-            Invoke-DownloadWithRetryGithub -Url $git_url -Path "$env:systemdrive\$git" -PAT (Get-Content "D:\Secrets\pat.txt")
-            if (-Not (Test-Path "$env:systemdrive\$git")) {
-                Write-Log -Message ('{0} :: Git failed to download' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
+            if (-Not (Test-Path "$env:systemdrive\$puppet")) {
+                Write-Log -Message ('{0} :: {1} failed to download' -f $($MyInvocation.MyCommand.Name), $agentLabel) -severity 'ERROR'
+                exit 1
             }
-        }
-
-        Start-Process "$env:systemdrive\$git" -ArgumentList "/verysilent" -Wait -NoNewWindow
-        if (-Not (Test-Path "C:\Program Files\Git\bin")) {
-            Write-Host "Git not installed"
-            Write-Log -message  ('{0} :: Git not installed' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-            exit 1
-        }
-        Write-Log -message  ('{0} :: Git installed :: {1}' -f $($MyInvocation.MyCommand.Name), $git) -severity 'DEBUG'
-        $env:PATH += ";C:\Program Files\git\bin"
-        Write-Host ('{0} :: Git installed :: {1}' -f $($MyInvocation.MyCommand.Name), $git)
-
-        if (-Not (Test-Path "C:\Program Files\Puppet Labs\Puppet\bin")) {
-            Write-Log -Message ('{0} :: Installing puppet' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
             Start-Process msiexec -ArgumentList @("/qn", "/norestart", "/i", "$env:systemdrive\$puppet") -Wait
-            Write-Log -message  ('{0} :: Puppet installed :: {1}' -f $($MyInvocation.MyCommand.Name), $puppet) -severity 'DEBUG'
-            Write-Host ('{0} :: Puppet installed :: {1}' -f $($MyInvocation.MyCommand.Name), $puppet)
-            if (-Not (Test-Path "C:\Program Files\Puppet Labs\Puppet\bin")) {
-                Write-Host "Did not install puppet"
-                write-host exit 1
+            $agentInstalled = Get-InstalledVersion -NameLike $agentNames
+            # Fall back to the bin-dir check (original behavior) so a registry
+            # DisplayName miss can't fail a deploy where the agent installed fine.
+            $agentOk = (Test-VersionAtLeast -Installed $agentInstalled -Minimum $agentMin) -or
+                       (Test-Path 'C:\Program Files\Puppet Labs\Puppet\bin') -or
+                       (Test-Path 'C:\Program Files\OpenVox\Puppet\bin')
+            if (-Not $agentOk) {
+                Write-Host ('Did not install {0} to minimum {1} (got {2})' -f $agentLabel, $agentMin, $agentInstalled)
+                Write-Log -message  ('{0} :: {1} did not meet minimum {2} (got {3})' -f $($MyInvocation.MyCommand.Name), $agentLabel, $agentMin, $agentInstalled) -severity 'ERROR'
+                exit 1
             }
-            $env:PATH += ";C:\Program Files\Puppet Labs\Puppet\bin"
-            [Environment]::SetEnvironmentVariable("PATH", $env:PATH, [System.EnvironmentVariableTarget]::Machine)
+            Write-Log -message  ('{0} :: {1} installed :: {2}' -f $($MyInvocation.MyCommand.Name), $agentLabel, $agentInstalled) -severity 'DEBUG'
+            Write-Host ('{0} :: {1} installed :: {2}' -f $($MyInvocation.MyCommand.Name), $agentLabel, $agentInstalled)
+        }
+
+        # --- Git: skip when baked WIM already meets the minimum ---
+        $gitInstalled = Get-InstalledVersion -NameLike @('Git version*', 'Git')
+        if (Test-VersionAtLeast -Installed $gitInstalled -Minimum $git_version) {
+            Write-Log -Message ('{0} :: Git {1} already present (>= min {2}); skipping install' -f $($MyInvocation.MyCommand.Name), $gitInstalled, $git_version) -severity 'DEBUG'
+            Write-Host ('{0} :: Git {1} satisfies minimum {2}; skipping install' -f $($MyInvocation.MyCommand.Name), $gitInstalled, $git_version)
+        }
+        else {
+            Write-Log -Message ('{0} :: Git install needed (installed={1}, min={2}) from {3}' -f $($MyInvocation.MyCommand.Name), $gitInstalled, $git_version, $git_url) -severity 'DEBUG'
+            if (-Not (Test-Path "$env:systemdrive\$git")) {
+                Invoke-DownloadWithRetryGithub -Url $git_url -Path "$env:systemdrive\$git" -PAT (Get-Content "D:\Secrets\pat.txt")
+            }
+            if (-Not (Test-Path "$env:systemdrive\$git")) {
+                Write-Log -Message ('{0} :: Git failed to download' -f $($MyInvocation.MyCommand.Name)) -severity 'ERROR'
+                exit 1
+            }
+            Start-Process "$env:systemdrive\$git" -ArgumentList "/verysilent" -Wait -NoNewWindow
+            $gitInstalled = Get-InstalledVersion -NameLike @('Git version*', 'Git')
+            # Bin-dir fallback (original behavior) guards against a registry detection miss.
+            $gitOk = (Test-VersionAtLeast -Installed $gitInstalled -Minimum $git_version) -or (Test-Path 'C:\Program Files\Git\bin')
+            if (-Not $gitOk) {
+                Write-Host "Git not installed to minimum $git_version (got $gitInstalled)"
+                Write-Log -message  ('{0} :: Git did not meet minimum {1} (got {2})' -f $($MyInvocation.MyCommand.Name), $git_version, $gitInstalled) -severity 'ERROR'
+                exit 1
+            }
+            Write-Log -message  ('{0} :: Git installed :: {1}' -f $($MyInvocation.MyCommand.Name), $gitInstalled) -severity 'DEBUG'
+            Write-Host ('{0} :: Git installed :: {1}' -f $($MyInvocation.MyCommand.Name), $gitInstalled)
+        }
+
+        # Ensure tool bin dirs are on PATH whether we just installed them or inherited
+        # them from the baked WIM.
+        foreach ($bin in @(
+                'C:\Program Files\Git\bin',
+                'C:\Program Files\Git\cmd',
+                'C:\Program Files\Puppet Labs\Puppet\bin',
+                'C:\Program Files\OpenVox\Puppet\bin')) {
+            if ((Test-Path $bin) -and ($env:PATH -notlike "*$bin*")) { $env:PATH += ";$bin" }
         }
         [Environment]::SetEnvironmentVariable("PATH", $env:PATH, [System.EnvironmentVariableTarget]::Machine)
     }

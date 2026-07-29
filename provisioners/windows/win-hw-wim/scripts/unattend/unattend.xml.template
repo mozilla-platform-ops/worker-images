@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Build-only unattend injected into the base VHDX at W:\Windows\Panther\unattend.xml
+  by prepare-base-vhdx.ps1. Its ONLY job is to make the bake VM boot FULLY UNATTENDED
+  and let Packer connect: auto-answer region/keyboard, bypass the Win11 24H2 network/
+  MSA requirement, create a local admin, auto-logon once, set a static IP on the NAT
+  switch, and enable WinRM. This account/config is scrubbed by sysprep-generalize.ps1
+  before capture, so it never ships in the golden WIM.
+
+  Modeled on the proven MDC1Windows/base-autounattend.xml (NUC installs). We DISM-apply
+  the image ourselves, so the windowsPE (Setup) pass is intentionally omitted.
+
+  Tokens replaced by prepare-base-vhdx.ps1: @@WINRM_USER@@, @@WINRM_PASSWORD@@, @@COMPUTERNAME@@
+-->
+<unattend xmlns="urn:schemas-microsoft-com:unattend" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
+  <settings pass="specialize">
+    <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS"
+               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+      <ComputerName>@@COMPUTERNAME@@</ComputerName>
+    </component>
+    <!-- Keep the specialize pass MINIMAL and known-good: only short reg.exe commands,
+         mirroring the proven MDC1Windows/base-autounattend.xml. Do NOT put long or
+         complex commands here: Microsoft-Windows-Deployment's RunSynchronousCommand
+         <Path> has a length limit (~259 chars), and an over-long value makes Setup
+         reject the ENTIRE specialize pass with 0x80220005 "answer file is invalid" —
+         Setup then halts at "Getting ready" before OOBE, so no account is created and
+         Packer hangs forever at "Waiting for WinRM". All WinRM/firewall/static-IP
+         bring-up is done at first logon by set-bake-network.ps1 (see FirstLogonCommands
+         below), where the network stack is fully up and there is no length limit. -->
+    <component name="Microsoft-Windows-Deployment" processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <RunSynchronous>
+        <!-- Bypass the Win11 24H2 "must connect to a network / Microsoft account" OOBE gate. -->
+        <RunSynchronousCommand wcm:action="add">
+          <Order>1</Order>
+          <Path>reg.exe add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE" /v BypassNRO /t REG_DWORD /d 1 /f</Path>
+        </RunSynchronousCommand>
+        <!-- Allow local-account admin tokens over the network (Packer auth). -->
+        <RunSynchronousCommand wcm:action="add">
+          <Order>2</Order>
+          <Path>reg.exe add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v LocalAccountTokenFilterPolicy /t REG_DWORD /d 1 /f</Path>
+        </RunSynchronousCommand>
+      </RunSynchronous>
+    </component>
+  </settings>
+
+  <settings pass="oobeSystem">
+    <!-- Auto-answer language/region/keyboard so OOBE never stops for input. -->
+    <component name="Microsoft-Windows-International-Core" processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <InputLocale>0409:00000409</InputLocale>
+      <SystemLocale>en-US</SystemLocale>
+      <UILanguage>en-US</UILanguage>
+      <UserLocale>en-US</UserLocale>
+    </component>
+    <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS"
+               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+      <UserAccounts>
+        <LocalAccounts>
+          <LocalAccount wcm:action="add">
+            <Name>@@WINRM_USER@@</Name>
+            <Group>Administrators</Group>
+            <Password>
+              <Value>@@WINRM_PASSWORD@@</Value>
+              <PlainText>true</PlainText>
+            </Password>
+          </LocalAccount>
+        </LocalAccounts>
+      </UserAccounts>
+      <AutoLogon>
+        <Enabled>true</Enabled>
+        <Username>@@WINRM_USER@@</Username>
+        <Password>
+          <Value>@@WINRM_PASSWORD@@</Value>
+          <PlainText>true</PlainText>
+        </Password>
+        <LogonCount>2</LogonCount>
+      </AutoLogon>
+      <OOBE>
+        <ProtectYourPC>3</ProtectYourPC>
+        <HideEULAPage>true</HideEULAPage>
+        <HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
+      </OOBE>
+      <!-- All build-only network bring-up happens here at first logon, where the network
+           stack is fully up and there is no unattend length limit: set-bake-network.ps1
+           (dropped into Setup\Scripts by prepare-base-vhdx.ps1) assigns the static NAT IP
+           (retry loop — the NIC isn't reliably Up during specialize) and creates the WinRM
+           HTTP listener via explicit `winrm create Listener` (profile-independent, unlike
+           Enable-PSRemoting). Autologon fires this; the packer account below is what Packer
+           authenticates as. Specialize is kept minimal (reg.exe only) so it always parses. -->
+      <FirstLogonCommands>
+        <SynchronousCommand wcm:action="add">
+          <Order>1</Order>
+          <CommandLine>powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Windows\Setup\Scripts\set-bake-network.ps1"</CommandLine>
+          <Description>Assign static NAT IP and ensure WinRM (build-only)</Description>
+        </SynchronousCommand>
+      </FirstLogonCommands>
+    </component>
+  </settings>
+</unattend>

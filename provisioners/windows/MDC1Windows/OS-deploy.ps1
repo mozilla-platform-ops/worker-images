@@ -488,7 +488,16 @@ $DomainSuffix = $ResolvedName -replace '^[^.]*\.', ''
 Write-Host "Host name set to be $ResolvedName"
 
 ## Get data
-## Assumes files is in the same dir
+## Assumes files is in the same dir.
+## In dev mode the initial (default-branch) run staged pools.yml, but Deploy-OS-Dev only
+## re-downloads OS-deploy.ps1 - so refresh pools.yml from the dev branch here too. That
+## lets the WHOLE canary config (image / src_Branch / hash, not just the scripts) live on
+## the feature branch; the default branch only needs the `dev:` trigger on the pool.
+if ($devlopment_script) {
+    $poolsUrl = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$branch/provisioners/windows/MDC1Windows/pools.yml"
+    Write-Host "DEV: refreshing pools.yml from branch '$branch'"
+    Invoke-WebRequest -Uri $poolsUrl -OutFile "pools.yml"
+}
 $YAML = Convertfrom-Yaml (Get-Content "pools.yml" -raw)
 
 foreach ($pool in $YAML.pools) {
