@@ -247,27 +247,12 @@ if ($rc -eq 0 -or $rc -eq 2) {
   $mp = [Environment]::GetEnvironmentVariable('Path', 'Machine')
   if ($mp -notlike '*OpenSSH*') { [Environment]::SetEnvironmentVariable('Path', "$mp;$env:ProgramFiles\OpenSSH", 'Machine') }
 
-  # --- 9. Bake the first-boot runner (SetupComplete.cmd) ---
-  # The deploy-time unattend FirstLogonCommands do NOT run on the DISM /Apply-Image path
-  # (the generalized image boots to the leftover bake account without consuming our
-  # unattend). SetupComplete.cmd is run by Windows as SYSTEM on first boot after Setup
-  # completes, with NO unattend dependency - so bake the post-install actions here,
-  # mirroring base-autounattend.xml FirstLogonCommands: seed C:\bootstrap, copy the
-  # deploy-staged vault.yaml, disable sleep, and launch Get-Bootstrap.ps1 (staged on D:
-  # by OS-deploy.ps1). Written ASCII (a .cmd must not carry a UTF-8 BOM).
-  Step 'Baking SetupComplete.cmd first-boot runner'
-  $scDir = 'C:\Windows\Setup\Scripts'
-  New-Item -ItemType Directory -Path $scDir -Force | Out-Null
-  $setupComplete = @'
-@echo off
-if not exist C:\bootstrap mkdir C:\bootstrap
-if exist D:\secrets\vault.yaml copy /Y D:\secrets\vault.yaml C:\bootstrap\ >nul 2>&1
-powercfg -x -standby-timeout-ac 0
-powercfg -x -monitor-timeout-ac 0
-if exist D:\scripts\Get-Bootstrap.ps1 powershell.exe -NoProfile -ExecutionPolicy Bypass -File D:\scripts\Get-Bootstrap.ps1 >> C:\bootstrap\setupcomplete.log 2>&1
-'@
-  [System.IO.File]::WriteAllText((Join-Path $scDir 'SetupComplete.cmd'), $setupComplete, (New-Object System.Text.ASCIIEncoding))
-
+  # NOTE: the first-boot bootstrap runner (which launches Get-Bootstrap) is NOT baked
+  # here. It is registered as a SYSTEM startup scheduled task at the very END of
+  # sysprep-generalize.ps1 - after all bake work, immediately before Sysprep /shutdown -
+  # so it can ONLY fire on the DEPLOYED node's first boot, never during the bake (the
+  # bake VM has no further boots before capture). SetupComplete.cmd was tried here first
+  # but did not run on the DISM/generalized boot; the startup task is the reliable path.
   exit $rc
 }
 Write-Host "----- bake-puppet.log (tail 120) -----"
