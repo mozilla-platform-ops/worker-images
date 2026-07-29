@@ -73,4 +73,15 @@ $sizeGB = [math]::Round((Get-Item $OutWim).Length / 1GB, 2)
 "$sha  $(Split-Path -Leaf $OutWim)" | Set-Content -Path "$OutWim.sha256"
 Write-Host "== Captured $OutWim ($sizeGB GB) =="
 Write-Host "   SHA256: $sha"
-Get-WindowsImage -ImagePath $OutWim | Format-List ImageName, ImageIndex, ImageSize
+# Best-effort image-info dump. Normalize to backslashes: DISM /Capture-Image tolerates the
+# forward-slash path Packer passes, but the Get-WindowsImage cmdlet rejects it with "The
+# parameter is incorrect" (0x80070057). Never fail the capture on a verification hiccup -
+# the WIM and its .sha256 already exist at this point.
+try {
+  $wimPath = ([string]$OutWim).Replace('/', '\')
+  Get-WindowsImage -ImagePath $wimPath | Format-List ImageName, ImageIndex, ImageSize
+}
+catch {
+  $vmsg = $_.Exception.Message
+  Write-Warning ("  (image-info verification skipped: " + $vmsg + ")")
+}
