@@ -758,6 +758,47 @@ Copy-Item -Path pools.yml  $local_yaml -Force
 
 Set-Location -Path $OS_files
 Write-Host "Initializing OS installation."
-Write-Host Running: Start-Process -FilePath $setup -ArgumentList "/unattend:$unattend"
-Write-Host "Have a nice day! :)"
-Start-Process -FilePath $setup -ArgumentList "/unattend:$unattend"
+
+if (Test-Path $setup) {
+    ## Standard path: Windows Setup applies sources\install.wim per the unattend.
+    Write-Host Running: Start-Process -FilePath $setup -ArgumentList "/unattend:$unattend"
+    Write-Host "Have a nice day! :)"
+    Start-Process -FilePath $setup -ArgumentList "/unattend:$unattend"
+}
+else {
+    ## RELOPS-2487 baked-WIM path (DISM /Apply-Image). The image folder holds no
+    ## setup.exe - just a bare, already-sysprep/generalize'd <name>.wim. Apply it
+    ## directly, make the disk bootable with bcdboot, and drop the (already edited)
+    ## unattend where a generalized image processes it on first boot
+    ## (\Windows\Panther\unattend.xml -> specialize + oobeSystem -> FirstLogonCommands
+    ## -> D:\scripts\Get-Bootstrap.ps1), i.e. the same first-boot chain as the setup path.
+    $wim = Join-Path $OS_files "$neededImage.wim"
+    if (-not (Test-Path $wim)) {
+        throw "No setup.exe and no baked WIM at '$wim' - nothing to deploy for image '$neededImage'."
+    }
+
+    ## diskpart assigns these in both the single- and two-disk layouts:
+    $winVol = "C:"   # Windows target (primary NTFS)
+    $efiVol = "S:"   # EFI system partition (FAT32)
+
+    Write-Host "== DISM /Apply-Image '$wim' (index 1) -> $winVol\ =="
+    dism.exe /Apply-Image /ImageFile:"$wim" /Index:1 /ApplyDir:"$winVol\"
+    if ($LASTEXITCODE -ne 0) { throw "DISM /Apply-Image failed rc=$LASTEXITCODE" }
+
+    Write-Host "== bcdboot $winVol\Windows /s $efiVol /f UEFI =="
+    bcdboot.exe "$winVol\Windows" /s $efiVol /f UEFI
+    if ($LASTEXITCODE -ne 0) { throw "bcdboot failed rc=$LASTEXITCODE" }
+
+    ## Reuse the unattend the resync block already fetched + edited (ComputerName,
+    ## admin password). A generalized image runs specialize + oobeSystem from
+    ## \Windows\Panther\unattend.xml on first boot; the windowsPE/ImageInstall pass in
+    ## it is simply ignored (the image is already applied).
+    $panther = Join-Path "$winVol\" "Windows\Panther"
+    New-Item -ItemType Directory -Path $panther -Force | Out-Null
+    Copy-Item -Path $unattend -Destination (Join-Path $panther "unattend.xml") -Force
+    Write-Host "== Placed unattend at $panther\unattend.xml =="
+
+    Write-Host "Baked WIM applied. Rebooting into the deployed OS. Have a nice day! :)"
+    Start-Sleep -Seconds 5
+    wpeutil reboot
+}
