@@ -88,15 +88,26 @@ Write-Host $out
 if ("$out" -notmatch 'KICKOFF_OK') { throw "Failed to start the build on $vm (no KICKOFF_OK):`n$out" }
 
 # --- Poll the completion marker -----------------------------------------------
+# The `az vm run-command invoke` action API serializes per VM and, under the heavy
+# nested-virt bake load, intermittently returns "Conflict: execution in progress" (or an
+# empty result). Previously a failed read silently cost a whole 60s cycle and left NO
+# trace, so a build that had already written build.done could go undetected and the job
+# would hang for hours. Retry the read a few times per cycle and log the raw status each
+# cycle so a stuck poll is visible. (Also: do NOT run other az vm run-commands against
+# this VM while the job runs — a concurrent invoke makes THIS poll Conflict.)
 $intervalSec = 60
 $maxMinutes  = 300   # hard cap (~5h) so a hung build can't run the job forever
 $poll = "if (Test-Path 'C:\win-hw-wim-build\build.done') { 'DONE:' + (Get-Content 'C:\win-hw-wim-build\build.done' -Raw).Trim() } else { 'RUNNING' }"
 $rc = $null
 for ($elapsed = 0; $elapsed -lt ($maxMinutes * 60); $elapsed += $intervalSec) {
     Start-Sleep -Seconds $intervalSec
-    $status = (az vm run-command invoke -g $rg -n $vm --command-id RunPowerShellScript --scripts "$poll" --query "value[0].message" -o tsv 2>$null)
+    $status = $null
+    for ($try = 1; $try -le 4 -and [string]::IsNullOrWhiteSpace($status); $try++) {
+        if ($try -gt 1) { Start-Sleep -Seconds 10 }
+        $status = (az vm run-command invoke -g $rg -n $vm --command-id RunPowerShellScript --scripts "$poll" --query "value[0].message" -o tsv 2>$null)
+    }
     if ($status -match 'DONE:(-?\d+)') { $rc = [int]$Matches[1]; break }
-    Write-Host ("... building ({0} min elapsed)" -f [int]($elapsed / 60))
+    Write-Host ("... building ({0} min elapsed; status='{1}')" -f [int]($elapsed / 60), (($status -replace '\s+', ' ').Trim()))
 }
 
 # --- Fetch the log tail for visibility ----------------------------------------
