@@ -221,7 +221,55 @@ Stop-Transcript | Out-Null
 
 # detailed-exitcodes: 0 = no changes, 2 = changes applied (both OK), 4/6 = failures.
 # rc=1 = puppet failed to run/compile the catalog (not a resource-level failure).
-if ($rc -eq 0 -or $rc -eq 2) { Write-Host "Bake puppet apply OK (rc=$rc)"; exit $rc }
+if ($rc -eq 0 -or $rc -eq 2) {
+  Write-Host "Bake puppet apply OK (rc=$rc)"
+
+  # --- 8. Bake OpenSSH server (mirrors Get-Bootstrap.ps1 Set-SSH) ---
+  # Bake sshd + the audit key so SSH is up at FIRST BOOT, independent of the deploy-time
+  # bootstrap. Makes the golden image self-sufficient and gives operator access even if
+  # first-boot bootstrap stalls. Assets come from the same source Get-Bootstrap uses;
+  # sysprep-generalize.ps1 removes ssh_host_* so host keys regenerate per node.
+  Step 'Baking OpenSSH server + audit key'
+  $sshAssets = 'https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/main/provisioners/windows/MDC1Windows/ssh'
+  $sshMsi = Join-Path $dlDir 'OpenSSH-Win64.msi'
+  Get-PrereqFile -Urls @('https://github.com/PowerShell/Win32-OpenSSH/releases/download/v9.8.3.0p2-Preview/OpenSSH-Win64-v9.8.3.0.msi') -OutFile $sshMsi
+  $s = Start-Process msiexec.exe -ArgumentList "/i `"$sshMsi`" /quiet /norestart ADDLOCAL=Server" -Wait -PassThru
+  if ($s.ExitCode -ne 0 -and $s.ExitCode -ne 3010) { throw "OpenSSH MSI install failed rc=$($s.ExitCode)" }
+  New-Item -ItemType Directory -Path 'C:\ProgramData\ssh' -Force | Out-Null
+  Get-PrereqFile -Urls @("$sshAssets/sshd_config") -OutFile 'C:\ProgramData\ssh\sshd_config'
+  $adminSsh = 'C:\Users\Administrator\.ssh'
+  New-Item -ItemType Directory -Path $adminSsh -Force | Out-Null
+  Get-PrereqFile -Urls @("$sshAssets/authorized_keys") -OutFile (Join-Path $adminSsh 'authorized_keys')
+  if (-not (Get-NetFirewallRule -Name 'AllowSSH' -ErrorAction SilentlyContinue)) {
+    New-NetFirewallRule -Name 'AllowSSH' -DisplayName 'Allow SSH' -Profile Any -Direction Inbound -Action Allow -Protocol TCP -LocalPort 22 | Out-Null
+  }
+  Set-Service -Name sshd -StartupType Automatic
+  $mp = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+  if ($mp -notlike '*OpenSSH*') { [Environment]::SetEnvironmentVariable('Path', "$mp;$env:ProgramFiles\OpenSSH", 'Machine') }
+
+  # --- 9. Bake the first-boot runner (SetupComplete.cmd) ---
+  # The deploy-time unattend FirstLogonCommands do NOT run on the DISM /Apply-Image path
+  # (the generalized image boots to the leftover bake account without consuming our
+  # unattend). SetupComplete.cmd is run by Windows as SYSTEM on first boot after Setup
+  # completes, with NO unattend dependency - so bake the post-install actions here,
+  # mirroring base-autounattend.xml FirstLogonCommands: seed C:\bootstrap, copy the
+  # deploy-staged vault.yaml, disable sleep, and launch Get-Bootstrap.ps1 (staged on D:
+  # by OS-deploy.ps1). Written ASCII (a .cmd must not carry a UTF-8 BOM).
+  Step 'Baking SetupComplete.cmd first-boot runner'
+  $scDir = 'C:\Windows\Setup\Scripts'
+  New-Item -ItemType Directory -Path $scDir -Force | Out-Null
+  $setupComplete = @'
+@echo off
+if not exist C:\bootstrap mkdir C:\bootstrap
+if exist D:\secrets\vault.yaml copy /Y D:\secrets\vault.yaml C:\bootstrap\ >nul 2>&1
+powercfg -x -standby-timeout-ac 0
+powercfg -x -monitor-timeout-ac 0
+if exist D:\scripts\Get-Bootstrap.ps1 powershell.exe -NoProfile -ExecutionPolicy Bypass -File D:\scripts\Get-Bootstrap.ps1 >> C:\bootstrap\setupcomplete.log 2>&1
+'@
+  [System.IO.File]::WriteAllText((Join-Path $scDir 'SetupComplete.cmd'), $setupComplete, (New-Object System.Text.ASCIIEncoding))
+
+  exit $rc
+}
 Write-Host "----- bake-puppet.log (tail 120) -----"
 Get-Content (Join-Path $log 'bake-puppet.log') -Tail 120 -ErrorAction SilentlyContinue
 throw "Bake puppet apply FAILED rc=$rc"
