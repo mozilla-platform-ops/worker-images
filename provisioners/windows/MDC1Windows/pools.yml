@@ -53,7 +53,7 @@ pools:
     # worker-images feature branch; src_* -> our ronin branch; image -> the baked
     # WIM staged on the deployment share at <name>/<name>.wim.
     dev: "nuc-wim-pipeline"
-    image: "win11-24h2-hw-test-20260728-233440"
+    image: "win11-24h2-hw-test-20260729-204650"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "wim-bake-role"
