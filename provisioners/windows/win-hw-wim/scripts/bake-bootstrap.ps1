@@ -240,12 +240,56 @@ if ($rc -eq 0 -or $rc -eq 2) {
   $adminSsh = 'C:\Users\Administrator\.ssh'
   New-Item -ItemType Directory -Path $adminSsh -Force | Out-Null
   Get-PrereqFile -Urls @("$sshAssets/authorized_keys") -OutFile (Join-Path $adminSsh 'authorized_keys')
+
+  # Also bake the audit key as an ADMIN-GROUP key. Win32-OpenSSH treats members of the
+  # local Administrators group specially: with the "Match Group administrators" block
+  # below it authenticates them ONLY against %ProgramData%\ssh\administrators_authorized_keys
+  # (NOT the per-user .ssh\authorized_keys). Dropping the key there means every enabled
+  # admin - including the baked 'packer' account whose password is randomly generated and
+  # unrecoverable for GH-Action bakes - can SSH in with the key from first boot, so we're
+  # not locked out if 'Administrator' is disabled or the deploy-time bootstrap stalls.
+  $adminKeys = 'C:\ProgramData\ssh\administrators_authorized_keys'
+  Copy-Item (Join-Path $adminSsh 'authorized_keys') $adminKeys -Force
+  # StrictModes: sshd IGNORES administrators_authorized_keys unless it is owned by an admin
+  # and writable ONLY by Administrators/SYSTEM. Reset inheritance and grant those two alone.
+  icacls $adminKeys /inheritance:r /grant 'Administrators:F' /grant 'SYSTEM:F' | Out-Null
+  # Ensure the admin-group Match block is present (append once; idempotent across re-bakes).
+  $sshdCfg = 'C:\ProgramData\ssh\sshd_config'
+  if ((Get-Content $sshdCfg -Raw) -notmatch '(?im)^\s*Match\s+Group\s+administrators') {
+    Add-Content -Path $sshdCfg -Value "`r`nMatch Group administrators`r`n       AuthorizedKeysFile __PROGRAMDATA__/ssh/administrators_authorized_keys`r`n"
+  }
+
   if (-not (Get-NetFirewallRule -Name 'AllowSSH' -ErrorAction SilentlyContinue)) {
     New-NetFirewallRule -Name 'AllowSSH' -DisplayName 'Allow SSH' -Profile Any -Direction Inbound -Action Allow -Protocol TCP -LocalPort 22 | Out-Null
   }
   Set-Service -Name sshd -StartupType Automatic
   $mp = [Environment]::GetEnvironmentVariable('Path', 'Machine')
   if ($mp -notlike '*OpenSSH*') { [Environment]::SetEnvironmentVariable('Path', "$mp;$env:ProgramFiles\OpenSSH", 'Machine') }
+
+  # --- 9. Bake nxlog log shipping (mirrors Get-Bootstrap.ps1 / bootstrap.ps1 Set-Logging) ---
+  # Install nxlog CE and drop the papertrail config + CA cert so the deployed worker ships
+  # logs to papertrail from FIRST BOOT, instead of waiting for the deploy-time bootstrap to
+  # do it. Same assets, same source blob ($extSrc = .../binaries/prerequisites) the upstream
+  # Set-Logging uses, so behaviour matches a normally-bootstrapped node.
+  Step 'Baking nxlog log shipping'
+  $nxMsi  = 'nxlog-ce-2.10.2150.msi'
+  $nxConf = 'nxlog.conf'
+  $nxPem  = 'papertrail-bundle.pem'
+  $nxDir  = "$env:SystemDrive\Program Files (x86)\nxlog"
+  $nxMsiPath = Join-Path $dlDir $nxMsi
+  Get-PrereqFile -Urls @("$extSrc/$nxMsi") -OutFile $nxMsiPath
+  $nx = Start-Process msiexec.exe -ArgumentList "/i `"$nxMsiPath`" /passive /norestart" -Wait -PassThru
+  if ($nx.ExitCode -ne 0 -and $nx.ExitCode -ne 3010) { throw "nxlog MSI install failed rc=$($nx.ExitCode)" }
+  # msiexec /passive returns before the service dir is fully laid down; wait for conf\.
+  for ($i = 0; $i -lt 30 -and -not (Test-Path "$nxDir\conf\"); $i++) { Start-Sleep 10 }
+  if (-not (Test-Path "$nxDir\conf\")) { throw "nxlog conf dir never appeared at $nxDir\conf" }
+  New-Item -ItemType Directory -Path "$nxDir\cert" -Force | Out-Null
+  Get-PrereqFile -Urls @("$extSrc/$nxConf") -OutFile "$nxDir\conf\$nxConf"
+  Get-PrereqFile -Urls @("$extSrc/$nxPem")  -OutFile "$nxDir\cert\$nxPem"
+  # Leave nxlog Automatic so it starts on the deployed node; it will pick up the config
+  # above on that boot. (No point starting it now - the bake VM's logs aren't wanted, and
+  # sysprep/capture follow immediately.)
+  Set-Service -Name nxlog -StartupType Automatic -ErrorAction SilentlyContinue
 
   # NOTE: the first-boot bootstrap runner (which launches Get-Bootstrap) is NOT baked
   # here. It is registered as a SYSTEM startup scheduled task at the very END of
