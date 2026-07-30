@@ -101,13 +101,18 @@ $poll = "if (Test-Path 'C:\win-hw-wim-build\build.done') { 'DONE:' + (Get-Conten
 $rc = $null
 for ($elapsed = 0; $elapsed -lt ($maxMinutes * 60); $elapsed += $intervalSec) {
     Start-Sleep -Seconds $intervalSec
-    $status = $null
+    $status = ''
     for ($try = 1; $try -le 4 -and [string]::IsNullOrWhiteSpace($status); $try++) {
         if ($try -gt 1) { Start-Sleep -Seconds 10 }
-        $status = (az vm run-command invoke -g $rg -n $vm --command-id RunPowerShellScript --scripts "$poll" --query "value[0].message" -o tsv 2>$null)
+        # `az ... -o tsv` returns a STRING ARRAY when the message spans multiple lines;
+        # coerce to a single string so downstream -match / .Trim() never throw
+        # "[System.Object[]] does not contain a method named 'Trim'" (that bug crashed a
+        # good-host build ~24 min into polling and tore down a likely-successful bake).
+        $raw = az vm run-command invoke -g $rg -n $vm --command-id RunPowerShellScript --scripts "$poll" --query "value[0].message" -o tsv 2>$null
+        $status = (@($raw) -join ' ').Trim()
     }
     if ($status -match 'DONE:(-?\d+)') { $rc = [int]$Matches[1]; break }
-    Write-Host ("... building ({0} min elapsed; status='{1}')" -f [int]($elapsed / 60), (($status -replace '\s+', ' ').Trim()))
+    Write-Host ("... building ({0} min elapsed; status='{1}')" -f [int]($elapsed / 60), $status)
 }
 
 # --- Fetch the log tail for visibility ----------------------------------------
