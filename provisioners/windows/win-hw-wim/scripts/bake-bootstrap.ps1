@@ -244,10 +244,11 @@ if ($rc -eq 0 -or $rc -eq 2) {
   # Also bake the audit key as an ADMIN-GROUP key. Win32-OpenSSH treats members of the
   # local Administrators group specially: with the "Match Group administrators" block
   # below it authenticates them ONLY against %ProgramData%\ssh\administrators_authorized_keys
-  # (NOT the per-user .ssh\authorized_keys). Dropping the key there means every enabled
-  # admin - including the baked 'packer' account whose password is randomly generated and
-  # unrecoverable for GH-Action bakes - can SSH in with the key from first boot, so we're
-  # not locked out if 'Administrator' is disabled or the deploy-time bootstrap stalls.
+  # (NOT the per-user .ssh\authorized_keys). Dropping the key there means ANY enabled admin
+  # can SSH in with the key from first boot - notably the built-in Administrator, which
+  # sysprep-generalize.ps1 enables so the deploy-time autologon works. That gives operator
+  # access to diagnose a node even if the first-boot bootstrap stalls. (The build-only
+  # 'packer' admin is disabled at the end of the bake, so it is not a usable path.)
   $adminKeys = 'C:\ProgramData\ssh\administrators_authorized_keys'
   Copy-Item (Join-Path $adminSsh 'authorized_keys') $adminKeys -Force
   # StrictModes: sshd IGNORES administrators_authorized_keys unless it is owned by an admin

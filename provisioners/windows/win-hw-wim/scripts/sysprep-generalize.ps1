@@ -58,9 +58,21 @@ $wl = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon'
 Set-ItemProperty -Path $wl -Name AutoAdminLogon -Value '0' -ErrorAction SilentlyContinue
 Remove-ItemProperty -Path $wl -Name DefaultPassword -ErrorAction SilentlyContinue
 
-# NOTE(host): the build-only '$env:USERNAME' (packer) local account still exists in
-# the image. Either remove it here via a SetupComplete script, or ensure the
-# deploy-time autounattend/first-boot removes non-worker local accounts.
+# --- Enable the built-in Administrator so the DEPLOY-time autologon works ---
+# The whole first-boot kickoff on the deployed node runs through the production
+# base-autounattend.xml oobeSystem pass: <AutoLogon> logs in Administrator ONCE
+# (LogonCount=1) and <FirstLogonCommands> - which run only inside that interactive
+# logon - seed C:\bootstrap + vault.yaml and launch Get-Bootstrap.ps1 (whose final
+# `psexec -i` also needs that interactive session). OS-deploy.ps1 already stages that
+# unattend to \Windows\Panther and substitutes the real Administrator password
+# (win_adminpw) into it. BUT the built-in Administrator is DISABLED by default and this
+# bake ran as the 'packer' account, so it was never enabled - the deploy autologon then
+# fails and the node sits at the login screen (nuc13-160's "packer login"), FirstLogonCommands
+# never fire, and nothing bootstraps. Enable it here so the deploy autologon can take.
+# (No password is set in the image; oobeSystem sets it to win_adminpw before any logon.)
+Step 'Enabling built-in Administrator for deploy-time autologon'
+& net.exe user Administrator /active:yes
+if ($LASTEXITCODE -ne 0) { Write-Warning "net user Administrator /active:yes returned $LASTEXITCODE" }
 
 # --- Remove the build-only first-logon network helper ---
 # set-bake-network.ps1 (dropped by prepare-base-vhdx.ps1 and invoked by the build
@@ -129,6 +141,19 @@ $rdbPrincipal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAc
 $rdbSettings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Hours 3)
 Register-ScheduledTask -TaskName 'RunDeployBootstrap' -Action $rdbAction -Trigger $rdbTrigger -Principal $rdbPrincipal -Settings $rdbSettings -Force | Out-Null
 Write-Host '  RunDeployBootstrap SYSTEM startup task registered (fires only on the deployed node).'
+
+# --- Bake hygiene: neutralize the build-only 'packer' admin account ([[bake-hygiene-todo]]) ---
+# The build unattend created an Administrators-group account (@@WINRM_USER@@, i.e. 'packer')
+# for Packer/WinRM. It must not remain a usable admin in the golden WIM. We DISABLE it rather
+# than delete it: this script runs AS that account (over WinRM), and you cannot delete the
+# account you are currently logged in as. Disabling fully neutralizes it - a disabled account
+# cannot log in locally, over WinRM, or via SSH - which is the security goal. (Deletion, if
+# ever wanted, must happen as SYSTEM on the deployed node where packer isn't logged in.)
+# This is the LAST WinRM-affecting step before Sysprep /shutdown; no provisioner runs after it.
+Step 'Disabling build-only packer account'
+$buildAcct = $env:USERNAME   # the account this provisioner runs under IS the build account
+& net.exe user $buildAcct /active:no
+if ($LASTEXITCODE -ne 0) { Write-Warning "net user $buildAcct /active:no returned $LASTEXITCODE" }
 
 # --- Sysprep generalize + shutdown ---
 Step 'Running Sysprep /generalize /oobe /shutdown'
