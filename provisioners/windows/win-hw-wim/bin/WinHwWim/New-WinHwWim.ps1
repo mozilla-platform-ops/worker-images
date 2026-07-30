@@ -290,6 +290,21 @@ capture_name     = "$Image-$BuildId"
     Remove-Item $pkrLog -Force -ErrorAction SilentlyContinue
     $watchdog = Start-Job -Name 'wim-boot-watchdog' -ScriptBlock {
         param($vm, $log)
+        # PHASE 1 - stay HANDS-OFF until Packer has cloned+configured the VM and started it
+        # once. StepCloneVM sets the CPU count + secure boot on the freshly-cloned (Off) VM;
+        # if the watchdog Start-VMs it during that window those Set-VMProcessor/Set-VMFirmware
+        # calls fail with "cannot be performed while the object is in its current state" and
+        # the build dies at StepCloneVM (this was the intermittent ~50% clone flake). Wait
+        # for Packer's own "Starting the virtual machine" (logged at StepRun, AFTER config).
+        while ($true) {
+            if (Test-Path $log) {
+                if (Select-String -Path $log -Pattern 'WIM-WATCHDOG-STOP' -SimpleMatch -Quiet) { return }
+                if (Select-String -Path $log -Pattern 'Starting the virtual machine' -SimpleMatch -Quiet) { break }
+            }
+            Start-Sleep -Seconds 3
+        }
+        # PHASE 2 - Packer has started the VM; now (re)start it on any guest-initiated
+        # power-off until the sysprep provisioner announces its intended /shutdown.
         while ($true) {
             if ((Test-Path $log) -and (Select-String -Path $log -Pattern 'WIM-WATCHDOG-STOP' -SimpleMatch -Quiet)) { break }
             $v = Get-VM -Name $vm -ErrorAction SilentlyContinue
