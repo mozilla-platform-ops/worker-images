@@ -323,14 +323,30 @@ capture_name     = "$Image-$BuildId"
         # -on-error=abort leaves the failed VM + dirs in place so the bake (esp. the
         # puppet apply) can be inspected / iterated via PowerShell Direct instead of a
         # ~40-min rebuild. Successful runs still clean up normally.
-        # NOTE: no in-place retry here. The StepCloneVM "Set-VMFirmware/Set-VMProcessor
-        # ... cannot be performed while the object is in its current state" flake is
-        # HOST-DETERMINISTIC (every clone attempt on a given ephemeral build host fails
-        # identically; other hosts succeed), so retrying on the SAME host is futile - the
-        # only proven recovery is a fresh host (re-dispatch the GH Action). Fail fast so a
-        # bad host is abandoned in ~2.5 min instead of ~10.
-        & packer build -on-error=abort -var-file="$varFile" . 2>&1 | Tee-Object -FilePath $pkrLog
-        if ($LASTEXITCODE) { throw "packer build rc=$LASTEXITCODE" }
+        # OPTION-1 EXPERIMENT for the StepCloneVM "Set-VMFirmware/Set-VMProcessor ...
+        # cannot be performed while the object is in its current state" flake. A plain
+        # in-place retry (re-clone only) was proven futile - every clone on a given host
+        # failed identically. This retry instead REBUILDS THE SOURCE VM before re-cloning,
+        # to test whether stale SOURCE state (vs. the host itself) is the cause: if a fresh
+        # source clears it, great; if register-base-vm's OWN Set-VMFirmware also throws
+        # "current state", that proves the host is bad and we abandon it (re-dispatch).
+        $maxTries = 2
+        for ($try = 1; $try -le $maxTries; $try++) {
+            & packer build -on-error=abort -var-file="$varFile" . 2>&1 | Tee-Object -FilePath $pkrLog
+            if ($LASTEXITCODE -eq 0) { break }
+            $cloneFlake = Select-String -Path $pkrLog -Pattern 'StepCloneVM' -SimpleMatch -Quiet -ErrorAction SilentlyContinue
+            if (-not $cloneFlake -or $try -eq $maxTries) { throw "packer build rc=$LASTEXITCODE" }
+            Write-Warning "StepCloneVM flake (attempt $try): rebuilding the SOURCE VM, then re-cloning once."
+            Get-VM -Name $cloneVm -ErrorAction SilentlyContinue | ForEach-Object {
+                Stop-VM $_ -TurnOff -Force -ErrorAction SilentlyContinue
+                Remove-VM $_ -Force -ErrorAction SilentlyContinue
+            }
+            if (Test-Path $buildDir) { Remove-Item $buildDir -Recurse -Force -ErrorAction SilentlyContinue }
+            Get-ChildItem $pkrTmp -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+            if (Get-VM -Name $vmName -ErrorAction SilentlyContinue) { Remove-VM -Name $vmName -Force }
+            & $ps 'register-base-vm.ps1' @('-VmName', $vmName, '-Vhdx', $vhdx, '-SwitchName', $switch, '-Cpus', $cpus, '-MemoryStartupMB', $memMb)
+            Start-Sleep -Seconds 10
+        }
     }
     finally {
         Pop-Location
