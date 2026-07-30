@@ -308,8 +308,33 @@ capture_name     = "$Image-$BuildId"
         # -on-error=abort leaves the failed VM + dirs in place so the bake (esp. the
         # puppet apply) can be inspected / iterated via PowerShell Direct instead of a
         # ~40-min rebuild. Successful runs still clean up normally.
-        & packer build -on-error=abort -var-file="$varFile" . 2>&1 | Tee-Object -FilePath $pkrLog
-        if ($LASTEXITCODE) { throw "packer build rc=$LASTEXITCODE" }
+        # Retry ONLY the transient nested-Hyper-V clone/firmware flake at StepCloneVM
+        # ("Set-VMFirmware ... cannot be performed while the object is in its current
+        # state" / "cannot modify the secure boot property"), which hits ~2.5 min into
+        # packer on ~half of runs and otherwise wastes the whole ~14-min VM create +
+        # bootstrap. On that specific failure, wipe the half-created clone + build dirs
+        # and retry the build in place. ANY other failure is a real bake error: stop and
+        # leave the VM (thanks to -on-error=abort) for PowerShell-Direct inspection.
+        $pkrOk = $false
+        $maxPkrTries = 3
+        for ($pkrTry = 1; $pkrTry -le $maxPkrTries; $pkrTry++) {
+            if ($pkrTry -gt 1) {
+                Write-Host "== packer build retry $pkrTry/$maxPkrTries (StepCloneVM/secure-boot flake) =="
+                Get-VM -Name $cloneVm -ErrorAction SilentlyContinue | ForEach-Object {
+                    Stop-VM $_ -TurnOff -Force -ErrorAction SilentlyContinue
+                    Remove-VM $_ -Force -ErrorAction SilentlyContinue
+                }
+                if (Test-Path $buildDir) { Remove-Item $buildDir -Recurse -Force -ErrorAction SilentlyContinue }
+                Get-ChildItem $pkrTmp -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+                Start-Sleep -Seconds 15
+            }
+            & packer build -on-error=abort -var-file="$varFile" . 2>&1 | Tee-Object -FilePath $pkrLog
+            if ($LASTEXITCODE -eq 0) { $pkrOk = $true; break }
+            $cloneFlake = Select-String -Path $pkrLog -Pattern 'StepCloneVM', 'Set-VMFirmware', 'secure boot property' -SimpleMatch -Quiet -ErrorAction SilentlyContinue
+            if (-not $cloneFlake) { throw "packer build rc=$LASTEXITCODE" }
+            Write-Warning "packer build attempt $pkrTry/$maxPkrTries hit the StepCloneVM/secure-boot flake; will retry."
+        }
+        if (-not $pkrOk) { throw "packer build failed after $maxPkrTries attempts (StepCloneVM/secure-boot flake persisted)." }
     }
     finally {
         Pop-Location
