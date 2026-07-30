@@ -56,6 +56,17 @@ $ghTokenLine = if ($ghToken) {
 }
 else { "# no GitHub token provided; tooltool downloads unauthenticated (public)" }
 
+# --- Storage-backed completion signal -----------------------------------------
+# The bake (run-build-task.ps1) uploads a _status/<image>.done marker (+ .log) to blob;
+# we poll THAT with the runner's own az instead of polling build.done over
+# `az vm run-command`, which wedges under the bake's nested-virt load and left finished
+# builds undetected (job hung ~2h). Clear any stale marker from a prior run first.
+$stAccount   = 'nucwimfxci'
+$stContainer = 'captured'
+foreach ($n in @("_status/$image.done", "_status/$image.log")) {
+    az storage blob delete --account-name $stAccount --container-name $stContainer --name $n --auth-mode login --only-show-errors 2>$null
+}
+
 # --- Start the build (checkout repo + register/start the scheduled task) -------
 $start = @"
 `$ErrorActionPreference = 'Stop'
@@ -87,40 +98,31 @@ Write-Host $out
 # failed checkout/register fails fast instead of polling a build that never started.
 if ("$out" -notmatch 'KICKOFF_OK') { throw "Failed to start the build on $vm (no KICKOFF_OK):`n$out" }
 
-# --- Poll the completion marker -----------------------------------------------
-# The `az vm run-command invoke` action API serializes per VM and, under the heavy
-# nested-virt bake load, intermittently returns "Conflict: execution in progress" (or an
-# empty result). Previously a failed read silently cost a whole 60s cycle and left NO
-# trace, so a build that had already written build.done could go undetected and the job
-# would hang for hours. Retry the read a few times per cycle and log the raw status each
-# cycle so a stuck poll is visible. (Also: do NOT run other az vm run-commands against
-# this VM while the job runs — a concurrent invoke makes THIS poll Conflict.)
+# --- Poll the completion marker (from blob, NOT run-command) -------------------
+# run-build-task.ps1 uploads _status/<image>.done (content = exit code) when the build
+# finishes. We poll that blob with the runner's own az - completely independent of the
+# VM's run-command extension, which wedged under bake load and never surfaced build.done.
 $intervalSec = 60
-$maxMinutes  = 300   # hard cap (~5h) so a hung build can't run the job forever
-$poll = "if (Test-Path 'C:\win-hw-wim-build\build.done') { 'DONE:' + (Get-Content 'C:\win-hw-wim-build\build.done' -Raw).Trim() } else { 'RUNNING' }"
+$maxMinutes  = 240   # hard cap; a real bake is ~90-150 min
 $rc = $null
+$doneTmp = Join-Path ([IO.Path]::GetTempPath()) "bake-$image.done"
 for ($elapsed = 0; $elapsed -lt ($maxMinutes * 60); $elapsed += $intervalSec) {
     Start-Sleep -Seconds $intervalSec
-    $status = ''
-    for ($try = 1; $try -le 4 -and [string]::IsNullOrWhiteSpace($status); $try++) {
-        if ($try -gt 1) { Start-Sleep -Seconds 10 }
-        # `az ... -o tsv` returns a STRING ARRAY when the message spans multiple lines;
-        # coerce to a single string so downstream -match / .Trim() never throw
-        # "[System.Object[]] does not contain a method named 'Trim'" (that bug crashed a
-        # good-host build ~24 min into polling and tore down a likely-successful bake).
-        $raw = az vm run-command invoke -g $rg -n $vm --command-id RunPowerShellScript --scripts "$poll" --query "value[0].message" -o tsv 2>$null
-        $status = (@($raw) -join ' ').Trim()
+    Remove-Item $doneTmp -Force -ErrorAction SilentlyContinue
+    az storage blob download --account-name $stAccount --container-name $stContainer --name "_status/$image.done" --file $doneTmp --auth-mode login --only-show-errors 2>$null
+    if (($LASTEXITCODE -eq 0) -and (Test-Path $doneTmp)) {
+        $rc = [int]((Get-Content $doneTmp -Raw).Trim())
+        break
     }
-    if ($status -match 'DONE:(-?\d+)') { $rc = [int]$Matches[1]; break }
-    Write-Host ("... building ({0} min elapsed; status='{1}')" -f [int]($elapsed / 60), $status)
+    Write-Host ("... building ({0} min elapsed)" -f [int]($elapsed / 60))
 }
 
-# --- Fetch the log tail for visibility ----------------------------------------
+# --- Fetch the log tail for visibility (also from blob) -----------------------
 Write-Host "== Build log (tail) =="
-$tail = (az vm run-command invoke -g $rg -n $vm --command-id RunPowerShellScript `
-        --scripts "if (Test-Path 'C:\win-hw-wim-build\build.log') { Get-Content 'C:\win-hw-wim-build\build.log' -Tail 120 -ErrorAction SilentlyContinue }" `
-        --query "value[0].message" -o tsv 2>$null)
-Write-Host $tail
+$logTmp = Join-Path ([IO.Path]::GetTempPath()) "bake-$image.log"
+Remove-Item $logTmp -Force -ErrorAction SilentlyContinue
+az storage blob download --account-name $stAccount --container-name $stContainer --name "_status/$image.log" --file $logTmp --auth-mode login --only-show-errors 2>$null
+if (Test-Path $logTmp) { Get-Content $logTmp | ForEach-Object { Write-Host $_ } }
 
 if ($null -eq $rc) { throw "Build did not finish within $maxMinutes minutes (timed out; VM will be torn down)." }
 if ($rc -ne 0) { throw "Build FAILED (exit $rc). See log above." }
