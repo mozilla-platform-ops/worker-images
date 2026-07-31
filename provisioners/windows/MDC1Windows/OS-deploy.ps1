@@ -783,6 +783,35 @@ else {
     dism.exe /Apply-Image /ImageFile:"$wim" /Index:1 /ApplyDir:"$winVol\"
     if ($LASTEXITCODE -ne 0) { throw "DISM /Apply-Image failed rc=$LASTEXITCODE" }
 
+    ## --- Deterministically set the node name in the OFFLINE image registry ---
+    ## Do it HERE in WinPE (before the OS ever boots) so the very first boot already comes up
+    ## as $shortname - i.e. BEFORE the baked nxlog service starts shipping logs, so every log
+    ## line reports the node name from the start. On the DISM-applied generalized image the
+    ## specialize-pass <ComputerName> from the unattend was NOT taking effect, so the baked
+    ## 'nuc-bake' name persisted and all logs shipped as nuc-bake (verified in SolarWinds).
+    ## A post-boot Rename-Computer would need a reboot to go active and would leak nuc-bake-
+    ## labelled logs until then; the offline edit avoids that. $shortname = node reverse-DNS
+    ## short name (e.g. nuc13-160), the same value substituted into the unattend ComputerName.
+    if ($shortname) {
+        $sysHive = "$winVol\Windows\System32\config\SYSTEM"
+        Write-Host "== Offline-setting ComputerName -> $shortname in $sysHive =="
+        reg load "HKLM\OFFSYS" "$sysHive" | Out-Null
+        try {
+            reg add "HKLM\OFFSYS\ControlSet001\Control\ComputerName\ComputerName"       /v ComputerName  /t REG_SZ /d $shortname /f | Out-Null
+            reg add "HKLM\OFFSYS\ControlSet001\Control\ComputerName\ActiveComputerName" /v ComputerName  /t REG_SZ /d $shortname /f | Out-Null
+            reg add "HKLM\OFFSYS\ControlSet001\Services\Tcpip\Parameters"               /v Hostname      /t REG_SZ /d $shortname /f | Out-Null
+            reg add "HKLM\OFFSYS\ControlSet001\Services\Tcpip\Parameters"               /v "NV Hostname" /t REG_SZ /d $shortname /f | Out-Null
+        }
+        finally {
+            [gc]::Collect(); Start-Sleep -Seconds 1
+            reg unload "HKLM\OFFSYS" | Out-Null
+        }
+        Write-Host "== Offline ComputerName set to $shortname =="
+    }
+    else {
+        Write-Warning "shortname is empty - skipping offline rename; node would keep the baked name."
+    }
+
     ## bcdboot writes the UEFI boot files (\EFI\Microsoft\Boot + BCD) to the EFI System
     ## Partition, and /s can only address it by drive letter. diskpart does 'assign
     ## letter=S' at partition time, but that letter does NOT reliably persist on a GPT
