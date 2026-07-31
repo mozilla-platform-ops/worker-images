@@ -439,44 +439,27 @@ function Get-PSModules {
         ## https://github.com/PowerShell/PowerShellGallery/issues/328
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-        $maxAttempts  = 10
-        $attemptDelay = 60
-
-        $nugetProvider = $null
-        for ($i = 1; $i -le $maxAttempts; $i++) {
-            Write-Log -message ('{0} :: Checking for NuGet provider (attempt {1}/{2})' -f $MyInvocation.MyCommand.Name, $i, $maxAttempts) -severity 'DEBUG'
-            $nugetProvider = Get-PackageProvider -Name NuGet -ListAvailable -ForceBootstrap -ErrorAction SilentlyContinue
-
-            if ($null -ne $nugetProvider) {
-                Write-Log -message ('{0} :: NuGet provider is present.' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'
-                break
-            }
-
-            if ($i -lt $maxAttempts) {
-                Write-Log -message ('{0} :: NuGet provider not found. Sleeping {1}s before retry.' -f $MyInvocation.MyCommand.Name, $attemptDelay) -severity 'DEBUG'
-                Start-Sleep -Seconds $attemptDelay
-            }
-        }
-
+        # NuGet provider: check ONCE, then install directly if missing. The old loop polled
+        # 10x with 60s sleeps (~9 min) for a provider that never appears on its own, THEN
+        # installed it anyway - pure dead time. On the baked WIM the provider is pre-installed
+        # (bake-bootstrap), so this check passes immediately.
+        $nugetProvider = Get-PackageProvider -Name NuGet -ListAvailable -ForceBootstrap -ErrorAction SilentlyContinue
         if ($null -eq $nugetProvider) {
-            Write-Log -message ('{0} :: Installing NuGet Package Provider after {1} failed checks' -f $MyInvocation.MyCommand.Name, $maxAttempts) -severity 'DEBUG'
+            Write-Log -message ('{0} :: NuGet provider absent; installing.' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'
             try {
                 Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.208 -Force -Confirm:$false -ForceBootstrap -ErrorAction Stop
             }
             catch {
                 Write-Log -message ('{0} :: Failed to install NuGet Package Provider: {1}' -f $MyInvocation.MyCommand.Name, $_.Exception.Message) -severity 'ERROR'
             }
-
-            # Verify installation
             $nugetProvider = Get-PackageProvider -Name NuGet -ListAvailable -ForceBootstrap -ErrorAction SilentlyContinue
             if ($null -eq $nugetProvider) {
                 Write-Log -message ('{0} :: NuGet provider still not available after install attempt; exiting 3' -f $MyInvocation.MyCommand.Name) -severity 'ERROR'
                 Write-Host exit 3
                 return
-            } else {
-                Write-Log -message ('{0} :: NuGet provider installed successfully.' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'
             }
         }
+        Write-Log -message ('{0} :: NuGet provider present.' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'
 
         foreach ($module in $modules) {
             $hit = Get-Module -Name $module
@@ -1061,10 +1044,12 @@ Set-ExecutionPolicy Unrestricted -Force -ErrorAction SilentlyContinue
 powercfg.exe -x -standby-timeout-ac 0
 powercfg.exe -x -monitor-timeout-ac 0
 
-## Enable OpenSSH and WinRM
-## Installation through Puppet is intermittent.
-## It works here, but ultimately should be done through Puppet.
-Set-WinRM
+## Enable OpenSSH (WinRM disabled for the pre-baked NUC deploy).
+## RELOPS-2487: Set-WinRM is skipped here - Enable-PSRemoting can't publish a listener on the
+## NUC's Public/workgroup network (failed every deploy: "Listener=False ... continuing anyway")
+## and nothing in the bootstrap path needs WinRM; SSH (baked) is the access path. If WinRM is
+## ever actually required, let Puppet configure it.
+# Set-WinRM
 Set-SSH
 
 ## This is not being set yet, so it won't find the ronin_puppet registry entry

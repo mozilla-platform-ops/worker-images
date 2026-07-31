@@ -302,6 +302,23 @@ if ($rc -eq 0 -or $rc -eq 2) {
   # sysprep/capture follow immediately.)
   Set-Service -Name nxlog -StartupType Automatic -ErrorAction SilentlyContinue
 
+  # --- 10. Bake PowerShell prereqs (NuGet provider + modules) so DEPLOY skips them ---
+  # The deploy bootstrap's Get-PSModules otherwise installs the NuGet provider + the ugit and
+  # Powershell-Yaml modules from PSGallery on first boot (previously a ~9-min poll+install).
+  # Bake them now so Get-PSModules finds them present and skips. Pre-install the NuGet provider
+  # and mark PSGallery Trusted FIRST so Install-Module can't block on the hidden trust prompt.
+  Step 'Baking NuGet provider + PS modules (ugit, Powershell-Yaml)'
+  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+  Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.208 -Force -Confirm:$false -ForceBootstrap -Scope AllUsers -ErrorAction SilentlyContinue | Out-Null
+  try { Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction SilentlyContinue } catch { }
+  foreach ($m in @('ugit', 'Powershell-Yaml')) {
+    if (-not (Get-Module -Name $m -ListAvailable)) {
+      Write-Host "  installing module $m (AllUsers)"
+      Install-Module -Name $m -Scope AllUsers -AllowClobber -Force -Confirm:$false -ErrorAction SilentlyContinue
+    }
+    if (Get-Module -Name $m -ListAvailable) { Write-Host "  module $m present" } else { Write-Warning "  module $m NOT installed (deploy will install it)" }
+  }
+
   # NOTE: the first-boot bootstrap runner (which launches Get-Bootstrap) is NOT baked
   # here. It is registered as a SYSTEM startup scheduled task at the very END of
   # sysprep-generalize.ps1 - after all bake work, immediately before Sysprep /shutdown -
