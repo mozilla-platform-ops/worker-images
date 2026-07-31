@@ -99,6 +99,13 @@ if ($Action -eq 'create') {
 }
 else {
     Write-Host "== Destroying ephemeral VM $VmName (best-effort) =="
+    # This if: always() step runs AFTER the ~2h build, by which point azure/login's ~1h
+    # token is dead - so `az vm delete` silently no-ops (auth error) and the VM leaks,
+    # holding the single-bake 64-core quota. Re-auth with a fresh GitHub OIDC token first.
+    # Best-effort: never let a re-login failure abort teardown.
+    try { & (Join-Path $PSScriptRoot 'az-relogin.ps1') }
+    catch { Write-Warning "teardown OIDC re-login failed (continuing best-effort): $_" }
+
     # Capture child resource ids before deleting the VM (az vm delete doesn't cascade).
     # Use $azExe directly (best-effort; the VM may not exist) — not the throwing Az wrapper.
     $diskId = (& $azExe vm show -g $ResourceGroup -n $VmName --query "storageProfile.osDisk.managedDisk.id" -o tsv 2>$null)

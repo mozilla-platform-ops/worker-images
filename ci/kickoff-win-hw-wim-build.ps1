@@ -67,6 +67,22 @@ foreach ($n in @("_status/$image.done", "_status/$image.log")) {
     az storage blob delete --account-name $stAccount --container-name $stContainer --name $n --auth-mode login --only-show-errors 2>$null
 }
 
+# --- OIDC re-auth setup -------------------------------------------------------
+# azure/login's Azure token lasts ~1h and can't be refreshed, but this step waits ~2h
+# for the bake. Capture our identity NOW (token still fresh) so we can re-login with a
+# fresh GitHub OIDC token during the poll (ci/az-relogin.ps1) and keep the blob poll
+# authenticated. Not doing this is what hid the finished build for 4h (expired-token
+# downloads failed silently -> the .done marker was never read -> 240-min timeout).
+$reloginScript = Join-Path $PSScriptRoot 'az-relogin.ps1'
+$acctNow    = az account show -o json 2>$null | ConvertFrom-Json
+$azClientId = if ($acctNow) { $acctNow.user.name } else { $null }
+$azTenantId = if ($acctNow) { $acctNow.tenantId } else { $null }
+$azSubId    = if ($acctNow) { $acctNow.id }        else { $null }
+function Invoke-AzRelogin {
+    try { & $reloginScript -ClientId $azClientId -TenantId $azTenantId -SubscriptionId $azSubId }
+    catch { Write-Warning "az OIDC re-login failed (will retry next interval): $_" }
+}
+
 # --- Start the build (checkout repo + register/start the scheduled task) -------
 $start = @"
 `$ErrorActionPreference = 'Stop'
@@ -103,22 +119,36 @@ if ("$out" -notmatch 'KICKOFF_OK') { throw "Failed to start the build on $vm (no
 # finishes. We poll that blob with the runner's own az - completely independent of the
 # VM's run-command extension, which wedged under bake load and never surfaced build.done.
 $intervalSec = 60
-$maxMinutes  = 240   # hard cap; a real bake is ~90-150 min
+$maxMinutes  = 180   # hard cap; a real bake is ~90-150 min. The poll now stays
+                     # authenticated (OIDC re-login below), so hitting this means a
+                     # genuinely stuck build - not a monitoring blind spot as before.
+$reloginEverySec = 1200   # re-auth every ~20 min so the ~1h azure/login token never lapses
 $rc = $null
 $doneTmp = Join-Path ([IO.Path]::GetTempPath()) "bake-$image.done"
 for ($elapsed = 0; $elapsed -lt ($maxMinutes * 60); $elapsed += $intervalSec) {
     Start-Sleep -Seconds $intervalSec
+    # Refresh the Azure token before it can expire (azure/login's lasts ~1h; bake ~2h).
+    if (($elapsed % $reloginEverySec) -eq 0) { Invoke-AzRelogin }
     Remove-Item $doneTmp -Force -ErrorAction SilentlyContinue
-    az storage blob download --account-name $stAccount --container-name $stContainer --name "_status/$image.done" --file $doneTmp --auth-mode login --only-show-errors 2>$null
-    if (($LASTEXITCODE -eq 0) -and (Test-Path $doneTmp)) {
+    # Capture stderr instead of blackholing it (2>$null hid the expired-token failure for
+    # 4h). BlobNotFound is the normal not-done-yet case and also exits non-zero, so stay
+    # quiet on that but SURFACE anything else (auth/network) so a real fault is legible.
+    $dlErr = az storage blob download --account-name $stAccount --container-name $stContainer --name "_status/$image.done" --file $doneTmp --auth-mode login --only-show-errors 2>&1
+    $dlRc  = $LASTEXITCODE
+    if (($dlRc -eq 0) -and (Test-Path $doneTmp)) {
         $rc = [int]((Get-Content $doneTmp -Raw).Trim())
         break
+    }
+    if (($dlRc -ne 0) -and ("$dlErr" -notmatch '(?i)not\s*found|does not exist|BlobNotFound|ResourceNotFound')) {
+        Write-Warning ("blob poll error (exit {0}): {1}" -f $dlRc, (("$dlErr" -replace '\s+', ' ').Trim()))
+        Invoke-AzRelogin   # most likely the token lapsed between refreshes; re-auth now
     }
     Write-Host ("... building ({0} min elapsed)" -f [int]($elapsed / 60))
 }
 
 # --- Fetch the log tail for visibility (also from blob) -----------------------
 Write-Host "== Build log (tail) =="
+Invoke-AzRelogin   # the build may have outlived the last refresh; ensure auth for the log pull
 $logTmp = Join-Path ([IO.Path]::GetTempPath()) "bake-$image.log"
 Remove-Item $logTmp -Force -ErrorAction SilentlyContinue
 az storage blob download --account-name $stAccount --container-name $stContainer --name "_status/$image.log" --file $logTmp --auth-mode login --only-show-errors 2>$null
