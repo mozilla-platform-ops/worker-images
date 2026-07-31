@@ -400,13 +400,11 @@ function Set-Logging {
         Write-Host ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime())
     }
     process {
-        # --- nxlog: skip when the baked WIM already meets the minimum ---
-        # Consume the prebake: nxlog (+ its conf and papertrail cert) are baked into the WIM,
-        # so re-installing is redundant. Target version is parsed from the MSI name.
-        $nxlogMin = ($nxlog_msi -replace '^nxlog-ce-', '' -replace '\.msi$', '')
-        $nxlogInstalled = Get-InstalledVersion -NameLike @('nxlog*')
-        if (Test-VersionAtLeast -Installed $nxlogInstalled -Minimum $nxlogMin) {
-            Write-Host ('{0} :: nxlog {1} already present (>= {2}); skipping install' -f $($MyInvocation.MyCommand.Name), $nxlogInstalled, $nxlogMin)
+        # --- nxlog: skip when it is already present (consume the prebake) ---
+        # Version doesn't matter here - if nxlog is installed at all (service present or the binary
+        # is on disk), move on without reinstalling. Its conf + papertrail cert are baked alongside it.
+        if ((Get-Service -Name nxlog -ErrorAction SilentlyContinue) -or (Test-Path "$nxlog_dir\nxlog.exe")) {
+            Write-Host ('{0} :: nxlog already installed; skipping install' -f $($MyInvocation.MyCommand.Name))
             return
         }
         $null = New-Item -ItemType Directory -Force -Path $local_dir -ErrorAction SilentlyContinue
