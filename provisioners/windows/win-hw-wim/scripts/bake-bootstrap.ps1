@@ -224,6 +224,16 @@ Stop-Transcript | Out-Null
 if ($rc -eq 0 -or $rc -eq 2) {
   Write-Host "Bake puppet apply OK (rc=$rc)"
 
+  # --- Remove the baked ronin clone so the DEPLOY re-clones fresh ---
+  # Don't ship C:\ronin in the golden WIM. The deploy-time bootstrap (Get-Ronin) removes and
+  # re-clones ronin anyway, so a baked copy is just stale weight pinned to this bake's hash;
+  # dropping it forces a clean clone at the pool's current branch/hash on first boot (and keeps
+  # the WIM smaller). The leftover HKLM\...\ronin_puppet registry values are a separate concern.
+  if (Test-Path $roninDir) {
+    Step "Removing baked ronin clone ($roninDir) so deploy re-clones fresh"
+    Remove-Item $roninDir -Recurse -Force -ErrorAction SilentlyContinue
+  }
+
   # --- 8. Bake OpenSSH server (mirrors Get-Bootstrap.ps1 Set-SSH) ---
   # Bake sshd + the audit key so SSH is up at FIRST BOOT, independent of the deploy-time
   # bootstrap. Makes the golden image self-sufficient and gives operator access even if
