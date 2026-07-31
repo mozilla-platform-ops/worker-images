@@ -368,12 +368,16 @@ if (-not $winrmOk) {
 Install-Choco
 
 # Fetch bootstrap.ps1
+# TEMPORARY (RELOPS-2487 canary): pull bootstrap.ps1 from the `nuc-wim-pipeline` feature
+# branch instead of `main` so we can iterate on a prebake-aware bootstrap (consume baked
+# Git/openvox/puppet/ronin/registry instead of re-doing them). *** REVERT THIS URL TO
+# `main` BEFORE MERGING TO main *** - production must always take bootstrap.ps1 from main.
 $local_bootstrap = "C:\bootstrap\bootstrap.ps1"
 if (-Not (Test-Path "D:\Secrets\pat.txt")) {
-    $splat = @{ Url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/main/provisioners/windows/MDC1Windows/bootstrap.ps1"; Path = $local_bootstrap }
+    $splat = @{ Url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/nuc-wim-pipeline/provisioners/windows/MDC1Windows/bootstrap.ps1"; Path = $local_bootstrap }
     Invoke-DownloadWithRetry @splat
 } else {
-    $splat = @{ Url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/main/provisioners/windows/MDC1Windows/bootstrap.ps1"; Path = $local_bootstrap; PAT = Get-Content "D:\Secrets\pat.txt" }
+    $splat = @{ Url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/nuc-wim-pipeline/provisioners/windows/MDC1Windows/bootstrap.ps1"; Path = $local_bootstrap; PAT = Get-Content "D:\Secrets\pat.txt" }
     Invoke-DownloadWithRetryGithub @splat
 }
 

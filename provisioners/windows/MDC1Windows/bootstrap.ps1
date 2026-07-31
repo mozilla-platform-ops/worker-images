@@ -676,15 +676,23 @@ function Set-Ronin-Registry {
         Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
     }
     process {
+        # Prefer the params passed by Get-Bootstrap; only fall back to a value already in the
+        # registry when the corresponding param is empty (a genuine no-param resume). This lets
+        # us CONSUME the prebaked image's leftover HKLM\...\ronin_puppet key WITHOUT an empty/
+        # stale value there clobbering the correct deploy params. The stock read-everything logic
+        # did clobber them on the baked WIM (empty Organisation/Repository/GITHASH) -> git clone
+        # https://github.com// -> invalid C:\ronin -> "cannot find nodes.pp" -> puppet exit 1 ->
+        # Set-PXE re-image loop. (RELOPS-2487 prebake canary.)
         If ((test-path "HKLM:\SOFTWARE\Mozilla\ronin_puppet")) {
-            $worker_pool_id = (Get-ItemProperty -path "HKLM:\SOFTWARE\Mozilla\ronin_puppet").worker_pool_id
-            $role = (Get-ItemProperty -path "HKLM:\SOFTWARE\Mozilla\ronin_puppet").role
-            $src_Organisation = (Get-ItemProperty -path "HKLM:\SOFTWARE\Mozilla\ronin_puppet").Organisation
-            $src_Repository = (Get-ItemProperty -path "HKLM:\SOFTWARE\Mozilla\ronin_puppet").Repository
-            $src_Branch = (Get-ItemProperty -path "HKLM:\SOFTWARE\Mozilla\ronin_puppet").Branch
-            $image_provisioner = (Get-ItemProperty -path "HKLM:\SOFTWARE\Mozilla\ronin_puppet").image_provisioner
-            $secret_date = (Get-ItemProperty -path "HKLM:\SOFTWARE\Mozilla\ronin_puppet").secret_date
-            $hash = (Get-ItemProperty -path "HKLM:\SOFTWARE\Mozilla\ronin_puppet").GITHASH
+            $r = Get-ItemProperty -path "HKLM:\SOFTWARE\Mozilla\ronin_puppet"
+            if ([string]::IsNullOrWhiteSpace($worker_pool_id))    { $worker_pool_id    = $r.worker_pool_id }
+            if ([string]::IsNullOrWhiteSpace($role))              { $role              = $r.role }
+            if ([string]::IsNullOrWhiteSpace($src_Organisation))  { $src_Organisation  = $r.Organisation }
+            if ([string]::IsNullOrWhiteSpace($src_Repository))    { $src_Repository    = $r.Repository }
+            if ([string]::IsNullOrWhiteSpace($src_Branch))        { $src_Branch        = $r.Branch }
+            if ([string]::IsNullOrWhiteSpace($image_provisioner)) { $image_provisioner = $r.image_provisioner }
+            if ([string]::IsNullOrWhiteSpace($secret_date))       { $secret_date       = $r.secret_date }
+            if ([string]::IsNullOrWhiteSpace($hash))              { $hash              = $r.GITHASH }
         }
         Write-Log -Message ('{0} :: Creating HKLM:\SOFTWARE\Mozilla\ronin_puppet' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
         New-Item -Path HKLM:\SOFTWARE -Name Mozilla -force
