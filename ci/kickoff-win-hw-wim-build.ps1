@@ -60,7 +60,10 @@ else { "# no GitHub token provided; tooltool downloads unauthenticated (public)"
 # The bake (run-build-task.ps1) uploads a _status/<image>.done marker (+ .log) to blob;
 # we poll THAT with the runner's own az instead of polling build.done over
 # `az vm run-command`, which wedges under the bake's nested-virt load and left finished
-# builds undetected (job hung ~2h). Clear any stale marker from a prior run first.
+# builds undetected (job hung ~2h). Best-effort delete any stale marker from a prior run -
+# but do NOT rely on it: the runner SP may lack blob-delete, so the delete can silently
+# no-op (it did - a yesterday marker survived and made a run FALSE-pass in ~1 min). The
+# real guard is the freshness gate below: only a marker written AFTER this kickoff counts.
 $stAccount   = 'nucwimfxci'
 $stContainer = 'captured'
 foreach ($n in @("_status/$image.done", "_status/$image.log")) {
@@ -107,7 +110,11 @@ Start-ScheduledTask -TaskName 'win-hw-wim-build'
 Write-Output 'KICKOFF_OK'
 "@
 
-Write-Host "== Starting build '$image' (ref '$ref') on $vm =="
+# Freshness gate: any .done marker older than this instant is stale (a prior run's) and
+# must be ignored. Captured just before we start the build, so only THIS build's marker
+# (written ~1h40m later) counts as completion.
+$kickoffUtc = (Get-Date).ToUniversalTime()
+Write-Host "== Starting build '$image' (ref '$ref') on $vm (kickoff $($kickoffUtc.ToString('o'))) =="
 $out = az vm run-command invoke -g $rg -n $vm --command-id RunPowerShellScript --scripts "$start" --query "join('`n', value[].message)" -o tsv
 Write-Host $out
 # az vm run-command returns 0 even if the inner script threw — assert the sentinel so a
@@ -124,23 +131,30 @@ $maxMinutes  = 180   # hard cap; a real bake is ~90-150 min. The poll now stays
                      # genuinely stuck build - not a monitoring blind spot as before.
 $reloginEverySec = 1200   # re-auth every ~20 min so the ~1h azure/login token never lapses
 $rc = $null
-$doneTmp = Join-Path ([IO.Path]::GetTempPath()) "bake-$image.done"
+$doneName = "_status/$image.done"
+$doneTmp  = Join-Path ([IO.Path]::GetTempPath()) "bake-$image.done"
 for ($elapsed = 0; $elapsed -lt ($maxMinutes * 60); $elapsed += $intervalSec) {
     Start-Sleep -Seconds $intervalSec
     # Refresh the Azure token before it can expire (azure/login's lasts ~1h; bake ~2h).
     if (($elapsed % $reloginEverySec) -eq 0) { Invoke-AzRelogin }
-    Remove-Item $doneTmp -Force -ErrorAction SilentlyContinue
-    # Capture stderr instead of blackholing it (2>$null hid the expired-token failure for
-    # 4h). BlobNotFound is the normal not-done-yet case and also exits non-zero, so stay
-    # quiet on that but SURFACE anything else (auth/network) so a real fault is legible.
-    $dlErr = az storage blob download --account-name $stAccount --container-name $stContainer --name "_status/$image.done" --file $doneTmp --auth-mode login --only-show-errors 2>&1
-    $dlRc  = $LASTEXITCODE
-    if (($dlRc -eq 0) -and (Test-Path $doneTmp)) {
-        $rc = [int]((Get-Content $doneTmp -Raw).Trim())
-        break
-    }
-    if (($dlRc -ne 0) -and ("$dlErr" -notmatch '(?i)not\s*found|does not exist|BlobNotFound|ResourceNotFound')) {
-        Write-Warning ("blob poll error (exit {0}): {1}" -f $dlRc, (("$dlErr" -replace '\s+', ' ').Trim()))
+    # Check the marker's lastModified FIRST (not just existence) - a leftover marker from a
+    # prior run would otherwise false-pass instantly. Capture stderr instead of blackholing
+    # it (2>$null hid the expired-token failure for 4h): BlobNotFound is the normal
+    # not-done-yet case, but anything else (auth/network) must be SURFACED.
+    $modOut = az storage blob show --account-name $stAccount --container-name $stContainer --name $doneName --auth-mode login --query "properties.lastModified" -o tsv 2>&1
+    $showRc = $LASTEXITCODE
+    if (($showRc -eq 0) -and $modOut) {
+        $modUtc = ([datetimeoffset]("$modOut".Trim())).UtcDateTime
+        if ($modUtc -gt $kickoffUtc) {
+            # Fresh marker from THIS build - read the exit code it carries.
+            Remove-Item $doneTmp -Force -ErrorAction SilentlyContinue
+            az storage blob download --account-name $stAccount --container-name $stContainer --name $doneName --file $doneTmp --auth-mode login --only-show-errors 2>$null
+            if (Test-Path $doneTmp) { $rc = [int]((Get-Content $doneTmp -Raw).Trim()); break }
+        } else {
+            Write-Host "  (ignoring stale marker from $modUtc; predates kickoff $kickoffUtc)"
+        }
+    } elseif (($showRc -ne 0) -and ("$modOut" -notmatch '(?i)not\s*found|does not exist|BlobNotFound|ResourceNotFound')) {
+        Write-Warning ("blob poll error (exit {0}): {1}" -f $showRc, (("$modOut" -replace '\s+', ' ').Trim()))
         Invoke-AzRelogin   # most likely the token lapsed between refreshes; re-auth now
     }
     Write-Host ("... building ({0} min elapsed)" -f [int]($elapsed / 60))
