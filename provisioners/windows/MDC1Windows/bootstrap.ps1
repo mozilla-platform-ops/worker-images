@@ -659,6 +659,66 @@ function Get-PreRequ {
         Write-Log -message ('{0} :: end - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
     }
 }
+function Install-Drivers {
+    <#
+    .SYNOPSIS
+        On-host driver install for the pre-baked (DISM /Apply-Image) deploy path (RELOPS-2487).
+    .DESCRIPTION
+        The pre-baked WIM may not carry every NUC hardware driver (e.g. the Intel GPU), which
+        leaves the node on the Microsoft Basic Display Adapter. Windows Update is disabled so
+        nothing fetches the missing driver on its own. This actively installs a driver pack from
+        the RelOps blob mirror on the host (pnputil /add-driver /install + /scan-devices):
+          - installs from local files, no WU needed (proven: baked NIC drivers bind with WU off);
+          - iterates without a full ~2h WIM re-bake (just refresh the pack on the mirror).
+        Idempotent: skips when a real (non-generic) display adapter is already in use, so it is a
+        no-op on normally-imaged nodes and on re-runs once the GPU driver is bound.
+    #>
+    param(
+        [string] $ext_src = "https://roninpuppetassets.blob.core.windows.net/binaries/drivers/nuc13",
+        [string[]] $packs = @("nuc13-24h2-nuc_driver.zip"),
+        [string] $work = "$env:systemdrive\drivers"
+    )
+    begin {
+        Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+    }
+    process {
+        try {
+            # Idempotent guard: real GPU already bound -> nothing to do (consume the prebake).
+            $vc = @(Get-CimInstance Win32_VideoController | Select-Object -ExpandProperty Name)
+            $real = $vc | Where-Object { $_ -notmatch 'Basic Display Adapter|Basic Render|Hyper-V Video' }
+            if ($real) {
+                Write-Log -message ('{0} :: real display driver already present ({1}); skipping driver install' -f $($MyInvocation.MyCommand.Name), ($real -join ', ')) -severity 'DEBUG'
+                return
+            }
+            if (Test-Path $work) { Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue }
+            New-Item -ItemType Directory -Path $work -Force | Out-Null
+            foreach ($p in $packs) {
+                $url = "$ext_src/$p"
+                $dst = Join-Path $work $p
+                $sub = Join-Path $work ([System.IO.Path]::GetFileNameWithoutExtension($p))
+                New-Item -ItemType Directory -Path $sub -Force | Out-Null
+                Write-Log -message ('{0} :: downloading driver pack {1}' -f $($MyInvocation.MyCommand.Name), $url) -severity 'DEBUG'
+                Invoke-DownloadWithRetry -Url $url -Path $dst
+                $ext = [System.IO.Path]::GetExtension($p).ToLowerInvariant()
+                if ($ext -eq '.zip') { Expand-Archive -LiteralPath $dst -DestinationPath $sub -Force }
+                elseif ($ext -eq '.cab') { & expand.exe -F:* "$dst" "$sub" | Out-Null }
+                else { Write-Log -message ('{0} :: unsupported pack type {1}, skipping' -f $($MyInvocation.MyCommand.Name), $ext) -severity 'WARN'; continue }
+                Write-Log -message ('{0} :: pnputil /add-driver {1}\*.inf /subdirs /install' -f $($MyInvocation.MyCommand.Name), $sub) -severity 'DEBUG'
+                & pnputil.exe /add-driver "$sub\*.inf" /subdirs /install | Out-Null
+            }
+            & pnputil.exe /scan-devices | Out-Null
+            $vc2 = @(Get-CimInstance Win32_VideoController | Select-Object -ExpandProperty Name)
+            Write-Log -message ('{0} :: display adapters after install: {1}' -f $($MyInvocation.MyCommand.Name), ($vc2 -join ', ')) -severity 'DEBUG'
+        }
+        catch {
+            # Best-effort: a missing/incomplete pack must not brick the deploy.
+            Write-Log -message ('{0} :: driver install failed (continuing): {1}' -f $($MyInvocation.MyCommand.Name), $_.Exception.Message) -severity 'WARN'
+        }
+    }
+    end {
+        Write-Log -message ('{0} :: end - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+    }
+}
 function Set-Ronin-Registry {
     param (
     )
@@ -1108,6 +1168,7 @@ If ($stage -ne 'complete') {
         git_version = $git_version
     }
     Get-PreRequ @preReq
+    Install-Drivers
     Set-Ronin-Registry
     Get-Ronin
     Run-Ronin-Run
