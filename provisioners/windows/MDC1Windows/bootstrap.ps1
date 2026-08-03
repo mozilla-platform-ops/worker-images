@@ -1168,7 +1168,10 @@ If ($stage -ne 'complete') {
         git_version = $git_version
     }
     Get-PreRequ @preReq
-    Install-Drivers
+    ## RELOPS-2487: temporarily disabled while we test a PXE boot with the KVM display
+    ## disconnected (isolating whether the Raritan CIM EDID drives the display result).
+    ## Re-enable once we resume on-host driver installs. Install-Drivers is idempotent/best-effort.
+    # Install-Drivers
     Set-Ronin-Registry
     Get-Ronin
     Run-Ronin-Run
