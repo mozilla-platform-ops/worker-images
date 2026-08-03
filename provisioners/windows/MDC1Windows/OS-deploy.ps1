@@ -787,6 +787,15 @@ else {
 
     $winVol = "C:"   # Windows target (primary NTFS; diskpart 'assign letter=C')
 
+    # Clean the Windows volume before applying. DISM /Apply-Image writes into the target AS-IS
+    # (it does NOT format), and on a redeploy partitioning is skipped (C:/D: already labeled), so
+    # C: would otherwise still hold the PREVIOUS OS and we'd layer the new image over stale files.
+    # Quick-format just C: in place - keeps its drive letter (so the skip-partitioning check still
+    # passes) and leaves the ESP and the persistent D: (cached WIM) untouched - for a clean apply
+    # every deploy. Done AFTER the WIM existence check above so we never wipe C: then find no WIM.
+    Write-Host "== Quick-formatting $winVol before apply (clean DISM target) =="
+    Format-Volume -DriveLetter C -FileSystem NTFS -Force -Confirm:$false -ErrorAction Stop | Out-Null
+
     Write-Host "== DISM /Apply-Image '$wim' (index 1) -> $winVol\ =="
     dism.exe /Apply-Image /ImageFile:"$wim" /Index:1 /ApplyDir:"$winVol\"
     if ($LASTEXITCODE -ne 0) { throw "DISM /Apply-Image failed rc=$LASTEXITCODE" }
