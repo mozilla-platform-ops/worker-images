@@ -38,9 +38,10 @@ vm:
   windows_update: false
 
 # Offline driver injection defaults (per-image config may override). OFF by default.
+# 'cabs' is a list of driver .cab URLs; per-image configs add entries as needed.
 drivers:
   inject: false
-  cab_url: ""
+  cabs: []
 
 tags:
   sourceOrganization: mozilla-platform-ops

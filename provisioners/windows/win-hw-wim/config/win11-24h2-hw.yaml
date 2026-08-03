@@ -19,12 +19,20 @@ base:
   # Verify the exact name with: dism /Get-WimInfo /WimFile:<wim>
   edition: "Windows 11 Enterprise"
 
-# Optional offline driver injection into the applied base image (DISM /Add-Driver
-# before capture, so drivers land in the golden WIM). Default: OFF. When inject is
-# true, cab_url must point to a driver .cab that expands to an .inf tree.
+# Offline driver injection into the applied base image (DISM /Add-Driver before
+# capture, so drivers land in the golden WIM). NUC13 (Arena Canyon / Raptor Lake)
+# pack: without it the DISM-applied node has no Intel drivers (iGPU A7A0, Smart
+# Sound audio, serial-IO/SMBus, DPTF, ISH/MEI, Bluetooth, NIC/GNA) and falls back
+# to the Microsoft Basic Display Adapter (RELOPS-2487). Each URL must be publicly
+# reachable (the bake downloads it with an unauthenticated Invoke-WebRequest) and be
+# a .cab OR .zip that expands to an .inf tree. Source: MDT Out-of-Box Drivers.
 drivers:
-  inject: false
-  cab_url: ""
+  inject: true
+  # One or more driver-pack URLs, each a .cab OR a .zip (scalable — add more list
+  # entries to inject extra packs; every pack is downloaded, expanded, and applied in
+  # a single recursive DISM /Add-Driver before capture).
+  cabs:
+    - "https://roninpuppetassets.blob.core.windows.net/binaries/drivers/nuc13/nuc13-24h2-nuc_driver.zip"
 
 ronin:
   org: default

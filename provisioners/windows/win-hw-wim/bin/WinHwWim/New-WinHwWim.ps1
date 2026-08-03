@@ -115,7 +115,13 @@ $edition   = $cfg['base']['edition']
 
 # Robust bool: handles real YAML booleans AND quoted strings ("true"/"false").
 $drvInject = ("$(Get-Val 'drivers' 'inject')".Trim() -match '^(true|1|yes)$')
-$drvCabUrl = [string](Get-Val 'drivers' 'cab_url')
+# Scalable driver injection: 'drivers.cabs' is a YAML list of cab URLs. Normalize to
+# a trimmed, non-empty string array. Back-compat: also accept a single 'drivers.cab_url'.
+$drvCabUrls = @(Get-Val 'drivers' 'cabs' | ForEach-Object { "$_".Trim() } | Where-Object { $_ })
+if ($drvCabUrls.Count -eq 0) {
+    $legacyCab = "$(Get-Val 'drivers' 'cab_url')".Trim()
+    if ($legacyCab) { $drvCabUrls = @($legacyCab) }
+}
 
 $roninOrg  = Get-Val 'ronin' 'org'
 $roninRepo = Get-Val 'ronin' 'repo'
@@ -137,7 +143,7 @@ $winUpdate = ("$(Get-Val 'vm' 'windows_update')".Trim() -match '^(true|1|yes)$')
 if (-not $baseWim) { throw "config/$Image.yaml: base.wim is required." }
 if (-not $edition) { throw "config/$Image.yaml: base.edition is required (the WIM edition name; empty would silently default to index 1)." }
 if (-not $bakeRole) { throw "config/$Image.yaml: ronin.bake_role is required." }
-if ($drvInject -and -not $drvCabUrl) { throw "config/$Image.yaml: drivers.inject is true but drivers.cab_url is empty." }
+if ($drvInject -and $drvCabUrls.Count -eq 0) { throw "config/$Image.yaml: drivers.inject is true but drivers.cabs is empty." }
 
 # --- Derived, per-image names -------------------------------------------------
 # Large artifacts (base WIM ~5.6 GB, base VHDX, packer's clone/export, captured WIM)
@@ -229,8 +235,11 @@ if ($Stages -contains 'prep') {
     if (Test-Path $vhdx) { Remove-Item $vhdx -Force }
     $prepArgs = @('-SourceWim', $localBase, '-OutVhdx', $vhdx, '-Edition', $edition, '-WinRMPassword', $WinRMPassword, '-ComputerName', 'nuc-bake')
     if ($drvInject) {
-        Write-Host "  driver injection ON -> $drvCabUrl"
-        $prepArgs += @('-InjectDrivers', '-DriverCabUrl', $drvCabUrl)
+        Write-Host "  driver injection ON -> $($drvCabUrls.Count) cab(s):"
+        $drvCabUrls | ForEach-Object { Write-Host "    $_" }
+        $prepArgs += '-InjectDrivers'
+        $prepArgs += '-DriverCabUrls'
+        $prepArgs += $drvCabUrls
     }
     & $ps 'prepare-base-vhdx.ps1' $prepArgs
 

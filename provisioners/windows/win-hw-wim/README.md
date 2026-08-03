@@ -123,15 +123,21 @@ Publishing to the MDT share for a canary deploy is still a deliberate step:
   has several indexes). `prepare-base-vhdx.ps1` resolves it to the index via
   `Get-WindowsImage`; if the name isn't found it fails and lists what's available. Run
   `dism /Get-WimInfo /WimFile:<wim>` to see the names.
-- **`drivers`** — optional offline driver injection, **OFF by default**:
+- **`drivers`** — optional offline driver injection, **OFF by default**. `cabs` is a
+  list, so any number of driver packs can be injected; each entry may be a **`.cab` or
+  a `.zip`** (sniffed by extension — zip a driver directory with `Compress-Archive`):
   ```yaml
   drivers:
     inject: true
-    cab_url: https://.../NUC13-drivers.cab   # .cab that expands to an .inf tree
+    cabs:
+      - https://.../nuc13-24h2-nuc_driver.zip   # .cab or .zip; must expand to an .inf tree
+      - https://.../extra-pack.cab              # add more as needed
   ```
-  When `inject: true`, `prepare-base-vhdx.ps1` downloads the cab, expands it, and runs
-  `DISM /Add-Driver /Recurse` into the applied image **before capture**, so the drivers
-  land in the golden WIM.
+  When `inject: true`, `prepare-base-vhdx.ps1` downloads each pack, expands them (cab via
+  `expand.exe`, zip via `Expand-Archive`) into separate subdirs, and runs a single
+  recursive `DISM /Add-Driver /Recurse` into the applied image **before capture**, so the
+  drivers land in the golden WIM. (A single `cab_url: <url>` string is still accepted for
+  back-compat.)
 
 Everything is parameterized; nothing is hardcoded to a machine. Review each script
 before running — these touch disks and Sysprep.

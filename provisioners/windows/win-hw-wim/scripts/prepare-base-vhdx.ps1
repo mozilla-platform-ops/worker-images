@@ -36,8 +36,11 @@ param(
     [int] $Index = 0,
     [int] $SizeGB = 80,
     # Optional offline driver injection (DISM /Add-Driver) into the applied image.
+    # One or more driver-pack URLs (scalable: pass as many as needed). Each may be a
+    # .cab OR a .zip (sniffed by extension); all are downloaded, expanded, and injected
+    # in a single recursive /Add-Driver.
     [switch] $InjectDrivers,
-    [string] $DriverCabUrl,
+    [string[]] $DriverCabUrls,
     # Build-only WinRM account injected via unattend so Packer can connect.
     # Scrubbed by sysprep-generalize.ps1 before capture — never ships in the WIM.
     [string] $WinRMUser = 'packer',
@@ -115,18 +118,41 @@ try {
     Expand-WindowsImage -ImagePath $SourceWim -Index $Index -ApplyPath 'W:\' | Out-Null
 
     # --- Optional: offline driver injection (default OFF) ---
+    # Scalable: any number of driver packs, each a .cab OR a .zip (sniffed by extension).
+    # Each pack is downloaded and expanded into its OWN subdir under a common root (so
+    # files from different packs never collide), then a SINGLE recursive /Add-Driver over
+    # the root injects them all at once.
     if ($InjectDrivers) {
-        if (-not $DriverCabUrl) { throw 'InjectDrivers set but -DriverCabUrl is empty.' }
-        $drvDir = Join-Path $env:TEMP ("winhwdrv-" + [System.IO.Path]::GetRandomFileName())
-        New-Item -ItemType Directory -Path $drvDir -Force | Out-Null
-        $cab = Join-Path $drvDir 'drivers.cab'
-        Write-Host "== Downloading driver cab: $DriverCabUrl =="
-        Invoke-WebRequest -Uri $DriverCabUrl -OutFile $cab -UseBasicParsing
-        Write-Host "== Expanding cab -> $drvDir =="
-        & expand.exe -F:* "$cab" "$drvDir" | Out-Null
-        if ($LASTEXITCODE -ne 0) { throw "expand.exe failed rc=$LASTEXITCODE" }
-        Write-Host "== DISM /Add-Driver (recurse) -> W:\ =="
-        & dism.exe /Image:W:\ /Add-Driver /Driver:"$drvDir" /Recurse
+        if (-not $DriverCabUrls -or $DriverCabUrls.Count -eq 0) { throw 'InjectDrivers set but -DriverCabUrls is empty.' }
+        $drvRoot = Join-Path $env:TEMP ("winhwdrv-" + [System.IO.Path]::GetRandomFileName())
+        New-Item -ItemType Directory -Path $drvRoot -Force | Out-Null
+        $n = 0
+        foreach ($url in $DriverCabUrls) {
+            $n++
+            $sub = Join-Path $drvRoot ("pkg{0:D2}" -f $n)
+            New-Item -ItemType Directory -Path $sub -Force | Out-Null
+            # Archive type from the URL path (ignore any ?query); name the temp file with
+            # the right extension so Expand-Archive accepts it.
+            $ext = [System.IO.Path]::GetExtension((($url -split '\?')[0])).ToLowerInvariant()
+            $arc = Join-Path $sub ("pack" + $ext)
+            Write-Host "== [$n/$($DriverCabUrls.Count)] Downloading driver pack ($ext): $url =="
+            Invoke-WebRequest -Uri $url -OutFile $arc -UseBasicParsing
+            switch ($ext) {
+                '.cab' {
+                    Write-Host "== Expanding cab -> $sub =="
+                    & expand.exe -F:* "$arc" "$sub" | Out-Null
+                    if ($LASTEXITCODE -ne 0) { throw "expand.exe failed rc=$LASTEXITCODE for $url" }
+                }
+                '.zip' {
+                    Write-Host "== Extracting zip -> $sub =="
+                    Expand-Archive -LiteralPath $arc -DestinationPath $sub -Force
+                }
+                default { throw "Unsupported driver pack extension '$ext' for $url (expected .cab or .zip)." }
+            }
+            Remove-Item $arc -Force
+        }
+        Write-Host "== DISM /Add-Driver (recurse) -> W:\ from $($DriverCabUrls.Count) pack(s) =="
+        & dism.exe /Image:W:\ /Add-Driver /Driver:"$drvRoot" /Recurse
         if ($LASTEXITCODE -ne 0) { throw "DISM /Add-Driver failed rc=$LASTEXITCODE" }
     }
 
