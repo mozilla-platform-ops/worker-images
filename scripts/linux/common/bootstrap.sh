@@ -41,7 +41,14 @@ retry curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
   $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
 retry apt-get update
-retry apt-get install -y docker-ce docker-ce-cli containerd.io
+# Docker 29.7.x cannot load Kaniko-built Firefox task images containing
+# absolute hardlink targets. Keep this pinned until moby/go-archive#100 ships
+# in a Docker release: https://github.com/moby/go-archive/issues/99
+DOCKER_VERSION='5:29.5.3-1~ubuntu.24.04~noble'
+retry apt-get install -y \
+  "docker-ce=${DOCKER_VERSION}" \
+  "docker-ce-cli=${DOCKER_VERSION}" \
+  containerd.io
 retry docker run hello-world
 
 # configure kvm vmware backdoor
