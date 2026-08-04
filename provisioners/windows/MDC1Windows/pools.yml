@@ -188,6 +188,17 @@ pools:
     - nuc13-045
     - nuc13-006
     - nuc13-093
+    # Degraded performers moved out of win11-64-24h2-hw.
+    # nuc13-011: slightly underperforming.
+    - nuc13-011
+    # nuc13-012: slightly degraded for over a month.
+    - nuc13-012
+    # nuc13-032: degraded after 2026-07-22.
+    - nuc13-032
+    # nuc13-091: slightly degraded for over a month.
+    - nuc13-091
+    # nuc13-151: slightly degraded since 2026-07-12.
+    - nuc13-151
   - name: "win11-64-24h2-hw-perf-sheriff"
     openvox_version: "8.19.2"
     puppet_version: "8.10.0"
@@ -221,14 +232,11 @@ pools:
     - nuc13-008
     - nuc13-009
     - nuc13-010
-    - nuc13-011
-    - nuc13-012
     - nuc13-015
     - nuc13-016
     - nuc13-017
     - nuc13-018
     - nuc13-029
-    - nuc13-032
     - nuc13-033
     - nuc13-036
     - nuc13-040
@@ -252,7 +260,6 @@ pools:
     - nuc13-088
     - nuc13-089
     - nuc13-090
-    - nuc13-091
     - nuc13-096
     - nuc13-097
     - nuc13-101
@@ -273,7 +280,6 @@ pools:
     - nuc13-144
     - nuc13-145
     - nuc13-149
-    - nuc13-151
     - nuc13-153
     - nuc13-154
     - nuc13-156
