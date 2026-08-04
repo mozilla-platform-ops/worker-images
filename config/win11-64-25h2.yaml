@@ -27,6 +27,7 @@ azure:
     - westus2
     - westus3
 vm:
+  spot: true
   puppet_version: "default"
   git_version: "default"
   openvox_version: "default"

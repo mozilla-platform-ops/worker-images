@@ -157,6 +157,12 @@ variable "vm_size" {
   default = "${env("vm_size")}"
 }
 
+variable "use_spot" {
+  type        = bool
+  default     = false
+  description = "Whether to use an Azure Spot VM for the temporary Packer builder"
+}
+
 variable "worker_pool_id" {
   type    = string
   default = "${env("worker_pool_id")}"
@@ -238,6 +244,14 @@ source "azure-arm" "sig" {
   location                   = "${var.build_location}"
   vm_size                    = "${var.vm_size}"
   async_resourcegroup_delete = true
+
+  dynamic "spot" {
+    for_each = var.use_spot ? [1] : []
+    content {
+      eviction_policy = "Delete"
+      max_price       = -1
+    }
+  }
 
   # Shared image gallery https:github.com/mozilla-platform-ops/relops_infra_as_code/blob/master/terraform/azure_fx_nonci/worker-images.tf
   shared_image_gallery_destination {
