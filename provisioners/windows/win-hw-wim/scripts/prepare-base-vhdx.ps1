@@ -40,7 +40,10 @@ param(
     # .cab OR a .zip (sniffed by extension); all are downloaded, expanded, and injected
     # in a single recursive /Add-Driver.
     [switch] $InjectDrivers,
-    [string[]] $DriverCabUrls,
+    # '|'-delimited list of driver-pack URLs. PowerShell's -File invocation can't bind a real
+    # array parameter (extra space-separated values spill onto the next positional param), so
+    # New-WinHwWim joins the list with '|' and we split it here.
+    [string] $DriverCabUrls,
     # Build-only WinRM account injected via unattend so Packer can connect.
     # Scrubbed by sysprep-generalize.ps1 before capture — never ships in the WIM.
     [string] $WinRMUser = 'packer',
@@ -123,11 +126,12 @@ try {
     # files from different packs never collide), then a SINGLE recursive /Add-Driver over
     # the root injects them all at once.
     if ($InjectDrivers) {
-        if (-not $DriverCabUrls -or $DriverCabUrls.Count -eq 0) { throw 'InjectDrivers set but -DriverCabUrls is empty.' }
+        $cabList = @($DriverCabUrls -split '\|' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+        if ($cabList.Count -eq 0) { throw 'InjectDrivers set but -DriverCabUrls is empty.' }
         $drvRoot = Join-Path $env:TEMP ("winhwdrv-" + [System.IO.Path]::GetRandomFileName())
         New-Item -ItemType Directory -Path $drvRoot -Force | Out-Null
         $n = 0
-        foreach ($url in $DriverCabUrls) {
+        foreach ($url in $cabList) {
             $n++
             $sub = Join-Path $drvRoot ("pkg{0:D2}" -f $n)
             New-Item -ItemType Directory -Path $sub -Force | Out-Null
@@ -135,7 +139,7 @@ try {
             # the right extension so Expand-Archive accepts it.
             $ext = [System.IO.Path]::GetExtension((($url -split '\?')[0])).ToLowerInvariant()
             $arc = Join-Path $sub ("pack" + $ext)
-            Write-Host "== [$n/$($DriverCabUrls.Count)] Downloading driver pack ($ext): $url =="
+            Write-Host "== [$n/$($cabList.Count)] Downloading driver pack ($ext): $url =="
             if ($url -match '\.blob\.core\.windows\.net/') {
                 # Authenticated Azure blob (e.g. nucwimfxci - no anonymous access): use azcopy with the
                 # bake VM's AAD login. azcopy has its own credential store and does NOT inherit az login,
@@ -163,7 +167,7 @@ try {
             }
             Remove-Item $arc -Force
         }
-        Write-Host "== DISM /Add-Driver (recurse) -> W:\ from $($DriverCabUrls.Count) pack(s) =="
+        Write-Host "== DISM /Add-Driver (recurse) -> W:\ from $($cabList.Count) pack(s) =="
         & dism.exe /Image:W:\ /Add-Driver /Driver:"$drvRoot" /Recurse
         if ($LASTEXITCODE -ne 0) { throw "DISM /Add-Driver failed rc=$LASTEXITCODE" }
     }

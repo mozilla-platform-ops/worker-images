@@ -237,9 +237,9 @@ if ($Stages -contains 'prep') {
     if ($drvInject) {
         Write-Host "  driver injection ON -> $($drvCabUrls.Count) cab(s):"
         $drvCabUrls | ForEach-Object { Write-Host "    $_" }
-        $prepArgs += '-InjectDrivers'
-        $prepArgs += '-DriverCabUrls'
-        $prepArgs += $drvCabUrls
+        # Join with '|' into ONE arg: PowerShell -File can't bind a real array param
+        # (extra space-separated values spill onto positional params). prepare-base-vhdx splits it.
+        $prepArgs += @('-InjectDrivers', '-DriverCabUrls', ($drvCabUrls -join '|'))
     }
     & $ps 'prepare-base-vhdx.ps1' $prepArgs
 
