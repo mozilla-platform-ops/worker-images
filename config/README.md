@@ -46,6 +46,7 @@ azure:
 
 ```
 vm:
+  spot: false # optional: use a Spot VM for the temporary Packer builder
   puppet_version: 8.5.1
   size: Standard_F8s_v2
   tags:
