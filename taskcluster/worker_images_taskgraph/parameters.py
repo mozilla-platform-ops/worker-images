@@ -12,12 +12,16 @@ from voluptuous import Any, Required
 def get_defaults(repo_root):
     return {
         "images": None,
+        "hw_pools": None,
     }
 
 
 extend_parameters_schema(
     {
         Required("images"): Any(None, list[str]),
+        # Hardware pool names from pools.yml; selected by name rather than
+        # inferred from an image, since they have no worker-manager entry.
+        Required("hw_pools"): Any(None, list[str]),
     },
     defaults_fn=get_defaults,
 )
@@ -26,3 +30,6 @@ extend_parameters_schema(
 def get_decision_parameters(graph_config, parameters):
     if images := os.environ.get("DEPLOY_IMAGES"):
         parameters["images"] = json.loads(images)
+
+    if hw_pools := os.environ.get("DEPLOY_HW_POOLS"):
+        parameters["hw_pools"] = json.loads(hw_pools)

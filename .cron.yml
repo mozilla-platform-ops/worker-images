@@ -10,3 +10,13 @@ jobs:
           treeherder-symbol: run-integration-tests
           include-cron-input: true
       when: []  # never (hook only)
+
+    # Windows hardware pools; separate from the above so the two runs stay
+    # disjoint. Inert until fxci-config projects.yml lists this cron target.
+    - name: run-hw-integration-tests
+      job:
+          type: decision-task
+          target-tasks-method: hw-integration
+          treeherder-symbol: run-hw-integration-tests
+          include-cron-input: true
+      when: []  # never (hook only)
