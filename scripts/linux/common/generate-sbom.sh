@@ -39,6 +39,27 @@ write_taskcluster_tools() {
   fi
 }
 
+os_release_value() {
+  local key="$1"
+
+  awk -F= -v key="${key}" '
+    $1 == key {
+      value = substr($0, length(key) + 2)
+      gsub(/^"|"$/, "", value)
+      print value
+      exit
+    }
+  ' "${os_release_path}"
+}
+
+os_name_and_version() {
+  local name version
+
+  name="$(os_release_value NAME)"
+  version="$(os_release_value VERSION)"
+  printf '%s %s' "${name:-unknown}" "${version:-unknown}"
+}
+
 {
   printf '# Linux worker image SBOM\n\n'
 
@@ -52,7 +73,7 @@ write_taskcluster_tools() {
   printf -- '- GCP zone: %s\n\n' "${ZONE:-unknown}"
 
   printf '## Operating system\n\n'
-  printf -- '- OS: %s\n' "$(. "${os_release_path}"; printf '%s %s' "${NAME}" "${VERSION}")"
+  printf -- '- OS: %s\n' "$(os_name_and_version)"
   printf -- '- Kernel: %s\n' "$(uname -srmo)"
   printf -- '- Machine architecture: %s\n\n' "$(uname -m)"
 
