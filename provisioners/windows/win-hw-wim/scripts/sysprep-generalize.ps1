@@ -155,6 +155,18 @@ $buildAcct = $env:USERNAME   # the account this provisioner runs under IS the bu
 & net.exe user $buildAcct /active:no
 if ($LASTEXITCODE -ne 0) { Write-Warning "net user $buildAcct /active:no returned $LASTEXITCODE" }
 
+# Clear any autologon the bake configured. The build 'packer' account auto-logs in during the bake,
+# leaving AutoAdminLogon/DefaultUserName/DefaultPassword/AutoLogonSID in Winlogon. Left in the golden
+# image these collide with the deploy-time Administrator autologon and generic-worker's task-user
+# autologon (observed on nuc13-160/024: AutoLogonSID still pointed at the baked packer account, and the
+# task user never logged in). Scrub them so the deployed node starts with no baked autologon.
+Step 'Clearing baked autologon (Winlogon) keys'
+$wl = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon'
+Set-ItemProperty -Path $wl -Name 'AutoAdminLogon' -Value '0' -Force
+foreach ($v in 'DefaultUserName', 'DefaultPassword', 'DefaultDomainName', 'AutoLogonSID', 'AutoLogonCount') {
+  Remove-ItemProperty -Path $wl -Name $v -ErrorAction SilentlyContinue
+}
+
 # --- Sysprep generalize + shutdown ---
 Step 'Running Sysprep /generalize /oobe /shutdown'
 $sp = "$env:SystemRoot\System32\Sysprep"
