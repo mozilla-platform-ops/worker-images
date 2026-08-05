@@ -800,34 +800,20 @@ else {
     dism.exe /Apply-Image /ImageFile:"$wim" /Index:1 /ApplyDir:"$winVol\"
     if ($LASTEXITCODE -ne 0) { throw "DISM /Apply-Image failed rc=$LASTEXITCODE" }
 
-    ## --- Deterministically set the node name in the OFFLINE image registry ---
-    ## Do it HERE in WinPE (before the OS ever boots) so the very first boot already comes up
-    ## as $shortname - i.e. BEFORE the baked nxlog service starts shipping logs, so every log
-    ## line reports the node name from the start. On the DISM-applied generalized image the
-    ## specialize-pass <ComputerName> from the unattend was NOT taking effect, so the baked
-    ## 'nuc-bake' name persisted and all logs shipped as nuc-bake (verified in SolarWinds).
-    ## A post-boot Rename-Computer would need a reboot to go active and would leak nuc-bake-
-    ## labelled logs until then; the offline edit avoids that. $shortname = node reverse-DNS
-    ## short name (e.g. nuc13-160), the same value substituted into the unattend ComputerName.
-    if ($shortname) {
-        $sysHive = "$winVol\Windows\System32\config\SYSTEM"
-        Write-Host "== Offline-setting ComputerName -> $shortname in $sysHive =="
-        reg load "HKLM\OFFSYS" "$sysHive" | Out-Null
-        try {
-            reg add "HKLM\OFFSYS\ControlSet001\Control\ComputerName\ComputerName"       /v ComputerName  /t REG_SZ /d $shortname /f | Out-Null
-            reg add "HKLM\OFFSYS\ControlSet001\Control\ComputerName\ActiveComputerName" /v ComputerName  /t REG_SZ /d $shortname /f | Out-Null
-            reg add "HKLM\OFFSYS\ControlSet001\Services\Tcpip\Parameters"               /v Hostname      /t REG_SZ /d $shortname /f | Out-Null
-            reg add "HKLM\OFFSYS\ControlSet001\Services\Tcpip\Parameters"               /v "NV Hostname" /t REG_SZ /d $shortname /f | Out-Null
-        }
-        finally {
-            [gc]::Collect(); Start-Sleep -Seconds 1
-            reg unload "HKLM\OFFSYS" | Out-Null
-        }
-        Write-Host "== Offline ComputerName set to $shortname =="
-    }
-    else {
-        Write-Warning "shortname is empty - skipping offline rename; node would keep the baked name."
-    }
+    ## --- Node name + machine re-SID: handled by the first-boot generalize->specialize pass ---
+    ## We used to set ComputerName/ActiveComputerName OFFLINE here (workaround for "the specialize
+    ## <ComputerName> wasn't taking effect"). RELOPS-2487 root cause: setting ActiveComputerName
+    ## offline makes Windows treat the applied image as ALREADY specialized, so first boot runs only
+    ## a PnP RESPECIALIZE (Sysprep\ActionFiles\ReSpecialize.xml / Sysprep_Respecialize_Pnp) instead
+    ## of the full generalize->specialize. That skipped the machine RE-SID (every deployed node shared
+    ## one machine SID, e.g. nuc13-024 == nuc13-160) AND the specialize ComputerName processing (the
+    ## "not honored" symptom), and left the identity/autologon subsystem half-initialized -> the baked
+    ## packer autologon persisted (AutoLogonSID) and generic-worker's task-user autologon never took,
+    ## so the worker looped exit67->exit69. So do NOT rename offline: leave the generalized image to run
+    ## the real mini-setup. specialize re-SIDs and applies <ComputerName> from the unattend (substituted
+    ## to $shortname), and it runs before services start, so nxlog first ships under the correct name.
+    ## Verify after deploy: GeneralizationState should read 2 (specialized) and each node a unique SID.
+    Write-Host "== Skipping offline rename; first-boot specialize will re-SID + set ComputerName ($shortname) =="
 
     ## bcdboot writes the UEFI boot files (\EFI\Microsoft\Boot + BCD) to the EFI System
     ## Partition, and /s can only address it by drive letter. diskpart does 'assign
