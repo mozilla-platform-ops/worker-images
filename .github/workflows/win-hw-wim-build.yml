@@ -24,6 +24,14 @@ on:
         options:
           - win11-24h2-hw
           - win11-24h2-hw-test
+          - win11-24h2-iso
+      stages:
+        description: "Pipeline stages (blank = prep,build,publish bake; 'iso' = build the requirement-bypass Win11 ISO)"
+        type: choice
+        default: ""
+        options:
+          - ""
+          - iso
       pipeline_ref:
         description: "worker-images branch holding provisioners/windows/win-hw-wim"
         type: string
@@ -80,6 +88,7 @@ jobs:
         shell: pwsh
         env:
           IMAGE: ${{ inputs.image }}
+          STAGES: ${{ inputs.stages }}
           PIPELINE_REF: ${{ inputs.pipeline_ref }}
           BUILD_ID: ${{ inputs.build_id }}
         run: ./ci/kickoff-win-hw-wim-build.ps1
