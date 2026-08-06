@@ -132,6 +132,13 @@ $isoLabel = "$(Get-Val 'iso' 'label')".Trim()
 if ($isoSrc -and -not $isoOut) { $isoOut = [System.IO.Path]::GetFileNameWithoutExtension($isoSrc) + '-nocheck.iso' }
 if (-not $isoLabel) { $isoLabel = 'WIN11_NOCHK' }
 
+# Config-driven stage selection: iso.enabled=true means this config builds a requirement-bypass
+# ISO instead of the WIM bake, so just selecting the image is enough. An explicit -Stages overrides.
+$isoEnabled = ("$(Get-Val 'iso' 'enabled')".Trim() -match '^(true|1|yes)$')
+if (-not $PSBoundParameters.ContainsKey('Stages')) {
+    $Stages = if ($isoEnabled) { @('iso') } else { @('prep', 'build', 'publish') }
+}
+
 $roninOrg  = Get-Val 'ronin' 'org'
 $roninRepo = Get-Val 'ronin' 'repo'
 # Null-safe: an iso-only config has no ronin: section.

@@ -51,7 +51,8 @@ drivers:
 # oscdimg (ADK), and uploads it back to base/output_blob. Set source_blob in a per-image
 # (or a dedicated) config to use it. See scripts/create-iso.ps1.
 iso:
-  source_blob: ""    # base Win11 ISO blob in base/ (e.g. win11-24h2-base.iso) - required for -Stages iso
+  enabled: false     # set true in a config to build the requirement-bypass ISO instead of the WIM bake
+  source_blob: ""    # base Win11 ISO blob in base/ (e.g. win11-24h2-base.iso) - required when enabled
   output_blob: ""    # output bypass ISO blob name in base/ (default: <source>-nocheck.iso)
   label: "WIN11_NOCHK"
 
