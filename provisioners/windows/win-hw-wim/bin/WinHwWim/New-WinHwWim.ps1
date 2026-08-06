@@ -53,7 +53,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)] [string] $Image,
-    [ValidateSet('prep', 'build', 'publish')] [string[]] $Stages = @('prep', 'build', 'publish'),
+    [ValidateSet('prep', 'build', 'publish', 'iso')] [string[]] $Stages = @('prep', 'build', 'publish'),
     [string] $WinRMPassword,
     [string] $BuildId,
     # Client ID of the user-assigned managed identity to log in with on the build VM.
@@ -123,6 +123,13 @@ if ($drvCabUrls.Count -eq 0) {
     if ($legacyCab) { $drvCabUrls = @($legacyCab) }
 }
 
+# Requirement-bypass ISO builder ('iso' stage only; separate from the ronin base WIMs).
+$isoSrc   = "$(Get-Val 'iso' 'source_blob')".Trim()
+$isoOut   = "$(Get-Val 'iso' 'output_blob')".Trim()
+$isoLabel = "$(Get-Val 'iso' 'label')".Trim()
+if ($isoSrc -and -not $isoOut) { $isoOut = [System.IO.Path]::GetFileNameWithoutExtension($isoSrc) + '-nocheck.iso' }
+if (-not $isoLabel) { $isoLabel = 'WIN11_NOCHK' }
+
 $roninOrg  = Get-Val 'ronin' 'org'
 $roninRepo = Get-Val 'ronin' 'repo'
 $roninBr   = $cfg['ronin']['branch']
@@ -140,10 +147,14 @@ $switch    = Get-Val 'vm' 'switch_name'
 $winUpdate = ("$(Get-Val 'vm' 'windows_update')".Trim() -match '^(true|1|yes)$')
 
 # --- Validate required inputs (fail fast, before touching disks/Azure) ---------
-if (-not $baseWim) { throw "config/$Image.yaml: base.wim is required." }
-if (-not $edition) { throw "config/$Image.yaml: base.edition is required (the WIM edition name; empty would silently default to index 1)." }
-if (-not $bakeRole) { throw "config/$Image.yaml: ronin.bake_role is required." }
+# The WIM-bake inputs (base.wim/edition/bake_role/drivers) are only needed for prep/build;
+# the 'iso' stage is standalone and validates its own inputs.
+$wimStages = ($Stages -contains 'prep') -or ($Stages -contains 'build')
+if ($wimStages -and -not $baseWim) { throw "config/$Image.yaml: base.wim is required." }
+if ($wimStages -and -not $edition) { throw "config/$Image.yaml: base.edition is required (the WIM edition name; empty would silently default to index 1)." }
+if (($Stages -contains 'build') -and -not $bakeRole) { throw "config/$Image.yaml: ronin.bake_role is required." }
 if ($drvInject -and $drvCabUrls.Count -eq 0) { throw "config/$Image.yaml: drivers.inject is true but drivers.cabs is empty." }
+if (($Stages -contains 'iso') -and -not $isoSrc) { throw "config/$Image.yaml: iso.source_blob is required for the iso stage." }
 
 # --- Derived, per-image names -------------------------------------------------
 # Large artifacts (base WIM ~5.6 GB, base VHDX, packer's clone/export, captured WIM)
@@ -370,6 +381,21 @@ if ($Stages -contains 'publish') {
     if (-not (Test-Path $goldenWim)) { throw "no captured WIM to publish at $goldenWim (run build first, or pass the matching -BuildId)." }
     & $ps 'upload-wim.ps1' @('-Wim', $goldenWim, '-Container', $capCont, '-Account', $account, '-BlobName', $capBlob)
     Write-Host "== Published $capCont/$capBlob =="
+}
+
+# --- Stage: iso (requirement-bypass Win11 ISO) --------------------------------
+# Standalone from prep/build/publish (run with -Stages iso). Downloads the base Win11
+# ISO from base/, injects the LabConfig/MoSetup requirement-bypass autounattend, and
+# uploads the repackaged bootable ISO (+ .sha256) back to base/. NOT a ronin base image.
+if ($Stages -contains 'iso') {
+    Write-Host "`n### iso #########################################################"
+    $localSrcIso = Join-Path $workRoot $isoSrc
+    $localOutIso = Join-Path $workRoot $isoOut
+    if (-not (Test-Path $workRoot)) { New-Item -ItemType Directory -Path $workRoot -Force | Out-Null }
+    & $ps 'download-wim.ps1' @('-Blob', "$baseCont/$isoSrc", '-Dest', $localSrcIso, '-Account', $account)
+    & $ps 'create-iso.ps1'   @('-SourceIso', $localSrcIso, '-OutIso', $localOutIso, '-Label', $isoLabel)
+    & $ps 'upload-wim.ps1'   @('-Wim', $localOutIso, '-Container', $baseCont, '-Account', $account, '-BlobName', $isoOut)
+    Write-Host "== Published $baseCont/$isoOut (requirement-bypass Win11 ISO) =="
 }
 
 # --- Cleanup ------------------------------------------------------------------

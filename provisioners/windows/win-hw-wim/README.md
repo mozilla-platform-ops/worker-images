@@ -100,6 +100,24 @@ That runs, per `config/win11-24h2-hw.yaml`:
 `publish` (upload golden WIM to `captured/<image>/`). Run a subset with `-Stages`, keep
 the VM/VHDX with `-KeepArtifacts`, or re-publish a prior build with `-Stages publish -BuildId <id>`.
 
+### Requirement-bypass Win11 ISO (`iso` stage — separate from the ronin base WIMs)
+
+Builds a stock Win11 install ISO with the hardware-requirement checks bypassed (TPM 2.0 /
+Secure Boot / RAM / CPU / storage) so it can clean-install on unsupported hardware. This is
+**not** a ronin/worker image — it only patches Windows Setup's compat gate (an
+`autounattend.xml` that writes the `HKLM\SYSTEM\Setup\LabConfig` bypass keys + `MoSetup`
+during windowsPE), then repackages a bootable ISO with `oscdimg`.
+
+```powershell
+# config/<name>.yaml (or defaults) sets iso.source_blob (a base Win11 ISO you uploaded to base/):
+#   iso: { source_blob: "win11-24h2-base.iso", output_blob: "win11-24h2-nocheck.iso" }
+.\bin\WinHwWim\New-WinHwWim.ps1 -Image <name> -Stages iso
+```
+
+Downloads `base/<source_blob>` → injects the bypass autounattend → `oscdimg` → uploads
+`base/<output_blob>` (+ `.sha256`). Standalone from prep/build/publish; needs the ADK
+(`oscdimg`). Source article: https://woshub.com/upgrade-to-windows-11-unsupported-pc/
+
 Publishing to the MDT share for a canary deploy is still a deliberate step:
 
 ```powershell
