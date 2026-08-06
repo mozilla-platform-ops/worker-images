@@ -100,23 +100,33 @@ That runs, per `config/win11-24h2-hw.yaml`:
 `publish` (upload golden WIM to `captured/<image>/`). Run a subset with `-Stages`, keep
 the VM/VHDX with `-KeepArtifacts`, or re-publish a prior build with `-Stages publish -BuildId <id>`.
 
-### Requirement-bypass Win11 ISO (`iso` stage — separate from the ronin base WIMs)
+### Win11 ISO builder (`iso` stage — separate from the ronin base WIMs)
 
-Builds a stock Win11 install ISO with the hardware-requirement checks bypassed (TPM 2.0 /
-Secure Boot / RAM / CPU / storage) so it can clean-install on unsupported hardware. This is
-**not** a ronin/worker image — it only patches Windows Setup's compat gate (an
-`autounattend.xml` that writes the `HKLM\SYSTEM\Setup\LabConfig` bypass keys + `MoSetup`
-during windowsPE), then repackages a bootable ISO with `oscdimg`.
+A DISTINCT function from the WIM bakes: build a Win11 install ISO from a base ISO, running a
+config-selected set of **inject-library scripts** against the media before repackaging. The config
+mirrors the WIM shape — a `base:` source plus a provisioning source — but the provisioning source is
+`scripts:` (inject-library) instead of `ronin:` (clone+apply ronin_puppet); a config uses EITHER.
 
+`config/win11-24h2-iso.yaml`:
+```yaml
+base:
+  iso: "win11-24h2-base.iso"   # base Win11 ISO you uploaded to the 'base' container
+scripts:
+  - nocheck                     # scripts/inject/nocheck.ps1 — TPM/SecureBoot/RAM/CPU/storage bypass
+iso:
+  enabled: true                 # build the ISO (iso stage) instead of the WIM bake
+  output_blob: "win11-24h2-nocheck.iso"
+```
 ```powershell
-# config/<name>.yaml (or defaults) sets iso.source_blob (a base Win11 ISO you uploaded to base/):
-#   iso: { source_blob: "win11-24h2-base.iso", output_blob: "win11-24h2-nocheck.iso" }
-.\bin\WinHwWim\New-WinHwWim.ps1 -Image <name> -Stages iso
+.\bin\WinHwWim\New-WinHwWim.ps1 -Image win11-24h2-iso     # iso.enabled selects the iso stage
 ```
 
-Downloads `base/<source_blob>` → injects the bypass autounattend → `oscdimg` → uploads
-`base/<output_blob>` (+ `.sha256`). Standalone from prep/build/publish; needs the ADK
-(`oscdimg`). Source article: https://woshub.com/upgrade-to-windows-11-unsupported-pc/
+Flow: azcopy-download `base/<base.iso>` → for each name in `scripts:` run `scripts/inject/<name>.ps1
+-MediaDir <extracted media>` (e.g. `nocheck` writes an `autounattend.xml` with the
+`HKLM\SYSTEM\Setup\LabConfig` bypass keys + `MoSetup` for windowsPE) → repackage a bootable ISO with
+`oscdimg` (ADK) → upload `base/<output_blob>` (+ `.sha256`). Add a new behavior by dropping a script
+into `scripts/inject/` (contract: `-MediaDir`) and listing its name. Ref:
+https://woshub.com/upgrade-to-windows-11-unsupported-pc/
 
 Publishing to the MDT share for a canary deploy is still a deliberate step:
 

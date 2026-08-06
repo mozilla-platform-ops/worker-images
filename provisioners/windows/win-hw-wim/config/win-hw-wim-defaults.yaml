@@ -43,17 +43,14 @@ drivers:
   inject: false
   cabs: []
 
-# Windows 11 requirement-bypass ISO builder (SEPARATE from the ronin base WIMs).
-# Only used by the 'iso' stage: New-WinHwWim -Image <name> -Stages iso. It azcopy-downloads
-# source_blob from the base/ container, injects an autounattend.xml that writes the
-# HKLM\SYSTEM\Setup\LabConfig bypass keys (TPM/SecureBoot/RAM/CPU/storage) + MoSetup
-# AllowUpgradesWithUnsupportedTPMOrCPU during windowsPE, repackages a bootable ISO with
-# oscdimg (ADK), and uploads it back to base/output_blob. Set source_blob in a per-image
-# (or a dedicated) config to use it. See scripts/create-iso.ps1.
+# Windows 11 ISO builder (SEPARATE from the ronin base WIMs). Enabled per-config via iso.enabled.
+# Source media is base.iso; provisioning is the config's scripts: list (inject-library scripts run
+# against the media before repackaging with oscdimg). e.g. scripts: [nocheck] writes the
+# HKLM\SYSTEM\Setup\LabConfig + MoSetup requirement bypass. See scripts/create-iso.ps1 and
+# scripts/inject/. The built ISO is uploaded back to base/<output_blob>.
 iso:
-  enabled: false     # set true in a config to build the requirement-bypass ISO instead of the WIM bake
-  source_blob: ""    # base Win11 ISO blob in base/ (e.g. win11-24h2-base.iso) - required when enabled
-  output_blob: ""    # output bypass ISO blob name in base/ (default: <source>-nocheck.iso)
+  enabled: false     # set true in a config to build the ISO instead of the WIM bake
+  output_blob: ""    # output ISO blob name in base/ (default: <base.iso basename>-nocheck.iso)
   label: "WIN11_NOCHK"
 
 tags:

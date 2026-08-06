@@ -33,7 +33,12 @@
 param(
     [Parameter(Mandatory)] [string] $SourceIso,
     [Parameter(Mandatory)] [string] $OutIso,
-    [string] $Label = 'WIN11_NOCHK'
+    [string] $Label = 'WIN11_NOCHK',
+    # Comma-delimited names of inject-library scripts (scripts/inject/<name>.ps1) to run against
+    # the extracted media before repackaging (e.g. 'nocheck'). New-WinHwWim passes the config's
+    # scripts: list. Each is invoked as <name>.ps1 -MediaDir <extracted media>.
+    [string] $InjectScripts,
+    [string] $InjectDir
 )
 
 $ErrorActionPreference = 'Stop'
@@ -73,29 +78,19 @@ finally {
     Dismount-DiskImage -ImagePath $SourceIso | Out-Null
 }
 
-# --- Inject the requirement-bypass autounattend.xml at the media root ------------------
-# windowsPE-only: writes LabConfig bypass keys (+ MoSetup) before Setup's compat check,
-# then Setup continues normally. Nothing ronin-specific.
-$autounattend = @'
-<?xml version="1.0" encoding="utf-8"?>
-<unattend xmlns="urn:schemas-microsoft-com:unattend">
-  <settings pass="windowsPE">
-    <component name="Microsoft-Windows-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
-      <RunSynchronous>
-        <RunSynchronousCommand wcm:action="add"><Order>1</Order><Path>reg add HKLM\System\Setup\LabConfig /v BypassTPMCheck /t REG_DWORD /d 1 /f</Path></RunSynchronousCommand>
-        <RunSynchronousCommand wcm:action="add"><Order>2</Order><Path>reg add HKLM\System\Setup\LabConfig /v BypassSecureBootCheck /t REG_DWORD /d 1 /f</Path></RunSynchronousCommand>
-        <RunSynchronousCommand wcm:action="add"><Order>3</Order><Path>reg add HKLM\System\Setup\LabConfig /v BypassRAMCheck /t REG_DWORD /d 1 /f</Path></RunSynchronousCommand>
-        <RunSynchronousCommand wcm:action="add"><Order>4</Order><Path>reg add HKLM\System\Setup\LabConfig /v BypassCPUCheck /t REG_DWORD /d 1 /f</Path></RunSynchronousCommand>
-        <RunSynchronousCommand wcm:action="add"><Order>5</Order><Path>reg add HKLM\System\Setup\LabConfig /v BypassStorageCheck /t REG_DWORD /d 1 /f</Path></RunSynchronousCommand>
-        <RunSynchronousCommand wcm:action="add"><Order>6</Order><Path>reg add HKLM\System\Setup\MoSetup /v AllowUpgradesWithUnsupportedTPMOrCPU /t REG_DWORD /d 1 /f</Path></RunSynchronousCommand>
-      </RunSynchronous>
-    </component>
-  </settings>
-</unattend>
-'@
-$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-[System.IO.File]::WriteAllText((Join-Path $work 'autounattend.xml'), $autounattend, $utf8NoBom)
-Write-Host '== Injected requirement-bypass autounattend.xml (LabConfig + MoSetup) =='
+# --- Run the configured inject-library scripts against the extracted media -------------
+# Each name maps to scripts/inject/<name>.ps1 and is invoked as `<name>.ps1 -MediaDir <media>`
+# to modify the media in place (e.g. 'nocheck' writes the requirement-bypass autounattend).
+if (-not $InjectDir) { $InjectDir = Join-Path $PSScriptRoot 'inject' }
+$names = @($InjectScripts -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+if ($names.Count -eq 0) { Write-Warning 'No inject scripts specified (-InjectScripts); media left unmodified.' }
+foreach ($n in $names) {
+    if ($n -notmatch '^[A-Za-z0-9._-]+$') { throw "Illegal inject script name: '$n'" }
+    $s = Join-Path $InjectDir "$n.ps1"
+    if (-not (Test-Path -LiteralPath $s)) { throw "inject script not found: $s" }
+    Write-Host "== inject: $n ($s) =="
+    & $s -MediaDir $work
+}
 
 # --- Repackage a UEFI(+BIOS) bootable ISO with oscdimg --------------------------------
 $etfs = Join-Path $work 'boot\etfsboot.com'

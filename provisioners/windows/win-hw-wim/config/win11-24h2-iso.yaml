@@ -1,23 +1,21 @@
 ---
 # Windows 11 24H2 requirement-bypass ISO — a DISTINCT function from the ronin base WIM
-# bakes (config/win11-24h2-hw*.yaml). This config is consumed ONLY by the 'iso' stage and
-# has NO base/ronin/vm sections (they belong to the WIM bake, not here).
+# bakes (config/win11-24h2-hw*.yaml). Build:  New-WinHwWim -Image win11-24h2-iso
 #
-# Build:  .\bin\WinHwWim\New-WinHwWim.ps1 -Image win11-24h2-iso -Stages iso
-#
-# The iso stage: azcopy-downloads base/<source_blob> (a base Win11 24H2 ISO you upload to
-# the 'base' container), injects an autounattend.xml that writes the HKLM\SYSTEM\Setup\LabConfig
-# bypass keys (TPM/SecureBoot/RAM/CPU/storage) + MoSetup during windowsPE, repackages a bootable
-# ISO with oscdimg (ADK), and uploads base/<output_blob> (+ .sha256). Clean-installs Win11 on
-# unsupported hardware. See scripts/create-iso.ps1 and README (iso stage).
+# Config shape mirrors the WIM configs (base: + a provisioning source), but the provisioning
+# source is `scripts:` (inject-library scripts) instead of `ronin:` (clone+apply ronin_puppet).
+# A config uses EITHER ronin OR scripts, not both.
+
+base:
+  # Source media: a base Win11 24H2 ISO you upload to the 'base' container (yaml value).
+  iso: "win11-24h2-base.iso"
+
+# Provisioning = inject-library scripts (scripts/inject/<name>.ps1) run against the extracted
+# media before repackaging. Each name is a reusable script; add more by dropping one in + naming it.
+scripts:
+  - nocheck        # bypass TPM/SecureBoot/RAM/CPU/storage checks (LabConfig + MoSetup autounattend)
 
 iso:
-  # enabled: true makes this config build the requirement-bypass ISO (the 'iso' stage) instead
-  # of the WIM bake - selecting this image is all that's needed. See bin/WinHwWim/New-WinHwWim.ps1.
-  enabled: true
-  # Base Win11 24H2 ISO blob in the 'base' container (upload it there first).
-  source_blob: "win11-24h2-base.iso"
-  # Output requirement-bypass ISO blob name in 'base' (default: <source>-nocheck.iso).
-  output_blob: "win11-24h2-nocheck.iso"
-  # Volume label for the built ISO.
+  enabled: true                          # build the ISO (iso stage) instead of the WIM bake
+  output_blob: "win11-24h2-nocheck.iso"  # written to the 'base' container (default: <base.iso>-nocheck.iso)
   label: "WIN11_24H2_NOCHK"

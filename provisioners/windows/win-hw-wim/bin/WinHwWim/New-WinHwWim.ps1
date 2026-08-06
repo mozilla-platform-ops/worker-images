@@ -112,8 +112,9 @@ $capCont   = $def['storage']['captured_container']
 
 # Null-safe section access: an iso-only config (config/*-iso.yaml) has no base:/ronin: sections.
 $baseCfg   = if ($cfg.ContainsKey('base') -and $cfg['base']) { $cfg['base'] } else { @{} }
-$baseWim   = $baseCfg['wim']
+$baseWim   = $baseCfg['wim']       # source WIM blob (WIM bakes)
 $edition   = $baseCfg['edition']
+$baseIso   = $baseCfg['iso']       # source Win11 ISO blob (iso builds)
 
 # Robust bool: handles real YAML booleans AND quoted strings ("true"/"false").
 $drvInject = ("$(Get-Val 'drivers' 'inject')".Trim() -match '^(true|1|yes)$')
@@ -125,12 +126,16 @@ if ($drvCabUrls.Count -eq 0) {
     if ($legacyCab) { $drvCabUrls = @($legacyCab) }
 }
 
-# Requirement-bypass ISO builder ('iso' stage only; separate from the ronin base WIMs).
-$isoSrc   = "$(Get-Val 'iso' 'source_blob')".Trim()
+# ISO builder output settings (source media is base.iso; requirement bypass etc. come from scripts:).
 $isoOut   = "$(Get-Val 'iso' 'output_blob')".Trim()
 $isoLabel = "$(Get-Val 'iso' 'label')".Trim()
-if ($isoSrc -and -not $isoOut) { $isoOut = [System.IO.Path]::GetFileNameWithoutExtension($isoSrc) + '-nocheck.iso' }
+if ($baseIso -and -not $isoOut) { $isoOut = [System.IO.Path]::GetFileNameWithoutExtension($baseIso) + '-nocheck.iso' }
 if (-not $isoLabel) { $isoLabel = 'WIN11_NOCHK' }
+
+# Provisioning option 'scripts': inject-library scripts (scripts/inject/<name>.ps1) run against the
+# media/image before capture (the alternative to 'ronin'). e.g. scripts: [nocheck].
+$scripts = @()
+if ($cfg.ContainsKey('scripts') -and $cfg['scripts']) { $scripts = @($cfg['scripts'] | ForEach-Object { "$_".Trim() } | Where-Object { $_ }) }
 
 # Config-driven stage selection: iso.enabled=true means this config builds a requirement-bypass
 # ISO instead of the WIM bake, so just selecting the image is enough. An explicit -Stages overrides.
@@ -165,7 +170,9 @@ if ($wimStages -and -not $baseWim) { throw "config/$Image.yaml: base.wim is requ
 if ($wimStages -and -not $edition) { throw "config/$Image.yaml: base.edition is required (the WIM edition name; empty would silently default to index 1)." }
 if (($Stages -contains 'build') -and -not $bakeRole) { throw "config/$Image.yaml: ronin.bake_role is required." }
 if ($drvInject -and $drvCabUrls.Count -eq 0) { throw "config/$Image.yaml: drivers.inject is true but drivers.cabs is empty." }
-if (($Stages -contains 'iso') -and -not $isoSrc) { throw "config/$Image.yaml: iso.source_blob is required for the iso stage." }
+if (($Stages -contains 'iso') -and -not $baseIso) { throw "config/$Image.yaml: base.iso is required for the iso stage." }
+# Provisioning is EITHER ronin (bake_role) OR scripts, not both.
+if ($scripts.Count -gt 0 -and $bakeRole) { throw "config/$Image.yaml: use EITHER ronin (bake_role) OR scripts, not both." }
 
 # --- Derived, per-image names -------------------------------------------------
 # Large artifacts (base WIM ~5.6 GB, base VHDX, packer's clone/export, captured WIM)
@@ -400,13 +407,14 @@ if ($Stages -contains 'publish') {
 # uploads the repackaged bootable ISO (+ .sha256) back to base/. NOT a ronin base image.
 if ($Stages -contains 'iso') {
     Write-Host "`n### iso #########################################################"
-    $localSrcIso = Join-Path $workRoot $isoSrc
+    $localSrcIso = Join-Path $workRoot $baseIso
     $localOutIso = Join-Path $workRoot $isoOut
     if (-not (Test-Path $workRoot)) { New-Item -ItemType Directory -Path $workRoot -Force | Out-Null }
-    & $ps 'download-wim.ps1' @('-Blob', "$baseCont/$isoSrc", '-Dest', $localSrcIso, '-Account', $account)
-    & $ps 'create-iso.ps1'   @('-SourceIso', $localSrcIso, '-OutIso', $localOutIso, '-Label', $isoLabel)
+    & $ps 'download-wim.ps1' @('-Blob', "$baseCont/$baseIso", '-Dest', $localSrcIso, '-Account', $account)
+    # create-iso runs the config's scripts: (inject-library names) against the media before oscdimg.
+    & $ps 'create-iso.ps1'   @('-SourceIso', $localSrcIso, '-OutIso', $localOutIso, '-Label', $isoLabel, '-InjectScripts', ($scripts -join ','))
     & $ps 'upload-wim.ps1'   @('-Wim', $localOutIso, '-Container', $baseCont, '-Account', $account, '-BlobName', $isoOut)
-    Write-Host "== Published $baseCont/$isoOut (requirement-bypass Win11 ISO) =="
+    Write-Host "== Published $baseCont/$isoOut (Win11 ISO; injected: $($scripts -join ', ')) =="
 }
 
 # --- Cleanup ------------------------------------------------------------------
