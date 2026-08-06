@@ -444,6 +444,9 @@ if ($Stages -contains 'iso') {
     $localOutIso = Join-Path $workRoot $isoOut
     if (-not (Test-Path $workRoot)) { New-Item -ItemType Directory -Path $workRoot -Force | Out-Null }
     & $ps 'download-wim.ps1' @('-Blob', "$baseCont/$baseIso", '-Dest', $localSrcIso, '-Account', $account)
+    # oscdimg (ADK Deployment Tools) is needed to repackage a bootable ISO and isn't native;
+    # pull it from our blob (base/tools) instead of the MS CDN at build time.
+    & $ps 'ensure-oscdimg.ps1' @('-Account', $account)
     # create-iso runs the config's scripts: (inject-library names) against the media before oscdimg.
     & $ps 'create-iso.ps1'   @('-SourceIso', $localSrcIso, '-OutIso', $localOutIso, '-Label', $isoLabel, '-InjectScripts', ($scripts -join ','))
     & $ps 'upload-wim.ps1'   @('-Wim', $localOutIso, '-Container', $baseCont, '-Account', $account, '-BlobName', $isoOut)

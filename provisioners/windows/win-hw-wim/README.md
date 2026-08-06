@@ -129,6 +129,11 @@ Flow: azcopy-download `base/<base.iso>` → for each name in `scripts:` run `scr
 into `scripts/inject/` (contract: `-MediaDir`) and listing its name. Ref:
 https://woshub.com/upgrade-to-windows-11-unsupported-pc/
 
+`oscdimg` isn't native to Windows, so the iso stage runs `ensure-oscdimg.ps1` first: it restores the
+ADK Deployment Tools' `oscdimg` from **our blob** (`base/tools/oscdimg/`); on the first-ever build it
+installs Deployment Tools from `base/tools/adksetup.exe` (hosted by us) and caches `oscdimg` back to
+`base/tools/oscdimg/`, so later builds never touch the Microsoft ADK CDN.
+
 Publishing to the MDT share for a canary deploy is still a deliberate step:
 
 ```powershell
