@@ -21,9 +21,12 @@ on:
         type: choice
         default: win11-24h2-hw
         # Keep in sync with provisioners/windows/win-hw-wim/config/*.yaml on the pipeline branch.
+        # win11-24h2-iso builds a requirement-bypass Win11 ISO (its config sets iso.enabled: true);
+        # the others run the normal WIM bake. Selection is config-driven - just pick the image.
         options:
           - win11-24h2-hw
           - win11-24h2-hw-test
+          - win11-24h2-iso
       pipeline_ref:
         description: "worker-images branch holding provisioners/windows/win-hw-wim"
         type: string
