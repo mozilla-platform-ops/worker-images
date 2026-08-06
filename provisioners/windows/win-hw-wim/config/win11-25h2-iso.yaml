@@ -1,14 +1,15 @@
 ---
-# Windows 11 24H2 requirement-bypass ISO — a DISTINCT function from the ronin base WIM
-# bakes (config/win11-24h2-hw*.yaml). Build:  New-WinHwWim -Image win11-24h2-iso
+# Windows 11 25H2 requirement-bypass ISO — a DISTINCT function from the ronin base WIM
+# bakes (config/win11-*-hw*.yaml). Build:  New-WinHwWim -Image win11-25h2-iso
 #
 # Config shape mirrors the WIM configs (base: + a provisioning source), but the provisioning
 # source is `scripts:` (inject-library scripts) instead of `ronin:` (clone+apply ronin_puppet).
 # A config uses EITHER ronin OR scripts, not both.
 
 base:
-  # Source media: a base Win11 24H2 ISO you upload to the 'base' container (yaml value).
-  iso: "win11-24h2-base.iso"
+  # Source media: the base Win11 25H2 ISO uploaded to the 'base' container (yaml value).
+  # This is the latest retail media (Win11_25H2_English_x64_v2) — see WORKLOG.
+  iso: "Win11_25H2_English_x64_v2.iso"
 
 # Provisioning = inject-library scripts (scripts/inject/<name>.ps1) run against the extracted
 # media before repackaging. Each name is a reusable script; add more by dropping one in + naming it.
@@ -17,5 +18,5 @@ scripts:
 
 iso:
   enabled: true                          # build the ISO (iso stage) instead of the WIM bake
-  output_blob: "win11-24h2-nocheck.iso"  # written to the 'base' container (default: <base.iso>-nocheck.iso)
-  label: "WIN11_24H2_NOCHK"
+  output_blob: "win11-25h2-nocheck.iso"  # written to the 'base' container (default: <base.iso>-nocheck.iso)
+  label: "WIN11_25H2_NOCHK"

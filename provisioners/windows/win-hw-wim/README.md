@@ -47,6 +47,7 @@ your base install.wim
 | `scripts/sysprep-generalize.ps1` | Scrub + Sysprep (runs inside the VM) |
 | `scripts/capture-wim.ps1` | Capture WIM from generalized VHDX (Windows host, admin) |
 | `scripts/download-wim.ps1` / `upload-wim.ps1` | Move WIMs to/from the private store (Entra auth) |
+| `scripts/extract-wim-from-iso.ps1` | Extract `sources\install.wim` from a base ISO (prep's `base.iso` fallback when no base WIM exists) |
 | `scripts/publish-wim.ps1` | Copy WIM to MDT share (Windows host) |
 | `work/<image>/` | Per-image build artifacts (base WIM, VHDX, build dir, golden WIM) — gitignored |
 
@@ -107,18 +108,18 @@ config-selected set of **inject-library scripts** against the media before repac
 mirrors the WIM shape — a `base:` source plus a provisioning source — but the provisioning source is
 `scripts:` (inject-library) instead of `ronin:` (clone+apply ronin_puppet); a config uses EITHER.
 
-`config/win11-24h2-iso.yaml`:
+`config/win11-25h2-iso.yaml`:
 ```yaml
 base:
-  iso: "win11-24h2-base.iso"   # base Win11 ISO you uploaded to the 'base' container
+  iso: "Win11_25H2_English_x64_v2.iso"   # base Win11 ISO you uploaded to the 'base' container
 scripts:
   - nocheck                     # scripts/inject/nocheck.ps1 — TPM/SecureBoot/RAM/CPU/storage bypass
 iso:
   enabled: true                 # build the ISO (iso stage) instead of the WIM bake
-  output_blob: "win11-24h2-nocheck.iso"
+  output_blob: "win11-25h2-nocheck.iso"
 ```
 ```powershell
-.\bin\WinHwWim\New-WinHwWim.ps1 -Image win11-24h2-iso     # iso.enabled selects the iso stage
+.\bin\WinHwWim\New-WinHwWim.ps1 -Image win11-25h2-iso     # iso.enabled selects the iso stage
 ```
 
 Flow: azcopy-download `base/<base.iso>` → for each name in `scripts:` run `scripts/inject/<name>.ps1
@@ -147,6 +148,11 @@ Publishing to the MDT share for a canary deploy is still a deliberate step:
 
 ### `base.edition` and `drivers` (per-image config)
 
+- **`base.iso` (fallback source)** — optional. If `base/<base.wim>` is not present, prep
+  extracts `sources\install.wim` from `base/<base.iso>`, saves it as `base.wim` (naming
+  convention `<os>-base-install.wim`), and caches it back to `base/` so later bakes reuse
+  it — so a WIM bake can start from **just an uploaded ISO** (no manual WIM upload). If the
+  media ships `install.esd`, every edition is exported to a WIM (`extract-wim-from-iso.ps1`).
 - **`base.edition`** — the edition NAME inside the WIM (a multi-edition `install.wim`
   has several indexes). `prepare-base-vhdx.ps1` resolves it to the index via
   `Get-WindowsImage`; if the name isn't found it fails and lists what's available. Run

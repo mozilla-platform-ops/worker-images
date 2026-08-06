@@ -9,7 +9,8 @@
   config/win-hw-wim-defaults.yaml for any field set to the string "default"),
   derives per-image namespaced names so many WIMs coexist, and runs the pipeline:
 
-    prep    : download base WIM  -> prepare-base-vhdx -> register-base-vm
+    prep    : get base WIM (download, or extract from base.iso if the WIM is
+              absent) -> prepare-base-vhdx -> register-base-vm
     build   : packer build (WU -> bake role -> sysprep -> capture)  -> <image>.wim
     publish : upload captured WIM (+ .sha256) to captured/<image>/
 
@@ -218,6 +219,20 @@ function Test-AzLoggedIn {
     finally { $ErrorActionPreference = $prev }
 }
 
+# Does a blob exist? Same stderr-under-Stop caveat as Test-AzLoggedIn (az writes
+# diagnostics to stderr, which WinPS 5.1 turns into a terminating NativeCommandError
+# under $ErrorActionPreference='Stop'), so probe with the preference relaxed.
+function Test-BlobExists {
+    param([string]$Acct, [string]$Container, [string]$Name)
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'SilentlyContinue'
+    try {
+        $r = az storage blob exists --account-name $Acct --container-name $Container --name $Name --auth-mode login --query exists -o tsv 2>$null
+        return ("$r".Trim() -eq 'true')
+    }
+    finally { $ErrorActionPreference = $prev }
+}
+
 if ($env:AZ_CLIENT_ID -and $env:AZ_CLIENT_SECRET -and $env:AZ_TENANT) {
     Write-Host '== az login (service principal) =='
     $ErrorActionPreference = 'Continue'
@@ -254,7 +269,25 @@ $ps = { param($f, $a) & powershell -NoProfile -ExecutionPolicy Bypass -File (Joi
 # --- Stage: prep --------------------------------------------------------------
 if ($Stages -contains 'prep') {
     Write-Host "`n### prep ########################################################"
-    & $ps 'download-wim.ps1' @('-Blob', "$baseCont/$baseWim", '-Dest', $localBase, '-Account', $account)
+    # Base WIM: download it if present. Otherwise, if the config names a fallback base.iso,
+    # extract sources\install.wim from that ISO, save it as the base WIM (naming convention
+    # <os>-base-install.wim), and cache it back to base/ so later bakes reuse it — so a WIM
+    # bake can start from just an uploaded ISO.
+    if (Test-BlobExists $account $baseCont $baseWim) {
+        & $ps 'download-wim.ps1' @('-Blob', "$baseCont/$baseWim", '-Dest', $localBase, '-Account', $account)
+    }
+    elseif ($baseIso) {
+        Write-Host "  base/$baseWim not present -> extracting it from base/$baseIso"
+        $localSrcIso = Join-Path $work $baseIso
+        & $ps 'download-wim.ps1'        @('-Blob', "$baseCont/$baseIso", '-Dest', $localSrcIso, '-Account', $account)
+        & $ps 'extract-wim-from-iso.ps1' @('-SourceIso', $localSrcIso, '-OutWim', $localBase)
+        Write-Host "  caching extracted base WIM back to base/$baseWim"
+        & $ps 'upload-wim.ps1'          @('-Wim', $localBase, '-Container', $baseCont, '-Account', $account, '-BlobName', $baseWim)
+        Remove-Item $localSrcIso -Force -ErrorAction SilentlyContinue
+    }
+    else {
+        throw "base/$baseWim not found and config/$Image.yaml has no base.iso fallback to extract it from."
+    }
 
     if (-not $WinRMPassword) {
         # Portable random password (avoid the Windows-only System.Web assembly).
