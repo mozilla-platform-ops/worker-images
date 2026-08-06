@@ -65,3 +65,12 @@ tags:
   sourceOrganization: default
   sourceRepository: default
   sourceBranch: wim-bake-role
+
+# Requirement-bypass Win11 24H2 ISO (POC) - SEPARATE output from the ronin base WIM above;
+# only used by `New-WinHwWim -Image win11-24h2-hw -Stages iso`. Reuses this config/base for now.
+# source_blob = a base Win11 24H2 ISO you upload to the base/ container; output_blob = the
+# bypass ISO written back to base/. See scripts/create-iso.ps1 / README (iso stage).
+iso:
+  source_blob: "win11-24h2-base.iso"
+  output_blob: "win11-24h2-nocheck.iso"
+  label: "WIN11_24H2_NOCHK"
