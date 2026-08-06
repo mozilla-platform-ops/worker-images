@@ -110,8 +110,10 @@ $account   = $def['storage']['account']
 $baseCont  = $def['storage']['base_container']
 $capCont   = $def['storage']['captured_container']
 
-$baseWim   = $cfg['base']['wim']
-$edition   = $cfg['base']['edition']
+# Null-safe section access: an iso-only config (config/*-iso.yaml) has no base:/ronin: sections.
+$baseCfg   = if ($cfg.ContainsKey('base') -and $cfg['base']) { $cfg['base'] } else { @{} }
+$baseWim   = $baseCfg['wim']
+$edition   = $baseCfg['edition']
 
 # Robust bool: handles real YAML booleans AND quoted strings ("true"/"false").
 $drvInject = ("$(Get-Val 'drivers' 'inject')".Trim() -match '^(true|1|yes)$')
@@ -132,9 +134,11 @@ if (-not $isoLabel) { $isoLabel = 'WIN11_NOCHK' }
 
 $roninOrg  = Get-Val 'ronin' 'org'
 $roninRepo = Get-Val 'ronin' 'repo'
-$roninBr   = $cfg['ronin']['branch']
-$roninHash = if ($cfg['ronin'].ContainsKey('hash')) { [string]$cfg['ronin']['hash'] } else { '' }
-$bakeRole  = $cfg['ronin']['bake_role']
+# Null-safe: an iso-only config has no ronin: section.
+$roninCfg  = if ($cfg.ContainsKey('ronin') -and $cfg['ronin']) { $cfg['ronin'] } else { @{} }
+$roninBr   = $roninCfg['branch']
+$roninHash = if ($roninCfg.ContainsKey('hash')) { [string]$roninCfg['hash'] } else { '' }
+$bakeRole  = $roninCfg['bake_role']
 $extSrc    = $def['ronin']['ext_src']
 
 $puppetV   = Get-Val 'vm' 'puppet_version'
