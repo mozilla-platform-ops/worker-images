@@ -17,6 +17,5 @@ scripts:
   - nocheck        # bypass TPM/SecureBoot/RAM/CPU/storage checks (LabConfig + MoSetup autounattend)
 
 iso:
-  enabled: true                          # build the ISO (iso stage) instead of the WIM bake
-  output_blob: "win11-25h2-nocheck.iso"  # written to the 'base' container (default: <base.iso>-nocheck.iso)
-  label: "WIN11_25H2_NOCHK"
+  enabled: true                 # build the ISO (iso stage) instead of the WIM bake
+  label: "WIN11_25H2_NOCHK"     # volume label; output -> captured/<image>/<image>-<buildid>.iso

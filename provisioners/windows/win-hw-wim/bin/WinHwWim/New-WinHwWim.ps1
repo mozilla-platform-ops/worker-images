@@ -127,10 +127,10 @@ if ($drvCabUrls.Count -eq 0) {
     if ($legacyCab) { $drvCabUrls = @($legacyCab) }
 }
 
-# ISO builder output settings (source media is base.iso; requirement bypass etc. come from scripts:).
-$isoOut   = "$(Get-Val 'iso' 'output_blob')".Trim()
+# ISO builder: source media is base.iso; the requirement bypass etc. come from scripts:.
+# The built ISO is a captured OUTPUT (see $capIsoBlob) named like the golden WIMs, so the
+# only per-image setting is the volume label.
 $isoLabel = "$(Get-Val 'iso' 'label')".Trim()
-if ($baseIso -and -not $isoOut) { $isoOut = [System.IO.Path]::GetFileNameWithoutExtension($baseIso) + '-nocheck.iso' }
 if (-not $isoLabel) { $isoLabel = 'WIN11_NOCHK' }
 
 # Provisioning option 'scripts': inject-library scripts (scripts/inject/<name>.ps1) run against the
@@ -187,6 +187,10 @@ $vmName    = "wim-bake-$Image"
 $buildDir  = Join-Path $work 'build'
 $goldenWim = Join-Path $work "$Image-$BuildId.wim"
 $capBlob   = "$Image/$Image-$BuildId.wim"
+# iso stage output — a captured OUTPUT artifact, so it mirrors the golden-WIM naming
+# (captured/<image>/<image>-<buildid>.iso) instead of a fixed name in base/.
+$goldenIso = Join-Path $work "$Image-$BuildId.iso"
+$capIsoBlob = "$Image/$Image-$BuildId.iso"
 
 New-Item -ItemType Directory -Path $work -Force | Out-Null
 
@@ -196,7 +200,7 @@ Write-Host " Base WIM   : $baseCont/$baseWim  (edition '$edition')"
 Write-Host " Bake role  : $bakeRole   ronin $roninOrg/$roninRepo@$roninBr"
 Write-Host " Versions   : puppet $puppetV / git $gitV / openvox $openvoxV"
 Write-Host " WindowsUpd : $(if ($winUpdate) { 'ON (full online patch pass)' } else { 'OFF (skipped)' })"
-Write-Host " Output     : $goldenWim  ->  $capCont/$capBlob"
+Write-Host " Output     : $(if ($isoEnabled) { "$goldenIso  ->  $capCont/$capIsoBlob" } else { "$goldenWim  ->  $capCont/$capBlob" })"
 Write-Host " Stages     : $($Stages -join ', ')"
 Write-Host "==================================================================="
 
@@ -436,21 +440,20 @@ if ($Stages -contains 'publish') {
 
 # --- Stage: iso (requirement-bypass Win11 ISO) --------------------------------
 # Standalone from prep/build/publish (run with -Stages iso). Downloads the base Win11
-# ISO from base/, injects the LabConfig/MoSetup requirement-bypass autounattend, and
-# uploads the repackaged bootable ISO (+ .sha256) back to base/. NOT a ronin base image.
+# ISO from base/ (the SOURCE), injects the LabConfig/MoSetup requirement-bypass
+# autounattend, and uploads the repackaged bootable ISO (+ .sha256) to
+# captured/<image>/<image>-<buildid>.iso (same naming as the golden WIMs). NOT a ronin base image.
 if ($Stages -contains 'iso') {
     Write-Host "`n### iso #########################################################"
-    $localSrcIso = Join-Path $workRoot $baseIso
-    $localOutIso = Join-Path $workRoot $isoOut
-    if (-not (Test-Path $workRoot)) { New-Item -ItemType Directory -Path $workRoot -Force | Out-Null }
+    $localSrcIso = Join-Path $work $baseIso
     & $ps 'download-wim.ps1' @('-Blob', "$baseCont/$baseIso", '-Dest', $localSrcIso, '-Account', $account)
     # oscdimg (ADK Deployment Tools) is needed to repackage a bootable ISO and isn't native;
     # pull it from our blob (base/tools) instead of the MS CDN at build time.
     & $ps 'ensure-oscdimg.ps1' @('-Account', $account)
     # create-iso runs the config's scripts: (inject-library names) against the media before oscdimg.
-    & $ps 'create-iso.ps1'   @('-SourceIso', $localSrcIso, '-OutIso', $localOutIso, '-Label', $isoLabel, '-InjectScripts', ($scripts -join ','))
-    & $ps 'upload-wim.ps1'   @('-Wim', $localOutIso, '-Container', $baseCont, '-Account', $account, '-BlobName', $isoOut)
-    Write-Host "== Published $baseCont/$isoOut (Win11 ISO; injected: $($scripts -join ', ')) =="
+    & $ps 'create-iso.ps1'   @('-SourceIso', $localSrcIso, '-OutIso', $goldenIso, '-Label', $isoLabel, '-InjectScripts', ($scripts -join ','))
+    & $ps 'upload-wim.ps1'   @('-Wim', $goldenIso, '-Container', $capCont, '-Account', $account, '-BlobName', $capIsoBlob)
+    Write-Host "== Published $capCont/$capIsoBlob (Win11 ISO; injected: $($scripts -join ', ')) =="
 }
 
 # --- Cleanup ------------------------------------------------------------------

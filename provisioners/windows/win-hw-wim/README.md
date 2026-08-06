@@ -116,18 +116,19 @@ scripts:
   - nocheck                     # scripts/inject/nocheck.ps1 — TPM/SecureBoot/RAM/CPU/storage bypass
 iso:
   enabled: true                 # build the ISO (iso stage) instead of the WIM bake
-  output_blob: "win11-25h2-nocheck.iso"
+  label: "WIN11_25H2_NOCHK"     # volume label; output -> captured/<image>/<image>-<buildid>.iso
 ```
 ```powershell
 .\bin\WinHwWim\New-WinHwWim.ps1 -Image win11-25h2-iso     # iso.enabled selects the iso stage
 ```
 
-Flow: azcopy-download `base/<base.iso>` → for each name in `scripts:` run `scripts/inject/<name>.ps1
--MediaDir <extracted media>` (e.g. `nocheck` writes an `autounattend.xml` with the
-`HKLM\SYSTEM\Setup\LabConfig` bypass keys + `MoSetup` for windowsPE) → repackage a bootable ISO with
-`oscdimg` (ADK) → upload `base/<output_blob>` (+ `.sha256`). Add a new behavior by dropping a script
-into `scripts/inject/` (contract: `-MediaDir`) and listing its name. Ref:
-https://woshub.com/upgrade-to-windows-11-unsupported-pc/
+Flow: azcopy-download `base/<base.iso>` (the source) → for each name in `scripts:` run
+`scripts/inject/<name>.ps1 -MediaDir <extracted media>` (e.g. `nocheck` writes an `autounattend.xml`
+with the `HKLM\SYSTEM\Setup\LabConfig` bypass keys + `MoSetup` for windowsPE) → repackage a bootable ISO
+with `oscdimg` (ADK) → upload the built ISO (+ `.sha256`) to
+**`captured/<image>/<image>-<buildid>.iso`** (a captured OUTPUT, same naming as the golden WIMs). Add a
+new behavior by dropping a script into `scripts/inject/` (contract: `-MediaDir`) and listing its name.
+Ref: https://woshub.com/upgrade-to-windows-11-unsupported-pc/
 
 `oscdimg` isn't native to Windows, so the iso stage runs `ensure-oscdimg.ps1` first: it restores the
 ADK Deployment Tools' `oscdimg` from **our blob** (`base/tools/oscdimg/`); on the first-ever build it

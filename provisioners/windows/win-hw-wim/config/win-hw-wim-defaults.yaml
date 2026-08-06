@@ -47,11 +47,11 @@ drivers:
 # Source media is base.iso; provisioning is the config's scripts: list (inject-library scripts run
 # against the media before repackaging with oscdimg). e.g. scripts: [nocheck] writes the
 # HKLM\SYSTEM\Setup\LabConfig + MoSetup requirement bypass. See scripts/create-iso.ps1 and
-# scripts/inject/. The built ISO is uploaded back to base/<output_blob>.
+# scripts/inject/. The built ISO is a captured OUTPUT: uploaded to
+# captured/<image>/<image>-<buildid>.iso (+ .sha256), same naming as the golden WIMs.
 iso:
-  enabled: false     # set true in a config to build the ISO instead of the WIM bake
-  output_blob: ""    # output ISO blob name in base/ (default: <base.iso basename>-nocheck.iso)
-  label: "WIN11_NOCHK"
+  enabled: false        # set true in a config to build the ISO instead of the WIM bake
+  label: "WIN11_NOCHK"  # volume label of the built ISO
 
 tags:
   sourceOrganization: mozilla-platform-ops
