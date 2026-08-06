@@ -25,18 +25,21 @@ Set-StrictMode -Version Latest
 $image   = $env:IMAGE;        if (-not $image) { throw 'IMAGE not set' }
 $ref     = $env:PIPELINE_REF; if (-not $ref)   { throw 'PIPELINE_REF not set' }
 $buildId = $env:BUILD_ID
+$stages  = $env:STAGES        # blank = default prep,build,publish bake; e.g. 'iso' for the ISO stage
 $vm      = if ($env:VM_NAME) { $env:VM_NAME } else { 'win-hw-wim-builder' }
 $rg      = if ($env:RESOURCE_GROUP) { $env:RESOURCE_GROUP } else { 'rg-central-us-nuc-wim' }
 
 # Inputs flow into a remote script — allow only safe characters.
 foreach ($v in @($image, $ref)) { if ($v -notmatch '^[A-Za-z0-9._/-]+$') { throw "Illegal input: '$v'" } }
 if ($buildId -and $buildId -notmatch '^[A-Za-z0-9._-]+$') { throw "Illegal BUILD_ID: '$buildId'" }
+if ($stages -and $stages -notmatch '^[A-Za-z,]+$') { throw "Illegal STAGES: '$stages'" }
 
 # NOTE: no quotes around the values below. This becomes a scheduled-task -Argument
 # string parsed by powershell.exe -File via CommandLineToArgvW, which strips double
 # quotes but keeps single quotes LITERAL (they'd end up in $Image). Inputs are already
 # validated to [A-Za-z0-9._/-]+ (no spaces), so they need no quoting.
 $buildArg = if ($buildId) { "-BuildId $buildId" } else { '' }
+if ($stages) { $buildArg = "$buildArg -Stages $stages".Trim() }
 
 # The build VM has only a USER-assigned managed identity, so New-WinHwWim must log in
 # with `az login --identity --username <clientId>`. Resolve that client id here (this

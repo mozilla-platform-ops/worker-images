@@ -14,6 +14,8 @@
 param(
     [Parameter(Mandatory)] [string] $Image,
     [string] $BuildId,
+    # Optional New-WinHwWim -Stages (e.g. 'iso'). Blank = the default prep,build,publish bake.
+    [string] $Stages,
     [string] $IdentityClientId,
     # Where to drop the completion marker the GH runner polls (see below). Defaults match
     # the pipeline's storage account / captured container.
@@ -35,6 +37,7 @@ $rc = 0
 try {
     $a = @('-Image', $Image)
     if ($BuildId) { $a += @('-BuildId', $BuildId) }
+    if ($Stages) { $a += @('-Stages'); $a += ($Stages -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ }) }
     if ($IdentityClientId) { $a += @('-IdentityClientId', $IdentityClientId) }
     # Run in a child process so we get a reliable exit code (New-WinHwWim uses -EA Stop).
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $nuc @a *>&1 | Tee-Object -FilePath $log
