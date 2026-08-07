@@ -38,7 +38,14 @@ param(
     # the extracted media before repackaging (e.g. 'nocheck'). New-WinHwWim passes the config's
     # scripts: list. Each is invoked as <name>.ps1 -MediaDir <extracted media>.
     [string] $InjectScripts,
-    [string] $InjectDir
+    [string] $InjectDir,
+    # Optional offline driver injection into the ISO's boot.wim (Windows Setup, so it sees
+    # storage/NIC during install) AND install.wim (every edition, so the installed OS has them).
+    # '|'-delimited list of driver-pack URLs (.zip/.cab that expands to an .inf tree); e.g. the
+    # HPE ProLiant DL360 Gen10 Windows driver pack. New-WinHwWim passes the config's drivers.cabs.
+    [string] $DriverZips,
+    # Storage account for azcopy AAD downloads of *.blob.core.windows.net driver packs.
+    [string] $Account = 'hardwareimaging'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -90,6 +97,55 @@ foreach ($n in $names) {
     if (-not (Test-Path -LiteralPath $s)) { throw "inject script not found: $s" }
     Write-Host "== inject: $n ($s) =="
     & $s -MediaDir $work
+}
+
+# --- Offline driver injection into the media WIMs (optional) ---------------------------
+# Adds drivers so the installer sees storage/NIC (boot.wim = Windows Setup) and the
+# installed OS has them (install.wim, every edition). DISM /Add-Driver /Recurse.
+$drvUrls = @("$DriverZips" -split '\|' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+if ($drvUrls.Count -gt 0) {
+    $drvRoot = Join-Path $work '_drivers'
+    New-Item -ItemType Directory -Path $drvRoot -Force | Out-Null
+    foreach ($u in $drvUrls) {
+        $fn = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetFileName($u))
+        Write-Host "== driver pack: $u =="
+        if ($u -match '\.blob\.core\.windows\.net/') {
+            if (-not $env:AZCOPY_AUTO_LOGIN_TYPE) { $env:AZCOPY_AUTO_LOGIN_TYPE = 'AZCLI' }
+            & azcopy copy "$u" "$fn" --overwrite=true
+            if ($LASTEXITCODE -ne 0) { throw "azcopy driver download failed rc=$LASTEXITCODE ($u)" }
+        }
+        else {
+            [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+            Invoke-WebRequest -Uri $u -OutFile $fn -UseBasicParsing
+        }
+        $dest = Join-Path $drvRoot ([System.IO.Path]::GetFileNameWithoutExtension($u))
+        if ($fn -match '\.cab$') { New-Item -ItemType Directory -Path $dest -Force | Out-Null; & expand.exe $fn -F:* $dest | Out-Null }
+        else { Expand-Archive -LiteralPath $fn -DestinationPath $dest -Force }
+    }
+    $mnt = Join-Path $work '_mnt'
+    New-Item -ItemType Directory -Path $mnt -Force | Out-Null
+    function Add-DriversToWim { param($Wim, $Index)
+        (Get-Item -LiteralPath $Wim).IsReadOnly = $false   # media copied from read-only ISO
+        Write-Host "== DISM /Add-Driver -> $(Split-Path -Leaf $Wim) index $Index =="
+        & dism /Mount-Image /ImageFile:"$Wim" /Index:$Index /MountDir:"$mnt" | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "DISM mount failed ($Wim idx $Index) rc=$LASTEXITCODE" }
+        & dism /Image:"$mnt" /Add-Driver /Driver:"$drvRoot" /Recurse
+        $addrc = $LASTEXITCODE
+        & dism /Unmount-Image /MountDir:"$mnt" /Commit | Out-Null
+        if ($LASTEXITCODE -ne 0) { & dism /Unmount-Image /MountDir:"$mnt" /Discard | Out-Null; throw "DISM commit failed ($Wim idx $Index)" }
+        if ($addrc -ne 0) { Write-Warning "Add-Driver rc=$addrc on $(Split-Path -Leaf $Wim) idx $Index (some INFs may not apply)" }
+    }
+    # boot.wim index 2 = Windows Setup (needs storage/NIC to see the disk during install).
+    $bootWim = Join-Path $work 'sources\boot.wim'
+    if (Test-Path -LiteralPath $bootWim) { Add-DriversToWim $bootWim 2 }
+    # install.wim = the OS image; inject into every edition index.
+    $installWim = Join-Path $work 'sources\install.wim'
+    if (Test-Path -LiteralPath $installWim) {
+        foreach ($img in (Get-WindowsImage -ImagePath $installWim)) { Add-DriversToWim $installWim $img.ImageIndex }
+    }
+    else { Write-Warning "sources\install.wim not found (install.esd media?) - OS-image drivers not injected." }
+    Remove-Item $drvRoot, $mnt -Recurse -Force -ErrorAction SilentlyContinue
+    Write-Host "== driver injection done =="
 }
 
 # --- Repackage a UEFI(+BIOS) bootable ISO with oscdimg --------------------------------

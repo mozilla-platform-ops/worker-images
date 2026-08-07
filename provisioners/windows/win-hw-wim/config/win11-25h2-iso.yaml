@@ -16,6 +16,14 @@ base:
 scripts:
   - nocheck        # bypass TPM/SecureBoot/RAM/CPU/storage checks (LabConfig + MoSetup autounattend)
 
+# Offline driver injection into the ISO's boot.wim (Windows Setup sees storage/NIC during
+# install) + install.wim (every edition). HPE ProLiant DL360 Gen10 Windows driver pack,
+# extracted from the HPE SPP Smart Components (101 INF drivers) and hosted in our blob.
+drivers:
+  inject: true
+  cabs:
+    - "https://hardwareimaging.blob.core.windows.net/resources/drivers/hpe-proliant-dl360-gen10-win-drivers.zip"
+
 iso:
   enabled: true                 # build the ISO (iso stage) instead of the WIM bake
   label: "WIN11_25H2_NOCHK"     # volume label; output -> captured/<image>/<image>-<buildid>.iso

@@ -455,8 +455,14 @@ if ($Stages -contains 'iso') {
     # oscdimg (ADK Deployment Tools) is needed to repackage a bootable ISO and isn't native;
     # pull it from our blob (resources/tools) instead of the MS CDN at build time.
     & $ps 'ensure-oscdimg.ps1' @('-Account', $account)
-    # create-iso runs the config's scripts: (inject-library names) against the media before oscdimg.
-    & $ps 'create-iso.ps1'   @('-SourceIso', $localSrcIso, '-OutIso', $goldenIso, '-Label', $isoLabel, '-InjectScripts', ($scripts -join ','))
+    # create-iso runs the config's scripts: (inject-library names) against the media before oscdimg,
+    # and (if drivers.inject) DISM-injects the config's drivers.cabs into boot.wim + install.wim.
+    $isoArgs = @('-SourceIso', $localSrcIso, '-OutIso', $goldenIso, '-Label', $isoLabel, '-InjectScripts', ($scripts -join ','), '-Account', $account)
+    if ($drvInject) {
+        Write-Host "  iso driver injection ON -> $($drvCabUrls.Count) pack(s)"
+        $isoArgs += @('-DriverZips', ($drvCabUrls -join '|'))
+    }
+    & $ps 'create-iso.ps1' $isoArgs
     & $ps 'upload-wim.ps1'   @('-Wim', $goldenIso, '-Container', $capCont, '-Account', $account, '-BlobName', $capIsoBlob)
     Write-Host "== Published $capCont/$capIsoBlob (Win11 ISO; injected: $($scripts -join ', ')) =="
 }
