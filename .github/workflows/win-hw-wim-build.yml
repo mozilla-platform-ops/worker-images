@@ -10,7 +10,7 @@ run-name: "Windows HW WIM build - ${{ inputs.image }} @ ${{ inputs.pipeline_ref 
 #   - Reuses the existing FXCI (nontrusted) image-creation OIDC credentials — the same
 #     SP/secrets as sig-nontrusted.yml: AZURE_CLIENT_ID_FXCI, AZURE_SUBSCRIPTION_ID_UNTRUSTED,
 #     AZURE_TENANT_ID. That SP must be able to create/delete VMs + run-command in
-#     rg-central-us-nuc-wim and assign the Storage Blob Data role (Contributor +
+#     rg-central-us-hardware-imaging and assign the Storage Blob Data role (Contributor +
 #     Role Based Access Control Administrator/User Access Administrator there).
 
 on:
@@ -59,7 +59,7 @@ jobs:
       id-token: write
       contents: read
     env:
-      RESOURCE_GROUP: rg-central-us-nuc-wim
+      RESOURCE_GROUP: rg-central-us-hardware-imaging
       # Run-scoped VM name so parallel runs don't collide and teardown is exact.
       VM_NAME: win-hw-wim-build-${{ github.run_id }}
     steps:
