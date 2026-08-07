@@ -103,6 +103,23 @@ jobs:
           }
           New-GCPWorkerImage @Vars
 
+      - name: Upload Release Notes Artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: release-notes-${{ matrix.config }}
+          path: sboms/${{ steps.set-gcp-vars.outputs.IMAGENAME }}.md
+          overwrite: true
+          retention-days: 1
+          if-no-files-found: error
+
+  sbom:
+    if: ${{ always() }}
+    needs: [prepare-matrix, packer]
+    permissions:
+      actions: read
+      contents: write
+    uses: ./.github/workflows/upload-release-notes.yml
+
   find-successful-builds:
     needs: [prepare-matrix, packer]
     name: "Filter matrices to successful packer builds"

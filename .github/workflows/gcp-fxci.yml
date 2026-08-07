@@ -76,6 +76,26 @@ jobs:
             Key = '${{ github.event.inputs.config }}'
           }
           New-GCPWorkerImage @Vars
+
+      - name: Upload Release Notes Artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: release-notes-${{ github.event.inputs.config }}
+          path: sboms/${{ needs.setproject.outputs.IMAGENAME }}.md
+          overwrite: true
+          retention-days: 1
+          if-no-files-found: error
+
+  sbom:
+    needs: packer
+    permissions:
+      actions: read
+      contents: write
+    uses: ./.github/workflows/upload-release-notes.yml
+    with:
+      artifact_pattern: release-notes-${{ github.event.inputs.config }}
+      commit_message: ${{ github.event.inputs.config }} - Release Notes
+
   wiz:
     needs: [packer, setproject]
     name: "Wiz scan ${{ github.event.inputs.config }}"

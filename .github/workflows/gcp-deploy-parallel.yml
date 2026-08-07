@@ -98,3 +98,50 @@ jobs:
           --source-image ${{ steps.set-gcp-vars.outputs.IMAGENAME }} `
           --source-image-project ${{ steps.set-gcp-vars.outputs.PROJECT }} `
           --force
+
+      - id: create-production-sbom
+        name: Create Production SBOM Record
+        shell: pwsh
+        run: |
+          $date = Get-Date -Format "yyyy-MM-dd"
+          $ProdImageName = -join(('${{ steps.set-gcp-vars.outputs.IMAGENAME }}' -Replace "alpha"),$date)
+          $AlphaImageName = '${{ steps.set-gcp-vars.outputs.IMAGENAME }}'
+          $AlphaSbomPath = "sboms/$AlphaImageName.md"
+          $ProductionSbomPath = "sboms/$ProdImageName.md"
+          $AlphaSbomHash = (Get-FileHash -Algorithm SHA256 $AlphaSbomPath).Hash.ToLowerInvariant()
+          $PromotionTimestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+          $Header = @"
+          # Production deployment record
+
+          - Production image name: ``$ProdImageName``
+          - Alpha source image name: ``$AlphaImageName``
+          - Promotion timestamp: ``$PromotionTimestamp``
+          - Promotion copied the alpha image without rebuilding the filesystem.
+          - SHA-256 of the unmodified alpha SBOM: ``$AlphaSbomHash``
+
+          ---
+
+          "@
+          $HeaderBytes = [System.Text.Encoding]::UTF8.GetBytes($Header)
+          $AlphaSbomBytes = [System.IO.File]::ReadAllBytes((Resolve-Path $AlphaSbomPath))
+          [System.IO.File]::WriteAllBytes($ProductionSbomPath, $HeaderBytes + $AlphaSbomBytes)
+          "production_sbom=$ProductionSbomPath" >> $env:GITHUB_OUTPUT
+
+      - name: Upload Production SBOM Artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: release-notes-production-${{ matrix.config }}
+          path: ${{ steps.create-production-sbom.outputs.production_sbom }}
+          overwrite: true
+          retention-days: 1
+          if-no-files-found: error
+
+  sbom:
+    needs: prodimage
+    permissions:
+      actions: read
+      contents: write
+    uses: ./.github/workflows/upload-release-notes.yml
+    with:
+      artifact_pattern: release-notes-production-*
+      commit_message: GCP Production Release Notes
