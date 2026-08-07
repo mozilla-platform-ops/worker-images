@@ -6,7 +6,7 @@
 
 .DESCRIPTION
   Creates a nested-virtualization-capable Windows Server VM in the existing
-  win-hw-wim network (rg-central-us-nuc-wim / sn-central-us-nuc-wim-packer, from the
+  win-hw-wim network (rg-central-us-hardware-imaging / sn-central-us-hardware-imaging-packer, from the
   storage Terraform), attaches a Premium data disk for build artifacts, gives it a
   system-assigned managed identity, grants that identity Storage Blob Data
   Contributor on hardwareimaging (so azcopy --auth-mode login works with no secrets),
@@ -30,10 +30,10 @@
 [CmdletBinding()]
 param(
     [string]   $VmName         = 'win-hw-wim-builder',
-    [string]   $ResourceGroup  = 'rg-central-us-nuc-wim',
+    [string]   $ResourceGroup  = 'rg-central-us-hardware-imaging',
     [string]   $Location       = 'centralus',
-    [string]   $VnetName       = 'vn-central-us-nuc-wim',
-    [string]   $SubnetName     = 'sn-central-us-nuc-wim-packer',
+    [string]   $VnetName       = 'vn-central-us-hardware-imaging',
+    [string]   $SubnetName     = 'sn-central-us-hardware-imaging-packer',
     [string]   $Size           = 'Standard_D64ads_v5',   # AMD, 64 vCPU/256 GiB, nested-virt capable (fits DADSv5 64-core quota)
     # Plain WS2025 gen2 (azure-edition forces Trusted Launch, which breaks nested virt).
     [string]   $Image          = 'MicrosoftWindowsServer:WindowsServer:2025-datacenter-g2:latest',

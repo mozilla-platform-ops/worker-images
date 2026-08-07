@@ -22,9 +22,9 @@
 param(
     [Parameter(Mandatory)][ValidateSet('create', 'destroy')] [string] $Action,
     [Parameter(Mandatory)] [string] $VmName,
-    [string] $ResourceGroup  = 'rg-central-us-nuc-wim',
-    [string] $VnetName       = 'vn-central-us-nuc-wim',
-    [string] $SubnetName     = 'sn-central-us-nuc-wim-packer',
+    [string] $ResourceGroup  = 'rg-central-us-hardware-imaging',
+    [string] $VnetName       = 'vn-central-us-hardware-imaging',
+    [string] $SubnetName     = 'sn-central-us-hardware-imaging-packer',
     [string] $Size           = 'Standard_D64ads_v5',   # AMD, 64 vCPU/256 GiB, nested-virt capable (fits DADSv5 64-core quota)
     # Plain Windows Server 2025 gen2 (NOT azure-edition — azure-edition pushes Trusted
     # Launch, which is incompatible with nested virtualization).
@@ -32,7 +32,7 @@ param(
     [int]    $DataDiskGB     = 512,
     # Pre-provisioned user-assigned identity (Terraform) attached to the VM for blob
     # access — so no per-run role assignment (and no role-assignment rights) is needed.
-    [string] $BuilderIdentityName = 'id-central-us-wim-builder'
+    [string] $BuilderIdentityName = 'id-central-us-hardware-imaging-builder'
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest

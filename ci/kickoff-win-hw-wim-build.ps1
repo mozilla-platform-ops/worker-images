@@ -27,7 +27,7 @@ $ref     = $env:PIPELINE_REF; if (-not $ref)   { throw 'PIPELINE_REF not set' }
 $buildId = $env:BUILD_ID
 $stages  = $env:STAGES        # blank = default prep,build,publish bake; e.g. 'iso' for the ISO stage
 $vm      = if ($env:VM_NAME) { $env:VM_NAME } else { 'win-hw-wim-builder' }
-$rg      = if ($env:RESOURCE_GROUP) { $env:RESOURCE_GROUP } else { 'rg-central-us-nuc-wim' }
+$rg      = if ($env:RESOURCE_GROUP) { $env:RESOURCE_GROUP } else { 'rg-central-us-hardware-imaging' }
 
 # Inputs flow into a remote script — allow only safe characters.
 foreach ($v in @($image, $ref)) { if ($v -notmatch '^[A-Za-z0-9._/-]+$') { throw "Illegal input: '$v'" } }
@@ -44,7 +44,7 @@ if ($stages) { $buildArg = "$buildArg -Stages $stages".Trim() }
 # The build VM has only a USER-assigned managed identity, so New-WinHwWim must log in
 # with `az login --identity --username <clientId>`. Resolve that client id here (this
 # runner is az-authenticated via OIDC) and pass it through to the build.
-$idName = if ($env:BUILDER_IDENTITY_NAME) { $env:BUILDER_IDENTITY_NAME } else { 'id-central-us-wim-builder' }
+$idName = if ($env:BUILDER_IDENTITY_NAME) { $env:BUILDER_IDENTITY_NAME } else { 'id-central-us-hardware-imaging-builder' }
 $idClientId = (az identity show -g $rg -n $idName --query clientId -o tsv 2>$null)
 if ($idClientId) { $buildArg = "$buildArg -IdentityClientId $idClientId".Trim() }
 else { Write-Warning "Could not resolve client id for identity '$idName' in '$rg'; build may fail to az login." }

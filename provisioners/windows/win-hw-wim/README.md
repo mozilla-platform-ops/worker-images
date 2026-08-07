@@ -91,8 +91,8 @@ up from any machine with `az`:
 ./New-WinHwWimBuildVm.ps1 -AllowRdpFrom <your-egress-cidr>
 ```
 
-That creates `win-hw-wim-builder` (Standard_D8s_v5) in `rg-central-us-nuc-wim` on the
-existing `sn-central-us-nuc-wim-packer` subnet, attaches a Premium data disk, gives it
+That creates `win-hw-wim-builder` (Standard_D8s_v5) in `rg-central-us-hardware-imaging` on the
+existing `sn-central-us-hardware-imaging-packer` subnet, attaches a Premium data disk, gives it
 a **system-assigned managed identity** granted *Storage Blob Data Contributor* on
 `hardwareimaging` (no secrets on the box), and bootstraps Hyper-V + Packer + ADK + azcopy +
 git (`scripts/bootstrap-build-host.ps1`, 2-phase around the Hyper-V reboot). SKU must
