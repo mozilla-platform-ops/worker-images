@@ -16,12 +16,12 @@
 
   Derived, per-image (from -Image and -BuildId):
     work dir   work/<image>/
-    base WIM   work/<image>/<base.wim>          (from base/<base.wim>)
+    base WIM   work/<image>/<base.wim>          (from resources/WIMs/<base.wim>)
     VHDX       work/<image>/base.vhdx
     VM name    wim-bake-<image>
     build dir  work/<image>/build               (packer output_directory)
     golden WIM work/<image>/<image>-<buildid>.wim
-    blob       captured/<image>/<image>-<buildid>.wim
+    blob       captured/WIMs/<image>/<image>-<buildid>.wim
 
   Auth: if AZ_CLIENT_ID / AZ_CLIENT_SECRET / AZ_TENANT are set, logs in as that
   SP; otherwise assumes an existing `az login` (a Relops member). Storage is
@@ -182,21 +182,26 @@ if ($scripts.Count -gt 0 -and $bakeRole) { throw "config/$Image.yaml: use EITHER
 $workRoot  = if (Test-Path 'F:\') { 'F:\wim-work' } else { Join-Path $Root 'work' }
 $work      = Join-Path $workRoot $Image
 $localBase = Join-Path $work $baseWim
+# Blob layout (folders are prefixes): SOURCES under resources/WIMs & resources/ISOs, plus
+# resources/drivers & resources/tools; OUTPUTS under captured/WIMs & captured/ISOs.
+# (Containers: 'resources' = $baseCont, 'captured' = $capCont.)
+$baseWimBlob = "WIMs/$baseWim"   # source base WIM  -> <resources>/WIMs/<baseWim>
+$baseIsoBlob = "ISOs/$baseIso"   # source Win11 ISO -> <resources>/ISOs/<baseIso>
 $vhdx      = Join-Path $work 'base.vhdx'
 $vmName    = "wim-bake-$Image"
 $buildDir  = Join-Path $work 'build'
 $goldenWim = Join-Path $work "$Image-$BuildId.wim"
-$capBlob   = "$Image/$Image-$BuildId.wim"
+$capBlob   = "WIMs/$Image/$Image-$BuildId.wim"
 # iso stage output — a captured OUTPUT artifact, so it mirrors the golden-WIM naming
-# (captured/<image>/<image>-<buildid>.iso) instead of a fixed name in base/.
+# (captured/ISOs/<image>/<image>-<buildid>.iso) instead of a fixed name in resources/.
 $goldenIso = Join-Path $work "$Image-$BuildId.iso"
-$capIsoBlob = "$Image/$Image-$BuildId.iso"
+$capIsoBlob = "ISOs/$Image/$Image-$BuildId.iso"
 
 New-Item -ItemType Directory -Path $work -Force | Out-Null
 
 Write-Host "==================================================================="
 Write-Host " Image      : $Image   (build $BuildId)"
-Write-Host " Base WIM   : $baseCont/$baseWim  (edition '$edition')"
+Write-Host " Base WIM   : $baseCont/$baseWimBlob  (edition '$edition')"
 Write-Host " Bake role  : $bakeRole   ronin $roninOrg/$roninRepo@$roninBr"
 Write-Host " Versions   : puppet $puppetV / git $gitV / openvox $openvoxV"
 Write-Host " WindowsUpd : $(if ($winUpdate) { 'ON (full online patch pass)' } else { 'OFF (skipped)' })"
@@ -275,22 +280,22 @@ if ($Stages -contains 'prep') {
     Write-Host "`n### prep ########################################################"
     # Base WIM: download it if present. Otherwise, if the config names a fallback base.iso,
     # extract sources\install.wim from that ISO, save it as the base WIM (naming convention
-    # <os>-base-install.wim), and cache it back to base/ so later bakes reuse it — so a WIM
+    # <os>-base-install.wim), and cache it back to resources/WIMs/ so later bakes reuse it — so a WIM
     # bake can start from just an uploaded ISO.
-    if (Test-BlobExists $account $baseCont $baseWim) {
-        & $ps 'download-wim.ps1' @('-Blob', "$baseCont/$baseWim", '-Dest', $localBase, '-Account', $account)
+    if (Test-BlobExists $account $baseCont $baseWimBlob) {
+        & $ps 'download-wim.ps1' @('-Blob', "$baseCont/$baseWimBlob", '-Dest', $localBase, '-Account', $account)
     }
     elseif ($baseIso) {
-        Write-Host "  base/$baseWim not present -> extracting it from base/$baseIso"
+        Write-Host "  $baseCont/$baseWimBlob not present -> extracting it from $baseCont/$baseIsoBlob"
         $localSrcIso = Join-Path $work $baseIso
-        & $ps 'download-wim.ps1'        @('-Blob', "$baseCont/$baseIso", '-Dest', $localSrcIso, '-Account', $account)
+        & $ps 'download-wim.ps1'        @('-Blob', "$baseCont/$baseIsoBlob", '-Dest', $localSrcIso, '-Account', $account)
         & $ps 'extract-wim-from-iso.ps1' @('-SourceIso', $localSrcIso, '-OutWim', $localBase)
-        Write-Host "  caching extracted base WIM back to base/$baseWim"
-        & $ps 'upload-wim.ps1'          @('-Wim', $localBase, '-Container', $baseCont, '-Account', $account, '-BlobName', $baseWim)
+        Write-Host "  caching extracted base WIM back to $baseCont/$baseWimBlob"
+        & $ps 'upload-wim.ps1'          @('-Wim', $localBase, '-Container', $baseCont, '-Account', $account, '-BlobName', $baseWimBlob)
         Remove-Item $localSrcIso -Force -ErrorAction SilentlyContinue
     }
     else {
-        throw "base/$baseWim not found and config/$Image.yaml has no base.iso fallback to extract it from."
+        throw "$baseCont/$baseWimBlob not found and config/$Image.yaml has no base.iso fallback to extract it from."
     }
 
     if (-not $WinRMPassword) {
@@ -440,15 +445,15 @@ if ($Stages -contains 'publish') {
 
 # --- Stage: iso (requirement-bypass Win11 ISO) --------------------------------
 # Standalone from prep/build/publish (run with -Stages iso). Downloads the base Win11
-# ISO from base/ (the SOURCE), injects the LabConfig/MoSetup requirement-bypass
+# ISO from resources/ISOs/ (the SOURCE), injects the LabConfig/MoSetup requirement-bypass
 # autounattend, and uploads the repackaged bootable ISO (+ .sha256) to
-# captured/<image>/<image>-<buildid>.iso (same naming as the golden WIMs). NOT a ronin base image.
+# captured/ISOs/<image>/<image>-<buildid>.iso (same naming as the golden WIMs). NOT a ronin base image.
 if ($Stages -contains 'iso') {
     Write-Host "`n### iso #########################################################"
     $localSrcIso = Join-Path $work $baseIso
-    & $ps 'download-wim.ps1' @('-Blob', "$baseCont/$baseIso", '-Dest', $localSrcIso, '-Account', $account)
+    & $ps 'download-wim.ps1' @('-Blob', "$baseCont/$baseIsoBlob", '-Dest', $localSrcIso, '-Account', $account)
     # oscdimg (ADK Deployment Tools) is needed to repackage a bootable ISO and isn't native;
-    # pull it from our blob (base/tools) instead of the MS CDN at build time.
+    # pull it from our blob (resources/tools) instead of the MS CDN at build time.
     & $ps 'ensure-oscdimg.ps1' @('-Account', $account)
     # create-iso runs the config's scripts: (inject-library names) against the media before oscdimg.
     & $ps 'create-iso.ps1'   @('-SourceIso', $localSrcIso, '-OutIso', $goldenIso, '-Label', $isoLabel, '-InjectScripts', ($scripts -join ','))

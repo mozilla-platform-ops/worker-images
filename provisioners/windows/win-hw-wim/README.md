@@ -1,7 +1,7 @@
 # win-hw-wim — Baked `install.wim` pipeline for Windows HW CI workers
 
 A Packer (**nested Hyper-V**) workflow that starts from **your own base
-`install.wim`** (BYO, from the `nucwimfxci` `base/` blob), runs the ronin Puppet
+`install.wim`** (BYO, from the `hardwareimaging` `resources/` blob), runs the ronin Puppet
 *bake* (stable, expensive config), Sysprep generalizes, and captures a new golden
 `install.wim`. No Azure marketplace or compute-gallery dependency.
 
@@ -58,16 +58,29 @@ with the `"default"` → defaults-file resolution).
 
 - Hyper-V enabled; `packer`, `az`, and `azcopy` on PATH; Windows ADK (DISM) available.
 - Admin PowerShell; `powershell-yaml` module (auto-installed by the orchestrator); ~60–80 GB free disk.
-- A base WIM uploaded to the `base/` container (e.g. `win11-24h2-base-install.wim`).
+- A base WIM uploaded to the `resources` container (e.g. `win11-24h2-base-install.wim`).
 - Entra identity with Storage Blob Data access (a Relops member, or the uploader/downloader SP).
 - For publish/deploy: write access to the MDT share + a canary NUC.
 
 ## Storage
 
-Base and captured WIMs live in the **`nucwimfxci`** Azure Blob account, **Entra-only**
+Everything lives in the **`hardwareimaging`** Azure Blob account, **Entra-only**
 (open network, no account keys, no anonymous — access is gated purely by Storage Blob
-Data RBAC). `base/<os>-base-install.wim` holds BYO base WIMs; `captured/<image>/<image>-<buildid>.wim`
-holds golden output. See `STORAGE-DESIGN.md`; provisioned by Terraform (PR #313).
+Data RBAC). Layout (folders are blob prefixes within each container):
+
+```
+resources/        SOURCES
+  WIMs/           BYO base WIMs  (<os>-base-install.wim)
+  ISOs/           source Win11 ISOs
+  drivers/        offline driver packs (injected at bake)
+  tools/          adksetup.exe + cached oscdimg (iso stage)
+captured/         OUTPUTS
+  WIMs/           golden WIMs   (<image>/<image>-<buildid>.wim)
+  ISOs/           nocheck ISOs  (<image>/<image>-<buildid>.iso)
+legacy-images/    old, previously-built images (archive)
+```
+
+See `STORAGE-DESIGN.md`; provisioned by Terraform (PR #313).
 
 ## Azure build host (one-time)
 
@@ -81,7 +94,7 @@ up from any machine with `az`:
 That creates `win-hw-wim-builder` (Standard_D8s_v5) in `rg-central-us-nuc-wim` on the
 existing `sn-central-us-nuc-wim-packer` subnet, attaches a Premium data disk, gives it
 a **system-assigned managed identity** granted *Storage Blob Data Contributor* on
-`nucwimfxci` (no secrets on the box), and bootstraps Hyper-V + Packer + ADK + azcopy +
+`hardwareimaging` (no secrets on the box), and bootstraps Hyper-V + Packer + ADK + azcopy +
 git (`scripts/bootstrap-build-host.ps1`, 2-phase around the Hyper-V reboot). SKU must
 support nested virt (Dv3/Dv4/Dv5, Ev3+, Fsv2, …).
 
@@ -98,7 +111,7 @@ az login --identity                 # storage is Entra-only
 That runs, per `config/win11-24h2-hw.yaml`:
 `prep` (download base WIM → `prepare-base-vhdx` → `register-base-vm`) →
 `build` (`packer build`: WU → bake role → sysprep → capture) →
-`publish` (upload golden WIM to `captured/<image>/`). Run a subset with `-Stages`, keep
+`publish` (upload golden WIM to `captured/WIMs/<image>/`). Run a subset with `-Stages`, keep
 the VM/VHDX with `-KeepArtifacts`, or re-publish a prior build with `-Stages publish -BuildId <id>`.
 
 ### Win11 ISO builder (`iso` stage — separate from the ronin base WIMs)
@@ -111,29 +124,29 @@ mirrors the WIM shape — a `base:` source plus a provisioning source — but th
 `config/win11-25h2-iso.yaml`:
 ```yaml
 base:
-  iso: "Win11_25H2_English_x64_v2.iso"   # base Win11 ISO you uploaded to the 'base' container
+  iso: "Win11_25H2_English_x64_v2.iso"   # base Win11 ISO you uploaded to resources/ISOs/
 scripts:
   - nocheck                     # scripts/inject/nocheck.ps1 — TPM/SecureBoot/RAM/CPU/storage bypass
 iso:
   enabled: true                 # build the ISO (iso stage) instead of the WIM bake
-  label: "WIN11_25H2_NOCHK"     # volume label; output -> captured/<image>/<image>-<buildid>.iso
+  label: "WIN11_25H2_NOCHK"     # volume label; output -> captured/ISOs/<image>/<image>-<buildid>.iso
 ```
 ```powershell
 .\bin\WinHwWim\New-WinHwWim.ps1 -Image win11-25h2-iso     # iso.enabled selects the iso stage
 ```
 
-Flow: azcopy-download `base/<base.iso>` (the source) → for each name in `scripts:` run
+Flow: azcopy-download `resources/ISOs/<base.iso>` (the source) → for each name in `scripts:` run
 `scripts/inject/<name>.ps1 -MediaDir <extracted media>` (e.g. `nocheck` writes an `autounattend.xml`
 with the `HKLM\SYSTEM\Setup\LabConfig` bypass keys + `MoSetup` for windowsPE) → repackage a bootable ISO
 with `oscdimg` (ADK) → upload the built ISO (+ `.sha256`) to
-**`captured/<image>/<image>-<buildid>.iso`** (a captured OUTPUT, same naming as the golden WIMs). Add a
+**`captured/ISOs/<image>/<image>-<buildid>.iso`** (a captured OUTPUT, same naming as the golden WIMs). Add a
 new behavior by dropping a script into `scripts/inject/` (contract: `-MediaDir`) and listing its name.
 Ref: https://woshub.com/upgrade-to-windows-11-unsupported-pc/
 
 `oscdimg` isn't native to Windows, so the iso stage runs `ensure-oscdimg.ps1` first: it restores the
-ADK Deployment Tools' `oscdimg` from **our blob** (`base/tools/oscdimg/`); on the first-ever build it
-installs Deployment Tools from `base/tools/adksetup.exe` (hosted by us) and caches `oscdimg` back to
-`base/tools/oscdimg/`, so later builds never touch the Microsoft ADK CDN.
+ADK Deployment Tools' `oscdimg` from **our blob** (`resources/tools/oscdimg/`); on the first-ever build it
+installs Deployment Tools from `resources/tools/adksetup.exe` (hosted by us) and caches `oscdimg` back to
+`resources/tools/oscdimg/`, so later builds never touch the Microsoft ADK CDN.
 
 Publishing to the MDT share for a canary deploy is still a deliberate step:
 
@@ -156,7 +169,7 @@ Publishing to the MDT share for a canary deploy is still a deliberate step:
 
 - **`base.iso` (fallback source)** — optional. If `base/<base.wim>` is not present, prep
   extracts `sources\install.wim` from `base/<base.iso>`, saves it as `base.wim` (naming
-  convention `<os>-base-install.wim`), and caches it back to `base/` so later bakes reuse
+  convention `<os>-base-install.wim`), and caches it back to `resources/WIMs/` so later bakes reuse
   it — so a WIM bake can start from **just an uploaded ISO** (no manual WIM upload). If the
   media ships `install.esd`, every edition is exported to a WIM (`extract-wim-from-iso.ps1`).
 - **`base.edition`** — the edition NAME inside the WIM (a multi-edition `install.wim`

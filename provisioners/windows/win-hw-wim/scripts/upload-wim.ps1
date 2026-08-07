@@ -15,7 +15,7 @@
   Target container: 'captured' (default) or 'base'.
 
 .PARAMETER Account
-  Storage account name (default nucwimfxci — the Terraform output).
+  Storage account name (default hardwareimaging — the Terraform output).
 
 .EXAMPLE
   az login --service-principal -u $env:AZ_CLIENT_ID -p $env:AZ_CLIENT_SECRET --tenant $env:AZ_TENANT
@@ -24,10 +24,10 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)] [string] $Wim,
-    [ValidateSet('captured','base')] [string] $Container = 'captured',
-    [string] $Account = 'nucwimfxci',
+    [ValidateSet('captured','resources')] [string] $Container = 'captured',
+    [string] $Account = 'hardwareimaging',
     # Blob name within the container. Default = the file's leaf name. Set this to
-    # namespace the output, e.g. 'win11-24h2-hw/win11-24h2-hw-20260723.wim'.
+    # namespace the output, e.g. 'WIMs/win11-24h2-hw/win11-24h2-hw-20260723.wim'.
     [string] $BlobName
 )
 $ErrorActionPreference = 'Stop'

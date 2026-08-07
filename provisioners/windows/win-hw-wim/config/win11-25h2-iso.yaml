@@ -7,7 +7,7 @@
 # A config uses EITHER ronin OR scripts, not both.
 
 base:
-  # Source media: the base Win11 25H2 ISO uploaded to the 'base' container (yaml value).
+  # Source media: the base Win11 25H2 ISO uploaded to resources/ISOs/ (yaml value).
   # This is the latest retail media (Win11_25H2_English_x64_v2) — see WORKLOG.
   iso: "Win11_25H2_English_x64_v2.iso"
 

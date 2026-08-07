@@ -1,27 +1,27 @@
 <#
 .SYNOPSIS
   Ensure oscdimg.exe (ADK Deployment Tools) is available for the iso stage, served from
-  OUR blob (base/tools) rather than depending on the Microsoft ADK CDN at build time.
+  OUR blob (resources/tools) rather than depending on the Microsoft ADK CDN at build time.
 
 .DESCRIPTION
   create-iso.ps1 needs oscdimg to repackage a bootable ISO; DISM (native) can't. This
   guarantees oscdimg is present, in order of preference:
     1. Already installed (ADK default path or on PATH) -> nothing to do.
-    2. Restore the cached Oscdimg folder from base/tools/oscdimg/ (fast, fully self-contained).
-    3. First-ever seed: pull base/tools/adksetup.exe from our blob, install just
+    2. Restore the cached Oscdimg folder from resources/tools/oscdimg/ (fast, fully self-contained).
+    3. First-ever seed: pull resources/tools/adksetup.exe from our blob, install just
        OptionId.DeploymentTools, then CACHE the resulting Oscdimg folder back to
-       base/tools/oscdimg/ so every later build is served entirely from our blob.
+       resources/tools/oscdimg/ so every later build is served entirely from our blob.
   Only the one-time seed touches the Microsoft CDN (for the Deployment Tools payload);
   after that oscdimg lives in our blob. Runs on the build host (elevated; azcopy reuses
   the VM's az / managed-identity session set up by New-WinHwWim's `az login`).
 
 .PARAMETER Account
-  Storage account holding the tools (default nucwimfxci).
+  Storage account holding the tools (default hardwareimaging).
 #>
 [CmdletBinding()]
 param(
-    [string] $Account     = 'nucwimfxci',
-    [string] $Container    = 'base',
+    [string] $Account     = 'hardwareimaging',
+    [string] $Container    = 'resources',
     [string] $ToolsPrefix  = 'tools'
 )
 $ErrorActionPreference = 'Stop'

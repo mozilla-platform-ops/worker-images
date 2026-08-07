@@ -14,16 +14,16 @@
 
 .EXAMPLE
   # Packer host, Entra:
-  .\download-wim.ps1 -Blob base/install.wim -Dest D:\images\install.wim
+  .\download-wim.ps1 -Blob resources/WIMs/win11-24h2-base-install.wim -Dest D:\images\install.wim
 
   # MDC1 server, SAS:
-  .\download-wim.ps1 -Blob captured/install.wim -Dest \\mdt2022\deployments\staging\install.wim -AuthMode sas -Sas $sas
+  .\download-wim.ps1 -Blob captured/WIMs/win11-24h2-hw/win11-24h2-hw.wim -Dest \\mdt2022\deployments\staging\install.wim -AuthMode sas -Sas $sas
 #>
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)] [string] $Blob,     # e.g. captured/install.wim
+    [Parameter(Mandatory)] [string] $Blob,     # e.g. captured/WIMs/<image>/<wim>
     [Parameter(Mandatory)] [string] $Dest,
-    [string] $Account = 'nucwimfxci',
+    [string] $Account = 'hardwareimaging',
     [ValidateSet('login','sas')] [string] $AuthMode = 'login',
     [string] $Sas
 )

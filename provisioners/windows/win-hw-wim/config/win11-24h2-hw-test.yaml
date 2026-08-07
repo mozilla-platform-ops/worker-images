@@ -28,9 +28,9 @@ drivers:
     # Network drivers (Intel PROSet/NIC) - public roninpuppetassets mirror (Invoke-WebRequest).
     - "https://roninpuppetassets.blob.core.windows.net/binaries/drivers/nuc13/nuc13-24h2-nuc_driver.zip"
     # Intel graphics (Raptor Lake-P Iris Xe DEV_A7A0), DCH 32.0.101.7085 from the MS Update Catalog.
-    # Hosted in nucwimfxci (Entra-secured, no anon) so the bake pulls it via azcopy AAD. Proven on 160:
+    # Hosted in hardwareimaging (Entra-secured, no anon) so the bake pulls it via azcopy AAD. Proven on 160:
     # flips MS Basic Display Adapter (RR=1) -> Intel(R) Iris(R) Xe Graphics (RR=60).
-    - "https://nucwimfxci.blob.core.windows.net/base/drivers/nuc13-24h2-intel-gfx-32.0.101.7085.cab"
+    - "https://hardwareimaging.blob.core.windows.net/resources/drivers/nuc13-24h2-intel-gfx-32.0.101.7085.cab"
 
 ronin:
   org: default

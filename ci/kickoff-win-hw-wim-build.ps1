@@ -67,7 +67,7 @@ else { "# no GitHub token provided; tooltool downloads unauthenticated (public)"
 # but do NOT rely on it: the runner SP may lack blob-delete, so the delete can silently
 # no-op (it did - a yesterday marker survived and made a run FALSE-pass in ~1 min). The
 # real guard is the freshness gate below: only a marker written AFTER this kickoff counts.
-$stAccount   = 'nucwimfxci'
+$stAccount   = 'hardwareimaging'
 $stContainer = 'captured'
 foreach ($n in @("_status/$image.done", "_status/$image.log")) {
     az storage blob delete --account-name $stAccount --container-name $stContainer --name $n --auth-mode login --only-show-errors 2>$null

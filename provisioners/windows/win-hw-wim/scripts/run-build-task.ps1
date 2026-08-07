@@ -19,7 +19,7 @@ param(
     [string] $IdentityClientId,
     # Where to drop the completion marker the GH runner polls (see below). Defaults match
     # the pipeline's storage account / captured container.
-    [string] $StatusAccount = 'nucwimfxci',
+    [string] $StatusAccount = 'hardwareimaging',
     [string] $StatusContainer = 'captured'
 )
 $base = 'C:\win-hw-wim-build'

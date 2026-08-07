@@ -9,7 +9,7 @@
   win-hw-wim network (rg-central-us-nuc-wim / sn-central-us-nuc-wim-packer, from the
   storage Terraform), attaches a Premium data disk for build artifacts, gives it a
   system-assigned managed identity, grants that identity Storage Blob Data
-  Contributor on nucwimfxci (so azcopy --auth-mode login works with no secrets),
+  Contributor on hardwareimaging (so azcopy --auth-mode login works with no secrets),
   and bootstraps Hyper-V + Packer + ADK + azcopy + git.
 
   Nested virtualization requires a supported SKU (Dv3/Dv4/Dv5, Ev3+, Fsv2, ...);
@@ -38,7 +38,7 @@ param(
     # Plain WS2025 gen2 (azure-edition forces Trusted Launch, which breaks nested virt).
     [string]   $Image          = 'MicrosoftWindowsServer:WindowsServer:2025-datacenter-g2:latest',
     [int]      $DataDiskGB     = 512,
-    [string]   $StorageAccount = 'nucwimfxci',
+    [string]   $StorageAccount = 'hardwareimaging',
     [string]   $AdminUsername  = 'nucadmin',
     [string]   $AdminPassword,                        # generated + printed if omitted
     [string[]] $AllowRdpFrom   = @('63.245.208.132/32', '63.245.208.133/32', '63.245.210.132/32', '63.245.210.133/32', '185.155.182.210/32'),

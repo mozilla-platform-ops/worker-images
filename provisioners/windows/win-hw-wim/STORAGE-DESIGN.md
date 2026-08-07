@@ -1,7 +1,7 @@
 # WIM storage design (Azure Blob, Entra-only)
 
 Store both the base and captured WIMs in an **Azure Blob** account
-(`nucwimfxci`, Central US). Access is **Entra-only**: the account has a public
+(`hardwareimaging`, Central US). Access is **Entra-only**: the account has a public
 endpoint open to all networks, but no anonymous access and **no shared account
 keys** — every caller must present an Entra identity holding a Storage Blob Data
 RBAC role. This avoids building an Azure↔MDC1 VPN (which does not exist today).
@@ -19,11 +19,11 @@ not be anonymously downloadable, so we use a **separate, Entra-gated** account.
 `nuc-wim-storage`, **PR #313**) — applied to the FXCI DevTest subscription:
 - RG `rg-central-us-nuc-wim`, VNet `vn-central-us-nuc-wim` + subnet
   `sn-central-us-nuc-wim-packer` (retained; not required for access now).
-- Storage account **`nucwimfxci`** (StorageV2, LRS): `network_rules.default_action
+- Storage account **`hardwareimaging`** (StorageV2, LRS): `network_rules.default_action
   = Allow` (no IP firewall), `shared_access_key_enabled = false` (no key/SAS),
   `allow_nested_items_to_be_public = false`, TLS1.2, HTTPS-only. Managed via an
   aliased `azurerm` provider with `storage_use_azuread = true` (keys disabled).
-- Containers `base` (BYO starting WIM) and `captured` (baked output), both private.
+- Containers: `resources` (sources: WIMs/, ISOs/, drivers/, tools/), `captured` (outputs: WIMs/, ISOs/), and `legacy-images` (old previously-built images) — all private.
 - RBAC: Packer/`worker_images` SP = **Blob Data Contributor**; MDC1 downloader SP
   = **Blob Data Reader** on `captured` only; **Relops group** = Blob Data
   Owner + Contributor (+ Queue/File Data roles so Terraform can read service
@@ -36,7 +36,7 @@ not be anonymously downloadable, so we use a **separate, Entra-gated** account.
 
 ## Access paths (all Entra `--auth-mode login`, any network)
 - **Azure build VM**: authenticates with its **system-assigned managed identity**
-  (granted Blob Data Contributor by `New-WinHwWimBuildVm.ps1`) — reads `base`,
+  (granted Blob Data Contributor by `New-WinHwWimBuildVm.ps1`) — reads `resources`,
   writes `captured`. No secret on the box.
 - **On-site MDC1 server**: `az login --service-principal` with the downloader SP
   (needs outbound reach to `login.microsoftonline.com`), reads `captured`.

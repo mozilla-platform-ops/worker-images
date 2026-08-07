@@ -7,9 +7,13 @@
 # config/windows_production_defaults.yaml — keep these in sync.
 
 storage:
-  account: nucwimfxci
-  base_container: base          # bring-your-own base WIMs (<os>-base-install.wim)
-  captured_container: captured  # golden output (captured/<image>/<image>-<buildid>.wim)
+  # Blob layout (folders are prefixes within each container):
+  #   resources/  WIMs/ (BYO base WIMs)  ISOs/ (source Win11 ISOs)  drivers/  tools/
+  #   captured/   WIMs/ (<image>/<image>-<buildid>.wim)  ISOs/ (<image>/<image>-<buildid>.iso)
+  #   legacy-images/  (old, previously-built images)
+  account: hardwareimaging
+  base_container: resources     # SOURCES: base WIMs (WIMs/), ISOs (ISOs/), drivers/, tools/
+  captured_container: captured  # OUTPUTS: golden WIMs (WIMs/) + nocheck ISOs (ISOs/)
 
 ronin:
   org: mozilla-platform-ops

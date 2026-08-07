@@ -141,7 +141,7 @@ try {
             $arc = Join-Path $sub ("pack" + $ext)
             Write-Host "== [$n/$($cabList.Count)] Downloading driver pack ($ext): $url =="
             if ($url -match '\.blob\.core\.windows\.net/') {
-                # Authenticated Azure blob (e.g. nucwimfxci - no anonymous access): use azcopy with the
+                # Authenticated Azure blob (e.g. hardwareimaging - no anonymous access): use azcopy with the
                 # bake VM's AAD login. azcopy has its own credential store and does NOT inherit az login,
                 # so AZCOPY_AUTO_LOGIN_TYPE drives OAuth (matches download-wim.ps1; azcopy 10.32 dropped
                 # --auth-mode on copy).
