@@ -358,11 +358,15 @@ Test-ConnectionUntilOnline
 # Enable SSH and import keys
 Set-SSH
 
-# Enable WinRM (non-fatal, retry twice)
-$winrmOk = Set-WinRM -Retries 2 -DelaySeconds 10
-if (-not $winrmOk) {
-    Write-Log -message 'get-bootstrap :: WinRM setup did not succeed after retries; continuing without it.' -severity 'WARN'
-}
+# WinRM disabled for the pre-baked NUC deploy.
+# RELOPS-2487: Set-WinRM is NOT called here - Enable-PSRemoting can't publish a listener on the
+# NUC's Public/workgroup network (it failed every deploy) and nothing in the bootstrap path needs
+# WinRM; SSH (baked) is the access path. The Set-WinRM function is kept for future use / if Puppet
+# ever needs it. Mirrors the same skip in bootstrap.ps1.
+# $winrmOk = Set-WinRM -Retries 2 -DelaySeconds 10
+# if (-not $winrmOk) {
+#     Write-Log -message 'get-bootstrap :: WinRM setup did not succeed after retries; continuing without it.' -severity 'WARN'
+# }
 
 # Install Chocolatey
 Install-Choco
