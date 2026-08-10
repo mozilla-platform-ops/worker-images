@@ -5,10 +5,12 @@
 from taskgraph.target_tasks import register_target_task
 
 
-@register_target_task("integration")
-def integration(full_task_graph, parameters, graph_config):
+@register_target_task("hw-integration")
+def hw_integration(full_task_graph, parameters, graph_config):
+    """Hardware tasks only: keyed on ``hw_replicate``, not target.py's
+    ``replicate``, so the cloud and hardware runs stay disjoint."""
     return [
         label
         for label, task in full_task_graph.tasks.items()
-        if "replicate" in task.attributes
+        if "hw_replicate" in task.attributes
     ]

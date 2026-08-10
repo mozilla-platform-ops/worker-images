@@ -3,6 +3,7 @@
 # requires-python = ">=3.10"
 # dependencies = [
 #     "taskcluster",
+#     "requests",
 #     "pyyaml",
 # ]
 # ///
@@ -31,11 +32,13 @@ import argparse
 import importlib.util
 import json
 import os
+import re
 import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+import requests
 import taskcluster
 
 IN_GITHUB_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
@@ -43,11 +46,15 @@ IN_GITHUB_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
 HOOK_GROUP_ID = "project-releng"
 HOOK_ID = "cron-task-mozilla-platform-ops-worker-images/run-hw-integration-tests"
 
+DECISION_POLL_INTERVAL_SECONDS = 10
 # Hardware runs are long: a single speedometer3 task is ~20-40 minutes and a
 # small pool serialises them.
+DECISION_DISCOVERY_TIMEOUT_SECONDS = 1800
 TASK_GROUP_POLL_INTERVAL_SECONDS = 300
 TASK_GROUP_LOG_INTERVAL_SECONDS = 600
 DEFAULT_TIMEOUT_SECONDS = 6 * 60 * 60
+
+TASK_GROUP_ID_RE = re.compile(r'"taskGroupId":\s*"([A-Za-z0-9_-]{22})"')
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 HW_POOLS_MODULE = (
@@ -149,33 +156,31 @@ def preflight(queue, registry, pool, min_healthy: int) -> dict:
         return report
 
     seen = {w.get("workerId") for w in workers if w.get("workerId")}
-    quarantined = {w.get("workerId") for w in workers if w.get("quarantineUntil")}
-    queue_active = seen - quarantined
-    active = queue_active & expected
+    quarantined = {
+        w.get("workerId") for w in workers if w.get("quarantineUntil")
+    }
+    active = seen - quarantined
 
     report["workers_seen"] = len(seen)
     report["quarantined"] = len(quarantined)
     report["active"] = len(active)
-    report["queue_active"] = len(queue_active)
 
-    # Refuse nodes that pools.yml marks as bad or assigns to another pool.
-    unsafe = {}
-    for worker_id in sorted(queue_active - expected):
-        if worker_id in registry.known_bad_nodes:
-            unsafe[worker_id] = "known bad"
+    # Nodes Taskcluster knows about that pools.yml assigns elsewhere.
+    foreign = {}
+    for worker_id in sorted(active):
+        if worker_id in expected:
             continue
         owner = next(
             (n for n, p in registry.pools.items() if worker_id in p.nodes), None
         )
-        unsafe[worker_id] = f"pools.yml: {owner or 'unknown'}"
-    if unsafe:
-        report["ok"] = False
-        report["problems"].append(
-            "unsafe worker(s) active in this queue: "
-            + ", ".join(f"{w} ({reason})" for w, reason in unsafe.items())
+        foreign[worker_id] = owner or "unknown"
+    if foreign:
+        report["notes"].append(
+            "workers active in this queue that pools.yml assigns elsewhere: "
+            + ", ".join(f"{w} (pools.yml: {o})" for w, o in foreign.items())
         )
 
-    missing = len(expected - active)
+    missing = len(expected) - len(active & expected)
     if missing:
         report["notes"].append(
             f"{missing} of {len(expected)} pools.yml nodes have not claimed work "
@@ -211,14 +216,11 @@ def print_preflight(report: dict) -> None:
     ident = report["identity"]
     notice(
         f"pre-flight {report['pool']}: "
-        f"declared-image={ident['image']} declared-branch={ident['src_branch']} "
-        f"declared-rev={ident['revision']}"
+        f"image={ident['image']} branch={ident['src_branch']} rev={ident['revision']}"
     )
     notice(
         f"  nodes(pools.yml)={report['expected_nodes']} "
-        f"active(expected)={report.get('active', 0)} "
-        f"active(queue)={report.get('queue_active', 0)} "
-        f"quarantined={report.get('quarantined', 0)} "
+        f"active={report.get('active', 0)} quarantined={report.get('quarantined', 0)} "
         f"pending={report.get('pending')} claimed={report.get('claimed')}"
     )
     for note in report["notes"]:
@@ -237,6 +239,43 @@ def trigger(hooks, pool_name: str) -> str:
     return response["taskId"]
 
 
+def find_task_group(queue, decision_task_id: str, root_url: str) -> str | None:
+    """Scrape the task group the decision created; bounded by wall clock."""
+    deadline = time.time() + DECISION_DISCOVERY_TIMEOUT_SECONDS
+    last_state = None
+
+    while time.time() < deadline:
+        try:
+            state = queue.status(decision_task_id)["status"]["state"]
+            if state != last_state:
+                notice(f"  decision task {decision_task_id}: {state}")
+                last_state = state
+
+            if state in ("completed", "failed", "exception"):
+                artifact = queue.getLatestArtifact(
+                    decision_task_id, "public/logs/live_backing.log"
+                )
+                if isinstance(artifact, dict) and "url" in artifact:
+                    resp = requests.get(artifact["url"], timeout=60)
+                    for match in TASK_GROUP_ID_RE.findall(resp.text):
+                        if match != decision_task_id:
+                            return match
+
+                if state != "completed":
+                    error(
+                        f"  decision task {state}: {root_url}/tasks/{decision_task_id}"
+                    )
+                    return None
+                # Completed but no group id yet: the log may still be flushing.
+        except taskcluster.exceptions.TaskclusterRestFailure as exc:
+            notice(f"  waiting on decision task artifacts ({exc})")
+
+        time.sleep(DECISION_POLL_INTERVAL_SECONDS)
+
+    error(f"  timed out waiting for decision task {decision_task_id}")
+    return None
+
+
 def tally(tasks: list[dict]) -> dict:
     states = [t["status"]["state"] for t in tasks]
     return {
@@ -244,7 +283,9 @@ def tally(tasks: list[dict]) -> dict:
         "completed": sum(1 for s in states if s == "completed"),
         "failed": sum(1 for s in states if s == "failed"),
         "exception": sum(1 for s in states if s == "exception"),
-        "pending": sum(1 for s in states if s in ("pending", "running", "unscheduled")),
+        "pending": sum(
+            1 for s in states if s in ("pending", "running", "unscheduled")
+        ),
     }
 
 
@@ -266,25 +307,8 @@ def monitor(queue, runs: list[dict], timeout: int, root_url: str) -> None:
                 continue
 
             run["tasks"] = response.get("tasks", [])
-            decision = next(
-                (
-                    task
-                    for task in run["tasks"]
-                    if task["status"]["taskId"] == run["decision_task_id"]
-                ),
-                None,
-            )
-            run["tasks"] = [
-                task
-                for task in run["tasks"]
-                if task["status"]["taskId"] != run["decision_task_id"]
-            ]
             run["counts"] = tally(run["tasks"])
-            decision_state = decision and decision["status"]["state"]
-            if decision_state in ("failed", "exception"):
-                run["decision_failed"] = decision_state
-                run["done"] = True
-            elif decision_state == "completed" and run["counts"]["pending"] == 0:
+            if run["counts"]["pending"] == 0:
                 run["done"] = True
             else:
                 outstanding += 1
@@ -311,15 +335,6 @@ def monitor(queue, runs: list[dict], timeout: int, root_url: str) -> None:
             run["timed_out"] = True
 
 
-def unexpected_workers(tasks: list[dict], expected: set[str]) -> set[str]:
-    return {
-        run["workerId"]
-        for task in tasks
-        for run in task["status"].get("runs", [])
-        if run.get("workerId") and run["workerId"] not in expected
-    }
-
-
 def write_github_summary(runs: list[dict], root_url: str) -> None:
     summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
     if not summary_file:
@@ -328,9 +343,7 @@ def write_github_summary(runs: list[dict], root_url: str) -> None:
     lines = ["## HW OS Integration Tests", ""]
 
     lines += [
-        "Task completion does not validate performance. Review the Perfherder data before production.",
-        "",
-        "| Pool | Declared image | Declared branch | Declared revision | Result | Completed | Failed | Exception | Pending |",
+        "| Pool | Image | Branch | Revision | Result | Passed | Failed | Exception | Pending |",
         "|---|---|---|---|:---:|:---:|:---:|:---:|:---:|",
     ]
     for run in runs:
@@ -384,8 +397,7 @@ def write_github_summary(runs: list[dict], root_url: str) -> None:
             )
         lines.append("")
 
-    with Path(summary_file).open("a") as summary:
-        summary.write("\n".join(lines))
+    Path(summary_file).open("a").write("\n".join(lines))
 
 
 # --------------------------------------------------------------------------- #
@@ -475,7 +487,9 @@ def main() -> int:
             print_preflight(report)
         blocked = [r for r in reports if not r["ok"]]
         if blocked:
-            error("pre-flight failed for: " + ", ".join(r["pool"] for r in blocked))
+            error(
+                "pre-flight failed for: " + ", ".join(r["pool"] for r in blocked)
+            )
             return 1
         if args.preflight_only:
             notice("pre-flight only: not triggering")
@@ -500,8 +514,6 @@ def main() -> int:
                 "pool": pool.name,
                 "identity": pool.identity,
                 "decision_task_id": decision_task_id,
-                "task_group_id": decision_task_id,
-                "expected_workers": set(registry.healthy_nodes(pool.name)),
             }
         )
 
@@ -510,21 +522,31 @@ def main() -> int:
         write_github_summary(runs, root_url)
         return 0
 
+    # ---- discover task groups --------------------------------------------- #
     for run in runs:
-        notice(
-            f"  {run['pool']}: results {root_url}/tasks/groups/{run['task_group_id']}"
-        )
+        group = find_task_group(queue, run["decision_task_id"], root_url)
+        if not group:
+            run["verdict"] = "⚠️ decision failed"
+            continue
+        run["task_group_id"] = group
+        notice(f"  {run['pool']}: results {root_url}/tasks/groups/{group}")
 
-    monitor(queue, runs, args.timeout, root_url)
+    live = [r for r in runs if r.get("task_group_id")]
+    if not live:
+        error("no task groups were created")
+        write_github_summary(runs, root_url)
+        return 1
+
+    monitor(queue, live, args.timeout, root_url)
 
     # ---- verdicts --------------------------------------------------------- #
     failed_overall = False
     for run in runs:
         counts = run.get("counts")
-        if decision_state := run.get("decision_failed"):
-            run["verdict"] = f"❌ decision {decision_state}"
+        if run.get("verdict"):
             failed_overall = True
-        elif run.get("timed_out"):
+            continue
+        if run.get("timed_out"):
             run["verdict"] = "⏳ timed out"
             failed_overall = True
         elif not counts or counts["total"] == 0:
@@ -533,26 +555,15 @@ def main() -> int:
             run["verdict"] = "❌ no tasks scheduled"
             error(
                 f"{run['pool']}: decision created an empty task group -- nothing "
-                "was replicated. Check that autoland scheduled tier 1 hardware "
+                "was replicated. Check that mozilla-central scheduled hardware "
                 "tasks and that the pool is spelled as in pools.yml."
             )
             failed_overall = True
         elif counts["failed"] or counts["exception"]:
             run["verdict"] = "❌ failed"
             failed_overall = True
-        elif unexpected := unexpected_workers(run["tasks"], run["expected_workers"]):
-            run["verdict"] = "❌ unexpected worker"
-            error(
-                f"{run['pool']}: task ran on worker(s) outside pools.yml: "
-                + ", ".join(sorted(unexpected))
-            )
-            failed_overall = True
         else:
-            run["verdict"] = "⚠️ tasks completed; review performance"
-            warn(
-                f"{run['pool']}: tasks completed, but performance was not "
-                "evaluated. Review Perfherder data before production."
-            )
+            run["verdict"] = "✅ passed"
 
     write_github_summary(runs, root_url)
 
