@@ -7,15 +7,15 @@ image:
 sharedimage:
   gallery_name: "trusted_win11_a64_25h2_builder"
   image_name: "trusted_win11_a64_25h2_builder"
-  image_version: "1.0.6"
+  image_version: "1.0.5"
 azure:
   managed_image_resource_group_name: "default"
   managed_image_storage_account_type: "default"
   build_location: westus2
 vm:
   puppet_version: "default"
-  git_version: 2.55.0
-  openvox_version: 8.28.1
+  git_version: "default"
+  openvox_version: "default"
   size: Standard_E8pds_v5
   tags:
     base_image: win11a6425h2azurebuilder
@@ -23,7 +23,7 @@ vm:
     sourceOrganization: "default"
     sourceRepository: "default"
     sourceBranch: "default"
-    deploymentId: "c1b0efe"
+    deploymentId: "default"
     managed_by: "default"
 tests:
   - microsoft_binscope.tests.ps1

@@ -16,8 +16,8 @@ azure:
     - centralus
 vm:
   puppet_version: 8.10.0
-  git_version: 2.55.0
-  openvox_version: 8.28.1
+  git_version: 2.54.0
+  openvox_version: 8.25.0
   size: Standard_E8pds_v5
   tags:
     base_image: win11a6425h2azurebuilder
@@ -25,7 +25,7 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: "master"
-    deploymentId: "c1b0efe"
+    deploymentId: "default"
     managed_by: packer
 tests:
   - microsoft_binscope.tests.ps1
