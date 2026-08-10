@@ -7,7 +7,7 @@ image:
 sharedimage:
   gallery_name: "win11_64_25h2"
   image_name: "win11_64_25h2"
-  image_version: "1.0.7"
+  image_version: "1.0.6"
 azure:
   managed_image_resource_group_name: "default"
   managed_image_storage_account_type: "default"
@@ -29,8 +29,8 @@ azure:
 vm:
   spot: true
   puppet_version: "default"
-  git_version: "default"
-  openvox_version: "default"
+  git_version: 2.55.0
+  openvox_version: 8.28.1
   size: Standard_D8ads_v5
   tags:
     base_image: win116425h2azure
