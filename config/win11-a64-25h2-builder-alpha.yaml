@@ -16,8 +16,8 @@ azure:
     - centralus
 vm:
   puppet_version: 8.10.0
-  git_version: 2.54.0
-  openvox_version: 8.25.0
+  git_version: 2.55.0
+  openvox_version: 8.28.1
   size: Standard_E8pds_v5
   tags:
     base_image: win11a6425h2azurebuilder

@@ -20,8 +20,8 @@ azure:
     - westus
 vm:
   puppet_version: 8.10.0
-  git_version: 2.54.0
-  openvox_version: 8.25.0
+  git_version: 2.55.0
+  openvox_version: 8.28.1
   size: Standard_D8ads_v5
   tags:
     base_image: win116425h2azure
