@@ -1,11 +1,11 @@
 import importlib
 import os
-import sys
 import textwrap
-import types
 import unittest
+from copy import deepcopy
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 # Shaped like pools.yml: two production pools, three staging, one Known-BAD.
 POOLS_YAML = textwrap.dedent(
@@ -15,12 +15,8 @@ POOLS_YAML = textwrap.dedent(
       - name: "win11-64-24h2-hw"
         Description: "Production"
         image: "win11-24H2-NUC-01-16-2025"
-        src_Organisation: "mozilla-platform-ops"
-        src_Repository: "ronin_puppet"
         src_Branch: "master"
         hash: "655bf64"
-        secret_date: "02-24-2026"
-        domain_suffix: "wintest2.releng.mdc1.mozilla.com"
         nodes:
         - nuc13-004
         - nuc13-005
@@ -29,7 +25,6 @@ POOLS_YAML = textwrap.dedent(
         image: "win11-24H2-NUC-01-16-2025"
         src_Branch: "master"
         hash: "655bf64"
-        domain_suffix: "wintest2.releng.mdc1.mozilla.com"
         nodes:
         - t-nuc12-004
       - name: "win11-64-24h2-hw-alpha"
@@ -37,7 +32,6 @@ POOLS_YAML = textwrap.dedent(
         image: "win11-24H2-NUC-01-16-2025"
         src_Branch: "RELOPS-2402-fleetbench"
         hash: "74e8909"
-        domain_suffix: "wintest2.releng.mdc1.mozilla.com"
         nodes:
         - nuc13-001
         - nuc13-003
@@ -46,11 +40,9 @@ POOLS_YAML = textwrap.dedent(
         - nuc13-112
       - name: "win11-64-24h2-hw-relops1213"
         Description: "Baked WIM canary"
-        dev: "nuc-wim-pipeline"
         image: "win11-24h2-hw-test-20260730-223108"
         src_Branch: "master"
         hash: "edef633"
-        domain_suffix: "wintest2.releng.mdc1.mozilla.com"
         nodes:
         - nuc13-159
         - nuc13-160
@@ -61,7 +53,6 @@ POOLS_YAML = textwrap.dedent(
         image: "win11-24H2-NUC-01-16-2025"
         src_Branch: "master"
         hash: "7511c8e"
-        domain_suffix: "wintest2.releng.mdc1.mozilla.com"
         nodes:
         - nuc13-021
     defaults:
@@ -79,7 +70,7 @@ def _source_task(
     worker_type="win11-64-24h2-hw-ref",
     scopes=None,
 ):
-    """A source task shaped like a real mozilla-central Windows HW task."""
+    """A source task shaped like a real autoland Windows HW task."""
     if scopes is None:
         scopes = [
             "secrets:get:project/perftest/gecko/level-3/perftest-login",
@@ -101,13 +92,16 @@ def _source_task(
             "deadline": "2026-08-04T06:01:28.802Z",
             "expires": "2027-08-03T06:01:28.802Z",
             "routes": [
-                "index.gecko.v2.mozilla-central.latest.firefox.win64",
-                "tc-treeherder.v2.mozilla-central.abcdef",
+                "index.gecko.v2.autoland.latest.firefox.win64",
+                "tc-treeherder.v2.autoland.abcdef",
             ],
             "scopes": scopes,
             "dependencies": ["EPVLzXYQS8mqKN7Wkp0IIg", "VrVC0un-TJ-KGP8tePwtAA"],
             "metadata": {"name": name, "description": "a test task", "owner": "x@y"},
-            "extra": {"treeherder": {"symbol": "mda"}, "suite": "mochitest"},
+            "extra": {
+                "treeherder": {"symbol": "mda", "tier": 1},
+                "suite": "mochitest",
+            },
             "payload": {
                 "maxRunTime": 5400,
                 "cache": {"gecko-level-3-pip": "pip", "gecko-level-3-uv": "uv"},
@@ -116,11 +110,15 @@ def _source_task(
                     {"content": {"taskId": "VrVC0un-TJ-KGP8tePwtAA"}, "file": "x"},
                 ],
                 "artifacts": [
-                    {"name": "public/logs", "path": "logs", "expires": "2027-01-01T00:00:00Z"}
+                    {
+                        "name": "public/logs",
+                        "path": "logs",
+                        "expires": "2027-01-01T00:00:00Z",
+                    }
                 ],
                 "env": {
                     "GECKO_HEAD_REV": "deadbeefcafe",
-                    "GECKO_HEAD_REPOSITORY": "https://hg.mozilla.org/mozilla-central",
+                    "GECKO_HEAD_REPOSITORY": "https://hg.mozilla.org/integration/autoland",
                     "MOZ_AUTOMATION": "1",
                 },
             },
@@ -129,34 +127,6 @@ def _source_task(
 
 
 def _load_transform_module():
-    """Stub taskgraph as test_integration_test_transform.py does.
-
-    hw_pools is left real -- it only needs PyYAML, so it gets genuine coverage.
-    """
-    mozilla_taskgraph_module = types.ModuleType("mozilla_taskgraph")
-    setattr(mozilla_taskgraph_module, "register", lambda graph_config: None)
-    sys.modules["mozilla_taskgraph"] = mozilla_taskgraph_module
-
-    taskgraph_module = types.ModuleType("taskgraph")
-    transforms_module = types.ModuleType("taskgraph.transforms")
-    base_module = types.ModuleType("taskgraph.transforms.base")
-    util_module = types.ModuleType("taskgraph.util")
-    util_taskcluster_module = types.ModuleType("taskgraph.util.taskcluster")
-
-    class DummyTransformSequence:
-        def add(self, fn):
-            return fn
-
-    setattr(base_module, "TransformSequence", DummyTransformSequence)
-    setattr(util_taskcluster_module, "find_task_id", lambda _: "stub-decision-id")
-    setattr(util_taskcluster_module, "get_artifact", lambda *_: {})
-
-    sys.modules["taskgraph"] = taskgraph_module
-    sys.modules["taskgraph.transforms"] = transforms_module
-    sys.modules["taskgraph.transforms.base"] = base_module
-    sys.modules["taskgraph.util"] = util_module
-    sys.modules["taskgraph.util.taskcluster"] = util_taskcluster_module
-
     return importlib.import_module(
         "worker_images_taskgraph.transforms.hw_integration_test"
     )
@@ -204,7 +174,9 @@ class TestHwPoolRegistry(HwPoolsTestBase):
         self.assertEqual(len(reg.pools), 5)
 
         pool = reg["win11-64-24h2-hw-relops1213"]
-        self.assertEqual(pool.task_queue_id, "releng-hardware/win11-64-24h2-hw-relops1213")
+        self.assertEqual(
+            pool.task_queue_id, "releng-hardware/win11-64-24h2-hw-relops1213"
+        )
         self.assertEqual(
             pool.identity,
             {
@@ -212,10 +184,6 @@ class TestHwPoolRegistry(HwPoolsTestBase):
                 "src_branch": "master",
                 "revision": "edef633",
             },
-        )
-        self.assertEqual(pool.dev_branch, "nuc-wim-pipeline")
-        self.assertEqual(
-            pool.fqdn("nuc13-159"), "nuc13-159.wintest2.releng.mdc1.mozilla.com"
         )
 
     def test_production_pools_identified_without_a_deny_list(self):
@@ -277,22 +245,49 @@ class TestHwIntegrationTransform(HwPoolsTestBase):
     def _run(self, hw_pools, sources=None, task_name="gecko-hw"):
         if sources is None:
             sources = [_source_task()]
-        self.mod._fetch_source_tasks = lambda *a, **k: sources
         task = {
             "name": task_name,
             "description": "d",
             "hw-replicate": {
-                "target": "gecko.v2.mozilla-central.latest.taskgraph.decision",
+                "target": "gecko.v2.autoland.latest.taskgraph.decision",
                 "provisioner": "releng-hardware",
                 "worker-type-prefixes": ["win11-64-", "win11-a64-"],
             },
         }
         config = DummyConfig(self.root, hw_pools)
-        return list(self.mod.replicate_onto_hw_pools(config, [task]))
+        with patch.object(self.mod, "_fetch_source_tasks", return_value=sources):
+            return list(self.mod.replicate_onto_hw_pools(config, [task]))
+
+    def test_fetch_source_tasks_keeps_only_tier_1(self):
+        tier_1 = _source_task(name="tier-1")
+        tier_2 = deepcopy(_source_task(name="tier-2"))
+        tier_2["task"]["extra"]["treeherder"]["tier"] = 2
+
+        with (
+            patch.object(self.mod, "find_task_id", return_value="decision-id"),
+            patch.object(
+                self.mod,
+                "get_artifact",
+                return_value={"tier-1": tier_1, "tier-2": tier_2},
+            ),
+        ):
+            result = self.mod._fetch_source_tasks(
+                "gecko.v2.autoland.latest.taskgraph.decision",
+                "releng-hardware",
+                ("win11-64-",),
+            )
+
+        self.assertEqual([task["label"] for task in result], ["tier-1"])
+
+    def test_kind_uses_autoland_source(self):
+        kind = (
+            Path(__file__).parents[1] / "kinds" / "hw-integration-test" / "kind.yml"
+        ).read_text()
+        self.assertIn("gecko.v2.autoland.latest.taskgraph.decision", kind)
+        self.assertNotIn("gecko.v2.mozilla-central", kind)
 
     def test_no_pools_requested_emits_nothing_and_does_not_fetch(self):
         called = []
-        self.mod._fetch_source_tasks = lambda *a, **k: called.append(1) or []
         task = {
             "name": "gecko-hw",
             "hw-replicate": {
@@ -301,9 +296,14 @@ class TestHwIntegrationTransform(HwPoolsTestBase):
                 "worker-type-prefixes": ["win11-64-"],
             },
         }
-        out = list(
-            self.mod.replicate_onto_hw_pools(DummyConfig(self.root, None), [task])
-        )
+        with patch.object(
+            self.mod,
+            "_fetch_source_tasks",
+            side_effect=lambda *a, **k: called.append(1) or [],
+        ):
+            out = list(
+                self.mod.replicate_onto_hw_pools(DummyConfig(self.root, None), [task])
+            )
         self.assertEqual(out, [])
         self.assertEqual(called, [], "must not hit the network on a normal decision")
 
@@ -345,7 +345,9 @@ class TestHwIntegrationTransform(HwPoolsTestBase):
             sorted(task["payload"]["cache"]),
             ["relops-level-3-pip", "relops-level-3-uv"],
         )
-        self.assertEqual(task["payload"]["mounts"][0]["cacheName"], "relops-level-3-pip")
+        self.assertEqual(
+            task["payload"]["mounts"][0]["cacheName"], "relops-level-3-pip"
+        )
         cache_scopes = sorted(
             s for s in task["scopes"] if s.startswith("generic-worker:cache:")
         )
@@ -422,11 +424,11 @@ class TestHwIntegrationTransform(HwPoolsTestBase):
 class TestCloudAndHwSelectionAreDisjoint(unittest.TestCase):
     """The two target-tasks methods must never select each other's tasks."""
 
-    def test_attribute_namespaces_do_not_overlap(self):
+    def test_attribute_namespaces_are_disjoint(self):
         cloud_attrs = {"replicate": "gecko"}
         hw_attrs = {"hw_replicate": "gecko-hw", "hw_pool": "win11-64-24h2-hw-alpha"}
 
-        # mirrors target.py::integration and hw_target.py::hw_integration
+        # Mirrors the two methods in target.py.
         self.assertIn("replicate", cloud_attrs)
         self.assertNotIn("replicate", hw_attrs)
         self.assertIn("hw_replicate", hw_attrs)

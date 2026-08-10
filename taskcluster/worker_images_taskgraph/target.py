@@ -12,3 +12,12 @@ def integration(full_task_graph, parameters, graph_config):
         for label, task in full_task_graph.tasks.items()
         if "replicate" in task.attributes
     ]
+
+
+@register_target_task("hw-integration")
+def hw_integration(full_task_graph, parameters, graph_config):
+    return [
+        label
+        for label, task in full_task_graph.tasks.items()
+        if "hw_replicate" in task.attributes
+    ]

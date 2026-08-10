@@ -4,9 +4,10 @@
 
 """Registry for the MDC1 Windows hardware worker pools.
 
-Hardware pools are static workers with no worker-manager entry, so pools.yml is
-the only record of what each one is running. Imported by both the decision task
-and ci/run-hw-os-integration.py, so PyYAML is the only dependency.
+Hardware pools are static workers with no worker-manager entry. pools.yml states
+the expected configuration, but it cannot attest the live WIM. Imported by both
+the decision task and ci/run-hw-os-integration.py, so PyYAML is the only
+dependency.
 """
 
 import re
@@ -36,14 +37,8 @@ class HwPool:
 
     name: str
     image: str | None = None
-    src_organisation: str | None = None
-    src_repository: str | None = None
     src_branch: str | None = None
     revision: str | None = None
-    secret_date: str | None = None
-    domain_suffix: str | None = None
-    description: str | None = None
-    dev_branch: str | None = None
     nodes: tuple[str, ...] = field(default_factory=tuple)
 
     @property
@@ -64,17 +59,12 @@ class HwPool:
 
     @property
     def identity(self) -> dict[str, str | None]:
-        """The WIM + ronin triple a test result has to be attributed to."""
+        """Return the WIM and ronin values declared in pools.yml."""
         return {
             "image": self.image,
             "src_branch": self.src_branch,
             "revision": self.revision,
         }
-
-    def fqdn(self, node: str) -> str:
-        if not self.domain_suffix:
-            return node
-        return f"{node}.{self.domain_suffix}"
 
 
 @dataclass(frozen=True)
@@ -170,15 +160,9 @@ def load_registry(repo_root: Path | str | None = None) -> HwPoolRegistry:
         pools[name] = HwPool(
             name=name,
             image=entry.get("image"),
-            src_organisation=entry.get("src_Organisation"),
-            src_repository=entry.get("src_Repository"),
             src_branch=entry.get("src_Branch"),
             # pools.yml `hash` is the ronin_puppet pin; renamed to avoid the builtin.
             revision=entry.get("hash"),
-            secret_date=entry.get("secret_date"),
-            domain_suffix=entry.get("domain_suffix"),
-            description=entry.get("Description"),
-            dev_branch=entry.get("dev"),
             nodes=_coerce_nodes(entry.get("nodes")),
         )
 

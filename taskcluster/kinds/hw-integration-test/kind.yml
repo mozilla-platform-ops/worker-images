@@ -4,8 +4,6 @@
 ---
 loader: taskgraph.loader.transform:loader
 
-# No mozilla_taskgraph.transforms.replicate here: it discards releng-hardware
-# tasks, so hw_integration_test does the equivalent work itself.
 transforms:
   - worker_images_taskgraph.transforms.hw_integration_test
 
@@ -13,9 +11,8 @@ tasks:
   gecko-hw:
     description: "Run in-tree Firefox tests on MDC1 Windows hardware pools"
     hw-replicate:
-      # The push decision, not decision-os-integration: os-integration schedules
-      # no hardware tasks, a push schedules a few with dependencies resolved.
-      target: gecko.v2.mozilla-central.latest.taskgraph.decision
+      # Use the scheduled graph so dependencies are concrete task IDs.
+      target: gecko.v2.autoland.latest.taskgraph.decision
       provisioner: releng-hardware
       # Windows only; MDC1 macOS shares the releng-hardware provisioner.
       worker-type-prefixes:
