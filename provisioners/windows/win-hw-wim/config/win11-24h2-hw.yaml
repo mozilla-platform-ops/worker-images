@@ -43,7 +43,7 @@ ronin:
   org: default
   repo: default
   branch: wim-bake-role         # feature branch carrying the bake role (until merged)
-  hash: "4463ab7"               # short SHA (matches deploymentId convention); ronin_puppet#1297 HEAD. Bump when the branch moves.
+  hash: "48a8b9d4"              # ronin_puppet#1297 HEAD; bake role excludes hardware_observability (no marlin_pw lookup). Bump when the branch moves.
   bake_role: win116424h2hwbake  # trimmed hw role that performs the one-time AppX/catalog bake
 
 vm:
