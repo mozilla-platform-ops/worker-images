@@ -1,0 +1,111 @@
+name: HW OS Integration Tests - FXCI
+run-name: HW OS Integration Tests - ${{ github.actor }}
+
+# Validates a WIM or ronin_puppet change without a try push (RELOPS-2503).
+# Dispatch-only: hardware needs a PXE deploy first. One checkbox per pool.
+
+on:
+  workflow_dispatch:
+    inputs:
+      win11_64_24h2_hw_alpha:
+        description: "win11-64-24h2-hw-alpha (nuc13, large staging pool)"
+        type: boolean
+        default: false
+      win11_64_24h2_hw_relops1213:
+        description: "win11-64-24h2-hw-relops1213 (baked-WIM canary)"
+        type: boolean
+        default: false
+      win11_64_24h2_hw_ref_alpha:
+        description: "win11-64-24h2-hw-ref-alpha (t-nuc12 reference)"
+        type: boolean
+        default: false
+      win11_64_24h2_hw_perf_debug:
+        description: "win11-64-24h2-hw-perf-debug"
+        type: boolean
+        default: false
+      win11_64_24h2_hw_perf_sheriff:
+        description: "win11-64-24h2-hw-perf-sheriff (single node - very slow)"
+        type: boolean
+        default: false
+      min_healthy_nodes:
+        description: "Refuse a pool with fewer active workers than this"
+        type: string
+        default: "1"
+      timeout_hours:
+        description: "Hours to wait for completion before giving up"
+        type: string
+        default: "6"
+      no_wait:
+        description: "Trigger and exit without waiting for results"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  check-access:
+    name: "Verify User Access"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Load Authorized Users and Check Access
+        shell: pwsh
+        run: ./ci/check-authorized-user.ps1
+
+  hw-integration-tests:
+    name: "Trigger HW Integration Tests"
+    needs: check-access
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Collect selected pools
+        id: pools
+        env:
+          SELECTED: >-
+            ${{ inputs.win11_64_24h2_hw_alpha && 'win11-64-24h2-hw-alpha,' || '' }}${{
+                inputs.win11_64_24h2_hw_relops1213 && 'win11-64-24h2-hw-relops1213,' || '' }}${{
+                inputs.win11_64_24h2_hw_ref_alpha && 'win11-64-24h2-hw-ref-alpha,' || '' }}${{
+                inputs.win11_64_24h2_hw_perf_debug && 'win11-64-24h2-hw-perf-debug,' || '' }}${{
+                inputs.win11_64_24h2_hw_perf_sheriff && 'win11-64-24h2-hw-perf-sheriff' || '' }}
+        run: |
+          pools="$(printf '%s' "$SELECTED" | tr -d '[:space:]' | sed 's/,*$//')"
+          if [ -z "$pools" ]; then
+            echo "::error ::No pool selected. Tick at least one pool checkbox."
+            exit 1
+          fi
+          echo "Selected pools: $pools"
+          echo "pools=$pools" >> "$GITHUB_OUTPUT"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+
+      # Fails before any hardware time if a pool is unknown, production, or dead.
+      - name: Pre-flight
+        env:
+          POOLS: ${{ steps.pools.outputs.pools }}
+          MIN_HEALTHY: ${{ inputs.min_healthy_nodes }}
+          TASKCLUSTER_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
+          TASKCLUSTER_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}
+          PYTHONUNBUFFERED: "1"
+        run: |
+          uv run ci/run-hw-os-integration.py "$POOLS" \
+            --min-healthy-nodes "$MIN_HEALTHY" \
+            --preflight-only
+
+      - name: Run HW OS Integration Tests
+        env:
+          POOLS: ${{ steps.pools.outputs.pools }}
+          MIN_HEALTHY: ${{ inputs.min_healthy_nodes }}
+          TIMEOUT_HOURS: ${{ inputs.timeout_hours }}
+          NO_WAIT: ${{ inputs.no_wait }}
+          TASKCLUSTER_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
+          TASKCLUSTER_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}
+          PYTHONUNBUFFERED: "1"
+        run: |
+          args=(--min-healthy-nodes "$MIN_HEALTHY" --timeout "$(( TIMEOUT_HOURS * 3600 ))")
+          if [ "$NO_WAIT" = "true" ]; then
+            args+=(--no-wait)
+          fi
+          uv run ci/run-hw-os-integration.py "$POOLS" "${args[@]}"
