@@ -365,33 +365,57 @@ capture_name     = "$Image-$BuildId"
     # top of sysprep-generalize.ps1, streamed by Packer into $pkrLog). After that the
     # power-off is expected and Packer captures the VHDX, so the watchdog must NOT
     # restart it.
+    # The watchdog logs every state transition + restart it performs to $wdLog. It runs
+    # in a background job, so that file is the ONLY record of what it did; on a build
+    # failure we tail it, which tells us whether a "Timeout waiting for machine to
+    # restart" was a guest that never came back up (watchdog restarted it, WinRM stayed
+    # dead) or one the watchdog never touched (VM was Running the whole time).
     $cloneVm = 'packer-nuc'   # hyperv builder default vm_name = packer-<source name 'nuc'>
     $pkrLog  = Join-Path $work 'packer-build.log'
-    Remove-Item $pkrLog -Force -ErrorAction SilentlyContinue
+    $wdLog   = Join-Path $work 'boot-watchdog.log'
+    Remove-Item $pkrLog, $wdLog -Force -ErrorAction SilentlyContinue
     $watchdog = Start-Job -Name 'wim-boot-watchdog' -ScriptBlock {
-        param($vm, $log)
+        param($vm, $log, $wdLog)
+        function Write-Wd($msg) {
+            "$([DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')) $msg" |
+                Add-Content -Path $wdLog -Encoding utf8 -ErrorAction SilentlyContinue
+        }
         # PHASE 1 - stay HANDS-OFF until Packer has cloned+configured the VM and started it
         # once. StepCloneVM sets the CPU count + secure boot on the freshly-cloned (Off) VM;
         # if the watchdog Start-VMs it during that window those Set-VMProcessor/Set-VMFirmware
         # calls fail with "cannot be performed while the object is in its current state" and
         # the build dies at StepCloneVM (this was the intermittent ~50% clone flake). Wait
         # for Packer's own "Starting the virtual machine" (logged at StepRun, AFTER config).
+        Write-Wd "watchdog started (vm=$vm); phase 1: waiting for Packer to start the VM"
         while ($true) {
             if (Test-Path $log) {
-                if (Select-String -Path $log -Pattern 'WIM-WATCHDOG-STOP' -SimpleMatch -Quiet) { return }
+                if (Select-String -Path $log -Pattern 'WIM-WATCHDOG-STOP' -SimpleMatch -Quiet) {
+                    Write-Wd 'sysprep marker seen during phase 1; exiting'
+                    return
+                }
                 if (Select-String -Path $log -Pattern 'Starting the virtual machine' -SimpleMatch -Quiet) { break }
             }
             Start-Sleep -Seconds 3
         }
         # PHASE 2 - Packer has started the VM; now (re)start it on any guest-initiated
         # power-off until the sysprep provisioner announces its intended /shutdown.
+        Write-Wd 'phase 2: restarting the VM on any guest-initiated power-off'
+        $lastState = ''
         while ($true) {
-            if ((Test-Path $log) -and (Select-String -Path $log -Pattern 'WIM-WATCHDOG-STOP' -SimpleMatch -Quiet)) { break }
+            if ((Test-Path $log) -and (Select-String -Path $log -Pattern 'WIM-WATCHDOG-STOP' -SimpleMatch -Quiet)) {
+                Write-Wd 'sysprep marker seen; hands off from here (the /shutdown is expected)'
+                break
+            }
             $v = Get-VM -Name $vm -ErrorAction SilentlyContinue
-            if ($v -and $v.State -eq 'Off') { Start-VM -Name $vm -ErrorAction SilentlyContinue }
+            $state = if ($v) { [string]$v.State } else { '<missing>' }
+            if ($state -ne $lastState) { Write-Wd "VM state -> $state"; $lastState = $state }
+            if ($v -and $v.State -eq 'Off') {
+                Write-Wd 'VM is Off; issuing Start-VM'
+                Start-VM -Name $vm -ErrorAction SilentlyContinue
+            }
             Start-Sleep -Seconds 6
         }
-    } -ArgumentList $cloneVm, $pkrLog
+    } -ArgumentList $cloneVm, $pkrLog, $wdLog
 
     Push-Location $Root
     try {
@@ -414,9 +438,26 @@ capture_name     = "$Image-$BuildId"
         for ($try = 1; $try -le $maxTries; $try++) {
             & packer build -on-error=abort -var-file="$varFile" . 2>&1 | Tee-Object -FilePath $pkrLog
             if ($LASTEXITCODE -eq 0) { break }
-            $cloneFlake = Select-String -Path $pkrLog -Pattern 'StepCloneVM' -SimpleMatch -Quiet -ErrorAction SilentlyContinue
-            if (-not $cloneFlake -or $try -eq $maxTries) { throw "packer build rc=$LASTEXITCODE" }
-            Write-Warning "StepCloneVM flake (attempt $try): rebuilding the SOURCE VM, then re-cloning once."
+            # Match the step that actually FAILED, not any mention of StepCloneVM: Packer
+            # prints `aborted: skipping cleanup of step "StepCloneVM"` on EVERY failure,
+            # so a bare 'StepCloneVM' match classified unrelated failures as clone flakes
+            # and burned a second full build on them (run 31428853582: a post-bake
+            # windows-restart timeout was retried as a "clone flake", and the retry then
+            # died on the real host flake). StepEnableIntegrationService is part of the
+            # same host clone-flake family and IS retryable.
+            $flakeSteps = 'StepCloneVM', 'StepEnableIntegrationService'
+            $cloneFlake = $flakeSteps | Where-Object {
+                Select-String -Path $pkrLog -Pattern "Step `"$_`" failed" -SimpleMatch -Quiet -ErrorAction SilentlyContinue
+            } | Select-Object -First 1
+            if (-not $cloneFlake -or $try -eq $maxTries) {
+                if (Test-Path $wdLog) {
+                    Write-Host "`n-- boot watchdog log ($wdLog) --"
+                    Get-Content $wdLog -Tail 40
+                    Write-Host "-- end boot watchdog log --`n"
+                }
+                throw "packer build rc=$LASTEXITCODE"
+            }
+            Write-Warning "$cloneFlake flake (attempt $try): rebuilding the SOURCE VM, then re-cloning once."
             Get-VM -Name $cloneVm -ErrorAction SilentlyContinue | ForEach-Object {
                 Stop-VM $_ -TurnOff -Force -ErrorAction SilentlyContinue
                 Remove-VM $_ -Force -ErrorAction SilentlyContinue

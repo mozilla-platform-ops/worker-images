@@ -74,8 +74,12 @@ build {
       "include:$true",
     ] : ["exclude:$true"]
   }
+  # 60m, not the 30m default-ish value we started with: on a windows_update=true
+  # image this reboot runs the "Working on updates" apply pass through BOTH shutdown
+  # and boot, and on this nested-virt guest the reboot also lands as a full power-off
+  # that the host watchdog has to restart (see New-WinHwWim.ps1). 30m was not enough.
   provisioner "windows-restart" {
-    restart_timeout = "30m"
+    restart_timeout = "60m"
   }
 
   # ---- 2. Upload bake scripts ----
@@ -109,8 +113,12 @@ build {
     valid_exit_codes = [0, 2]
   }
 
+  # 60m for the same reason as the post-WU restart above: run 31428853582
+  # (win11-24h2-hw, the first windows_update=true bake) timed out here at 30m with
+  # "A system shutdown is in progress.(1115)" -> "Timeout waiting for machine to
+  # restart" AFTER a clean puppet apply, losing the whole 1h41m build.
   provisioner "windows-restart" {
-    restart_timeout = "30m"
+    restart_timeout = "60m"
   }
 
   # ---- 4. Scrub machine-specific state + Sysprep /generalize /shutdown ----

@@ -129,7 +129,9 @@ if ("$out" -notmatch 'KICKOFF_OK') { throw "Failed to start the build on $vm (no
 # finishes. We poll that blob with the runner's own az - completely independent of the
 # VM's run-command extension, which wedged under bake load and never surfaced build.done.
 $intervalSec = 60
-$maxMinutes  = 180   # hard cap; a real bake is ~90-150 min. The poll now stays
+$maxMinutes  = 240   # hard cap; a real bake is ~90-150 min (windows_update=true images
+                     # sit at the top of that range, and their two windows-restart
+                     # provisioners may each burn up to 60m). The poll stays
                      # authenticated (OIDC re-login below), so hitting this means a
                      # genuinely stuck build - not a monitoring blind spot as before.
 $reloginEverySec = 1200   # re-auth every ~20 min so the ~1h azure/login token never lapses
