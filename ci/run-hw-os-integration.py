@@ -35,6 +35,7 @@ import importlib.util
 import json
 import os
 import re
+import statistics
 import sys
 import time
 from datetime import datetime, timezone
@@ -360,6 +361,140 @@ def monitor(queue, runs: list[dict], timeout: int, root_url: str) -> None:
             run["timed_out"] = True
 
 
+# ---- scores --------------------------------------------------------------- #
+
+# Written by every browsertime and talos task; the same numbers Perfherder would
+# ingest, before Treeherder gets involved. Reading it here is the whole reason
+# this run does not need a Treeherder route: staging-hardware numbers have no
+# business in a perf sheriff's view, and the score is right there in the task.
+PERFHERDER_ARTIFACT = "public/test_info/perfherder-data.json"
+
+
+def fetch_perfherder(queue, task_id: str) -> dict | None:
+    """Perfherder blob for a task, or None if it did not produce one."""
+    try:
+        response = queue.getLatestArtifact(task_id, PERFHERDER_ARTIFACT)
+    except taskcluster.exceptions.TaskclusterRestFailure:
+        return None
+
+    if isinstance(response, dict) and "url" in response:
+        try:
+            http = requests.get(response["url"], timeout=60)
+            http.raise_for_status()
+            return http.json()
+        except (requests.RequestException, ValueError) as exc:
+            warn(f"  could not read {PERFHERDER_ARTIFACT} of {task_id}: {exc}")
+            return None
+    return response if isinstance(response, dict) else None
+
+
+def collect_scores(queue, runs: list[dict]) -> None:
+    """Attach each pool's suite scores, keyed by suite name.
+
+    Never fatal: a missing or unreadable score does not change whether the tests
+    themselves passed.
+    """
+    for run in runs:
+        scores: dict[str, dict] = {}
+        for task in replicated_tasks(run.get("tasks") or [], run.get("task_group_id")):
+            if task["status"]["state"] != "completed":
+                continue
+            data = fetch_perfherder(queue, task["status"]["taskId"])
+            if not data:
+                continue
+            for suite in data.get("suites") or []:
+                name = suite.get("name")
+                value = suite.get("value")
+                if not name or value is None:
+                    continue
+                entry = scores.setdefault(
+                    name,
+                    {
+                        "unit": suite.get("unit", ""),
+                        "lower_is_better": bool(suite.get("lowerIsBetter")),
+                        "values": [],
+                        "replicates": [],
+                    },
+                )
+                entry["values"].append(float(value))
+                entry["replicates"].extend(
+                    float(r) for r in (suite.get("replicates") or [])
+                )
+        if scores:
+            run["scores"] = scores
+
+
+def summarize(values: list[float]) -> dict:
+    """Mean, median and spread of a sample. Spread is the point of repeating a
+    run: a mean nobody can put an error bar on is not a result."""
+    summary = {
+        "n": len(values),
+        "mean": statistics.fmean(values),
+        "median": statistics.median(values),
+        "min": min(values),
+        "max": max(values),
+        "stdev": statistics.stdev(values) if len(values) > 1 else 0.0,
+    }
+    summary["cv"] = 100 * summary["stdev"] / summary["mean"] if summary["mean"] else 0.0
+    return summary
+
+
+def print_scores(runs: list[dict]) -> None:
+    for run in runs:
+        for name, entry in sorted((run.get("scores") or {}).items()):
+            stats = summarize(entry["values"])
+            direction = (
+                "lower is better" if entry["lower_is_better"] else "higher is better"
+            )
+            notice(
+                f"{run['pool']} {name}: mean {stats['mean']:.2f} "
+                f"median {stats['median']:.2f} min {stats['min']:.2f} "
+                f"max {stats['max']:.2f} stdev {stats['stdev']:.2f} "
+                f"({stats['cv']:.1f}% CV over {stats['n']} run(s), "
+                f"{entry['unit']}, {direction})"
+            )
+
+
+def score_summary_lines(runs: list[dict]) -> list[str]:
+    if not any(run.get("scores") for run in runs):
+        return []
+
+    lines = [
+        "### Scores",
+        "",
+        "| Pool | Suite | Runs | Mean | Median | Min | Max | Stdev | CV | Unit |",
+        "|---|---|:---:|---:|---:|---:|---:|---:|---:|---|",
+    ]
+    for run in runs:
+        for name, entry in sorted((run.get("scores") or {}).items()):
+            s = summarize(entry["values"])
+            arrow = "↓" if entry["lower_is_better"] else "↑"
+            lines.append(
+                f"| {run['pool']} | {name} {arrow} | {s['n']} | {s['mean']:.2f} | "
+                f"{s['median']:.2f} | {s['min']:.2f} | {s['max']:.2f} | "
+                f"{s['stdev']:.2f} | {s['cv']:.1f}% | {entry['unit']} |"
+            )
+    lines.append("")
+
+    for run in runs:
+        for name, entry in sorted((run.get("scores") or {}).items()):
+            per_run = ", ".join(f"{v:.2f}" for v in entry["values"])
+            lines.append(f"- **{run['pool']} {name}** per run: {per_run}")
+            if entry["replicates"]:
+                inner = summarize(entry["replicates"])
+                lines.append(
+                    f"  - {inner['n']} in-task replicates, "
+                    f"mean {inner['mean']:.2f}, {inner['cv']:.1f}% CV"
+                )
+    lines.append("")
+    lines.append(
+        "`↑` higher is better. CV is stdev/mean: the run-to-run noise floor of "
+        "this pool, which is what a regression has to beat to be real."
+    )
+    lines.append("")
+    return lines
+
+
 def write_github_summary(runs: list[dict], root_url: str, selection: str = "") -> None:
     summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
     if not summary_file:
@@ -368,6 +503,7 @@ def write_github_summary(runs: list[dict], root_url: str, selection: str = "") -
     lines = ["## HW OS Integration Tests", ""]
     if selection:
         lines += [selection, ""]
+    lines += score_summary_lines(runs)
 
     lines += [
         "| Pool | Image | Branch | Revision | Result | Passed | Failed | Exception | Pending |",
@@ -597,6 +733,7 @@ def main() -> int:
         return 1
 
     monitor(queue, live, args.timeout, root_url)
+    collect_scores(queue, live)
 
     # ---- verdicts --------------------------------------------------------- #
     failed_overall = False
@@ -634,6 +771,7 @@ def main() -> int:
             run["verdict"] = "✅ passed"
 
     write_github_summary(runs, root_url, selection)
+    print_scores(runs)
 
     for run in runs:
         counts = run.get("counts") or {}
