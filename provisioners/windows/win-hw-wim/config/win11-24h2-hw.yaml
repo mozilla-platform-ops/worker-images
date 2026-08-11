@@ -53,8 +53,22 @@ vm:
   cpus: default
   memory_mb: default
   switch_name: default
-  # Production image: fully patch at bake time (shared default is OFF).
-  windows_update: true
+  # OFF deliberately (was true; flipped 2026-08-11 after bake run 31428853582).
+  # Patching at bake time fights the bake role: win116424h2hwbake includes
+  # roles_profiles::profiles::disable_services -> win_disable_services::disable_windows_update,
+  # which disables wuauserv. So the WU-on order was: install updates -> reboot ->
+  # puppet disables the update stack -> reboot, and that last reboot never came back
+  # ("A system shutdown is in progress.(1115)" -> "Timeout waiting for machine to
+  # restart"), losing a 1h41m build. hw-test bakes the SAME role from the SAME branch
+  # with WU off and has gone green repeatedly - windows_update was the only difference.
+  # Consequence, accepted: the WIM ships at the patch level of base_wim, and the
+  # deployed workers never patch themselves (that same puppet class keeps WU disabled
+  # in production), so refreshing patches means uploading newer base media. Also saves
+  # ~40 min per bake and makes the image content deterministic instead of build-date
+  # dependent. If bake-time patching is ever wanted back, do it OFFLINE - a pinned
+  # SSU+LCU .msu via DISM /Add-Package in prepare-base-vhdx.ps1 (which already does
+  # offline driver injection) - not with the online WU provisioner.
+  windows_update: false
 
 # Deploy-side metadata (informational; used for output tagging / provenance).
 sharedimage:
