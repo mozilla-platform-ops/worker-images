@@ -88,8 +88,35 @@ jobs:
           BUILD_ID: ${{ inputs.build_id }}
         run: ./ci/kickoff-win-hw-wim-build.ps1
 
+      # Same release-notes handoff the Azure gallery images use (see sig-trusted.yml):
+      # the kickoff downloads the markdown the bake generated and exports its name as
+      # sbom_file, mirroring how those workflows export sharedimageversion.
+      - name: Upload Release Notes Artifact
+        if: success() && env.sbom_file != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: release-notes-${{ inputs.image }}
+          path: ${{ env.sbom_file }}
+          overwrite: true
+          retention-days: 1
+          if-no-files-found: error
+
       # Always tear the VM down — success, failure, or cancel — so there is no idle cost.
       - name: Destroy ephemeral build VM
         if: always()
         shell: pwsh
         run: ./ci/win-hw-wim-vm.ps1 -Action destroy -VmName $env:VM_NAME -ResourceGroup $env:RESOURCE_GROUP
+
+  # Commit the release notes to sboms/ on main — the same reusable workflow every other
+  # Windows image build calls, so baked WIMs land in the same place as gallery images.
+  # No `if: always()`: a failed bake produces no artifact, and the reusable workflow
+  # treats "nothing downloaded" as an error, which would just double-report the failure.
+  sbom:
+    needs: build
+    permissions:
+      actions: read
+      contents: write
+    uses: ./.github/workflows/upload-release-notes.yml
+    with:
+      artifact_pattern: release-notes-${{ inputs.image }}
+      commit_message: ${{ inputs.image }} - Release Notes
