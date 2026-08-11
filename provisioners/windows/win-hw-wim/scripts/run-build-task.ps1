@@ -32,6 +32,46 @@ Remove-Item $log, $done -ErrorAction SilentlyContinue
 # scheduled task (choco updated the machine PATH after the guest agent started).
 $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
 
+# --- Live log streaming -------------------------------------------------------
+# Without this the runner sees only "... building (N min elapsed)" for ~2h and then a
+# 200-line tail at the END - and on a hang it sees NOTHING at all, because the job times
+# out and the VM (with build.log on it) is destroyed. That blind spot is what made the
+# post-bake windows-restart hang in run 31428853582 so expensive to diagnose. So push the
+# WHOLE log to blob every minute; the runner prints each new chunk as it lands
+# (ci/kickoff-win-hw-wim-build.ps1). Best-effort throughout: a failed upload must never
+# affect the build, so every error here is swallowed and retried next cycle.
+$liveBlob = "_status/$Image.live.log"
+$liveJob = Start-Job -Name 'wim-live-log' -ScriptBlock {
+    param($log, $account, $container, $blob, $clientId, $pathEnv)
+    $env:Path = $pathEnv
+    # Tee-Object holds build.log open for writing, so read it with FileShare::ReadWrite
+    # and upload a snapshot - a plain Copy-Item/az on the live file hits a sharing violation.
+    $snap = "$log.live"
+    while ($true) {
+        Start-Sleep -Seconds 60
+        try {
+            if (-not (Test-Path $log)) { continue }
+            $in = [IO.File]::Open($log, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
+            try {
+                $out = [IO.File]::Create($snap)
+                try { $in.CopyTo($out) } finally { $out.Dispose() }
+            }
+            finally { $in.Dispose() }
+            # az may not be logged in yet on the first cycles (New-WinHwWim logs in itself).
+            az account show 1>$null 2>$null
+            if (($LASTEXITCODE -ne 0) -and $clientId) { az login --identity --client-id $clientId 1>$null 2>$null }
+            az storage blob upload --account-name $account --container-name $container --name $blob --file $snap --overwrite --auth-mode login --only-show-errors 2>$null
+        }
+        catch {
+            # Never let a streaming hiccup touch the build: log it into the snapshot's
+            # sidecar (visible on the VM) and back off a cycle before trying again.
+            "$([DateTime]::UtcNow.ToString('o')) live-log upload failed: $_" |
+                Add-Content -Path "$snap.err" -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 30
+        }
+    }
+} -ArgumentList $log, $StatusAccount, $StatusContainer, $liveBlob, $IdentityClientId, $env:Path
+
 $nuc  = 'C:\worker-images\provisioners\windows\win-hw-wim\bin\WinHwWim\New-WinHwWim.ps1'
 $rc = 0
 try {
@@ -47,6 +87,7 @@ catch {
     $rc = 1
     $_ | Out-String | Add-Content -Path $log
 }
+if ($liveJob) { Stop-Job $liveJob -ErrorAction SilentlyContinue; Remove-Job $liveJob -Force -ErrorAction SilentlyContinue }
 Set-Content -Path $done -Value $rc
 
 # --- Signal completion to the GH runner via BLOB storage ----------------------
@@ -64,6 +105,10 @@ try {
         if ($LASTEXITCODE -ne 0) { az login --identity --client-id $IdentityClientId 1>$null 2>$null }
         $ErrorActionPreference = $prevEap
     }
+    # FINAL live-log push before the marker: the last streaming cycle can be up to a minute
+    # behind, and the interesting part of a failure is always the last few lines. Uploaded
+    # before .done so the runner's closing delta is complete the moment it sees the marker.
+    az storage blob upload --account-name $StatusAccount --container-name $StatusContainer --name $liveBlob --file $log --overwrite --auth-mode login --only-show-errors 2>$null
     # A tail of the build log for visibility (uploaded first, so it's present when 'done' appears).
     $statusLog = Join-Path $base 'status.log'
     Get-Content $log -Tail 200 -ErrorAction SilentlyContinue | Set-Content -Path $statusLog -Encoding utf8

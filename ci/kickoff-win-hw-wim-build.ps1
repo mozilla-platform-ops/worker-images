@@ -69,7 +69,7 @@ else { "# no GitHub token provided; tooltool downloads unauthenticated (public)"
 # real guard is the freshness gate below: only a marker written AFTER this kickoff counts.
 $stAccount   = 'hardwareimaging'
 $stContainer = 'captured'
-foreach ($n in @("_status/$image.done", "_status/$image.log")) {
+foreach ($n in @("_status/$image.done", "_status/$image.log", "_status/$image.live.log")) {
     az storage blob delete --account-name $stAccount --container-name $stContainer --name $n --auth-mode login --only-show-errors 2>$null
 }
 
@@ -138,6 +138,78 @@ $reloginEverySec = 1200   # re-auth every ~20 min so the ~1h azure/login token n
 $rc = $null
 $doneName = "_status/$image.done"
 $doneTmp  = Join-Path ([IO.Path]::GetTempPath()) "bake-$image.done"
+
+# --- Live build-log streaming -------------------------------------------------
+# run-build-task.ps1 pushes the WHOLE build.log to _status/<image>.live.log every minute.
+# Download it each poll and print only the lines we haven't printed yet, so the GH log
+# follows the bake in real time instead of showing a 200-line tail two hours later (and
+# nothing at all when a hang runs the job into its timeout and the VM is destroyed).
+$liveName    = "_status/$image.live.log"
+$liveTmp     = Join-Path ([IO.Path]::GetTempPath()) "bake-$image.live.log"
+$livePrinted = 0
+function Show-LiveLogDelta {
+    Remove-Item $liveTmp -Force -ErrorAction SilentlyContinue
+    # Freshness-gate exactly like the .done marker: a leftover live.log from a previous
+    # run would otherwise replay a stale build into this job's output.
+    $mod = az storage blob show --account-name $stAccount --container-name $stContainer --name $liveName --auth-mode login --query "properties.lastModified" -o tsv 2>$null
+    if (($LASTEXITCODE -ne 0) -or (-not $mod)) { return }
+    if (([datetimeoffset]("$mod".Trim())).UtcDateTime -le $kickoffUtc) { return }
+    az storage blob download --account-name $stAccount --container-name $stContainer --name $liveName --file $liveTmp --auth-mode login --only-show-errors 2>$null
+    if (-not (Test-Path $liveTmp)) { return }
+    $lines = @(Get-Content $liveTmp -ErrorAction SilentlyContinue)
+    if ($lines.Count -le $script:livePrinted) { return }
+    $lines[$script:livePrinted..($lines.Count - 1)] | ForEach-Object { Write-Host $_ }
+    $script:livePrinted = $lines.Count
+}
+
+# --- SolarWinds (papertrail) tail ---------------------------------------------
+# The bake guest ships to SolarWinds as $swoHost from the moment puppet's logging profile
+# starts nxlog (win_nxlog::service ensure => running). VERIFIED on the 20260811-164648
+# bake: it covers the final boot + sysprep window. Scoped by default to OUR OWN script
+# output (nxlog + the bootstrap/puppet/ronin sources) - the Windows event-log noise
+# (Microsoft-Windows-*, Service_Control_Manager, User32 ...) is deliberately dropped, but
+# the count of dropped lines IS reported so nothing disappears silently. Widen with
+# SWO_PROGRAM_FILTER if you ever need the OS chatter.
+# No token => the tail is skipped with a notice; it is a diagnostic, never a build gate.
+$swoToken   = $env:SOLARWINDS_API_TOKEN
+$swoHostTag = if ($env:SWO_BAKE_HOST) { $env:SWO_BAKE_HOST } else { 'nuc-bake' }
+$swoApi     = if ($env:SWO_API_BASE) { $env:SWO_API_BASE } else { 'https://api.na-01.cloud.solarwinds.com/v1/logs' }
+$swoFilter  = if ($env:SWO_PROGRAM_FILTER) { $env:SWO_PROGRAM_FILTER } else { '^(nxlog|BootStrap|bootstrap|puppet|ronin|maintainsystem|Ronin)' }
+# Message-level drop for nxlog's own guaranteed-useless chatter: it tails the
+# generic-worker logs, which NEVER exist on a bake VM, so it re-warns about each missing
+# file every few seconds (24 of the 29 nxlog lines on the 20260811-164648 bake). Set
+# SWO_MESSAGE_DROP='' to keep them.
+$swoMsgDrop = if ($null -ne $env:SWO_MESSAGE_DROP) { $env:SWO_MESSAGE_DROP } else { 'input file does not exist|has no input files to read' }
+$swoSince   = $kickoffUtc
+$swoSeen    = [System.Collections.Generic.HashSet[string]]::new()
+$swoDropped = 0
+$swoWarned  = $false
+if (-not $swoToken) {
+    Write-Host "  (SOLARWINDS_API_TOKEN not set - skipping the $swoHostTag log tail; add the repo secret + workflow env to enable it)"
+}
+function Show-SolarWindsDelta {
+    if (-not $swoToken) { return }
+    $now = (Get-Date).ToUniversalTime()
+    try {
+        $uri = ('{0}?filter={1}&startTime={2}&endTime={3}&pageSize=500' -f $swoApi, [uri]::EscapeDataString($swoHostTag),
+            $script:swoSince.ToString('yyyy-MM-ddTHH:mm:ssZ'), $now.ToString('yyyy-MM-ddTHH:mm:ssZ'))
+        $resp = Invoke-RestMethod -Uri $uri -Headers @{ Authorization = "Bearer $swoToken" } -TimeoutSec 30
+    }
+    catch {
+        # One warning per build, not one per minute: the tail is best-effort.
+        if (-not $script:swoWarned) { Write-Warning "SolarWinds log tail unavailable (continuing without it): $_"; $script:swoWarned = $true }
+        return
+    }
+    $entries = @($resp.logs)
+    if ($entries.Count -ge 500) { Write-Host "  [swo] page limit hit - some entries in this interval were not fetched" }
+    foreach ($e in $entries) {
+        if (-not $script:swoSeen.Add([string]$e.id)) { continue }
+        if ("$($e.program)" -notmatch $swoFilter) { $script:swoDropped++; continue }
+        if ($swoMsgDrop -and ("$($e.message)" -match $swoMsgDrop)) { $script:swoDropped++; continue }
+        Write-Host ("  [swo] {0} {1}: {2}" -f $e.time, $e.program, $e.message)
+    }
+    $script:swoSince = $now
+}
 for ($elapsed = 0; $elapsed -lt ($maxMinutes * 60); $elapsed += $intervalSec) {
     Start-Sleep -Seconds $intervalSec
     # Refresh the Azure token before it can expire (azure/login's lasts ~1h; bake ~2h).
@@ -163,15 +235,28 @@ for ($elapsed = 0; $elapsed -lt ($maxMinutes * 60); $elapsed += $intervalSec) {
         Invoke-AzRelogin   # most likely the token lapsed between refreshes; re-auth now
     }
     Write-Host ("... building ({0} min elapsed)" -f [int]($elapsed / 60))
+    Show-LiveLogDelta
+    Show-SolarWindsDelta
 }
 
-# --- Fetch the log tail for visibility (also from blob) -----------------------
-Write-Host "== Build log (tail) =="
+# --- Closing output -----------------------------------------------------------
 Invoke-AzRelogin   # the build may have outlived the last refresh; ensure auth for the log pull
-$logTmp = Join-Path ([IO.Path]::GetTempPath()) "bake-$image.log"
-Remove-Item $logTmp -Force -ErrorAction SilentlyContinue
-az storage blob download --account-name $stAccount --container-name $stContainer --name "_status/$image.log" --file $logTmp --auth-mode login --only-show-errors 2>$null
-if (Test-Path $logTmp) { Get-Content $logTmp | ForEach-Object { Write-Host $_ } }
+# Final delta first: run-build-task pushes the complete log just before the .done marker,
+# so this picks up everything the last streaming cycle missed - including the failure.
+Show-LiveLogDelta
+Show-SolarWindsDelta
+if ($swoDropped) { Write-Host "  [swo] $swoDropped OS event-log lines filtered out (set SWO_PROGRAM_FILTER to widen)" }
+# The 200-line tail is now a FALLBACK: if live streaming worked there is no point
+# reprinting lines already above, but if it produced nothing (blob unreachable, old build
+# VM image without the uploader) the tail is still the only visibility there is.
+if ($livePrinted -eq 0) {
+    Write-Host "== Build log (tail) =="
+    $logTmp = Join-Path ([IO.Path]::GetTempPath()) "bake-$image.log"
+    Remove-Item $logTmp -Force -ErrorAction SilentlyContinue
+    az storage blob download --account-name $stAccount --container-name $stContainer --name "_status/$image.log" --file $logTmp --auth-mode login --only-show-errors 2>$null
+    if (Test-Path $logTmp) { Get-Content $logTmp | ForEach-Object { Write-Host $_ } }
+}
+else { Write-Host "== Build log streamed live above ($livePrinted lines) ==" }
 
 if ($null -eq $rc) { throw "Build did not finish within $maxMinutes minutes (timed out; VM will be torn down)." }
 if ($rc -ne 0) { throw "Build FAILED (exit $rc). See log above." }
