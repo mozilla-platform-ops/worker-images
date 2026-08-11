@@ -38,7 +38,7 @@ on:
           - firefox
           - firefox-and-custom-car
       repeat:
-        description: "Runs of each selected task (1-20)"
+        description: "Runs of each selected task (1-100; past ~10 raise timeout_hours to match)"
         type: string
         default: "5"
       timeout_hours:
