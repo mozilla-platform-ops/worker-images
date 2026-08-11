@@ -388,8 +388,19 @@ def fetch_perfherder(queue, task_id: str) -> dict | None:
     return response if isinstance(response, dict) else None
 
 
+def task_worker(task: dict) -> str:
+    """The node that produced the result: the last run's worker, since a retry
+    can land somewhere else and it is the last run's artifact we read."""
+    task_runs = task["status"].get("runs") or []
+    return (task_runs[-1].get("workerId") if task_runs else None) or "unknown"
+
+
 def collect_scores(queue, runs: list[dict]) -> None:
     """Attach each pool's suite scores, keyed by suite name.
+
+    Each sample keeps the node that produced it. On a staging pool that is the
+    question behind the numbers: a pool mean hides one bad NUC, and one bad NUC
+    is the thing a WIM or ronin change is most likely to have produced.
 
     Never fatal: a missing or unreadable score does not change whether the tests
     themselves passed.
@@ -399,7 +410,8 @@ def collect_scores(queue, runs: list[dict]) -> None:
         for task in replicated_tasks(run.get("tasks") or [], run.get("task_group_id")):
             if task["status"]["state"] != "completed":
                 continue
-            data = fetch_perfherder(queue, task["status"]["taskId"])
+            task_id = task["status"]["taskId"]
+            data = fetch_perfherder(queue, task_id)
             if not data:
                 continue
             for suite in data.get("suites") or []:
@@ -412,16 +424,44 @@ def collect_scores(queue, runs: list[dict]) -> None:
                     {
                         "unit": suite.get("unit", ""),
                         "lower_is_better": bool(suite.get("lowerIsBetter")),
-                        "values": [],
-                        "replicates": [],
+                        "samples": [],
                     },
                 )
-                entry["values"].append(float(value))
-                entry["replicates"].extend(
-                    float(r) for r in (suite.get("replicates") or [])
+                entry["samples"].append(
+                    {
+                        "worker": task_worker(task),
+                        "value": float(value),
+                        "task_id": task_id,
+                        "replicates": [
+                            float(r) for r in (suite.get("replicates") or [])
+                        ],
+                    }
                 )
         if scores:
             run["scores"] = scores
+
+
+def sample_values(samples: list[dict]) -> list[float]:
+    return [sample["value"] for sample in samples]
+
+
+def by_worker(samples: list[dict]) -> dict[str, list[dict]]:
+    grouped: dict[str, list[dict]] = {}
+    for sample in samples:
+        grouped.setdefault(sample["worker"], []).append(sample)
+    return dict(sorted(grouped.items()))
+
+
+def silent_nodes(run: dict, samples: list[dict]) -> list[str]:
+    """pools.yml nodes that produced no score.
+
+    Taskcluster hands each task to whichever node is free, so an idle node is
+    usually just an uneven split -- but a node that never claims anything across
+    a whole run is worth seeing, and a per-worker table cannot show a row that
+    does not exist.
+    """
+    ran = {sample["worker"] for sample in samples}
+    return [node for node in run.get("nodes") or [] if node not in ran]
 
 
 def summarize(values: list[float]) -> dict:
@@ -439,10 +479,36 @@ def summarize(values: list[float]) -> dict:
     return summary
 
 
+# A node this far from its peers is worth looking at rather than averaging away.
+# Speedometer3 run-to-run noise on a healthy NUC is ~1-2%, so 5% is well clear of
+# it without flagging every pool with an uneven split.
+WORKER_OUTLIER_PERCENT = 5.0
+
+
+def peer_baseline(worker_means: list[float]) -> float:
+    """What a node should be compared against: the median of the per-node means.
+
+    Not the pool mean. One slow node drags the pool mean down far enough that
+    every healthy node then reads as fast, which flags the whole pool and points
+    at nothing. A median of node means is unmoved by a single bad node, so the
+    node that is actually different is the one that stands out.
+    """
+    return statistics.median(worker_means) if worker_means else 0.0
+
+
+def percent_delta(value: float, baseline: float) -> float:
+    return 100 * (value - baseline) / baseline if baseline else 0.0
+
+
+def is_outlier(delta: float) -> bool:
+    return abs(delta) >= WORKER_OUTLIER_PERCENT
+
+
 def print_scores(runs: list[dict]) -> None:
     for run in runs:
         for name, entry in sorted((run.get("scores") or {}).items()):
-            stats = summarize(entry["values"])
+            samples = entry["samples"]
+            stats = summarize(sample_values(samples))
             direction = (
                 "lower is better" if entry["lower_is_better"] else "higher is better"
             )
@@ -453,6 +519,22 @@ def print_scores(runs: list[dict]) -> None:
                 f"({stats['cv']:.1f}% CV over {stats['n']} run(s), "
                 f"{entry['unit']}, {direction})"
             )
+            grouped = by_worker(samples)
+            per_worker = {
+                worker: summarize(sample_values(worker_samples))
+                for worker, worker_samples in grouped.items()
+            }
+            baseline = peer_baseline([s["mean"] for s in per_worker.values()])
+            for worker, worker_stats in per_worker.items():
+                delta = percent_delta(worker_stats["mean"], baseline)
+                flag = " OUTLIER" if is_outlier(delta) else ""
+                notice(
+                    f"  {worker}: mean {worker_stats['mean']:.2f} "
+                    f"({delta:+.1f}% vs peers, {worker_stats['cv']:.1f}% CV over "
+                    f"{worker_stats['n']} run(s)){flag}"
+                )
+            for node in silent_nodes(run, samples):
+                notice(f"  {node}: no result")
 
 
 def score_summary_lines(runs: list[dict]) -> list[str]:
@@ -467,7 +549,7 @@ def score_summary_lines(runs: list[dict]) -> list[str]:
     ]
     for run in runs:
         for name, entry in sorted((run.get("scores") or {}).items()):
-            s = summarize(entry["values"])
+            s = summarize(sample_values(entry["samples"]))
             arrow = "↓" if entry["lower_is_better"] else "↑"
             lines.append(
                 f"| {run['pool']} | {name} {arrow} | {s['n']} | {s['mean']:.2f} | "
@@ -476,22 +558,73 @@ def score_summary_lines(runs: list[dict]) -> list[str]:
             )
     lines.append("")
 
+    lines += worker_summary_lines(runs)
+
     for run in runs:
         for name, entry in sorted((run.get("scores") or {}).items()):
-            per_run = ", ".join(f"{v:.2f}" for v in entry["values"])
+            samples = entry["samples"]
+            per_run = ", ".join(f"{s['value']:.2f} ({s['worker']})" for s in samples)
             lines.append(f"- **{run['pool']} {name}** per run: {per_run}")
-            if entry["replicates"]:
-                inner = summarize(entry["replicates"])
+            replicates = [r for s in samples for r in s["replicates"]]
+            if replicates:
+                inner = summarize(replicates)
                 lines.append(
                     f"  - {inner['n']} in-task replicates, "
                     f"mean {inner['mean']:.2f}, {inner['cv']:.1f}% CV"
                 )
     lines.append("")
     lines.append(
-        "`↑` higher is better. CV is stdev/mean: the run-to-run noise floor of "
-        "this pool, which is what a regression has to beat to be real."
+        "`↑` higher is better. CV is stdev/mean: the run-to-run noise floor, "
+        "which is what a regression has to beat to be real. Δ is a node against "
+        "the median of its pool's nodes -- not the pool mean, which one bad node "
+        "drags far enough to flag the healthy ones -- and is marked past "
+        f"{WORKER_OUTLIER_PERCENT:.0f}%. A row of one run is noise, not a verdict."
     )
     lines.append("")
+    return lines
+
+
+def worker_summary_lines(runs: list[dict]) -> list[str]:
+    """Per-node breakdown. A pool mean of three NUCs hides the one that is slow,
+    which on staging hardware is usually the thing being looked for."""
+    lines = [
+        "#### By worker",
+        "",
+        "| Pool | Worker | Suite | Runs | Mean | Median | Min | Max | CV | Δ vs peers |",
+        "|---|---|---|:---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    flagged = []
+    for run in runs:
+        for name, entry in sorted((run.get("scores") or {}).items()):
+            samples = entry["samples"]
+            per_worker = {
+                worker: summarize(sample_values(worker_samples))
+                for worker, worker_samples in by_worker(samples).items()
+            }
+            baseline = peer_baseline([s["mean"] for s in per_worker.values()])
+            for worker, s in per_worker.items():
+                delta = percent_delta(s["mean"], baseline)
+                mark = " ⚠️" if is_outlier(delta) else ""
+                if is_outlier(delta):
+                    flagged.append((run["pool"], worker, name, delta, s["n"]))
+                lines.append(
+                    f"| {run['pool']} | `{worker}`{mark} | {name} | {s['n']} | "
+                    f"{s['mean']:.2f} | {s['median']:.2f} | {s['min']:.2f} | "
+                    f"{s['max']:.2f} | {s['cv']:.1f}% | {delta:+.1f}% |"
+                )
+            for node in silent_nodes(run, samples):
+                lines.append(
+                    f"| {run['pool']} | `{node}` | {name} | 0 | - | - | - | - | - | - |"
+                )
+    lines.append("")
+
+    for pool, worker, suite, delta, count in flagged:
+        lines.append(
+            f"- ⚠️ **{worker}** ({pool}) is {delta:+.1f}% off its peers on "
+            f"{suite} over {count} run(s)"
+        )
+    if flagged:
+        lines.append("")
     return lines
 
 
@@ -539,8 +672,8 @@ def write_github_summary(runs: list[dict], root_url: str, selection: str = "") -
         lines += [
             f"### {run['pool']}",
             "",
-            "| Status | Task | State | Duration |",
-            "|:---:|---|---|---|",
+            "| Status | Task | Worker | State | Duration |",
+            "|:---:|---|---|---|---|",
         ]
         for task in tasks:
             status = task["status"]
@@ -557,7 +690,8 @@ def write_github_summary(runs: list[dict], root_url: str, selection: str = "") -
                     duration = format_duration(int((b - a).total_seconds()))
             lines.append(
                 f"| {result_emoji(status['state'])} | "
-                f"[{name}]({root_url}/tasks/{task_id}) | {status['state']} | {duration} |"
+                f"[{name}]({root_url}/tasks/{task_id}) | `{task_worker(task)}` | "
+                f"{status['state']} | {duration} |"
             )
         lines.append("")
 
@@ -709,6 +843,9 @@ def main() -> int:
                 "pool": pool.name,
                 "identity": pool.identity,
                 "decision_task_id": decision_task_id,
+                # For the by-worker breakdown: a node that claimed nothing all
+                # run has no task to be found from.
+                "nodes": list(pool.nodes),
             }
         )
 
