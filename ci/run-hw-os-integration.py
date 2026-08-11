@@ -295,14 +295,29 @@ def replicated_tasks(tasks: list[dict], decision_task_id: str) -> list[dict]:
     return [t for t in tasks if t["status"]["taskId"] != decision_task_id]
 
 
-def tally(tasks: list[dict], decision_task_id: str) -> dict:
-    states = [t["status"]["state"] for t in replicated_tasks(tasks, decision_task_id)]
+# A dependency in one of these can still be satisfied. Anything else means a
+# task waiting on it will never be scheduled.
+DEPENDENCY_DEAD_STATES = ("failed", "exception")
+
+
+def tally(tasks: list[dict], decision_task_id: str, blocked: set | None = None) -> dict:
+    blocked = blocked or set()
+    entries = replicated_tasks(tasks, decision_task_id)
+    states = [t["status"]["state"] for t in entries]
     return {
         "total": len(states),
         "completed": sum(1 for s in states if s == "completed"),
         "failed": sum(1 for s in states if s == "failed"),
         "exception": sum(1 for s in states if s == "exception"),
-        "pending": sum(1 for s in states if s in PENDING_STATES),
+        # Blocked tasks are pending as far as Taskcluster is concerned, but
+        # waiting on them is waiting on nothing.
+        "pending": sum(
+            1
+            for t in entries
+            if t["status"]["state"] in PENDING_STATES
+            and t["status"]["taskId"] not in blocked
+        ),
+        "blocked": sum(1 for t in entries if t["status"]["taskId"] in blocked),
         "decision": next(
             (
                 t["status"]["state"]
@@ -312,6 +327,45 @@ def tally(tasks: list[dict], decision_task_id: str) -> dict:
             None,
         ),
     }
+
+
+def find_blocked(queue, tasks: list[dict], known: dict) -> dict:
+    """Task ids that can never be scheduled, mapped to the upstream that killed
+    them.
+
+    A replicated task keeps mozilla-central's concrete dependency ids. The
+    decision refuses to create one whose upstream has already failed, but an
+    upstream that was still running then can fail afterwards, and the task is
+    then `unscheduled` until its deadline -- a day, against a timeout of hours.
+    Without this, a run whose every real result is already in still waits out its
+    full timeout and then reports one.
+    """
+    for task in tasks:
+        task_id = task["status"]["taskId"]
+        if task_id in known or task["status"]["state"] != "unscheduled":
+            continue
+
+        dep_ids = task.get("task", {}).get("dependencies") or []
+        dead = {}
+        for dep_id in dep_ids:
+            if dep_id == task_id:
+                continue
+            try:
+                state = queue.status(dep_id)["status"]["state"]
+            except taskcluster.exceptions.TaskclusterRestFailure:
+                continue
+            if state in DEPENDENCY_DEAD_STATES:
+                dead[dep_id] = state
+
+        if dead:
+            known[task_id] = dead
+            name = task.get("task", {}).get("metadata", {}).get("name", task_id)
+            detail = ", ".join(f"{d} {s}" for d, s in sorted(dead.items()))
+            warn(
+                f"  {name} can never be scheduled: upstream {detail}. Not waiting "
+                "for it."
+            )
+    return known
 
 
 def monitor(queue, runs: list[dict], timeout: int, root_url: str) -> None:
@@ -332,7 +386,14 @@ def monitor(queue, runs: list[dict], timeout: int, root_url: str) -> None:
                 continue
 
             run["tasks"] = response.get("tasks", [])
-            run["counts"] = tally(run["tasks"], run["task_group_id"])
+            run["blocked"] = find_blocked(
+                queue,
+                replicated_tasks(run["tasks"], run["task_group_id"]),
+                run.get("blocked") or {},
+            )
+            run["counts"] = tally(
+                run["tasks"], run["task_group_id"], set(run["blocked"])
+            )
             decision_running = run["counts"]["decision"] in PENDING_STATES
             if run["counts"]["pending"] == 0 and not decision_running:
                 run["done"] = True
@@ -345,10 +406,11 @@ def monitor(queue, runs: list[dict], timeout: int, root_url: str) -> None:
             for run in runs:
                 c = run.get("counts")
                 if c:
+                    blocked = f", {c['blocked']} blocked" if c.get("blocked") else ""
                     notice(
                         f"  ({elapsed}) {run['pool']}: {c['completed']}/{c['total']} "
                         f"completed, {c['failed']} failed, {c['exception']} exception, "
-                        f"{c['pending']} pending/running"
+                        f"{c['pending']} pending/running{blocked}"
                     )
             last_log = now
 
@@ -639,8 +701,9 @@ def write_github_summary(runs: list[dict], root_url: str, selection: str = "") -
     lines += score_summary_lines(runs)
 
     lines += [
-        "| Pool | Image | Branch | Revision | Result | Passed | Failed | Exception | Pending |",
-        "|---|---|---|---|:---:|:---:|:---:|:---:|:---:|",
+        "| Pool | Image | Branch | Revision | Result | Passed | Failed | "
+        "Exception | Blocked | Pending |",
+        "|---|---|---|---|:---:|:---:|:---:|:---:|:---:|:---:|",
     ]
     for run in runs:
         ident = run["identity"]
@@ -648,7 +711,7 @@ def write_github_summary(runs: list[dict], root_url: str, selection: str = "") -
         verdict = run.get("verdict", "not started")
         lines.append(
             "| [{pool}]({url}) | `{image}` | `{branch}` | `{rev}` | {verdict} | "
-            "{ok} | {failed} | {exc} | {pending} |".format(
+            "{ok} | {failed} | {exc} | {blocked} | {pending} |".format(
                 pool=run["pool"],
                 url=f"{root_url}/tasks/groups/{run['task_group_id']}"
                 if run.get("task_group_id")
@@ -660,6 +723,7 @@ def write_github_summary(runs: list[dict], root_url: str, selection: str = "") -
                 ok=c.get("completed", "-"),
                 failed=c.get("failed", "-"),
                 exc=c.get("exception", "-"),
+                blocked=c.get("blocked", "-"),
                 pending=c.get("pending", "-"),
             )
         )
@@ -903,6 +967,19 @@ def main() -> int:
             failed_overall = True
         elif counts["failed"] or counts["exception"]:
             run["verdict"] = "❌ failed"
+            failed_overall = True
+        elif counts.get("blocked"):
+            # Nothing to do with this image: an upstream mozilla-central task
+            # failed, so a copy of a test that depends on it could never run.
+            # Reported rather than passed, because the run did not test
+            # everything it set out to.
+            run["verdict"] = f"⚠️ {counts['blocked']} blocked upstream"
+            for task_id, dead in (run.get("blocked") or {}).items():
+                upstream = ", ".join(f"{d} {s}" for d, s in sorted(dead.items()))
+                warn(
+                    f"{run['pool']}: {root_url}/tasks/{task_id} never ran -- "
+                    f"upstream {upstream}"
+                )
             failed_overall = True
         else:
             run["verdict"] = "✅ passed"

@@ -115,6 +115,81 @@ class TestTally(RunnerTestBase):
         self.assertEqual(len(self.mod.replicated_tasks(tasks, GROUP)), 1)
 
 
+class TestBlockedTasks(RunnerTestBase):
+    """Run 31516844982 sat 3.5h past its last result waiting on a task whose
+    upstream had failed, then reported a timeout. The decision now refuses to
+    create such a task, but an upstream still running at decision time can fail
+    afterwards, so the monitor has to notice too."""
+
+    def _queue(self, dep_states):
+        class Queue:
+            def status(_self, task_id):
+                if task_id not in dep_states:
+                    raise FakeRestFailure("404")
+                return {"status": {"state": dep_states[task_id]}}
+
+        return Queue()
+
+    def _unscheduled(self, task_id, deps):
+        task = _task(task_id, "unscheduled")
+        task["task"]["dependencies"] = deps
+        return task
+
+    def test_task_waiting_on_a_failed_upstream_is_blocked(self):
+        tasks = [self._unscheduled("stuck", ["build", "toolchain"])]
+        blocked = self.mod.find_blocked(
+            self._queue({"build": "completed", "toolchain": "failed"}), tasks, {}
+        )
+        self.assertEqual(blocked, {"stuck": {"toolchain": "failed"}})
+
+    def test_task_waiting_on_a_running_upstream_is_not_blocked(self):
+        tasks = [self._unscheduled("waiting", ["build"])]
+        self.assertEqual(
+            self.mod.find_blocked(self._queue({"build": "running"}), tasks, {}), {}
+        )
+
+    def test_only_unscheduled_tasks_are_checked(self):
+        running = _task("busy", "running")
+        running["task"]["dependencies"] = ["toolchain"]
+        self.assertEqual(
+            self.mod.find_blocked(self._queue({"toolchain": "failed"}), [running], {}),
+            {},
+        )
+
+    def test_a_blocked_task_is_not_rechecked(self):
+        calls = []
+
+        class CountingQueue:
+            def status(_self, task_id):
+                calls.append(task_id)
+                return {"status": {"state": "failed"}}
+
+        tasks = [self._unscheduled("stuck", ["toolchain"])]
+        known = self.mod.find_blocked(CountingQueue(), tasks, {})
+        self.mod.find_blocked(CountingQueue(), tasks, known)
+        self.assertEqual(calls, ["toolchain"], "status should be asked once")
+
+    def test_blocked_tasks_stop_counting_as_pending(self):
+        tasks = [
+            _task(GROUP, "completed"),
+            _task("done" + "0" * 18, "completed"),
+            self._unscheduled("stuck", ["toolchain"]),
+        ]
+        counts = self.mod.tally(tasks, GROUP, {"stuck"})
+        self.assertEqual(counts["pending"], 0, "waiting on it is waiting on nothing")
+        self.assertEqual(counts["blocked"], 1)
+        self.assertEqual(counts["completed"], 1)
+        self.assertEqual(counts["total"], 2)
+
+    def test_without_the_block_it_would_be_pending_forever(self):
+        tasks = [_task(GROUP, "completed"), self._unscheduled("stuck", ["toolchain"])]
+        self.assertEqual(self.mod.tally(tasks, GROUP)["pending"], 1)
+
+    def test_dependency_states_that_can_still_resolve(self):
+        for state in ("unscheduled", "pending", "running", "completed"):
+            self.assertNotIn(state, self.mod.DEPENDENCY_DEAD_STATES, state)
+
+
 class TestScores(RunnerTestBase):
     """Reading the score out of the task, which is why this run needs no
     Treeherder route."""
