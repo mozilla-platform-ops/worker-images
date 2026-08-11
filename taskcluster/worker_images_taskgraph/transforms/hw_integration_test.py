@@ -7,10 +7,18 @@
 Not built on mozilla_taskgraph's replicate transform: that discards every
 releng-hardware task before consulting config, and bumping it would affect the
 cloud integration-test kind. Namespaced away from the cloud path throughout.
+
+A pool only ever receives the tasks of the production pool it stages, matched by
+worker type: `win11-64-24h2-hw-alpha` runs what `win11-64-24h2-hw` runs, and
+`win11-64-24h2-hw-ref-alpha` runs what `win11-64-24h2-hw-ref` runs. Those are
+different suites on different hardware models, so replicating both onto both
+would report failures that only mean the task was on the wrong machine.
 """
 
 import logging
 import os
+import re
+from collections import defaultdict
 from copy import deepcopy
 from pathlib import Path
 
@@ -29,6 +37,10 @@ transforms = TransformSequence()
 # treeherder routes, which a retargeted run must not write to.
 KEPT_ROUTES: list[str] = []
 
+# Matches `gecko-level-3` and friends, as mozilla_taskgraph's replicate does, so
+# cache names and the scopes that hold them are rewritten the same way.
+_LEVEL_RE = re.compile(r"[a-z]+-level-[1-3]")
+
 _CACHE_SCOPE_PREFIX = "generic-worker:cache:"
 _OS_GROUP_SCOPE_PREFIX = "generic-worker:os-group:"
 
@@ -44,41 +56,83 @@ def _repo_root(config) -> Path:
     return find_repo_root()
 
 
-def _fetch_source_tasks(index: str, provisioner: str, prefixes: tuple[str, ...]):
-    """Return hardware task definitions from a decision task's scheduled graph."""
+def _fetch_source_tasks(index: str, provisioner: str) -> dict[str, list]:
+    """Hardware task definitions from a decision task's graph, by worker type."""
     decision_task_id = find_task_id(index)
     task_graph = get_artifact(decision_task_id, "public/task-graph.json")
 
-    matched = []
+    by_worker_type = defaultdict(list)
     for label, task_def in sorted(task_graph.items()):
         task = task_def.get("task", {})
         if task.get("provisionerId") != provisioner:
             continue
-        worker_type = task.get("workerType", "")
-        if not any(worker_type.startswith(p) for p in prefixes):
-            continue
         task_def.setdefault("label", label)
-        matched.append(task_def)
+        by_worker_type[task["workerType"]].append(task_def)
 
     logger.info(
-        f"hw-integration: {len(matched)} hardware task(s) in {index} "
-        f"(decision {decision_task_id})"
+        f"hw-integration: {index} (decision {decision_task_id}) has "
+        f"{sum(len(v) for v in by_worker_type.values())} {provisioner} task(s) "
+        f"across {len(by_worker_type)} worker type(s)"
     )
-    if not matched:
-        logger.warning(
-            f"hw-integration: no {provisioner} tasks matching {prefixes} were "
-            f"scheduled by {index}; nothing to replicate"
-        )
-    return matched
+    return dict(by_worker_type)
 
 
-def _rewrite_scopes(task, old_pool: str, new_pool: str, cache_from: str, cache_to: str):
+def _sources_for_pool(pool, targets: list[str], provisioner: str, cache: dict):
+    """Tasks for the pool's counterpart, from the first target index that has any.
+
+    Ordered rather than merged: the os-integration index carries a curated set
+    sized for a small pool, and the push decision -- the only index that
+    schedules `-hw-ref` tasks -- carries a full tier-1 run's worth. Fetching is
+    lazy so selecting only `-hw` pools never downloads the larger graph.
+    """
+    seen_worker_types = set()
+
+    for index in targets:
+        if index not in cache:
+            cache[index] = _fetch_source_tasks(index, provisioner)
+        by_worker_type = cache[index]
+        seen_worker_types.update(by_worker_type)
+
+        if matched := by_worker_type.get(pool.source_worker_type):
+            logger.info(
+                f"hw-integration: {pool.name} <- {len(matched)} "
+                f"{provisioner}/{pool.source_worker_type} task(s) from {index}"
+            )
+            return matched, index
+
+    raise HwPoolError(
+        f"hw-integration: {pool.name} stages {provisioner}/"
+        f"{pool.source_worker_type}, and no such task is scheduled by any of "
+        f"{', '.join(targets)}. Worker types found there: "
+        f"{', '.join(sorted(seen_worker_types)) or 'none'}"
+    )
+
+
+def _log_runtime_budget(pool, source_tasks):
+    """Worst-case hardware time, so the decision log says what a run will cost
+    before the caller's timeout has to discover it."""
+    budget = sum(
+        source["task"].get("payload", {}).get("maxRunTime", 0)
+        for source in source_tasks
+    )
+    if not budget:
+        return
+    hours = budget / 3600
+    per_node = f", ~{hours / pool.node_count:.1f}h across {pool.node_count} node(s)"
+    logger.info(
+        f"hw-integration: {pool.name}: {len(source_tasks)} task(s), "
+        f"{hours:.1f}h of maxRunTime worst case"
+        f"{per_node if pool.node_count else ''}"
+    )
+
+
+def _rewrite_scopes(task, old_pool: str, new_pool: str, level_repl: str):
     """Keep holdable scopes, retarget pool-bound, drop the rest: an unholdable
     scope fails task creation, a dropped one only affects its own task."""
     kept, dropped = [], []
     for scope in task.get("scopes", []):
         if scope.startswith(_CACHE_SCOPE_PREFIX):
-            kept.append(scope.replace(cache_from, cache_to))
+            kept.append(_LEVEL_RE.sub(level_repl, scope))
         elif scope.startswith(_OS_GROUP_SCOPE_PREFIX):
             kept.append(scope.replace(old_pool, new_pool))
         else:
@@ -92,15 +146,15 @@ def _rewrite_scopes(task, old_pool: str, new_pool: str, cache_from: str, cache_t
     task["scopes"] = kept
 
 
-def _rewrite_caches(task, cache_from: str, cache_to: str):
+def _rewrite_caches(task, level_repl: str):
     payload = task.get("payload", {})
 
     if cache := payload.get("cache"):
-        payload["cache"] = {k.replace(cache_from, cache_to): v for k, v in cache.items()}
+        payload["cache"] = {_LEVEL_RE.sub(level_repl, k): v for k, v in cache.items()}
 
     for mount in payload.get("mounts", []):
         if "cacheName" in mount:
-            mount["cacheName"] = mount["cacheName"].replace(cache_from, cache_to)
+            mount["cacheName"] = _LEVEL_RE.sub(level_repl, mount["cacheName"])
 
 
 def _rewrite_datestamps(task):
@@ -138,15 +192,12 @@ def replicate_onto_hw_pools(config, tasks):
             raise HwPoolError(f"hw-integration: {exc}") from exc
 
         provisioner = replicate_config["provisioner"]
-        prefixes = tuple(replicate_config["worker-type-prefixes"])
-        source_tasks = _fetch_source_tasks(
-            replicate_config["target"], provisioner, prefixes
-        )
+        targets = list(replicate_config["targets"])
+        source_cache: dict[str, dict[str, list]] = {}
 
         trust_domain = config.graph_config["trust-domain"]
         level = config.params["level"]
         scheduler_id = f"{trust_domain}-level-{level}"
-        cache_to = f"{trust_domain}-level-{level}-"
 
         for pool in pools:
             logger.info(
@@ -160,24 +211,27 @@ def replicate_onto_hw_pools(config, tasks):
                     "node(s); the task graph will serialise across them"
                 )
 
+            source_tasks, source_index = _sources_for_pool(
+                pool, targets, provisioner, source_cache
+            )
+            _log_runtime_budget(pool, source_tasks)
+
             for source in source_tasks:
                 yield _build_task(
                     source,
                     task_name=task["name"],
                     pool=pool,
                     scheduler_id=scheduler_id,
-                    cache_to=cache_to,
+                    source_index=source_index,
                 )
 
 
-def _build_task(source, task_name, pool, scheduler_id, cache_to):
+def _build_task(source, task_name, pool, scheduler_id, source_index):
     task_def = deepcopy(source)
     task = task_def["task"]
 
     old_pool = f"{task['provisionerId']}/{task['workerType']}"
     new_pool = pool.task_queue_id
-    # Derived from the source scheduler so `-pip`/`-uv` suffixes survive.
-    cache_from = f"{source['task'].get('schedulerId', 'gecko-level-3')}-"
 
     task["workerType"] = pool.name
     task["schedulerId"] = scheduler_id
@@ -186,8 +240,8 @@ def _build_task(source, task_name, pool, scheduler_id, cache_to):
     task["routes"] = list(KEPT_ROUTES)
     task.get("extra", {}).pop("treeherder", None)
 
-    _rewrite_caches(task, cache_from, cache_to)
-    _rewrite_scopes(task, old_pool, new_pool, cache_from, cache_to)
+    _rewrite_caches(task, scheduler_id)
+    _rewrite_scopes(task, old_pool, new_pool, scheduler_id)
     _rewrite_datestamps(task)
 
     # `*_REV` is kept, unlike the cloud path: the resolved dependency task ids
@@ -207,6 +261,8 @@ def _build_task(source, task_name, pool, scheduler_id, cache_to):
             "hw_replicate": task_name,
             "hw_pool": pool.name,
             "hw_source_label": source.get("label", original_name),
+            "hw_source_worker_type": pool.source_worker_type,
+            "hw_source_index": source_index,
             "hw_pool_image": pool.image,
             "hw_pool_branch": pool.src_branch,
             "hw_pool_revision": pool.revision,

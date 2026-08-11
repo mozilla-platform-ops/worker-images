@@ -13,11 +13,17 @@ tasks:
   gecko-hw:
     description: "Run in-tree Firefox tests on MDC1 Windows hardware pools"
     hw-replicate:
-      # The push decision, not decision-os-integration: os-integration schedules
-      # no hardware tasks, a push schedules a few with dependencies resolved.
-      target: gecko.v2.mozilla-central.latest.taskgraph.decision
+      # Consulted in order; the first index scheduling tasks for a pool's
+      # production counterpart wins.
+      #
+      # os-integration is the curated set the cloud path also replicates from --
+      # ~11 win11-64-24h2-hw tasks, a few hours once a small pool serialises
+      # them. It schedules no `-hw-ref` tasks, so a `-hw-ref` pool falls through
+      # to the push decision, which is a full tier-1 run: ~15 `-hw-ref` tasks,
+      # but also ~200 `-hw` ones, which is why order matters.
+      targets:
+        - gecko.v2.mozilla-central.latest.taskgraph.decision-os-integration
+        - gecko.v2.mozilla-central.latest.taskgraph.decision
+      # Windows-only follows from matching each pool's own worker type; MDC1
+      # macOS shares this provisioner but never matches a win11 pool name.
       provisioner: releng-hardware
-      # Windows only; MDC1 macOS shares the releng-hardware provisioner.
-      worker-type-prefixes:
-        - win11-64-
-        - win11-a64-
