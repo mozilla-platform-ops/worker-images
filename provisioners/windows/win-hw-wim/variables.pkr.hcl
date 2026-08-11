@@ -118,3 +118,26 @@ variable "capture_name" {
   default     = "nuc-ci-baked"
   description = "DISM /Name metadata written into the captured image."
 }
+
+# --- Release notes / SBOM ------------------------------------------------------
+# Mirrors what azure.pkr.hcl does for the Azure gallery images: Set-ReleaseNotes (from
+# the BootStrap module) writes C:\<image_name>-<build_id>.md in the guest and Packer
+# downloads it. Kept as two variables rather than reusing capture_name because
+# Set-ReleaseNotes takes -Config and -Version separately and derives the filename itself.
+variable "image_name" {
+  type        = string
+  default     = ""
+  description = "Image/config id (e.g. win11-24h2-hw) - the -Config half of the release-notes filename."
+}
+
+variable "build_id" {
+  type        = string
+  default     = ""
+  description = "Build stamp (e.g. 20260811-164648) - the -Version half of the release-notes filename."
+}
+
+variable "sbom_path" {
+  type        = string
+  default     = ""
+  description = "Host path Packer downloads the guest's release-notes markdown to. Empty = skip generation (set per-image by the orchestrator)."
+}

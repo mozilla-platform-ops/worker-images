@@ -121,6 +121,47 @@ build {
     restart_timeout = "60m"
   }
 
+  # ---- 3b. Release notes / SBOM (same mechanism as the Azure gallery images) ----
+  # azure.pkr.hcl drops the BootStrap module into the guest's module path, calls
+  # Set-ReleaseNotes, and downloads the markdown it writes; the workflow then commits it
+  # to sboms/ on main via .github/workflows/upload-release-notes.yml. Same three steps
+  # here, so a baked WIM gets an inventory the same way a gallery image does.
+  # Runs AFTER puppet (so the catalog's software is installed) and BEFORE sysprep.
+  # NOTE the coverage difference vs a gallery image: the bake role excludes
+  # windows_worker_runner, so generic-worker/worker-runner are installed at DEPLOY time
+  # and cannot appear here. This inventories what the WIM actually ships.
+  provisioner "file" {
+    source      = "${path.root}/../../../scripts/windows/CustomFunctions/Bootstrap"
+    destination = "C:/Windows/System32/WindowsPowerShell/v1.0/Modules/"
+    max_retries = 3
+  }
+
+  provisioner "powershell" {
+    elevated_user     = var.winrm_username
+    elevated_password = var.winrm_password
+    environment_vars = [
+      "sbom_config=${var.image_name}",
+      "sbom_version=${var.build_id}",
+      "src_organisation=${var.ronin_org}",
+      "src_Repository=${var.ronin_repo}",
+      "src_Branch=${var.ronin_branch}",
+      # The gallery images pass a deploymentId here; the ronin commit is our equivalent -
+      # it is what pins the puppet content this image was baked from.
+      "deploymentId=${var.ronin_hash}",
+    ]
+    inline = [
+      "Import-Module BootStrap -Force;",
+      "Set-ReleaseNotes -Config $ENV:sbom_config -Version $ENV:sbom_version -Organization $ENV:src_organisation -Branch $ENV:src_Branch -Repository $ENV:src_Repository -DeploymentId $ENV:deploymentId"
+    ]
+  }
+
+  provisioner "file" {
+    source      = "C:/${var.image_name}-${var.build_id}.md"
+    destination = var.sbom_path
+    direction   = "download"
+    max_retries = 3
+  }
+
   # ---- 4. Scrub machine-specific state + Sysprep /generalize /shutdown ----
   #        (this powers the VM off; Packer then finalizes the artifact)
   provisioner "powershell" {

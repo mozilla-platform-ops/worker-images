@@ -192,6 +192,13 @@ $vmName    = "wim-bake-$Image"
 $buildDir  = Join-Path $work 'build'
 $goldenWim = Join-Path $work "$Image-$BuildId.wim"
 $capBlob   = "WIMs/$Image/$Image-$BuildId.wim"
+# Release notes / SBOM: Packer downloads the guest's markdown here (same filename the
+# Azure gallery images use, <config>-<version>.md, so it drops straight into sboms/).
+# Published twice: next to the WIM as provenance, and under _status/sbom/ where the GH
+# runner can find it by prefix without needing to know the build id.
+$sbomMd      = Join-Path $work "$Image-$BuildId.md"
+$sbomBlob    = "WIMs/$Image/$Image-$BuildId.md"
+$sbomRunBlob = "_status/sbom/$Image-$BuildId.md"
 # iso stage output — a captured OUTPUT artifact, so it mirrors the golden-WIM naming
 # (captured/ISOs/<image>/<image>-<buildid>.iso) instead of a fixed name in resources/.
 $goldenIso = Join-Path $work "$Image-$BuildId.iso"
@@ -352,6 +359,9 @@ output_directory = "$($buildDir -replace '\\','/')"
 temp_path        = "$($pkrTmp -replace '\\','/')"
 output_wim       = "$($goldenWim -replace '\\','/')"
 capture_name     = "$Image-$BuildId"
+image_name       = "$Image"
+build_id         = "$BuildId"
+sbom_path        = "$($sbomMd -replace '\\','/')"
 "@ | Set-Content -Path $varFile -Encoding utf8
 
     # --- Boot watchdog --------------------------------------------------------
@@ -482,6 +492,20 @@ if ($Stages -contains 'publish') {
     if (-not (Test-Path $goldenWim)) { throw "no captured WIM to publish at $goldenWim (run build first, or pass the matching -BuildId)." }
     & $ps 'upload-wim.ps1' @('-Wim', $goldenWim, '-Container', $capCont, '-Account', $account, '-BlobName', $capBlob)
     Write-Host "== Published $capCont/$capBlob =="
+
+    # Release notes / SBOM alongside the WIM. az (not azcopy) because this is a ~10 KB
+    # file with no .sha256 sidecar, and az is already logged in as the UAMI - same call
+    # shape run-build-task.ps1 uses for its _status blobs.
+    # Best-effort: a missing or unpublishable SBOM must not fail a build that produced a
+    # good WIM, but it IS reported loudly so it can't rot unnoticed.
+    if (Test-Path $sbomMd) {
+        foreach ($dest in @($sbomBlob, $sbomRunBlob)) {
+            az storage blob upload --account-name $account --container-name $capCont --name $dest --file $sbomMd --overwrite --auth-mode login --only-show-errors
+            if ($LASTEXITCODE -eq 0) { Write-Host "== Published $capCont/$dest ==" }
+            else { Write-Warning "release notes upload FAILED (rc=$LASTEXITCODE): $capCont/$dest" }
+        }
+    }
+    else { Write-Warning "no release notes at $sbomMd - the SBOM will be missing for this build" }
 }
 
 # --- Stage: iso (requirement-bypass Win11 ISO) --------------------------------
