@@ -276,15 +276,31 @@ def find_task_group(queue, decision_task_id: str, root_url: str) -> str | None:
     return None
 
 
-def tally(tasks: list[dict]) -> dict:
-    states = [t["status"]["state"] for t in tasks]
+PENDING_STATES = ("unscheduled", "pending", "running")
+
+
+def replicated_tasks(tasks: list[dict], decision_task_id: str) -> list[dict]:
+    """The group without its root task, which is the decision task itself and
+    not a test result. Counting it makes an empty graph look like a run of
+    one task and reports a decision failure as a test failure."""
+    return [t for t in tasks if t["status"]["taskId"] != decision_task_id]
+
+
+def tally(tasks: list[dict], decision_task_id: str) -> dict:
+    states = [t["status"]["state"] for t in replicated_tasks(tasks, decision_task_id)]
     return {
         "total": len(states),
         "completed": sum(1 for s in states if s == "completed"),
         "failed": sum(1 for s in states if s == "failed"),
         "exception": sum(1 for s in states if s == "exception"),
-        "pending": sum(
-            1 for s in states if s in ("pending", "running", "unscheduled")
+        "pending": sum(1 for s in states if s in PENDING_STATES),
+        "decision": next(
+            (
+                t["status"]["state"]
+                for t in tasks
+                if t["status"]["taskId"] == decision_task_id
+            ),
+            None,
         ),
     }
 
@@ -307,8 +323,9 @@ def monitor(queue, runs: list[dict], timeout: int, root_url: str) -> None:
                 continue
 
             run["tasks"] = response.get("tasks", [])
-            run["counts"] = tally(run["tasks"])
-            if run["counts"]["pending"] == 0:
+            run["counts"] = tally(run["tasks"], run["task_group_id"])
+            decision_running = run["counts"]["decision"] in PENDING_STATES
+            if run["counts"]["pending"] == 0 and not decision_running:
                 run["done"] = True
             else:
                 outstanding += 1
@@ -370,7 +387,8 @@ def write_github_summary(runs: list[dict], root_url: str) -> None:
     lines.append("")
 
     for run in runs:
-        if not run.get("tasks"):
+        tasks = replicated_tasks(run.get("tasks") or [], run.get("task_group_id"))
+        if not tasks:
             continue
         lines += [
             f"### {run['pool']}",
@@ -378,7 +396,7 @@ def write_github_summary(runs: list[dict], root_url: str) -> None:
             "| Status | Task | State | Duration |",
             "|:---:|---|---|---|",
         ]
-        for task in run["tasks"]:
+        for task in tasks:
             status = task["status"]
             task_id = status["taskId"]
             name = task.get("task", {}).get("metadata", {}).get("name", task_id)
@@ -548,6 +566,15 @@ def main() -> int:
             continue
         if run.get("timed_out"):
             run["verdict"] = "⏳ timed out"
+            failed_overall = True
+        elif counts and counts["decision"] in ("failed", "exception"):
+            # Distinct from an empty graph below: the decision never got as far
+            # as deciding, so its log is where the answer is.
+            run["verdict"] = "❌ decision failed"
+            error(
+                f"{run['pool']}: decision task {counts['decision']} -- "
+                f"{root_url}/tasks/{run['task_group_id']}"
+            )
             failed_overall = True
         elif not counts or counts["total"] == 0:
             # The cloud script calls this a pass; an empty graph means nothing
