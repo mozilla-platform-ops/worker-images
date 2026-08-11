@@ -382,13 +382,50 @@ sbom_path        = "$($sbomMd -replace '\\','/')"
     # dead) or one the watchdog never touched (VM was Running the whole time).
     $cloneVm = 'packer-nuc'   # hyperv builder default vm_name = packer-<source name 'nuc'>
     $pkrLog  = Join-Path $work 'packer-build.log'
-    $wdLog   = Join-Path $work 'boot-watchdog.log'
+    # Written into run-build-task's dir when it exists (C:\win-hw-wim-build) so that script's
+    # live uploader can stream it to blob and the GH job can tail it AS THE BUILD RUNS;
+    # falls back to the work dir for standalone/dev runs where that dir doesn't exist.
+    $wdDir  = 'C:\win-hw-wim-build'
+    $wdLog  = if (Test-Path $wdDir) { Join-Path $wdDir 'boot-watchdog.log' } else { Join-Path $work 'boot-watchdog.log' }
     Remove-Item $pkrLog, $wdLog -Force -ErrorAction SilentlyContinue
     $watchdog = Start-Job -Name 'wim-boot-watchdog' -ScriptBlock {
-        param($vm, $log, $wdLog)
+        param($vm, $log, $wdLog, $guestUser, $guestPass)
         function Write-Wd($msg) {
             "$([DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')) $msg" |
                 Add-Content -Path $wdLog -Encoding utf8 -ErrorAction SilentlyContinue
+        }
+
+        # --- Stall capture over PowerShell Direct ---------------------------------
+        # When Packer stops making progress there is normally NO way to see what the guest
+        # is doing: its network/WinRM are usually exactly what died (run 31428853582 sat 30
+        # min in "Waiting for machine to restart" and we never learned whether Windows was
+        # applying updates or was simply wedged). PowerShell Direct talks over the Hyper-V
+        # VMBus, so it needs neither network nor WinRM - it works precisely when the normal
+        # channels are gone. Dump the guest's recent event log plus a few boot/servicing
+        # signals into $wdLog, which is streamed to the GH job.
+        function Get-GuestSnapshot {
+            # PSAvoidUsingConvertToSecureStringWithPlainText is unavoidable here: PSCredential
+            # needs a SecureString and this is the build-scoped packer password, which is
+            # already plaintext in the generated pkrvars file (same pattern as OS-deploy.ps1).
+            # It never leaves the build VM and dies with it.
+            $cred = New-Object System.Management.Automation.PSCredential(
+                $guestUser, (ConvertTo-SecureString $guestPass -AsPlainText -Force))
+            Invoke-Command -VMName $vm -Credential $cred -ErrorAction Stop -ScriptBlock {
+                $os = Get-CimInstance Win32_OperatingSystem
+                "uptime: booted $($os.LastBootUpTime) (now $(Get-Date))"
+                $pending = @(
+                    'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending',
+                    'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired'
+                ) | Where-Object { Test-Path $_ }
+                if ($pending) { "reboot pending: $($pending -join ', ')" } else { 'reboot pending: no' }
+                'recent events:'
+                Get-WinEvent -MaxEvents 25 -ErrorAction SilentlyContinue -FilterHashtable @{
+                    LogName = 'System', 'Application'; StartTime = (Get-Date).AddMinutes(-20)
+                } | Sort-Object TimeCreated | ForEach-Object {
+                    '  {0:HH:mm:ss} {1,-11} {2}: {3}' -f $_.TimeCreated, $_.LevelDisplayName, $_.ProviderName,
+                    (($_.Message -split "`r?`n") | Select-Object -First 1)
+                }
+            }
         }
         # PHASE 1 - stay HANDS-OFF until Packer has cloned+configured the VM and started it
         # once. StepCloneVM sets the CPU count + secure boot on the freshly-cloned (Off) VM;
@@ -411,6 +448,14 @@ sbom_path        = "$($sbomMd -replace '\\','/')"
         # power-off until the sysprep provisioner announces its intended /shutdown.
         Write-Wd 'phase 2: restarting the VM on any guest-initiated power-off'
         $lastState = ''
+        # Stall = Packer's log has not grown for this long. 10 min is well clear of the
+        # normal quiet stretches (a WU pass or an AppX sweep logs nothing for minutes) while
+        # still firing four times inside a 60m restart_timeout.
+        $stallSec     = 600
+        $maxSnapshots = 6      # bounded so a truly dead build can't fill the log
+        $lastSize     = -1
+        $lastGrowth   = [DateTime]::UtcNow
+        $snapshots    = 0
         while ($true) {
             if ((Test-Path $log) -and (Select-String -Path $log -Pattern 'WIM-WATCHDOG-STOP' -SimpleMatch -Quiet)) {
                 Write-Wd 'sysprep marker seen; hands off from here (the /shutdown is expected)'
@@ -423,9 +468,30 @@ sbom_path        = "$($sbomMd -replace '\\','/')"
                 Write-Wd 'VM is Off; issuing Start-VM'
                 Start-VM -Name $vm -ErrorAction SilentlyContinue
             }
+
+            $size = if (Test-Path $log) { (Get-Item $log -ErrorAction SilentlyContinue).Length } else { 0 }
+            if ($size -ne $lastSize) { $lastSize = $size; $lastGrowth = [DateTime]::UtcNow }
+            elseif ((([DateTime]::UtcNow - $lastGrowth).TotalSeconds -ge $stallSec) -and $v -and $v.State -eq 'Running') {
+                $lastGrowth = [DateTime]::UtcNow   # re-arm regardless of the outcome below
+                if ($snapshots -ge $maxSnapshots) {
+                    Write-Wd "stalled again; snapshot cap ($maxSnapshots) reached, not capturing further"
+                }
+                else {
+                    $snapshots++
+                    # ${...} around the trailing var: "$maxSnapshots:" parses the ':' as a
+                    # scope/drive separator and fails at parse time.
+                    Write-Wd "no Packer output for $([int]($stallSec / 60)) min and the VM is Running - PowerShell Direct snapshot $snapshots/${maxSnapshots}:"
+                    try { Get-GuestSnapshot | ForEach-Object { Write-Wd "  $_" } }
+                    catch {
+                        # Itself diagnostic: 'credential invalid' means the guest is mid-boot
+                        # or the account is gone, not that PS Direct is broken.
+                        Write-Wd "  PowerShell Direct snapshot failed: $($_.Exception.Message)"
+                    }
+                }
+            }
             Start-Sleep -Seconds 6
         }
-    } -ArgumentList $cloneVm, $pkrLog, $wdLog
+    } -ArgumentList $cloneVm, $pkrLog, $wdLog, 'packer', $WinRMPassword
 
     Push-Location $Root
     try {
@@ -462,7 +528,9 @@ sbom_path        = "$($sbomMd -replace '\\','/')"
             if (-not $cloneFlake -or $try -eq $maxTries) {
                 if (Test-Path $wdLog) {
                     Write-Host "`n-- boot watchdog log ($wdLog) --"
-                    Get-Content $wdLog -Tail 40
+                    # 200, not 40: a single PowerShell Direct stall capture is ~30 lines and
+                    # truncating it would defeat the point of taking it.
+                    Get-Content $wdLog -Tail 200
                     Write-Host "-- end boot watchdog log --`n"
                 }
                 throw "packer build rc=$LASTEXITCODE"

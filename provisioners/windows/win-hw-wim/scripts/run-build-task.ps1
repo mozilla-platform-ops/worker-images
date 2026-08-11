@@ -41,8 +41,13 @@ $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [En
 # (ci/kickoff-win-hw-wim-build.ps1). Best-effort throughout: a failed upload must never
 # affect the build, so every error here is swallowed and retried next cycle.
 $liveBlob = "_status/$Image.live.log"
+# The boot watchdog (New-WinHwWim) writes here, including its PowerShell Direct capture of
+# the GUEST's event log when a step stalls. Streamed as its own blob so the GH job can see
+# what the guest was doing WHILE a hang is happening, rather than after Packer gives up.
+$wdLocal  = Join-Path $base 'boot-watchdog.log'
+$wdBlob   = "_status/$Image.watchdog.log"
 $liveJob = Start-Job -Name 'wim-live-log' -ScriptBlock {
-    param($log, $account, $container, $blob, $clientId, $pathEnv)
+    param($log, $account, $container, $blob, $clientId, $pathEnv, $wdLocal, $wdBlob)
     $env:Path = $pathEnv
     # Tee-Object holds build.log open for writing, so read it with FileShare::ReadWrite
     # and upload a snapshot - a plain Copy-Item/az on the live file hits a sharing violation.
@@ -61,6 +66,16 @@ $liveJob = Start-Job -Name 'wim-live-log' -ScriptBlock {
             az account show 1>$null 2>$null
             if (($LASTEXITCODE -ne 0) -and $clientId) { az login --identity --client-id $clientId 1>$null 2>$null }
             az storage blob upload --account-name $account --container-name $container --name $blob --file $snap --overwrite --auth-mode login --only-show-errors 2>$null
+            if (Test-Path $wdLocal) {
+                $wdSnap = "$wdLocal.live"
+                $win = [IO.File]::Open($wdLocal, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
+                try {
+                    $wout = [IO.File]::Create($wdSnap)
+                    try { $win.CopyTo($wout) } finally { $wout.Dispose() }
+                }
+                finally { $win.Dispose() }
+                az storage blob upload --account-name $account --container-name $container --name $wdBlob --file $wdSnap --overwrite --auth-mode login --only-show-errors 2>$null
+            }
         }
         catch {
             # Never let a streaming hiccup touch the build: log it into the snapshot's
@@ -70,7 +85,7 @@ $liveJob = Start-Job -Name 'wim-live-log' -ScriptBlock {
             Start-Sleep -Seconds 30
         }
     }
-} -ArgumentList $log, $StatusAccount, $StatusContainer, $liveBlob, $IdentityClientId, $env:Path
+} -ArgumentList $log, $StatusAccount, $StatusContainer, $liveBlob, $IdentityClientId, $env:Path, $wdLocal, $wdBlob
 
 $nuc  = 'C:\worker-images\provisioners\windows\win-hw-wim\bin\WinHwWim\New-WinHwWim.ps1'
 $rc = 0
@@ -109,6 +124,9 @@ try {
     # behind, and the interesting part of a failure is always the last few lines. Uploaded
     # before .done so the runner's closing delta is complete the moment it sees the marker.
     az storage blob upload --account-name $StatusAccount --container-name $StatusContainer --name $liveBlob --file $log --overwrite --auth-mode login --only-show-errors 2>$null
+    if (Test-Path $wdLocal) {
+        az storage blob upload --account-name $StatusAccount --container-name $StatusContainer --name $wdBlob --file $wdLocal --overwrite --auth-mode login --only-show-errors 2>$null
+    }
     # A tail of the build log for visibility (uploaded first, so it's present when 'done' appears).
     $statusLog = Join-Path $base 'status.log'
     Get-Content $log -Tail 200 -ErrorAction SilentlyContinue | Set-Content -Path $statusLog -Encoding utf8
