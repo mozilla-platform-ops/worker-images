@@ -19,9 +19,13 @@ PROVISIONER_ID = "releng-hardware"
 
 POOLS_YAML_RELPATH = Path("provisioners/windows/MDC1Windows/pools.yml")
 
-# Production pools are the ones mozilla-central addresses directly, via its
-# `win11-64-24h2(-hw|-hw-ref)` alias. Derived so a new one is refused on sight.
-_PRODUCTION_RE = re.compile(r"^win11-(?:64|a64)-[0-9a-z]+-hw(?:-ref)?$")
+# A staging pool is named after the production pool it stages: everything up to
+# and including `-hw` / `-hw-ref` is the worker type mozilla-central schedules
+# to, and any remaining suffix is ours. Parsed rather than enumerated, so a pool
+# added to pools.yml tomorrow is classified without a code change.
+_POOL_NAME_RE = re.compile(
+    r"^(?P<counterpart>win11-(?:64|a64)-[0-9a-z]+-hw(?:-ref)?)(?:-(?P<variant>.+))?$"
+)
 
 LOW_CAPACITY_THRESHOLD = 4
 
@@ -51,8 +55,22 @@ class HwPool:
         return f"{PROVISIONER_ID}/{self.name}"
 
     @property
+    def source_worker_type(self) -> str | None:
+        """The mozilla-central worker type whose tasks belong on this pool.
+
+        ``win11-64-24h2-hw-alpha`` stages ``win11-64-24h2-hw``, and
+        ``win11-64-24h2-hw-ref-alpha`` stages ``win11-64-24h2-hw-ref``. The two
+        run different suites on different hardware, so a run must not cross
+        them. ``None`` if the pool name does not follow the convention.
+        """
+        match = _POOL_NAME_RE.match(self.name)
+        return match["counterpart"] if match else None
+
+    @property
     def is_production(self) -> bool:
-        return bool(_PRODUCTION_RE.match(self.name))
+        """A pool that *is* its counterpart, rather than staging for it."""
+        match = _POOL_NAME_RE.match(self.name)
+        return bool(match) and not match["variant"]
 
     @property
     def node_count(self) -> int:
@@ -117,6 +135,18 @@ class HwPoolRegistry:
                 "refusing to target production hardware pool(s): {}. "
                 "These pools run production Firefox CI.".format(
                     ", ".join(sorted(production))
+                )
+            )
+
+        # Without a counterpart there is no way to know which of mozilla-central's
+        # hardware tasks belong on the pool, and guessing would run the wrong
+        # suites on the wrong hardware.
+        unaddressable = [n for n in requested if not self[n].source_worker_type]
+        if unaddressable:
+            raise HwPoolError(
+                "cannot tell which mozilla-central tasks belong on {}: pool "
+                "name does not follow win11-<64|a64>-<os>-hw[-ref][-<variant>]".format(
+                    ", ".join(sorted(unaddressable))
                 )
             )
 

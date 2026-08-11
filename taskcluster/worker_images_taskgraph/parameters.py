@@ -27,9 +27,17 @@ extend_parameters_schema(
 )
 
 
-def get_decision_parameters(graph_config, parameters):
-    if images := os.environ.get("DEPLOY_IMAGES"):
-        parameters["images"] = json.loads(images)
+def _json_from_env(name):
+    """Cron input reaches us JSON-encoded by .taskcluster.yml, or not at all."""
+    raw = os.environ.get(name)
+    return json.loads(raw) if raw else None
 
-    if hw_pools := os.environ.get("DEPLOY_HW_POOLS"):
-        parameters["hw_pools"] = json.loads(hw_pools)
+
+def get_decision_parameters(graph_config, parameters):
+    # Set both keys unconditionally. A decision task builds `Parameters` in
+    # strict mode, where `get_defaults` above is never consulted, so a key this
+    # function leaves unset fails generation with "required key not provided"
+    # rather than defaulting to None -- which is how the hardware cron, whose
+    # input carries `pools` and no `images`, failed.
+    parameters["images"] = _json_from_env("DEPLOY_IMAGES")
+    parameters["hw_pools"] = _json_from_env("DEPLOY_HW_POOLS")

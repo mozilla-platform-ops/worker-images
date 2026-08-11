@@ -32,6 +32,14 @@ POOLS_YAML = textwrap.dedent(
         domain_suffix: "wintest2.releng.mdc1.mozilla.com"
         nodes:
         - t-nuc12-004
+      - name: "win11-64-24h2-hw-ref-alpha"
+        Description: "Staging reference"
+        image: "win11-24H2-NUC-01-16-2025"
+        src_Branch: "master"
+        hash: "655bf64"
+        domain_suffix: "wintest2.releng.mdc1.mozilla.com"
+        nodes:
+        - t-nuc12-005
       - name: "win11-64-24h2-hw-alpha"
         Description: "Staging"
         image: "win11-24H2-NUC-01-16-2025"
@@ -74,9 +82,15 @@ POOLS_YAML = textwrap.dedent(
 )
 
 
+OS_INTEGRATION_INDEX = (
+    "gecko.v2.mozilla-central.latest.taskgraph.decision-os-integration"
+)
+PUSH_INDEX = "gecko.v2.mozilla-central.latest.taskgraph.decision"
+
+
 def _source_task(
-    name="test-windows11-64-24h2-hw-ref-shippable/opt-mochitest-media-mda-gpu",
-    worker_type="win11-64-24h2-hw-ref",
+    name="test-windows11-64-24h2-shippable/opt-browsertime-benchmark-firefox-speedometer3",
+    worker_type="win11-64-24h2-hw",
     scopes=None,
 ):
     """A source task shaped like a real mozilla-central Windows HW task."""
@@ -85,11 +99,11 @@ def _source_task(
             "secrets:get:project/perftest/gecko/level-3/perftest-login",
             "generic-worker:cache:gecko-level-3-pip",
             "generic-worker:cache:gecko-level-3-uv",
-            "generic-worker:os-group:releng-hardware/win11-64-24h2-hw-ref/admin",
+            f"generic-worker:os-group:releng-hardware/{worker_type}/admin",
         ]
     return {
         "label": name,
-        "attributes": {"test_platform": "windows11-64-24h2-hw-ref-shippable"},
+        "attributes": {"test_platform": "windows11-64-24h2-shippable/opt"},
         "dependencies": ["EPVLzXYQS8mqKN7Wkp0IIg", "VrVC0un-TJ-KGP8tePwtAA"],
         "task": {
             "provisionerId": "releng-hardware",
@@ -201,7 +215,7 @@ class HwPoolsTestBase(unittest.TestCase):
 class TestHwPoolRegistry(HwPoolsTestBase):
     def test_parses_pools_and_identity(self):
         reg = self.hw_pools.load_registry(self.root)
-        self.assertEqual(len(reg.pools), 5)
+        self.assertEqual(len(reg.pools), 6)
 
         pool = reg["win11-64-24h2-hw-relops1213"]
         self.assertEqual(pool.task_queue_id, "releng-hardware/win11-64-24h2-hw-relops1213")
@@ -224,11 +238,35 @@ class TestHwPoolRegistry(HwPoolsTestBase):
         self.assertTrue(reg["win11-64-24h2-hw-ref"].is_production)
         for staging in (
             "win11-64-24h2-hw-alpha",
+            "win11-64-24h2-hw-ref-alpha",
             "win11-64-24h2-hw-relops1213",
             "win11-64-24h2-hw-perf-sheriff",
         ):
             self.assertFalse(reg[staging].is_production, staging)
-        self.assertEqual(len(reg.targetable), 3)
+        self.assertEqual(len(reg.targetable), 4)
+
+    def test_source_worker_type_is_the_pool_being_staged(self):
+        reg = self.hw_pools.load_registry(self.root)
+        expected = {
+            # a production pool stages itself
+            "win11-64-24h2-hw": "win11-64-24h2-hw",
+            "win11-64-24h2-hw-ref": "win11-64-24h2-hw-ref",
+            "win11-64-24h2-hw-alpha": "win11-64-24h2-hw",
+            "win11-64-24h2-hw-relops1213": "win11-64-24h2-hw",
+            # `-perf-sheriff` must not be read as a `-ref` variant, nor the
+            # other way round for `-ref-alpha`
+            "win11-64-24h2-hw-perf-sheriff": "win11-64-24h2-hw",
+            "win11-64-24h2-hw-ref-alpha": "win11-64-24h2-hw-ref",
+        }
+        for name, counterpart in expected.items():
+            self.assertEqual(reg[name].source_worker_type, counterpart, name)
+
+    def test_pool_name_off_convention_has_no_counterpart(self):
+        HwPool = self.hw_pools.HwPool
+        for name in ("nuc13-scratch", "win11-64-24h2", "macosx-1500-hw-alpha"):
+            pool = HwPool(name=name)
+            self.assertIsNone(pool.source_worker_type, name)
+            self.assertFalse(pool.is_production, name)
 
     def test_resolve_refuses_production_unknown_and_empty(self):
         reg = self.hw_pools.load_registry(self.root)
@@ -256,6 +294,14 @@ class TestHwPoolRegistry(HwPoolsTestBase):
             ["win11-64-24h2-hw-alpha", "win11-64-24h2-hw-relops1213"],
         )
 
+    def test_resolve_refuses_a_pool_it_cannot_map_to_a_worker_type(self):
+        reg = self.hw_pools.HwPoolRegistry(
+            pools={"nuc13-scratch": self.hw_pools.HwPool(name="nuc13-scratch")},
+            known_bad_nodes=frozenset(),
+        )
+        with self.assertRaises(self.hw_pools.HwPoolError):
+            reg.resolve(["nuc13-scratch"])
+
     def test_known_bad_nodes_excluded_from_healthy(self):
         reg = self.hw_pools.load_registry(self.root)
         self.assertIn("nuc13-112", reg.known_bad_nodes)
@@ -274,38 +320,58 @@ class TestHwIntegrationTransform(HwPoolsTestBase):
         os.environ["TASK_ID"] = "DECISIONTASKID12345678"
         self.addCleanup(os.environ.pop, "TASK_ID", None)
 
-    def _run(self, hw_pools, sources=None, task_name="gecko-hw"):
-        if sources is None:
-            sources = [_source_task()]
-        self.mod._fetch_source_tasks = lambda *a, **k: sources
+    def _stub_fetch(self, per_index):
+        """Serve canned task lists per target index, grouped as the real fetch is.
+
+        Returns the list the stub appends each fetched index to, so a test can
+        assert an index was never downloaded.
+        """
+        fetched = []
+
+        def fetch(index, provisioner):
+            fetched.append(index)
+            by_worker_type = {}
+            for source in per_index.get(index, []):
+                task = source["task"]
+                if task["provisionerId"] != provisioner:
+                    continue
+                by_worker_type.setdefault(task["workerType"], []).append(source)
+            return by_worker_type
+
+        self.mod._fetch_source_tasks = fetch
+        return fetched
+
+    def _run(self, hw_pools, sources=None, task_name="gecko-hw", per_index=None):
+        if per_index is None:
+            per_index = {
+                OS_INTEGRATION_INDEX: [_source_task()] if sources is None else sources
+            }
+        self.fetched = self._stub_fetch(per_index)
         task = {
             "name": task_name,
             "description": "d",
             "hw-replicate": {
-                "target": "gecko.v2.mozilla-central.latest.taskgraph.decision",
+                "targets": [OS_INTEGRATION_INDEX, PUSH_INDEX],
                 "provisioner": "releng-hardware",
-                "worker-type-prefixes": ["win11-64-", "win11-a64-"],
             },
         }
         config = DummyConfig(self.root, hw_pools)
         return list(self.mod.replicate_onto_hw_pools(config, [task]))
 
     def test_no_pools_requested_emits_nothing_and_does_not_fetch(self):
-        called = []
-        self.mod._fetch_source_tasks = lambda *a, **k: called.append(1) or []
+        fetched = self._stub_fetch({})
         task = {
             "name": "gecko-hw",
             "hw-replicate": {
-                "target": "idx",
+                "targets": [OS_INTEGRATION_INDEX],
                 "provisioner": "releng-hardware",
-                "worker-type-prefixes": ["win11-64-"],
             },
         }
         out = list(
             self.mod.replicate_onto_hw_pools(DummyConfig(self.root, None), [task])
         )
         self.assertEqual(out, [])
-        self.assertEqual(called, [], "must not hit the network on a normal decision")
+        self.assertEqual(fetched, [], "must not hit the network on a normal decision")
 
     def test_production_pool_request_raises(self):
         with self.assertRaises(self.hw_pools.HwPoolError):
@@ -414,9 +480,135 @@ class TestHwIntegrationTransform(HwPoolsTestBase):
     def test_source_task_is_not_mutated(self):
         source = _source_task()
         self._run(["win11-64-24h2-hw-alpha"], sources=[source])
-        self.assertEqual(source["task"]["workerType"], "win11-64-24h2-hw-ref")
+        self.assertEqual(source["task"]["workerType"], "win11-64-24h2-hw")
         self.assertEqual(source["task"]["routes"][0].split(".")[0], "index")
         self.assertIn("treeherder", source["task"]["extra"])
+
+
+class TestPoolToWorkerTypeMatching(HwPoolsTestBase):
+    """A pool only runs the tasks of the production pool it stages."""
+
+    def setUp(self):
+        super().setUp()
+        os.environ["TASK_ID"] = "DECISIONTASKID12345678"
+        self.addCleanup(os.environ.pop, "TASK_ID", None)
+        self.hw = _source_task(
+            name="test-windows11-64-24h2-shippable/opt-talos-webgl",
+            worker_type="win11-64-24h2-hw",
+        )
+        self.hw_ref = _source_task(
+            name="test-windows11-64-24h2-hw-ref-shippable/opt-mochitest-media-mda-gpu",
+            worker_type="win11-64-24h2-hw-ref",
+        )
+        self.macos = _source_task(
+            name="test-macosx1500-64-shippable/opt-talos-webgl",
+            worker_type="gecko-t-osx-1500-m4",
+        )
+
+    def _run(self, hw_pools, per_index):
+        fetched = []
+
+        def fetch(index, provisioner):
+            fetched.append(index)
+            by_worker_type = {}
+            for source in per_index.get(index, []):
+                task = source["task"]
+                if task["provisionerId"] != provisioner:
+                    continue
+                by_worker_type.setdefault(task["workerType"], []).append(source)
+            return by_worker_type
+
+        self.mod._fetch_source_tasks = fetch
+        task = {
+            "name": "gecko-hw",
+            "description": "d",
+            "hw-replicate": {
+                "targets": [OS_INTEGRATION_INDEX, PUSH_INDEX],
+                "provisioner": "releng-hardware",
+            },
+        }
+        out = list(
+            self.mod.replicate_onto_hw_pools(DummyConfig(self.root, hw_pools), [task])
+        )
+        return out, fetched
+
+    def test_pool_gets_only_its_counterparts_tasks(self):
+        per_index = {OS_INTEGRATION_INDEX: [self.hw, self.hw_ref, self.macos]}
+        out, _ = self._run(["win11-64-24h2-hw-alpha"], per_index)
+        self.assertEqual(
+            [t["attributes"]["hw_source_label"] for t in out],
+            ["test-windows11-64-24h2-shippable/opt-talos-webgl"],
+        )
+        self.assertEqual(
+            out[0]["attributes"]["hw_source_worker_type"], "win11-64-24h2-hw"
+        )
+
+    def test_reference_pool_gets_only_reference_tasks(self):
+        per_index = {OS_INTEGRATION_INDEX: [self.hw, self.hw_ref]}
+        out, _ = self._run(["win11-64-24h2-hw-ref-alpha"], per_index)
+        self.assertEqual(len(out), 1)
+        self.assertEqual(
+            out[0]["attributes"]["hw_source_worker_type"], "win11-64-24h2-hw-ref"
+        )
+        # ...and it is aimed at the ref pool, not the pool it was copied from
+        self.assertEqual(out[0]["task"]["workerType"], "win11-64-24h2-hw-ref-alpha")
+        self.assertIn(
+            "generic-worker:os-group:releng-hardware/win11-64-24h2-hw-ref-alpha/admin",
+            out[0]["task"]["scopes"],
+        )
+
+    def test_falls_through_to_next_index_when_counterpart_absent(self):
+        per_index = {
+            OS_INTEGRATION_INDEX: [self.hw],
+            PUSH_INDEX: [self.hw, self.hw_ref],
+        }
+        out, fetched = self._run(
+            ["win11-64-24h2-hw-alpha", "win11-64-24h2-hw-ref-alpha"], per_index
+        )
+        by_pool = {t["attributes"]["hw_pool"]: t["attributes"] for t in out}
+        self.assertEqual(
+            by_pool["win11-64-24h2-hw-alpha"]["hw_source_index"], OS_INTEGRATION_INDEX
+        )
+        self.assertEqual(
+            by_pool["win11-64-24h2-hw-ref-alpha"]["hw_source_index"], PUSH_INDEX
+        )
+
+    def test_larger_index_not_fetched_when_first_one_suffices(self):
+        per_index = {
+            OS_INTEGRATION_INDEX: [self.hw],
+            PUSH_INDEX: [self.hw, self.hw_ref],
+        }
+        out, fetched = self._run(["win11-64-24h2-hw-alpha"], per_index)
+        self.assertEqual(len(out), 1)
+        self.assertEqual(
+            fetched,
+            [OS_INTEGRATION_INDEX],
+            "the full push graph is large; don't download it needlessly",
+        )
+
+    def test_each_index_fetched_at_most_once_across_pools(self):
+        per_index = {OS_INTEGRATION_INDEX: [self.hw]}
+        out, fetched = self._run(
+            ["win11-64-24h2-hw-alpha", "win11-64-24h2-hw-relops1213"], per_index
+        )
+        self.assertEqual(len(out), 2)
+        self.assertEqual(fetched, [OS_INTEGRATION_INDEX])
+
+    def test_pool_with_no_tasks_anywhere_raises(self):
+        # `-hw-ref` scheduled nowhere: silently emitting zero tasks would report
+        # a green run that tested nothing.
+        per_index = {OS_INTEGRATION_INDEX: [self.hw], PUSH_INDEX: [self.hw]}
+        with self.assertRaises(self.hw_pools.HwPoolError) as ctx:
+            self._run(["win11-64-24h2-hw-ref-alpha"], per_index)
+        self.assertIn("win11-64-24h2-hw-ref", str(ctx.exception))
+
+    def test_macos_hardware_tasks_never_match_a_windows_pool(self):
+        per_index = {
+            OS_INTEGRATION_INDEX: [self.macos],
+            PUSH_INDEX: [self.macos],
+        }
+        with self.assertRaises(self.hw_pools.HwPoolError):
+            self._run(["win11-64-24h2-hw-alpha"], per_index)
 
 
 class TestCloudAndHwSelectionAreDisjoint(unittest.TestCase):
