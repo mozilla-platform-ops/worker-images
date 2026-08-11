@@ -86,6 +86,11 @@ jobs:
           IMAGE: ${{ inputs.image }}
           PIPELINE_REF: ${{ inputs.pipeline_ref }}
           BUILD_ID: ${{ inputs.build_id }}
+          # Lets the kickoff tail the bake guest's own log shipping (it ships to
+          # SolarWinds as nuc-bake once puppet starts nxlog) into this job's output.
+          # Purely diagnostic: with no secret set the kickoff prints a notice and skips,
+          # so an empty value here never fails a build.
+          SOLARWINDS_API_TOKEN: ${{ secrets.SOLARWINDS_API_TOKEN }}
         run: ./ci/kickoff-win-hw-wim-build.ps1
 
       # Always tear the VM down — success, failure, or cancel — so there is no idle cost.
