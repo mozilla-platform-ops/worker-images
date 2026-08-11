@@ -29,6 +29,11 @@ _POOL_NAME_RE = re.compile(
 
 LOW_CAPACITY_THRESHOLD = 4
 
+# Repeating a task is for reading a perf number through its noise, not for
+# soaking hardware; past this a run costs more than it tells you. Lives here so
+# the trigger script can refuse a bad value before any hook is fired.
+MAX_REPEAT = 20
+
 
 class HwPoolError(Exception):
     """Raised when a requested hardware pool is unknown or not targetable."""

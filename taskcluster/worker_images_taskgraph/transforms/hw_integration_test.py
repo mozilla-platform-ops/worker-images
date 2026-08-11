@@ -23,9 +23,14 @@ from copy import deepcopy
 from pathlib import Path
 
 from taskgraph.transforms.base import TransformSequence
-from taskgraph.util.taskcluster import find_task_id, get_artifact
+from taskgraph.util.taskcluster import (
+    find_task_id,
+    get_artifact,
+    status_task_batched,
+)
 
 from worker_images_taskgraph.util.hw_pools import (
+    MAX_REPEAT,
     HwPoolError,
     load_registry,
 )
@@ -43,6 +48,15 @@ _LEVEL_RE = re.compile(r"[a-z]+-level-[1-3]")
 
 _CACHE_SCOPE_PREFIX = "generic-worker:cache:"
 _OS_GROUP_SCOPE_PREFIX = "generic-worker:os-group:"
+
+# A dependency in any of these has not resolved yet, and waiting on it is
+# correct. Anything else means the replicated task can never be scheduled.
+_DEPENDENCY_OK_STATES = frozenset({"completed", "unscheduled", "pending", "running"})
+
+_STATUS_BATCH_SIZE = 200
+
+# How many names to print before truncating a "nothing matched" listing.
+_MAX_LISTED_NAMES = 25
 
 
 def _repo_root(config) -> Path:
@@ -108,19 +122,121 @@ def _sources_for_pool(pool, targets: list[str], provisioner: str, cache: dict):
     )
 
 
-def _log_runtime_budget(pool, source_tasks):
+def _source_name(source) -> str:
+    return source["task"]["metadata"]["name"]
+
+
+def _listed(names) -> str:
+    names = sorted(names)
+    shown = ", ".join(names[:_MAX_LISTED_NAMES])
+    if len(names) > _MAX_LISTED_NAMES:
+        shown += f", ... and {len(names) - _MAX_LISTED_NAMES} more"
+    return shown
+
+
+def _select_tests(source_tasks, filters, pool):
+    """Keep the tasks whose name contains any of ``filters``.
+
+    Substring rather than glob or regex: the filter is typed into a workflow
+    field, and `speedometer` is what someone means to type.
+    """
+    if not filters:
+        return source_tasks
+
+    lowered = [f.lower() for f in filters]
+    matched = [
+        source
+        for source in source_tasks
+        if any(f in _source_name(source).lower() for f in lowered)
+    ]
+    if not matched:
+        raise HwPoolError(
+            f"hw-integration: nothing on {pool.name} matches "
+            f"{', '.join(filters)}. Its {len(source_tasks)} available task(s): "
+            f"{_listed(_source_name(s) for s in source_tasks)}"
+        )
+
+    logger.info(
+        f"hw-integration: {pool.name}: {len(matched)} of {len(source_tasks)} "
+        f"task(s) match {', '.join(filters)}: "
+        f"{_listed(_source_name(s) for s in matched)}"
+    )
+    return matched
+
+
+def _dependency_states(dep_ids: list[str]) -> dict[str, str]:
+    states = {}
+    for start in range(0, len(dep_ids), _STATUS_BATCH_SIZE):
+        batch = dep_ids[start : start + _STATUS_BATCH_SIZE]
+        for task_id, status in (status_task_batched(batch) or {}).items():
+            states[task_id] = status.get("state", "unknown")
+    return states
+
+
+def _drop_blocked(source_tasks, pool):
+    """Drop tasks an already-failed upstream leaves unschedulable.
+
+    A replicated task keeps mozilla-central's concrete dependency task ids, so a
+    toolchain that failed in the source graph means the copy sits `unscheduled`
+    until its deadline -- turning an otherwise good run into a timeout with no
+    result. Seen on the first green run: `toolchain-win64-custom-car` had failed,
+    so `browsertime-benchmark-custom-car-speedometer3` never started.
+    """
+    dep_ids = sorted(
+        {
+            dep
+            for source in source_tasks
+            for dep in source["task"].get("dependencies", [])
+        }
+    )
+    if not dep_ids:
+        return source_tasks
+
+    states = _dependency_states(dep_ids)
+    runnable, blocked = [], {}
+    for source in source_tasks:
+        broken = {
+            dep: states.get(dep, "unknown")
+            for dep in source["task"].get("dependencies", [])
+            if states.get(dep, "unknown") not in _DEPENDENCY_OK_STATES
+        }
+        if broken:
+            blocked[_source_name(source)] = broken
+        else:
+            runnable.append(source)
+
+    for name, broken in sorted(blocked.items()):
+        detail = ", ".join(f"{dep} {state}" for dep, state in sorted(broken.items()))
+        logger.warning(
+            f"hw-integration: skipping {name} on {pool.name}: upstream {detail}. "
+            "It could never be scheduled, and waiting on it would time the run out."
+        )
+
+    if not runnable:
+        raise HwPoolError(
+            f"hw-integration: every selected task for {pool.name} depends on a "
+            f"mozilla-central task that failed: {_listed(blocked)}"
+        )
+    return runnable
+
+
+def _log_runtime_budget(pool, source_tasks, repeat):
     """Worst-case hardware time, so the decision log says what a run will cost
     before the caller's timeout has to discover it."""
-    budget = sum(
-        source["task"].get("payload", {}).get("maxRunTime", 0)
-        for source in source_tasks
+    budget = (
+        sum(
+            source["task"].get("payload", {}).get("maxRunTime", 0)
+            for source in source_tasks
+        )
+        * repeat
     )
     if not budget:
         return
     hours = budget / 3600
     per_node = f", ~{hours / pool.node_count:.1f}h across {pool.node_count} node(s)"
+    times = f" x{repeat} run(s)" if repeat > 1 else ""
     logger.info(
-        f"hw-integration: {pool.name}: {len(source_tasks)} task(s), "
+        f"hw-integration: {pool.name}: {len(source_tasks)} task(s){times}, "
         f"{hours:.1f}h of maxRunTime worst case"
         f"{per_node if pool.node_count else ''}"
     )
@@ -195,6 +311,21 @@ def replicate_onto_hw_pools(config, tasks):
         targets = list(replicate_config["targets"])
         source_cache: dict[str, dict[str, list]] = {}
 
+        test_filters = [f for f in (config.params.get("hw_tests") or []) if f]
+        # Unset means once; anything else is taken at face value, so `0` is a
+        # mistake to report rather than a synonym for the default.
+        repeat = config.params.get("hw_repeat")
+        repeat = 1 if repeat is None else repeat
+        if (
+            isinstance(repeat, bool)
+            or not isinstance(repeat, int)
+            or not 1 <= repeat <= MAX_REPEAT
+        ):
+            raise HwPoolError(
+                f"hw-integration: repeat must be a whole number between 1 and "
+                f"{MAX_REPEAT}, got {repeat!r}"
+            )
+
         trust_domain = config.graph_config["trust-domain"]
         level = config.params["level"]
         scheduler_id = f"{trust_domain}-level-{level}"
@@ -214,19 +345,26 @@ def replicate_onto_hw_pools(config, tasks):
             source_tasks, source_index = _sources_for_pool(
                 pool, targets, provisioner, source_cache
             )
-            _log_runtime_budget(pool, source_tasks)
+            source_tasks = _select_tests(source_tasks, test_filters, pool)
+            source_tasks = _drop_blocked(source_tasks, pool)
+            _log_runtime_budget(pool, source_tasks, repeat)
 
             for source in source_tasks:
-                yield _build_task(
-                    source,
-                    task_name=task["name"],
-                    pool=pool,
-                    scheduler_id=scheduler_id,
-                    source_index=source_index,
-                )
+                for run_index in range(1, repeat + 1):
+                    yield _build_task(
+                        source,
+                        task_name=task["name"],
+                        pool=pool,
+                        scheduler_id=scheduler_id,
+                        source_index=source_index,
+                        run_index=run_index,
+                        run_count=repeat,
+                    )
 
 
-def _build_task(source, task_name, pool, scheduler_id, source_index):
+def _build_task(
+    source, task_name, pool, scheduler_id, source_index, run_index=1, run_count=1
+):
     task_def = deepcopy(source)
     task = task_def["task"]
 
@@ -249,6 +387,10 @@ def _build_task(source, task_name, pool, scheduler_id, source_index):
 
     original_name = task["metadata"]["name"]
     label = f"{task_name}-{pool.name}-{original_name}"
+    # Repeats have to differ somewhere: taskgraph derives a task id from the
+    # label, so identical labels would collide into one task.
+    if run_count > 1:
+        label = f"{label}-run{run_index}"
     task["metadata"]["name"] = label
 
     return {
@@ -263,6 +405,8 @@ def _build_task(source, task_name, pool, scheduler_id, source_index):
             "hw_source_label": source.get("label", original_name),
             "hw_source_worker_type": pool.source_worker_type,
             "hw_source_index": source_index,
+            "hw_run_index": run_index,
+            "hw_run_count": run_count,
             "hw_pool_image": pool.image,
             "hw_pool_branch": pool.src_branch,
             "hw_pool_revision": pool.revision,

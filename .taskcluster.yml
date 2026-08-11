@@ -234,6 +234,12 @@ tasks:
                                       - $if: 'tasks_for == "cron" && cron["input"] && cron.input["pools"]'
                                         then:
                                             DEPLOY_HW_POOLS: {$json: {$eval: cron.input.pools}}
+                                      - $if: 'tasks_for == "cron" && cron["input"] && cron.input["tests"]'
+                                        then:
+                                            DEPLOY_HW_TESTS: {$json: {$eval: cron.input.tests}}
+                                      - $if: 'tasks_for == "cron" && cron["input"] && cron.input["repeat"]'
+                                        then:
+                                            DEPLOY_HW_REPEAT: {$json: {$eval: cron.input.repeat}}
 
                               cache:
                                   "${trustDomain}-project-${project}-level-${level}-checkouts-sparse-v2": /builds/worker/checkouts

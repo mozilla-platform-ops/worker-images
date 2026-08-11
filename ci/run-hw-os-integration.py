@@ -17,6 +17,8 @@ and pools.yml agreement, production is refused, and zero tasks is a failure.
 Usage:
     uv run ci/run-hw-os-integration.py <pool>[,<pool>...]
     uv run ci/run-hw-os-integration.py win11-64-24h2-hw-relops1213 --no-wait
+    uv run ci/run-hw-os-integration.py win11-64-24h2-hw-perf-debug \
+        --tests speedometer --repeat 5
     uv run ci/run-hw-os-integration.py --list
 
 Environment variables (required unless --list / --preflight-only):
@@ -232,8 +234,14 @@ def print_preflight(report: dict) -> None:
 # ---- trigger + monitor ---------------------------------------------------- #
 
 
-def trigger(hooks, pool_name: str) -> str:
-    payload = {"pools": [pool_name]}
+def trigger(hooks, pool_name: str, tests: list[str], repeat: int) -> str:
+    # One hook fire per pool, so each pool gets its own decision and task group
+    # and a slow pool cannot hide another's results.
+    payload: dict = {"pools": [pool_name]}
+    if tests:
+        payload["tests"] = tests
+    if repeat > 1:
+        payload["repeat"] = repeat
     notice(f"triggering hook for {pool_name}: {json.dumps(payload)}")
     response = hooks.triggerHook(HOOK_GROUP_ID, HOOK_ID, payload)
     return response["taskId"]
@@ -352,12 +360,14 @@ def monitor(queue, runs: list[dict], timeout: int, root_url: str) -> None:
             run["timed_out"] = True
 
 
-def write_github_summary(runs: list[dict], root_url: str) -> None:
+def write_github_summary(runs: list[dict], root_url: str, selection: str = "") -> None:
     summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
     if not summary_file:
         return
 
     lines = ["## HW OS Integration Tests", ""]
+    if selection:
+        lines += [selection, ""]
 
     lines += [
         "| Pool | Image | Branch | Revision | Result | Passed | Failed | Exception | Pending |",
@@ -421,11 +431,12 @@ def write_github_summary(runs: list[dict], root_url: str) -> None:
 # --------------------------------------------------------------------------- #
 
 
-def parse_pools(values: list[str]) -> list[str]:
-    names: list[str] = []
+def split_csv(values: list[str]) -> list[str]:
+    """Flatten repeated and comma-separated options into a deduped list."""
+    items: list[str] = []
     for value in values:
-        names.extend(p.strip() for p in value.split(",") if p.strip())
-    return list(dict.fromkeys(names))
+        items.extend(p.strip() for p in value.split(",") if p.strip())
+    return list(dict.fromkeys(items))
 
 
 def main() -> int:
@@ -456,6 +467,21 @@ def main() -> int:
         action="store_true",
         help="Trigger without checking pool health (not recommended)",
     )
+    parser.add_argument(
+        "--tests",
+        action="append",
+        default=[],
+        metavar="SUBSTRING",
+        help="Only run tasks whose name contains one of these; "
+        "comma-separated or repeated (e.g. --tests speedometer)",
+    )
+    parser.add_argument(
+        "--repeat",
+        type=int,
+        default=1,
+        metavar="N",
+        help=f"Run each selected task N times, 1-{hw_pools.MAX_REPEAT} (default: 1)",
+    )
     parser.add_argument("--no-wait", action="store_true", help="Exit after triggering")
     parser.add_argument(
         "--timeout",
@@ -478,9 +504,15 @@ def main() -> int:
         print("\nProduction (refused): " + ", ".join(refused))
         return 0
 
-    requested = parse_pools(args.pools)
+    requested = split_csv(args.pools)
     if not requested:
         parser.error("no pools given; use --list to see the targetable pools")
+
+    tests = split_csv(args.tests)
+    # Checked here as well as in the decision so a typo costs a second, not a
+    # hook fire and a decision task.
+    if not 1 <= args.repeat <= hw_pools.MAX_REPEAT:
+        parser.error(f"--repeat must be between 1 and {hw_pools.MAX_REPEAT}")
 
     try:
         pools = registry.resolve(requested)
@@ -522,10 +554,19 @@ def main() -> int:
 
     hooks = taskcluster.Hooks(options)
 
+    described = []
+    if tests:
+        described.append("tasks matching " + ", ".join(f"`{t}`" for t in tests))
+    if args.repeat > 1:
+        described.append(f"{args.repeat} runs of each")
+    selection = "Selection: " + "; ".join(described) if described else ""
+    if selection:
+        notice(selection.replace("`", ""))
+
     # ---- trigger ---------------------------------------------------------- #
     runs = []
     for pool in pools:
-        decision_task_id = trigger(hooks, pool.name)
+        decision_task_id = trigger(hooks, pool.name, tests, args.repeat)
         notice(f"  {pool.name}: decision {root_url}/tasks/{decision_task_id}")
         runs.append(
             {
@@ -537,7 +578,7 @@ def main() -> int:
 
     if args.no_wait:
         notice("--no-wait specified, exiting")
-        write_github_summary(runs, root_url)
+        write_github_summary(runs, root_url, selection)
         return 0
 
     # ---- discover task groups --------------------------------------------- #
@@ -552,7 +593,7 @@ def main() -> int:
     live = [r for r in runs if r.get("task_group_id")]
     if not live:
         error("no task groups were created")
-        write_github_summary(runs, root_url)
+        write_github_summary(runs, root_url, selection)
         return 1
 
     monitor(queue, live, args.timeout, root_url)
@@ -592,7 +633,7 @@ def main() -> int:
         else:
             run["verdict"] = "✅ passed"
 
-    write_github_summary(runs, root_url)
+    write_github_summary(runs, root_url, selection)
 
     for run in runs:
         counts = run.get("counts") or {}

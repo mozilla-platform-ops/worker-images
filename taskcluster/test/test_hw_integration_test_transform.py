@@ -1,4 +1,5 @@
 import importlib
+import json
 import os
 import sys
 import textwrap
@@ -164,6 +165,13 @@ def _load_transform_module():
     setattr(base_module, "TransformSequence", DummyTransformSequence)
     setattr(util_taskcluster_module, "find_task_id", lambda _: "stub-decision-id")
     setattr(util_taskcluster_module, "get_artifact", lambda *_: {})
+    # Default: every dependency completed. Tests that care replace
+    # `mod._dependency_states` instead of reaching through this.
+    setattr(
+        util_taskcluster_module,
+        "status_task_batched",
+        lambda ids: {i: {"state": "completed"} for i in ids},
+    )
 
     sys.modules["taskgraph"] = taskgraph_module
     sys.modules["taskgraph.transforms"] = transforms_module
@@ -187,8 +195,13 @@ class GraphConfig(dict):
 class DummyConfig:
     kind = "hw-integration-test"
 
-    def __init__(self, repo_root, hw_pools, level="3"):
-        self.params = {"hw_pools": hw_pools, "level": level}
+    def __init__(self, repo_root, hw_pools, level="3", hw_tests=None, hw_repeat=None):
+        self.params = {
+            "hw_pools": hw_pools,
+            "hw_tests": hw_tests,
+            "hw_repeat": hw_repeat,
+            "level": level,
+        }
         self.graph_config = GraphConfig(
             str(Path(repo_root) / "taskcluster"), **{"trust-domain": "relops"}
         )
@@ -609,6 +622,187 @@ class TestPoolToWorkerTypeMatching(HwPoolsTestBase):
         }
         with self.assertRaises(self.hw_pools.HwPoolError):
             self._run(["win11-64-24h2-hw-alpha"], per_index)
+
+
+def _speedometer_sources():
+    """The two speedometer3 tasks a `-hw` pool's counterpart schedules, plus
+    company to filter out."""
+    prefix = "test-windows11-64-24h2-shippable/opt-browsertime"
+    return [
+        _source_task(name=f"{prefix}-benchmark-firefox-speedometer3"),
+        _source_task(name=f"{prefix}-benchmark-custom-car-speedometer3"),
+        _source_task(name=f"{prefix}-tp6-essential-firefox-amazon"),
+        _source_task(name="test-windows11-64-24h2-shippable/opt-talos-webgl"),
+    ]
+
+
+class TestTestFilterAndRepeat(HwPoolsTestBase):
+    """What the speedometer workflow relies on: pick tasks by name, run them N
+    times."""
+
+    def setUp(self):
+        super().setUp()
+        os.environ["TASK_ID"] = "DECISIONTASKID12345678"
+        self.addCleanup(os.environ.pop, "TASK_ID", None)
+        self.sources = _speedometer_sources()
+
+    def _run(self, hw_tests=None, hw_repeat=None, sources=None):
+        sources = self.sources if sources is None else sources
+        self.mod._fetch_source_tasks = lambda index, provisioner: {
+            "win11-64-24h2-hw": sources
+        }
+        task = {
+            "name": "gecko-hw",
+            "description": "d",
+            "hw-replicate": {
+                "targets": [OS_INTEGRATION_INDEX],
+                "provisioner": "releng-hardware",
+            },
+        }
+        config = DummyConfig(
+            self.root,
+            ["win11-64-24h2-hw-alpha"],
+            hw_tests=hw_tests,
+            hw_repeat=hw_repeat,
+        )
+        return list(self.mod.replicate_onto_hw_pools(config, [task]))
+
+    def _names(self, out):
+        return [t["attributes"]["hw_source_label"] for t in out]
+
+    def test_no_filter_runs_everything_once(self):
+        out = self._run()
+        self.assertEqual(len(out), 4)
+        self.assertEqual({t["attributes"]["hw_run_count"] for t in out}, {1})
+
+    def test_filter_selects_by_substring(self):
+        out = self._run(hw_tests=["speedometer"])
+        self.assertEqual(len(out), 2)
+        self.assertTrue(all("speedometer" in n for n in self._names(out)))
+
+    def test_filter_is_case_insensitive(self):
+        self.assertEqual(len(self._run(hw_tests=["SpeedOmeter"])), 2)
+
+    def test_narrower_filter_excludes_the_other_browser(self):
+        out = self._run(hw_tests=["firefox-speedometer"])
+        self.assertEqual(
+            self._names(out),
+            [
+                "test-windows11-64-24h2-shippable/opt-browsertime-"
+                "benchmark-firefox-speedometer3"
+            ],
+        )
+
+    def test_several_filters_union(self):
+        out = self._run(hw_tests=["firefox-speedometer", "talos-webgl"])
+        self.assertEqual(len(out), 2)
+
+    def test_filter_matching_nothing_raises_and_lists_what_there_was(self):
+        with self.assertRaises(self.hw_pools.HwPoolError) as ctx:
+            self._run(hw_tests=["jetstream"])
+        message = str(ctx.exception)
+        self.assertIn("jetstream", message)
+        # the message has to be actionable: it names what could have been run
+        self.assertIn("talos-webgl", message)
+
+    def test_repeat_yields_distinct_labels_and_task_ids(self):
+        out = self._run(hw_tests=["firefox-speedometer"], hw_repeat=5)
+        self.assertEqual(len(out), 5)
+        labels = [t["label"] for t in out]
+        self.assertEqual(len(set(labels)), 5, "identical labels would collide")
+        self.assertEqual(
+            sorted(t["attributes"]["hw_run_index"] for t in out), [1, 2, 3, 4, 5]
+        )
+        for t in out:
+            self.assertEqual(t["attributes"]["hw_run_count"], 5)
+            self.assertEqual(t["task"]["metadata"]["name"], t["label"])
+            self.assertTrue(t["label"].endswith(f"-run{t['attributes']['hw_run_index']}"))
+
+    def test_repeat_copies_are_otherwise_identical(self):
+        out = self._run(hw_tests=["firefox-speedometer"], hw_repeat=3)
+        payloads = {json.dumps(t["task"]["payload"], sort_keys=True) for t in out}
+        self.assertEqual(len(payloads), 1, "repeats must differ only by label")
+
+    def test_repeat_of_one_leaves_the_label_alone(self):
+        out = self._run(hw_tests=["firefox-speedometer"], hw_repeat=1)
+        self.assertNotIn("-run", out[0]["label"].rsplit("speedometer3", 1)[-1])
+
+    def test_repeat_out_of_range_raises(self):
+        for bad in (0, -1, self.hw_pools.MAX_REPEAT + 1, 2.5, "5"):
+            with self.assertRaises(self.hw_pools.HwPoolError, msg=repr(bad)):
+                self._run(hw_tests=["firefox-speedometer"], hw_repeat=bad)
+
+    def test_filter_and_repeat_multiply(self):
+        out = self._run(hw_tests=["speedometer"], hw_repeat=4)
+        self.assertEqual(len(out), 8)
+
+
+class TestBlockedDependencies(HwPoolsTestBase):
+    """A replicated task keeps mozilla-central's concrete dependency ids, so an
+    upstream that already failed can never be satisfied."""
+
+    def setUp(self):
+        super().setUp()
+        os.environ["TASK_ID"] = "DECISIONTASKID12345678"
+        self.addCleanup(os.environ.pop, "TASK_ID", None)
+
+    def _run(self, sources, dep_states):
+        self.mod._fetch_source_tasks = lambda index, provisioner: {
+            "win11-64-24h2-hw": sources
+        }
+        self.mod._dependency_states = lambda dep_ids: {
+            d: dep_states.get(d, "completed") for d in dep_ids
+        }
+        self.addCleanup(
+            setattr,
+            self.mod,
+            "_dependency_states",
+            self.mod._dependency_states,
+        )
+        task = {
+            "name": "gecko-hw",
+            "description": "d",
+            "hw-replicate": {
+                "targets": [OS_INTEGRATION_INDEX],
+                "provisioner": "releng-hardware",
+            },
+        }
+        config = DummyConfig(self.root, ["win11-64-24h2-hw-alpha"])
+        return list(self.mod.replicate_onto_hw_pools(config, [task]))
+
+    def _with_deps(self, name, deps):
+        source = _source_task(name=name)
+        source["task"]["dependencies"] = deps
+        return source
+
+    def test_task_with_a_failed_upstream_is_skipped(self):
+        # The real case: toolchain-win64-custom-car failed, so the custom-car
+        # speedometer copy sat unscheduled until its deadline.
+        good = self._with_deps("firefox-speedometer3", ["build" + "0" * 17])
+        bad = self._with_deps("custom-car-speedometer3", ["car" + "0" * 19])
+        out = self._run([good, bad], {"car" + "0" * 19: "failed"})
+        self.assertEqual(
+            [t["attributes"]["hw_source_label"] for t in out], ["firefox-speedometer3"]
+        )
+
+    def test_exception_and_unknown_upstreams_also_block(self):
+        for state in ("exception", "unknown"):
+            source = self._with_deps("a-test", ["dep" + "0" * 19])
+            with self.assertRaises(self.hw_pools.HwPoolError, msg=state):
+                self._run([source], {"dep" + "0" * 19: state})
+
+    def test_unresolved_upstreams_are_waited_on_not_skipped(self):
+        # A graph still in flight is normal; these will resolve.
+        for state in ("unscheduled", "pending", "running"):
+            source = self._with_deps("a-test", ["dep" + "0" * 19])
+            out = self._run([source], {"dep" + "0" * 19: state})
+            self.assertEqual(len(out), 1, state)
+
+    def test_every_task_blocked_raises_rather_than_scheduling_nothing(self):
+        source = self._with_deps("only-test", ["dep" + "0" * 19])
+        with self.assertRaises(self.hw_pools.HwPoolError) as ctx:
+            self._run([source], {"dep" + "0" * 19: "failed"})
+        self.assertIn("only-test", str(ctx.exception))
 
 
 class TestCloudAndHwSelectionAreDisjoint(unittest.TestCase):
