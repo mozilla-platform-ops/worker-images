@@ -82,6 +82,61 @@ function Mount-ZDrive {
         exit 99
     }
 }
+function Update-PATSecret {
+    <#
+    .SYNOPSIS
+        Re-copies pat.txt from the deployment share and returns the refreshed token.
+
+    .DESCRIPTION
+        raw.githubusercontent.com answers a request for a public file that carries an
+        expired or malformed bearer token with 404, not 401. A stale pat.txt on the node
+        is therefore indistinguishable from a genuinely missing file. This re-copies
+        pat.txt from the deployment share using the same mount and copy logic used during
+        the initial file sync, then returns the new token so the caller can retry.
+
+    .OUTPUTS
+        The refreshed PAT as a trimmed string, or $null if it could not be refreshed.
+    #>
+
+    Param
+    (
+        [string] $Source = $source_secrets_pat,
+        [string] $Destination = $PATsecret_file
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Source) -or [string]::IsNullOrWhiteSpace($Destination)) {
+        Write-Warning "PAT source or destination path is not set. Cannot refresh PAT."
+        return $null
+    }
+
+    try {
+        Mount-ZDrive
+
+        if (-Not (Test-Path $Source)) {
+            Write-Warning "$Source not found on the Deployment Share. Cannot refresh PAT."
+            return $null
+        }
+
+        $destination_dir = Split-Path -Path $Destination -Parent
+        if (-Not (Test-Path $destination_dir)) {
+            Write-Host "Creating $destination_dir"
+            New-Item -ItemType Directory -Path $destination_dir -Force | Out-Null
+        }
+
+        Write-Host "Copying $Source to $Destination"
+        Copy-Item -Path $Source -Destination $Destination -Force
+
+        return ((Get-Content $Destination -Raw).Trim())
+    }
+    catch {
+        Write-Warning "PAT refresh failed: $($_.Exception.Message)"
+        return $null
+    }
+    finally {
+        Write-Host "Disconecting Deployment Share."
+        net use Z: /delete
+    }
+}
 function Update-GetBoot {
     param(
         [string]$branch = "main"
@@ -404,6 +459,7 @@ function Invoke-DownloadWithRetryGithub {
 
     $interval = 30
     $downloadStartTime = Get-Date
+    $PATrefreshed = $false
     for ($retries = 20; $retries -gt 0; $retries--) {
         try {
             $attemptStartTime = Get-Date
@@ -425,9 +481,35 @@ function Invoke-DownloadWithRetryGithub {
             Write-Warning $_.Exception.Message
 
             if ($_.Exception.InnerException.Response.StatusCode -eq [System.Net.HttpStatusCode]::NotFound) {
-                Write-Warning "Request returned 404 Not Found. Aborting download."
-                #Write-Log -message ('{0} :: Request returned 404 Not Found. Aborting download. - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
-                $retries = 0
+                ## A 404 here is usually an expired PAT rather than a missing file, because
+                ## GitHub returns 404 instead of 401 for a bad bearer token. Refresh pat.txt
+                ## from the Deployment Share once and retry before giving up on the file.
+                if (-Not $PATrefreshed) {
+                    $PATrefreshed = $true
+                    Write-Warning "Request returned 404 Not Found. This is often an expired PAT. Refreshing PAT from the Deployment Share."
+                    #Write-Log -message ('{0} :: Request returned 404 Not Found. Refreshing PAT from the Deployment Share. - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+
+                    $refreshed_PAT = Update-PATSecret
+
+                    if ([string]::IsNullOrWhiteSpace($refreshed_PAT)) {
+                        Write-Warning "PAT could not be refreshed. Aborting download."
+                        $retries = 0
+                    }
+                    elseif (($PAT -join '').Trim() -eq $refreshed_PAT) {
+                        Write-Warning "Refreshed PAT matches the PAT that just failed. The PAT on the Deployment Share is stale and needs to be replaced. Aborting download."
+                        $retries = 0
+                    }
+                    else {
+                        Write-Host "PAT refreshed. Retrying download."
+                        $PAT = $refreshed_PAT
+                        continue
+                    }
+                }
+                else {
+                    Write-Warning "Request returned 404 Not Found after refreshing the PAT. Aborting download."
+                    #Write-Log -message ('{0} :: Request returned 404 Not Found after refreshing the PAT. Aborting download. - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+                    $retries = 0
+                }
             }
         }
 
