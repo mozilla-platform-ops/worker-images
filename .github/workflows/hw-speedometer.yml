@@ -1,0 +1,137 @@
+name: HW Speedometer - FXCI
+run-name: HW Speedometer x${{ inputs.repeat }} - ${{ github.actor }}
+
+# Runs mozilla-central's Windows hardware speedometer3 tasks, repeatedly, on MDC1
+# staging pools (RELOPS-2503). Separate from hw-os-integration.yml, which runs
+# everything a pool's production counterpart runs once: a speedometer number on
+# one run says little, so the question here is always "the same test, N times,
+# what is the spread". Dispatch-only; hardware needs a PXE deploy first.
+
+on:
+  workflow_dispatch:
+    inputs:
+      win11_64_24h2_hw_alpha:
+        description: "win11-64-24h2-hw-alpha (nuc13, large staging pool)"
+        type: boolean
+        default: false
+      win11_64_24h2_hw_relops1213:
+        description: "win11-64-24h2-hw-relops1213 (baked-WIM canary)"
+        type: boolean
+        default: false
+      win11_64_24h2_hw_ref_alpha:
+        description: "win11-64-24h2-hw-ref-alpha (t-nuc12 reference)"
+        type: boolean
+        default: false
+      win11_64_24h2_hw_perf_debug:
+        description: "win11-64-24h2-hw-perf-debug"
+        type: boolean
+        default: false
+      win11_64_24h2_hw_perf_sheriff:
+        description: "win11-64-24h2-hw-perf-sheriff (single node - very slow)"
+        type: boolean
+        default: false
+      browser:
+        description: "Which speedometer3 tasks to run"
+        type: choice
+        default: firefox
+        options:
+          - firefox
+          - firefox-and-custom-car
+      repeat:
+        description: "Runs of each selected task (1-100; past ~10 raise timeout_hours to match)"
+        type: string
+        default: "5"
+      timeout_hours:
+        description: "Hours to wait for completion before giving up"
+        type: string
+        default: "6"
+      no_wait:
+        description: "Trigger and exit without waiting for results"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  check-access:
+    name: "Verify User Access"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Load Authorized Users and Check Access
+        shell: pwsh
+        run: ./ci/check-authorized-user.ps1
+
+  hw-speedometer:
+    name: "Trigger HW Speedometer Runs"
+    needs: check-access
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Collect selected pools
+        id: pools
+        env:
+          SELECTED: >-
+            ${{ inputs.win11_64_24h2_hw_alpha && 'win11-64-24h2-hw-alpha,' || '' }}${{
+                inputs.win11_64_24h2_hw_relops1213 && 'win11-64-24h2-hw-relops1213,' || '' }}${{
+                inputs.win11_64_24h2_hw_ref_alpha && 'win11-64-24h2-hw-ref-alpha,' || '' }}${{
+                inputs.win11_64_24h2_hw_perf_debug && 'win11-64-24h2-hw-perf-debug,' || '' }}${{
+                inputs.win11_64_24h2_hw_perf_sheriff && 'win11-64-24h2-hw-perf-sheriff' || '' }}
+        run: |
+          pools="$(printf '%s' "$SELECTED" | tr -d '[:space:]' | sed 's/,*$//')"
+          if [ -z "$pools" ]; then
+            echo "::error ::No pool selected. Tick at least one pool checkbox."
+            exit 1
+          fi
+          echo "Selected pools: $pools"
+          echo "pools=$pools" >> "$GITHUB_OUTPUT"
+
+      # `speedometer` alone also matches the custom-car task, whose
+      # toolchain-win64-custom-car dependency is often red in mozilla-central;
+      # the decision skips a task it cannot schedule, so asking for it is not
+      # fatal, just usually a no-op.
+      - name: Resolve test filter
+        id: filter
+        env:
+          BROWSER: ${{ inputs.browser }}
+        run: |
+          case "$BROWSER" in
+            firefox) filter="firefox-speedometer" ;;
+            firefox-and-custom-car) filter="speedometer" ;;
+            *) echo "::error ::unknown browser '$BROWSER'"; exit 1 ;;
+          esac
+          echo "Test filter: $filter"
+          echo "filter=$filter" >> "$GITHUB_OUTPUT"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+
+      # Fails before any hardware time if a pool is unknown, production, or dead.
+      - name: Pre-flight
+        env:
+          POOLS: ${{ steps.pools.outputs.pools }}
+          TASKCLUSTER_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
+          TASKCLUSTER_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}
+          PYTHONUNBUFFERED: "1"
+        run: |
+          uv run ci/run-hw-os-integration.py "$POOLS" --preflight-only
+
+      - name: Run HW Speedometer
+        env:
+          POOLS: ${{ steps.pools.outputs.pools }}
+          TESTS: ${{ steps.filter.outputs.filter }}
+          REPEAT: ${{ inputs.repeat }}
+          TIMEOUT_HOURS: ${{ inputs.timeout_hours }}
+          NO_WAIT: ${{ inputs.no_wait }}
+          TASKCLUSTER_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
+          TASKCLUSTER_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}
+          PYTHONUNBUFFERED: "1"
+        run: |
+          args=(--tests "$TESTS" --repeat "$REPEAT")
+          args+=(--timeout "$(( TIMEOUT_HOURS * 3600 ))")
+          if [ "$NO_WAIT" = "true" ]; then
+            args+=(--no-wait)
+          fi
+          uv run ci/run-hw-os-integration.py "$POOLS" "${args[@]}"

@@ -29,6 +29,12 @@ _POOL_NAME_RE = re.compile(
 
 LOW_CAPACITY_THRESHOLD = 4
 
+# A backstop against a typo booking a pool for a week, not a recommendation: 100
+# runs of a 35-minute task is ~58h of hardware, so anything near this needs
+# `timeout_hours` raised to match. Lives here so the trigger script can refuse a
+# bad value before any hook is fired.
+MAX_REPEAT = 100
+
 
 class HwPoolError(Exception):
     """Raised when a requested hardware pool is unknown or not targetable."""

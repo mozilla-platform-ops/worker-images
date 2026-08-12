@@ -17,6 +17,8 @@ and pools.yml agreement, production is refused, and zero tasks is a failure.
 Usage:
     uv run ci/run-hw-os-integration.py <pool>[,<pool>...]
     uv run ci/run-hw-os-integration.py win11-64-24h2-hw-relops1213 --no-wait
+    uv run ci/run-hw-os-integration.py win11-64-24h2-hw-perf-debug \
+        --tests speedometer --repeat 5
     uv run ci/run-hw-os-integration.py --list
 
 Environment variables (required unless --list / --preflight-only):
@@ -33,6 +35,7 @@ import importlib.util
 import json
 import os
 import re
+import statistics
 import sys
 import time
 from datetime import datetime, timezone
@@ -232,8 +235,14 @@ def print_preflight(report: dict) -> None:
 # ---- trigger + monitor ---------------------------------------------------- #
 
 
-def trigger(hooks, pool_name: str) -> str:
-    payload = {"pools": [pool_name]}
+def trigger(hooks, pool_name: str, tests: list[str], repeat: int) -> str:
+    # One hook fire per pool, so each pool gets its own decision and task group
+    # and a slow pool cannot hide another's results.
+    payload: dict = {"pools": [pool_name]}
+    if tests:
+        payload["tests"] = tests
+    if repeat > 1:
+        payload["repeat"] = repeat
     notice(f"triggering hook for {pool_name}: {json.dumps(payload)}")
     response = hooks.triggerHook(HOOK_GROUP_ID, HOOK_ID, payload)
     return response["taskId"]
@@ -286,14 +295,29 @@ def replicated_tasks(tasks: list[dict], decision_task_id: str) -> list[dict]:
     return [t for t in tasks if t["status"]["taskId"] != decision_task_id]
 
 
-def tally(tasks: list[dict], decision_task_id: str) -> dict:
-    states = [t["status"]["state"] for t in replicated_tasks(tasks, decision_task_id)]
+# A dependency in one of these can still be satisfied. Anything else means a
+# task waiting on it will never be scheduled.
+DEPENDENCY_DEAD_STATES = ("failed", "exception")
+
+
+def tally(tasks: list[dict], decision_task_id: str, blocked: set | None = None) -> dict:
+    blocked = blocked or set()
+    entries = replicated_tasks(tasks, decision_task_id)
+    states = [t["status"]["state"] for t in entries]
     return {
         "total": len(states),
         "completed": sum(1 for s in states if s == "completed"),
         "failed": sum(1 for s in states if s == "failed"),
         "exception": sum(1 for s in states if s == "exception"),
-        "pending": sum(1 for s in states if s in PENDING_STATES),
+        # Blocked tasks are pending as far as Taskcluster is concerned, but
+        # waiting on them is waiting on nothing.
+        "pending": sum(
+            1
+            for t in entries
+            if t["status"]["state"] in PENDING_STATES
+            and t["status"]["taskId"] not in blocked
+        ),
+        "blocked": sum(1 for t in entries if t["status"]["taskId"] in blocked),
         "decision": next(
             (
                 t["status"]["state"]
@@ -303,6 +327,45 @@ def tally(tasks: list[dict], decision_task_id: str) -> dict:
             None,
         ),
     }
+
+
+def find_blocked(queue, tasks: list[dict], known: dict) -> dict:
+    """Task ids that can never be scheduled, mapped to the upstream that killed
+    them.
+
+    A replicated task keeps mozilla-central's concrete dependency ids. The
+    decision refuses to create one whose upstream has already failed, but an
+    upstream that was still running then can fail afterwards, and the task is
+    then `unscheduled` until its deadline -- a day, against a timeout of hours.
+    Without this, a run whose every real result is already in still waits out its
+    full timeout and then reports one.
+    """
+    for task in tasks:
+        task_id = task["status"]["taskId"]
+        if task_id in known or task["status"]["state"] != "unscheduled":
+            continue
+
+        dep_ids = task.get("task", {}).get("dependencies") or []
+        dead = {}
+        for dep_id in dep_ids:
+            if dep_id == task_id:
+                continue
+            try:
+                state = queue.status(dep_id)["status"]["state"]
+            except taskcluster.exceptions.TaskclusterRestFailure:
+                continue
+            if state in DEPENDENCY_DEAD_STATES:
+                dead[dep_id] = state
+
+        if dead:
+            known[task_id] = dead
+            name = task.get("task", {}).get("metadata", {}).get("name", task_id)
+            detail = ", ".join(f"{d} {s}" for d, s in sorted(dead.items()))
+            warn(
+                f"  {name} can never be scheduled: upstream {detail}. Not waiting "
+                "for it."
+            )
+    return known
 
 
 def monitor(queue, runs: list[dict], timeout: int, root_url: str) -> None:
@@ -323,7 +386,14 @@ def monitor(queue, runs: list[dict], timeout: int, root_url: str) -> None:
                 continue
 
             run["tasks"] = response.get("tasks", [])
-            run["counts"] = tally(run["tasks"], run["task_group_id"])
+            run["blocked"] = find_blocked(
+                queue,
+                replicated_tasks(run["tasks"], run["task_group_id"]),
+                run.get("blocked") or {},
+            )
+            run["counts"] = tally(
+                run["tasks"], run["task_group_id"], set(run["blocked"])
+            )
             decision_running = run["counts"]["decision"] in PENDING_STATES
             if run["counts"]["pending"] == 0 and not decision_running:
                 run["done"] = True
@@ -336,10 +406,11 @@ def monitor(queue, runs: list[dict], timeout: int, root_url: str) -> None:
             for run in runs:
                 c = run.get("counts")
                 if c:
+                    blocked = f", {c['blocked']} blocked" if c.get("blocked") else ""
                     notice(
                         f"  ({elapsed}) {run['pool']}: {c['completed']}/{c['total']} "
                         f"completed, {c['failed']} failed, {c['exception']} exception, "
-                        f"{c['pending']} pending/running"
+                        f"{c['pending']} pending/running{blocked}"
                     )
             last_log = now
 
@@ -352,16 +423,287 @@ def monitor(queue, runs: list[dict], timeout: int, root_url: str) -> None:
             run["timed_out"] = True
 
 
-def write_github_summary(runs: list[dict], root_url: str) -> None:
+# ---- scores --------------------------------------------------------------- #
+
+# Written by every browsertime and talos task; the same numbers Perfherder would
+# ingest, before Treeherder gets involved. Reading it here is the whole reason
+# this run does not need a Treeherder route: staging-hardware numbers have no
+# business in a perf sheriff's view, and the score is right there in the task.
+PERFHERDER_ARTIFACT = "public/test_info/perfherder-data.json"
+
+
+def fetch_perfherder(queue, task_id: str) -> dict | None:
+    """Perfherder blob for a task, or None if it did not produce one."""
+    try:
+        response = queue.getLatestArtifact(task_id, PERFHERDER_ARTIFACT)
+    except taskcluster.exceptions.TaskclusterRestFailure:
+        return None
+
+    if isinstance(response, dict) and "url" in response:
+        try:
+            http = requests.get(response["url"], timeout=60)
+            http.raise_for_status()
+            return http.json()
+        except (requests.RequestException, ValueError) as exc:
+            warn(f"  could not read {PERFHERDER_ARTIFACT} of {task_id}: {exc}")
+            return None
+    return response if isinstance(response, dict) else None
+
+
+def task_worker(task: dict) -> str:
+    """The node that produced the result: the last run's worker, since a retry
+    can land somewhere else and it is the last run's artifact we read."""
+    task_runs = task["status"].get("runs") or []
+    return (task_runs[-1].get("workerId") if task_runs else None) or "unknown"
+
+
+def collect_scores(queue, runs: list[dict]) -> None:
+    """Attach each pool's suite scores, keyed by suite name.
+
+    Each sample keeps the node that produced it. On a staging pool that is the
+    question behind the numbers: a pool mean hides one bad NUC, and one bad NUC
+    is the thing a WIM or ronin change is most likely to have produced.
+
+    Never fatal: a missing or unreadable score does not change whether the tests
+    themselves passed.
+    """
+    for run in runs:
+        scores: dict[str, dict] = {}
+        for task in replicated_tasks(run.get("tasks") or [], run.get("task_group_id")):
+            if task["status"]["state"] != "completed":
+                continue
+            task_id = task["status"]["taskId"]
+            data = fetch_perfherder(queue, task_id)
+            if not data:
+                continue
+            for suite in data.get("suites") or []:
+                name = suite.get("name")
+                value = suite.get("value")
+                if not name or value is None:
+                    continue
+                entry = scores.setdefault(
+                    name,
+                    {
+                        "unit": suite.get("unit", ""),
+                        "lower_is_better": bool(suite.get("lowerIsBetter")),
+                        "samples": [],
+                    },
+                )
+                entry["samples"].append(
+                    {
+                        "worker": task_worker(task),
+                        "value": float(value),
+                        "task_id": task_id,
+                        "replicates": [
+                            float(r) for r in (suite.get("replicates") or [])
+                        ],
+                    }
+                )
+        if scores:
+            run["scores"] = scores
+
+
+def sample_values(samples: list[dict]) -> list[float]:
+    return [sample["value"] for sample in samples]
+
+
+def by_worker(samples: list[dict]) -> dict[str, list[dict]]:
+    grouped: dict[str, list[dict]] = {}
+    for sample in samples:
+        grouped.setdefault(sample["worker"], []).append(sample)
+    return dict(sorted(grouped.items()))
+
+
+def silent_nodes(run: dict, samples: list[dict]) -> list[str]:
+    """pools.yml nodes that produced no score.
+
+    Taskcluster hands each task to whichever node is free, so an idle node is
+    usually just an uneven split -- but a node that never claims anything across
+    a whole run is worth seeing, and a per-worker table cannot show a row that
+    does not exist.
+    """
+    ran = {sample["worker"] for sample in samples}
+    return [node for node in run.get("nodes") or [] if node not in ran]
+
+
+def summarize(values: list[float]) -> dict:
+    """Mean, median and spread of a sample. Spread is the point of repeating a
+    run: a mean nobody can put an error bar on is not a result."""
+    summary = {
+        "n": len(values),
+        "mean": statistics.fmean(values),
+        "median": statistics.median(values),
+        "min": min(values),
+        "max": max(values),
+        "stdev": statistics.stdev(values) if len(values) > 1 else 0.0,
+    }
+    summary["cv"] = 100 * summary["stdev"] / summary["mean"] if summary["mean"] else 0.0
+    return summary
+
+
+# A node this far from its peers is worth looking at rather than averaging away.
+# Speedometer3 run-to-run noise on a healthy NUC is ~1-2%, so 5% is well clear of
+# it without flagging every pool with an uneven split.
+WORKER_OUTLIER_PERCENT = 5.0
+
+
+def peer_baseline(worker_means: list[float]) -> float:
+    """What a node should be compared against: the median of the per-node means.
+
+    Not the pool mean. One slow node drags the pool mean down far enough that
+    every healthy node then reads as fast, which flags the whole pool and points
+    at nothing. A median of node means is unmoved by a single bad node, so the
+    node that is actually different is the one that stands out.
+    """
+    return statistics.median(worker_means) if worker_means else 0.0
+
+
+def percent_delta(value: float, baseline: float) -> float:
+    return 100 * (value - baseline) / baseline if baseline else 0.0
+
+
+def is_outlier(delta: float) -> bool:
+    return abs(delta) >= WORKER_OUTLIER_PERCENT
+
+
+def print_scores(runs: list[dict]) -> None:
+    for run in runs:
+        for name, entry in sorted((run.get("scores") or {}).items()):
+            samples = entry["samples"]
+            stats = summarize(sample_values(samples))
+            direction = (
+                "lower is better" if entry["lower_is_better"] else "higher is better"
+            )
+            notice(
+                f"{run['pool']} {name}: mean {stats['mean']:.2f} "
+                f"median {stats['median']:.2f} min {stats['min']:.2f} "
+                f"max {stats['max']:.2f} stdev {stats['stdev']:.2f} "
+                f"({stats['cv']:.1f}% CV over {stats['n']} run(s), "
+                f"{entry['unit']}, {direction})"
+            )
+            grouped = by_worker(samples)
+            per_worker = {
+                worker: summarize(sample_values(worker_samples))
+                for worker, worker_samples in grouped.items()
+            }
+            baseline = peer_baseline([s["mean"] for s in per_worker.values()])
+            for worker, worker_stats in per_worker.items():
+                delta = percent_delta(worker_stats["mean"], baseline)
+                flag = " OUTLIER" if is_outlier(delta) else ""
+                notice(
+                    f"  {worker}: mean {worker_stats['mean']:.2f} "
+                    f"({delta:+.1f}% vs peers, {worker_stats['cv']:.1f}% CV over "
+                    f"{worker_stats['n']} run(s)){flag}"
+                )
+            for node in silent_nodes(run, samples):
+                notice(f"  {node}: no result")
+
+
+def score_summary_lines(runs: list[dict]) -> list[str]:
+    if not any(run.get("scores") for run in runs):
+        return []
+
+    lines = [
+        "### Scores",
+        "",
+        "| Pool | Suite | Runs | Mean | Median | Min | Max | Stdev | CV | Unit |",
+        "|---|---|:---:|---:|---:|---:|---:|---:|---:|---|",
+    ]
+    for run in runs:
+        for name, entry in sorted((run.get("scores") or {}).items()):
+            s = summarize(sample_values(entry["samples"]))
+            arrow = "↓" if entry["lower_is_better"] else "↑"
+            lines.append(
+                f"| {run['pool']} | {name} {arrow} | {s['n']} | {s['mean']:.2f} | "
+                f"{s['median']:.2f} | {s['min']:.2f} | {s['max']:.2f} | "
+                f"{s['stdev']:.2f} | {s['cv']:.1f}% | {entry['unit']} |"
+            )
+    lines.append("")
+
+    lines += worker_summary_lines(runs)
+
+    for run in runs:
+        for name, entry in sorted((run.get("scores") or {}).items()):
+            samples = entry["samples"]
+            per_run = ", ".join(f"{s['value']:.2f} ({s['worker']})" for s in samples)
+            lines.append(f"- **{run['pool']} {name}** per run: {per_run}")
+            replicates = [r for s in samples for r in s["replicates"]]
+            if replicates:
+                inner = summarize(replicates)
+                lines.append(
+                    f"  - {inner['n']} in-task replicates, "
+                    f"mean {inner['mean']:.2f}, {inner['cv']:.1f}% CV"
+                )
+    lines.append("")
+    lines.append(
+        "`↑` higher is better. CV is stdev/mean: the run-to-run noise floor, "
+        "which is what a regression has to beat to be real. Δ is a node against "
+        "the median of its pool's nodes -- not the pool mean, which one bad node "
+        "drags far enough to flag the healthy ones -- and is marked past "
+        f"{WORKER_OUTLIER_PERCENT:.0f}%. A row of one run is noise, not a verdict."
+    )
+    lines.append("")
+    return lines
+
+
+def worker_summary_lines(runs: list[dict]) -> list[str]:
+    """Per-node breakdown. A pool mean of three NUCs hides the one that is slow,
+    which on staging hardware is usually the thing being looked for."""
+    lines = [
+        "#### By worker",
+        "",
+        "| Pool | Worker | Suite | Runs | Mean | Median | Min | Max | CV | Δ vs peers |",
+        "|---|---|---|:---:|---:|---:|---:|---:|---:|---:|",
+    ]
+    flagged = []
+    for run in runs:
+        for name, entry in sorted((run.get("scores") or {}).items()):
+            samples = entry["samples"]
+            per_worker = {
+                worker: summarize(sample_values(worker_samples))
+                for worker, worker_samples in by_worker(samples).items()
+            }
+            baseline = peer_baseline([s["mean"] for s in per_worker.values()])
+            for worker, s in per_worker.items():
+                delta = percent_delta(s["mean"], baseline)
+                mark = " ⚠️" if is_outlier(delta) else ""
+                if is_outlier(delta):
+                    flagged.append((run["pool"], worker, name, delta, s["n"]))
+                lines.append(
+                    f"| {run['pool']} | `{worker}`{mark} | {name} | {s['n']} | "
+                    f"{s['mean']:.2f} | {s['median']:.2f} | {s['min']:.2f} | "
+                    f"{s['max']:.2f} | {s['cv']:.1f}% | {delta:+.1f}% |"
+                )
+            for node in silent_nodes(run, samples):
+                lines.append(
+                    f"| {run['pool']} | `{node}` | {name} | 0 | - | - | - | - | - | - |"
+                )
+    lines.append("")
+
+    for pool, worker, suite, delta, count in flagged:
+        lines.append(
+            f"- ⚠️ **{worker}** ({pool}) is {delta:+.1f}% off its peers on "
+            f"{suite} over {count} run(s)"
+        )
+    if flagged:
+        lines.append("")
+    return lines
+
+
+def write_github_summary(runs: list[dict], root_url: str, selection: str = "") -> None:
     summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
     if not summary_file:
         return
 
     lines = ["## HW OS Integration Tests", ""]
+    if selection:
+        lines += [selection, ""]
+    lines += score_summary_lines(runs)
 
     lines += [
-        "| Pool | Image | Branch | Revision | Result | Passed | Failed | Exception | Pending |",
-        "|---|---|---|---|:---:|:---:|:---:|:---:|:---:|",
+        "| Pool | Image | Branch | Revision | Result | Passed | Failed | "
+        "Exception | Blocked | Pending |",
+        "|---|---|---|---|:---:|:---:|:---:|:---:|:---:|:---:|",
     ]
     for run in runs:
         ident = run["identity"]
@@ -369,7 +711,7 @@ def write_github_summary(runs: list[dict], root_url: str) -> None:
         verdict = run.get("verdict", "not started")
         lines.append(
             "| [{pool}]({url}) | `{image}` | `{branch}` | `{rev}` | {verdict} | "
-            "{ok} | {failed} | {exc} | {pending} |".format(
+            "{ok} | {failed} | {exc} | {blocked} | {pending} |".format(
                 pool=run["pool"],
                 url=f"{root_url}/tasks/groups/{run['task_group_id']}"
                 if run.get("task_group_id")
@@ -381,6 +723,7 @@ def write_github_summary(runs: list[dict], root_url: str) -> None:
                 ok=c.get("completed", "-"),
                 failed=c.get("failed", "-"),
                 exc=c.get("exception", "-"),
+                blocked=c.get("blocked", "-"),
                 pending=c.get("pending", "-"),
             )
         )
@@ -393,8 +736,8 @@ def write_github_summary(runs: list[dict], root_url: str) -> None:
         lines += [
             f"### {run['pool']}",
             "",
-            "| Status | Task | State | Duration |",
-            "|:---:|---|---|---|",
+            "| Status | Task | Worker | State | Duration |",
+            "|:---:|---|---|---|---|",
         ]
         for task in tasks:
             status = task["status"]
@@ -411,7 +754,8 @@ def write_github_summary(runs: list[dict], root_url: str) -> None:
                     duration = format_duration(int((b - a).total_seconds()))
             lines.append(
                 f"| {result_emoji(status['state'])} | "
-                f"[{name}]({root_url}/tasks/{task_id}) | {status['state']} | {duration} |"
+                f"[{name}]({root_url}/tasks/{task_id}) | `{task_worker(task)}` | "
+                f"{status['state']} | {duration} |"
             )
         lines.append("")
 
@@ -421,11 +765,12 @@ def write_github_summary(runs: list[dict], root_url: str) -> None:
 # --------------------------------------------------------------------------- #
 
 
-def parse_pools(values: list[str]) -> list[str]:
-    names: list[str] = []
+def split_csv(values: list[str]) -> list[str]:
+    """Flatten repeated and comma-separated options into a deduped list."""
+    items: list[str] = []
     for value in values:
-        names.extend(p.strip() for p in value.split(",") if p.strip())
-    return list(dict.fromkeys(names))
+        items.extend(p.strip() for p in value.split(",") if p.strip())
+    return list(dict.fromkeys(items))
 
 
 def main() -> int:
@@ -456,6 +801,21 @@ def main() -> int:
         action="store_true",
         help="Trigger without checking pool health (not recommended)",
     )
+    parser.add_argument(
+        "--tests",
+        action="append",
+        default=[],
+        metavar="SUBSTRING",
+        help="Only run tasks whose name contains one of these; "
+        "comma-separated or repeated (e.g. --tests speedometer)",
+    )
+    parser.add_argument(
+        "--repeat",
+        type=int,
+        default=1,
+        metavar="N",
+        help=f"Run each selected task N times, 1-{hw_pools.MAX_REPEAT} (default: 1)",
+    )
     parser.add_argument("--no-wait", action="store_true", help="Exit after triggering")
     parser.add_argument(
         "--timeout",
@@ -478,9 +838,15 @@ def main() -> int:
         print("\nProduction (refused): " + ", ".join(refused))
         return 0
 
-    requested = parse_pools(args.pools)
+    requested = split_csv(args.pools)
     if not requested:
         parser.error("no pools given; use --list to see the targetable pools")
+
+    tests = split_csv(args.tests)
+    # Checked here as well as in the decision so a typo costs a second, not a
+    # hook fire and a decision task.
+    if not 1 <= args.repeat <= hw_pools.MAX_REPEAT:
+        parser.error(f"--repeat must be between 1 and {hw_pools.MAX_REPEAT}")
 
     try:
         pools = registry.resolve(requested)
@@ -522,22 +888,34 @@ def main() -> int:
 
     hooks = taskcluster.Hooks(options)
 
+    described = []
+    if tests:
+        described.append("tasks matching " + ", ".join(f"`{t}`" for t in tests))
+    if args.repeat > 1:
+        described.append(f"{args.repeat} runs of each")
+    selection = "Selection: " + "; ".join(described) if described else ""
+    if selection:
+        notice(selection.replace("`", ""))
+
     # ---- trigger ---------------------------------------------------------- #
     runs = []
     for pool in pools:
-        decision_task_id = trigger(hooks, pool.name)
+        decision_task_id = trigger(hooks, pool.name, tests, args.repeat)
         notice(f"  {pool.name}: decision {root_url}/tasks/{decision_task_id}")
         runs.append(
             {
                 "pool": pool.name,
                 "identity": pool.identity,
                 "decision_task_id": decision_task_id,
+                # For the by-worker breakdown: a node that claimed nothing all
+                # run has no task to be found from.
+                "nodes": list(pool.nodes),
             }
         )
 
     if args.no_wait:
         notice("--no-wait specified, exiting")
-        write_github_summary(runs, root_url)
+        write_github_summary(runs, root_url, selection)
         return 0
 
     # ---- discover task groups --------------------------------------------- #
@@ -552,10 +930,11 @@ def main() -> int:
     live = [r for r in runs if r.get("task_group_id")]
     if not live:
         error("no task groups were created")
-        write_github_summary(runs, root_url)
+        write_github_summary(runs, root_url, selection)
         return 1
 
     monitor(queue, live, args.timeout, root_url)
+    collect_scores(queue, live)
 
     # ---- verdicts --------------------------------------------------------- #
     failed_overall = False
@@ -589,10 +968,24 @@ def main() -> int:
         elif counts["failed"] or counts["exception"]:
             run["verdict"] = "❌ failed"
             failed_overall = True
+        elif counts.get("blocked"):
+            # Nothing to do with this image: an upstream mozilla-central task
+            # failed, so a copy of a test that depends on it could never run.
+            # Reported rather than passed, because the run did not test
+            # everything it set out to.
+            run["verdict"] = f"⚠️ {counts['blocked']} blocked upstream"
+            for task_id, dead in (run.get("blocked") or {}).items():
+                upstream = ", ".join(f"{d} {s}" for d, s in sorted(dead.items()))
+                warn(
+                    f"{run['pool']}: {root_url}/tasks/{task_id} never ran -- "
+                    f"upstream {upstream}"
+                )
+            failed_overall = True
         else:
             run["verdict"] = "✅ passed"
 
-    write_github_summary(runs, root_url)
+    write_github_summary(runs, root_url, selection)
+    print_scores(runs)
 
     for run in runs:
         counts = run.get("counts") or {}
