@@ -568,7 +568,7 @@ if ($Stages -contains 'publish') {
     # good WIM, but it IS reported loudly so it can't rot unnoticed.
     if (Test-Path $sbomMd) {
         foreach ($dest in @($sbomBlob, $sbomRunBlob)) {
-            az storage blob upload --account-name $account --container-name $capCont --name $dest --file $sbomMd --overwrite --auth-mode login --only-show-errors
+            az storage blob upload --account-name $account --container-name $capCont --name $dest --file $sbomMd --overwrite --auth-mode login --only-show-errors -o none
             if ($LASTEXITCODE -eq 0) { Write-Host "== Published $capCont/$dest ==" }
             else { Write-Warning "release notes upload FAILED (rc=$LASTEXITCODE): $capCont/$dest" }
         }

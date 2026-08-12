@@ -167,7 +167,7 @@ function Show-LogDelta {
     $mod = az storage blob show --account-name $stAccount --container-name $stContainer --name $BlobName --auth-mode login --query "properties.lastModified" -o tsv 2>$null
     if (($LASTEXITCODE -ne 0) -or (-not $mod)) { return }
     if (([datetimeoffset]("$mod".Trim())).UtcDateTime -le $kickoffUtc) { return }
-    az storage blob download --account-name $stAccount --container-name $stContainer --name $BlobName --file $tmp --auth-mode login --only-show-errors 2>$null
+    az storage blob download --account-name $stAccount --container-name $stContainer --name $BlobName --file $tmp --auth-mode login --only-show-errors -o none 2>$null
     if (-not (Test-Path $tmp)) { return }
     $lines = @(Get-Content $tmp -ErrorAction SilentlyContinue)
     $seen = $script:streamPrinted[$BlobName]
@@ -195,7 +195,7 @@ for ($elapsed = 0; $elapsed -lt ($maxMinutes * 60); $elapsed += $intervalSec) {
         if ($modUtc -gt $kickoffUtc) {
             # Fresh marker from THIS build - read the exit code it carries.
             Remove-Item $doneTmp -Force -ErrorAction SilentlyContinue
-            az storage blob download --account-name $stAccount --container-name $stContainer --name $doneName --file $doneTmp --auth-mode login --only-show-errors 2>$null
+            az storage blob download --account-name $stAccount --container-name $stContainer --name $doneName --file $doneTmp --auth-mode login --only-show-errors -o none 2>$null
             if (Test-Path $doneTmp) { $rc = [int]((Get-Content $doneTmp -Raw).Trim()); break }
         } else {
             Write-Host "  (ignoring stale marker from $modUtc; predates kickoff $kickoffUtc)"
@@ -220,7 +220,7 @@ if ($streamPrinted["_status/$image.live.log"] -eq 0) {
     Write-Host "== Build log (tail) =="
     $logTmp = Join-Path ([IO.Path]::GetTempPath()) "bake-$image.log"
     Remove-Item $logTmp -Force -ErrorAction SilentlyContinue
-    az storage blob download --account-name $stAccount --container-name $stContainer --name "_status/$image.log" --file $logTmp --auth-mode login --only-show-errors 2>$null
+    az storage blob download --account-name $stAccount --container-name $stContainer --name "_status/$image.log" --file $logTmp --auth-mode login --only-show-errors -o none 2>$null
     if (Test-Path $logTmp) { Get-Content $logTmp | ForEach-Object { Write-Host $_ } }
 }
 else { Write-Host ("== Build log streamed live above ({0} lines) ==" -f $streamPrinted["_status/$image.live.log"]) }
@@ -249,7 +249,7 @@ try {
         Select-Object -First 1
     if ($sbomPick) {
         $sbomFile = Split-Path $sbomPick.name -Leaf
-        az storage blob download --account-name $stAccount --container-name $stContainer --name $sbomPick.name --file $sbomFile --auth-mode login --only-show-errors 2>$null
+        az storage blob download --account-name $stAccount --container-name $stContainer --name $sbomPick.name --file $sbomFile --auth-mode login --only-show-errors -o none 2>$null
         if (Test-Path $sbomFile) {
             Write-Host "== Release notes: $sbomFile =="
             if ($env:GITHUB_ENV) { "sbom_file=$sbomFile" | Add-Content -Path $env:GITHUB_ENV }
