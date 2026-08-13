@@ -96,8 +96,6 @@ pools:
     - nuc13-001
     - nuc13-003
     - nuc13-027
-    # nuc13-038: down as of 2026-08-13; needs manual recovery before it can PXE.
-    # Was SSH-reachable earlier the same day, so it dropped during the PSU-swap batch.
     - nuc13-038
     - nuc13-082
     - nuc13-126
@@ -107,13 +105,10 @@ pools:
     - nuc13-014
     - nuc13-019
     - nuc13-020
-    # nuc13-022: down as of 2026-08-13; needs manual recovery before it can PXE.
     - nuc13-022
-    # nuc13-023: down as of 2026-08-13; needs manual recovery before it can PXE.
     - nuc13-023
     - nuc13-025
     - nuc13-026
-    # nuc13-028: down as of 2026-08-13; needs manual recovery before it can PXE.
     - nuc13-028
   # Questionable nodes — CPU suppression confirmed or notable floor events detected in stress testing.
   # Not cleared for high-priority CPU-intensive work. Pending PSU inspection/replacement.
