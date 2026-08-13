@@ -92,23 +92,7 @@ pools:
     - nuc13-024
     - nuc13-059
     - nuc13-119
-  # Questionable nodes — CPU suppression confirmed or notable floor events detected in stress testing.
-  # Not cleared for high-priority CPU-intensive work. Pending PSU inspection/replacement.
-  - name: "win11-64-24h2-hw-alpha"
-    puppet_version: "8.10.0"
-    openvox_version: "8.19.2"
-    #dev: RELOPS-1660
-    git_version: "2.50.1"
-    Description: "NUC12 Hardware Performance Staging/Testing Pool"
-    image: "win11-24H2-NUC-01-16-2025"
-    src_Organisation: "mozilla-platform-ops"
-    src_Repository: "ronin_puppet"
-    src_Branch: "RELOPS-2402-fleetbench"
-    hash: "74e8909"
-    secret_date: "02-06-2026"
-    domain_suffix: "wintest2.releng.mdc1.mozilla.com"
-    nodes:
-    # Known-good nodes moved from win11-64-24h2-hw for fleetbench testing.
+    # PSU swap-out validation batch moved from win11-64-24h2-hw-alpha. Tracked in RELOPS-2514.
     - nuc13-001
     - nuc13-003
     - nuc13-027
@@ -126,6 +110,22 @@ pools:
     - nuc13-025
     - nuc13-026
     - nuc13-028
+  # Questionable nodes — CPU suppression confirmed or notable floor events detected in stress testing.
+  # Not cleared for high-priority CPU-intensive work. Pending PSU inspection/replacement.
+  - name: "win11-64-24h2-hw-alpha"
+    puppet_version: "8.10.0"
+    openvox_version: "8.19.2"
+    #dev: RELOPS-1660
+    git_version: "2.50.1"
+    Description: "NUC12 Hardware Performance Staging/Testing Pool"
+    image: "win11-24H2-NUC-01-16-2025"
+    src_Organisation: "mozilla-platform-ops"
+    src_Repository: "ronin_puppet"
+    src_Branch: "RELOPS-2402-fleetbench"
+    hash: "74e8909"
+    secret_date: "02-06-2026"
+    domain_suffix: "wintest2.releng.mdc1.mozilla.com"
+    nodes:
     - nuc13-030
     - nuc13-031
     - nuc13-034
