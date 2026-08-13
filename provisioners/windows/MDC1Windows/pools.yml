@@ -82,7 +82,7 @@ pools:
     src_Repository: "ronin_puppet"
     src_Branch: "master"
     hash: "655bf64"
-    secret_date: "02-24-2026"
+    secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
     - nuc13-024
