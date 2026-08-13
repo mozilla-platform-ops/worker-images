@@ -92,20 +92,14 @@ pools:
     - nuc13-001
     - nuc13-003
     - nuc13-027
-    - nuc13-038
     - nuc13-082
     - nuc13-126
     - nuc13-132
     - nuc13-002
     - nuc13-013
     - nuc13-014
-    - nuc13-019
-    - nuc13-020
-    - nuc13-022
-    - nuc13-023
     - nuc13-025
     - nuc13-026
-    - nuc13-028
   # Questionable nodes — CPU suppression confirmed or notable floor events detected in stress testing.
   # Not cleared for high-priority CPU-intensive work. Pending PSU inspection/replacement.
   - name: "win11-64-24h2-hw-alpha"
@@ -199,6 +193,15 @@ pools:
     - nuc13-091
     # nuc13-151: slightly degraded since 2026-07-12.
     - nuc13-151
+    # Down and unreachable — cannot be PXE-booted until manually recovered.
+    # Being addressed after the PSU swap-out batch is worked through; new nodes
+    # found down should be added to the bottom of this block.
+    - nuc13-019
+    - nuc13-020
+    - nuc13-022
+    - nuc13-023
+    - nuc13-028
+    - nuc13-038
   - name: "win11-64-24h2-hw-perf-sheriff"
     openvox_version: "8.19.2"
     puppet_version: "8.10.0"
