@@ -71,6 +71,15 @@ pools:
     - nuc13-150
     - nuc13-155
     - nuc13-157
+    # Down and unrecoverable as of 2026-08-14. PXE-booted but never returned to the
+    # network, no Speedometer results in either 2026-08-13 x100 run, and SSH refused
+    # on every attempt since. Moved from perf-debug. Tracked in RELOPS-2514.
+    - nuc13-119
+    # No KVM / no network. DNS resolves to 10.49.65.133 but ICMP times out and ports
+    # 22, 3389 and 5985 are all silent, so nothing is answering on the host. No
+    # Speedometer results in either 2026-08-13 x100 run. Moved from perf-debug.
+    # Tracked in RELOPS-2514.
+    - nuc13-132
   # First 20 nodes to swap out PSUs and be tested: 10 down/assumed-PSU-failure nodes from relops1213 and 10 poorly-performing nodes from alpha.
   - name: "win11-64-24h2-hw-perf-debug"
     puppet_version: "8.10.0"
@@ -85,10 +94,6 @@ pools:
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    # Did not claim any Speedometer work during the 2026-08-13 x100 validation
-    # runs, so they are held back pending investigation. Tracked in RELOPS-2514.
-    - nuc13-119
-    - nuc13-132
     # Second PSU swap-out validation batch, moved from win11-64-24h2-hw-alpha.
     # Tracked in RELOPS-2514.
     - nuc13-030
