@@ -8,6 +8,7 @@ Describe "Microsoft Tools - Tester" {
 
     BeforeAll {
         $Directories = Get-WinFactsDirectories
+        $VCC2022 = @(Show-VCC2022)
     }
     It "<_.DisplayName> is installed" -ForEach @(
         Show-Win10SDK
@@ -28,6 +29,14 @@ Describe "Microsoft Tools - Tester" {
         Show-WinDotNet48
     ) {
         $_.DisplayVersion | Should -Be "4.8.04084"
+    }
+    It "Microsoft Visual C++ 2015-2022 packages are installed" {
+        $VCC2022.Count | Should -Be 6
+    }
+    It "Microsoft Visual C++ 2015-2022 packages are version 14.40.33810" {
+        $VCC2022 | Where-Object {
+            $_.DisplayVersion -notlike "14.40.33810*"
+        } | Should -BeNullOrEmpty
     }
     It "<_.DisplayName> is installed" -ForEach @(
         Show-Win10SDKAddon
