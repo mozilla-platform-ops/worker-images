@@ -60,7 +60,8 @@ pools:
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    # Moved from alpha.
+    # Group 1 - present before the RELOPS-2514 PSU swap-out validation began.
+    # Originally moved here from alpha.
     - nuc13-159
     - nuc13-160
     - nuc13-035
@@ -71,16 +72,22 @@ pools:
     - nuc13-150
     - nuc13-155
     - nuc13-157
-    # Down and unrecoverable as of 2026-08-14. PXE-booted but never returned to the
-    # network, no Speedometer results in either 2026-08-13 x100 run, and SSH refused
-    # on every attempt since. Moved from perf-debug. Tracked in RELOPS-2514.
+    # Group 2 - moved here during the RELOPS-2514 PSU swap-out validation,
+    # out of win11-64-24h2-hw-perf-debug.
+    # nuc13-037: KVM is broken - its port is cross-wired with nuc13-038's, so connecting
+    #   to one reaches the other and KVM-derived status for either is unreliable.
+    #   Also no SSH and no Speedometer results in the 2026-08-14 x100 runs.
+    - nuc13-037
+    # nuc13-069: Down. Unresponsive on every SSH attempt across two passes on 2026-08-14.
+    - nuc13-069
+    # nuc13-078: No KVM.
+    - nuc13-078
+    # nuc13-119: Down and unrecoverable. PXE-booted but never returned to the network, no
+    #   Speedometer results in either 2026-08-13 x100 run, and SSH refused since.
     - nuc13-119
-    # No KVM / no network. DNS resolves to 10.49.65.133 but ICMP times out and ports
-    # 22, 3389 and 5985 are all silent, so nothing is answering on the host. No
-    # Speedometer results in either 2026-08-13 x100 run. Moved from perf-debug.
-    # Tracked in RELOPS-2514.
+    # nuc13-132: No KVM / no network. DNS resolves to 10.49.65.133 but ICMP times out and
+    #   ports 22, 3389 and 5985 are all silent, so nothing is answering on the host.
     - nuc13-132
-  # First 20 nodes to swap out PSUs and be tested: 10 down/assumed-PSU-failure nodes from relops1213 and 10 poorly-performing nodes from alpha.
   - name: "win11-64-24h2-hw-perf-debug"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
@@ -95,18 +102,15 @@ pools:
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
     # Did not claim any Speedometer work in the 2026-08-14 x100 runs (31827555048 /
-    # 31827577781) while their pool peers did. Tracked in RELOPS-2514.
-    - nuc13-037
+    # 31827577781) while its pool peers did. Tracked in RELOPS-2514.
     - nuc13-053
     # Third PSU swap-out validation batch, moved from win11-64-24h2-hw-alpha.
     # Tracked in RELOPS-2514.
-    - nuc13-069
     - nuc13-071
     - nuc13-072
     - nuc13-073
     - nuc13-076
     - nuc13-077
-    - nuc13-078
     - nuc13-079
     - nuc13-080
     - nuc13-084
