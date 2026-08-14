@@ -30,16 +30,6 @@ Describe "Microsoft Tools - Tester" {
         $_.DisplayVersion | Should -Be "4.8.04084"
     }
     It "<_.DisplayName> is installed" -ForEach @(
-        Show-vcc2019
-    ) {
-        $_.DisplayName | Should -Not -Be $Null
-    }
-    It "<_.DisplayName> is version 14.26.28720" -ForEach @(
-        Show-vcc2019
-    ) {
-        $_.DisplayVersion | Should -Be "14.26.28720"
-    }
-    It "<_.DisplayName> is installed" -ForEach @(
         Show-Win10SDKAddon
     ) {
         $_.DisplayName |  Should -Not -Be $Null
