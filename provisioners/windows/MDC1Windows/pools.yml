@@ -94,42 +94,12 @@ pools:
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    # Second PSU swap-out validation batch, moved from win11-64-24h2-hw-alpha.
-    # Tracked in RELOPS-2514.
-    - nuc13-030
-    - nuc13-031
-    - nuc13-034
+    # Did not claim any Speedometer work in the 2026-08-14 x100 runs (31827555048 /
+    # 31827577781) while their pool peers did. Tracked in RELOPS-2514.
     - nuc13-037
-    - nuc13-039
-    - nuc13-042
-    - nuc13-043
-    - nuc13-047
-    - nuc13-050
-    - nuc13-051
-    - nuc13-052
     - nuc13-053
-    - nuc13-054
-    - nuc13-055
-    - nuc13-058
-    - nuc13-063
-    - nuc13-065
-    - nuc13-067
-  # Questionable nodes — CPU suppression confirmed or notable floor events detected in stress testing.
-  # Not cleared for high-priority CPU-intensive work. Pending PSU inspection/replacement.
-  - name: "win11-64-24h2-hw-alpha"
-    puppet_version: "8.10.0"
-    openvox_version: "8.19.2"
-    #dev: RELOPS-1660
-    git_version: "2.50.1"
-    Description: "NUC12 Hardware Performance Staging/Testing Pool"
-    image: "win11-24H2-NUC-01-16-2025"
-    src_Organisation: "mozilla-platform-ops"
-    src_Repository: "ronin_puppet"
-    src_Branch: "RELOPS-2402-fleetbench"
-    hash: "74e8909"
-    secret_date: "02-06-2026"
-    domain_suffix: "wintest2.releng.mdc1.mozilla.com"
-    nodes:
+    # Third PSU swap-out validation batch, moved from win11-64-24h2-hw-alpha.
+    # Tracked in RELOPS-2514.
     - nuc13-069
     - nuc13-071
     - nuc13-072
@@ -148,6 +118,20 @@ pools:
     - nuc13-099
     - nuc13-100
     - nuc13-102
+  - name: "win11-64-24h2-hw-alpha"
+    puppet_version: "8.10.0"
+    openvox_version: "8.19.2"
+    #dev: RELOPS-1660
+    git_version: "2.50.1"
+    Description: "NUC12 Hardware Performance Staging/Testing Pool"
+    image: "win11-24H2-NUC-01-16-2025"
+    src_Organisation: "mozilla-platform-ops"
+    src_Repository: "ronin_puppet"
+    src_Branch: "RELOPS-2402-fleetbench"
+    hash: "74e8909"
+    secret_date: "02-06-2026"
+    domain_suffix: "wintest2.releng.mdc1.mozilla.com"
+    nodes:
     - nuc13-103
     - nuc13-106
     - nuc13-111
@@ -245,21 +229,37 @@ pools:
     - nuc13-026
     - nuc13-027
     - nuc13-029
+    - nuc13-030
+    - nuc13-031
     - nuc13-033
+    - nuc13-034
     - nuc13-036
+    - nuc13-039
     - nuc13-040
     - nuc13-041
+    - nuc13-042
+    - nuc13-043
     - nuc13-044
     - nuc13-046
+    - nuc13-047
     - nuc13-048
     - nuc13-049
+    - nuc13-050
+    - nuc13-051
+    - nuc13-052
+    - nuc13-054
+    - nuc13-055
     - nuc13-056
     - nuc13-057
+    - nuc13-058
     - nuc13-059
     - nuc13-061
     - nuc13-062
+    - nuc13-063
     - nuc13-064
+    - nuc13-065
     - nuc13-066
+    - nuc13-067
     - nuc13-070
     - nuc13-074
     - nuc13-081
