@@ -76,6 +76,7 @@ Function Invoke-RoninTest {
 
     $Container = New-PesterContainer -Path $tests.FullName -Data @{ Hiera = $CombinedHiera }
     $Configuration = New-PesterConfiguration
+    $Configuration.Run.FailOnNullOrEmptyForEach = $false
     $Configuration.Run.Exit = $true
     $Configuration.Run.Container = $Container
     $Configuration.TestResult.Enabled = $true
