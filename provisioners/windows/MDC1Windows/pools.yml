@@ -85,21 +85,10 @@ pools:
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    - nuc13-024
-    - nuc13-059
+    # Did not claim any Speedometer work during the 2026-08-13 x100 validation
+    # runs, so they are held back pending investigation. Tracked in RELOPS-2514.
     - nuc13-119
-    # PSU swap-out validation batch moved from win11-64-24h2-hw-alpha. Tracked in RELOPS-2514.
-    - nuc13-001
-    - nuc13-003
-    - nuc13-027
-    - nuc13-082
-    - nuc13-126
     - nuc13-132
-    - nuc13-002
-    - nuc13-013
-    - nuc13-014
-    - nuc13-025
-    - nuc13-026
   # Questionable nodes — CPU suppression confirmed or notable floor events detected in stress testing.
   # Not cleared for high-priority CPU-intensive work. Pending PSU inspection/replacement.
   - name: "win11-64-24h2-hw-alpha"
@@ -286,6 +275,21 @@ pools:
     - nuc13-153
     - nuc13-154
     - nuc13-156
+    # Returned from win11-64-24h2-hw-perf-debug after PSU swap-out validation.
+    # All 12 scored on Speedometer 3 across two x100 runs on 2026-08-13 with no
+    # suppression or floor events. Tracked in RELOPS-2514.
+    - nuc13-001
+    - nuc13-002
+    - nuc13-003
+    - nuc13-013
+    - nuc13-014
+    - nuc13-024
+    - nuc13-025
+    - nuc13-026
+    - nuc13-027
+    - nuc13-059
+    - nuc13-082
+    - nuc13-126
 defaults:
   NV_domain: "mdc1.mozilla.com"
 Validate:
