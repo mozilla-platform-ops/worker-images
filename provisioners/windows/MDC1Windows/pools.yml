@@ -109,6 +109,9 @@ pools:
     #   comes back on its original 05-01 image, confirmed across three checks over
     #   three days. Needs a recovery route other than a repeat PXE.
     - nuc13-077
+    # nuc13-111: unreachable, with the display flashing. Did not come back after being
+    #   PXE-booted, so it could not be scored.
+    - nuc13-111
   - name: "win11-64-24h2-hw-perf-debug"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
@@ -126,7 +129,6 @@ pools:
     # Tracked in RELOPS-2514.
     - nuc13-103
     - nuc13-106
-    - nuc13-111
     - nuc13-114
     - nuc13-115
     - nuc13-116
