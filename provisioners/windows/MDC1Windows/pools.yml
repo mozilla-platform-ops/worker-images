@@ -92,19 +92,6 @@ pools:
     #   back on its original 05-01 image, confirmed across three checks over three
     #   days. Needs a recovery route other than a repeat PXE.
     - nuc13-077
-    # nuc13-095: Low Speedometer 3 score, needs re-test. Pooled 24.422 in the 2026-08-15 runs.
-    #   Unstable in 31851215911 (3.0% CV, -2.0% vs peers) but clean in 31851242459
-    #   (0.2% CV, -0.5%), so it may simply have been unsettled after re-imaging.
-    - nuc13-095
-    # nuc13-098: Low Speedometer 3 score, needs re-test. Pooled 24.442. Same pattern as
-    #   nuc13-095: 2.8% CV in the earlier run, 0.4% in the later one.
-    - nuc13-098
-    # nuc13-099: Low Speedometer 3 score, needs re-test. Pooled 24.420, the lowest of the
-    #   third batch. 3.5% CV in the earlier run, 0.1% in the later one.
-    - nuc13-099
-    # nuc13-102: Low Speedometer 3 score, needs re-test. Pooled 24.454. 2.3% CV in the earlier
-    #   run, 0.5% in the later one.
-    - nuc13-102
     # nuc13-111: Unreachable with its display flashing. Did not come back after being
     #   PXE-booted, so it could not be scored.
     - nuc13-111
@@ -121,18 +108,19 @@ pools:
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    # Crashed during the fourth batch re-image and left in place deliberately - not
-    # moved to relops1213 and not to be re-imaged for now. Both produced no
-    # Speedometer results in the 2026-08-17 x100 runs. Tracked in RELOPS-2514.
+    # Crashed during the fourth batch re-image, so they produced no Speedometer results
+    # in the 2026-08-17 x100 runs. Kept in this pool rather than moved to relops1213,
+    # and re-imaged later the same day. Tracked in RELOPS-2514.
     - nuc13-125
     - nuc13-131
-    # Fifth PSU swap-out validation batch - the remainder of
-    # win11-64-24h2-hw-alpha. Tracked in RELOPS-2514. Known state going in, from the
-    # 2026-08-17 sweep: nuc13-022, nuc13-023 and nuc13-028 are confirmed down;
-    # nuc13-143, nuc13-146, nuc13-147 and nuc13-148 were unresponsive; nuc13-158 is
-    # reachable but has an empty bootstrap_stage, so it appears never to have
-    # bootstrapped. nuc13-019, nuc13-020 and nuc13-038 were previously recorded as
-    # down but are up and healthy.
+    # Fifth PSU swap-out validation batch - the remainder of win11-64-24h2-hw-alpha.
+    # Tracked in RELOPS-2514. Notes on individual nodes going in:
+    #   nuc13-146, nuc13-147, nuc13-148 - initially unresponsive on SSH, recovered
+    #     before being re-imaged.
+    #   nuc13-158 - was reachable but with an empty bootstrap_stage, so it appears
+    #     never to have bootstrapped before this re-image.
+    #   nuc13-019, nuc13-020, nuc13-038 - were recorded as down in the alpha down
+    #     block but are in fact up and healthy.
     - nuc13-146
     - nuc13-147
     - nuc13-148
@@ -152,6 +140,14 @@ pools:
     # batch. Tracked in RELOPS-2514.
     - nuc13-159
     - nuc13-160
+    # Returned from win11-64-24h2-hw-relops1213 2026-08-17 for a re-test. These four
+    # scored low in the 2026-08-15 x100 runs (pooled 24.420 to 24.454) but were
+    # unstable in 31851215911 and clean in 31851242459, so the result was ambiguous.
+    # They are working machines, not a hardware fault. Tracked in RELOPS-2514.
+    - nuc13-095
+    - nuc13-098
+    - nuc13-099
+    - nuc13-102
   - name: "win11-64-24h2-hw-alpha"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
