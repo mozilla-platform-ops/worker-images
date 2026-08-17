@@ -112,6 +112,18 @@ pools:
     # nuc13-111: unreachable, with the display flashing. Did not come back after being
     #   PXE-booted, so it could not be scored.
     - nuc13-111
+    # Group 5 - no KVM. Moved from win11-64-24h2-hw-perf-debug 2026-08-17.
+    # nuc13-011: SSH reachable and the PXE bootsequence was set successfully, but the
+    #   reboot never took - it stayed up across repeated probes, so it cannot be
+    #   re-imaged remotely.
+    - nuc13-011
+    # nuc13-143: unresponsive on SSH across the 2026-08-17 sweeps.
+    - nuc13-143
+    # Group 6 - down. Confirmed down by inspection; unresponsive on SSH on every
+    # attempt since 2026-08-13. Moved from win11-64-24h2-hw-perf-debug 2026-08-17.
+    - nuc13-022
+    - nuc13-023
+    - nuc13-028
   - name: "win11-64-24h2-hw-perf-debug"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
@@ -137,7 +149,6 @@ pools:
     # reachable but has an empty bootstrap_stage, so it appears never to have
     # bootstrapped. nuc13-019, nuc13-020 and nuc13-038 were previously recorded as
     # down but are up and healthy.
-    - nuc13-143
     - nuc13-146
     - nuc13-147
     - nuc13-148
@@ -146,16 +157,12 @@ pools:
     - nuc13-045
     - nuc13-006
     - nuc13-093
-    - nuc13-011
     - nuc13-012
     - nuc13-032
     - nuc13-091
     - nuc13-151
     - nuc13-019
     - nuc13-020
-    - nuc13-022
-    - nuc13-023
-    - nuc13-028
     - nuc13-038
   - name: "win11-64-24h2-hw-alpha"
     puppet_version: "8.10.0"
