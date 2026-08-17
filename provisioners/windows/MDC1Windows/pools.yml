@@ -88,6 +88,27 @@ pools:
     # nuc13-132: No KVM / no network. DNS resolves to 10.49.65.133 but ICMP times out and
     #   ports 22, 3389 and 5985 are all silent, so nothing is answering on the host.
     - nuc13-132
+    # Group 3 - low Speedometer 3 scores in the 2026-08-15 x100 runs, NEED RETEST.
+    # The slowest four of the third batch on pooled figures (24.420 to 24.454,
+    # roughly 1.7% below the fastest node). Unstable in run 31851215911 at 2.3-3.5%
+    # CV and 1.5-2.0% below peers, including that run's overall minimum of 22.57,
+    # but clean in 31851242459 at 0.1-0.5% CV and within 0.6% of peers. Parked here
+    # pending a re-test rather than promoted on an ambiguous result.
+    # Moved from win11-64-24h2-hw. Tracked in RELOPS-2514.
+    - nuc13-095
+    - nuc13-098
+    - nuc13-099
+    - nuc13-102
+    # Group 4 - failed deployments. Never completed a validated re-image, so they
+    # could not be scored. Moved from win11-64-24h2-hw-perf-debug.
+    # nuc13-053: no Speedometer results in either 2026-08-15 x100 run while its pool
+    #   peers scored. Its KVM port is cross-wired with nuc13-054's, so console access
+    #   reaches the wrong host.
+    - nuc13-053
+    # nuc13-077: PXE does not take. It accepts the bootsequence change and reboots but
+    #   comes back on its original 05-01 image, confirmed across three checks over
+    #   three days. Needs a recovery route other than a repeat PXE.
+    - nuc13-077
   - name: "win11-64-24h2-hw-perf-debug"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
@@ -101,27 +122,8 @@ pools:
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    # nuc13-053: no Speedometer results in the 2026-08-15 x100 runs (31851215911 /
-    #   31851242459) while its pool peers scored.
-    - nuc13-053
-    # nuc13-077: PXE does not take - it sets the bootsequence and reboots but comes
-    #   back on its original 05-01 image, so it has never been re-imaged. No
-    #   Speedometer results in the 2026-08-15 x100 runs.
-    - nuc13-077
-  - name: "win11-64-24h2-hw-alpha"
-    puppet_version: "8.10.0"
-    openvox_version: "8.19.2"
-    #dev: RELOPS-1660
-    git_version: "2.50.1"
-    Description: "NUC12 Hardware Performance Staging/Testing Pool"
-    image: "win11-24H2-NUC-01-16-2025"
-    src_Organisation: "mozilla-platform-ops"
-    src_Repository: "ronin_puppet"
-    src_Branch: "RELOPS-2402-fleetbench"
-    hash: "74e8909"
-    secret_date: "02-06-2026"
-    domain_suffix: "wintest2.releng.mdc1.mozilla.com"
-    nodes:
+    # Fourth PSU swap-out validation batch, moved from win11-64-24h2-hw-alpha.
+    # Tracked in RELOPS-2514.
     - nuc13-103
     - nuc13-106
     - nuc13-111
@@ -142,6 +144,20 @@ pools:
     - nuc13-140
     - nuc13-141
     - nuc13-142
+  - name: "win11-64-24h2-hw-alpha"
+    puppet_version: "8.10.0"
+    openvox_version: "8.19.2"
+    #dev: RELOPS-1660
+    git_version: "2.50.1"
+    Description: "NUC12 Hardware Performance Staging/Testing Pool"
+    image: "win11-24H2-NUC-01-16-2025"
+    src_Organisation: "mozilla-platform-ops"
+    src_Repository: "ronin_puppet"
+    src_Branch: "RELOPS-2402-fleetbench"
+    hash: "74e8909"
+    secret_date: "02-06-2026"
+    domain_suffix: "wintest2.releng.mdc1.mozilla.com"
+    nodes:
     - nuc13-143
     - nuc13-146
     - nuc13-147
@@ -270,14 +286,10 @@ pools:
     - nuc13-090
     - nuc13-092
     - nuc13-094
-    - nuc13-095
     - nuc13-096
     - nuc13-097
-    - nuc13-098
-    - nuc13-099
     - nuc13-100
     - nuc13-101
-    - nuc13-102
     - nuc13-104
     - nuc13-105
     - nuc13-108
