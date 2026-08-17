@@ -101,27 +101,13 @@ pools:
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    # Did not claim any Speedometer work in the 2026-08-14 x100 runs (31827555048 /
-    # 31827577781) while its pool peers did. Tracked in RELOPS-2514.
+    # nuc13-053: no Speedometer results in the 2026-08-15 x100 runs (31851215911 /
+    #   31851242459) while its pool peers scored.
     - nuc13-053
-    # Third PSU swap-out validation batch, moved from win11-64-24h2-hw-alpha.
-    # Tracked in RELOPS-2514.
-    - nuc13-071
-    - nuc13-072
-    - nuc13-073
-    - nuc13-076
+    # nuc13-077: PXE does not take - it sets the bootsequence and reboots but comes
+    #   back on its original 05-01 image, so it has never been re-imaged. No
+    #   Speedometer results in the 2026-08-15 x100 runs.
     - nuc13-077
-    - nuc13-079
-    - nuc13-080
-    - nuc13-084
-    - nuc13-087
-    - nuc13-092
-    - nuc13-094
-    - nuc13-095
-    - nuc13-098
-    - nuc13-099
-    - nuc13-100
-    - nuc13-102
   - name: "win11-64-24h2-hw-alpha"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
@@ -265,18 +251,33 @@ pools:
     - nuc13-066
     - nuc13-067
     - nuc13-070
+    - nuc13-071
+    - nuc13-072
+    - nuc13-073
     - nuc13-074
+    - nuc13-076
+    - nuc13-079
+    - nuc13-080
     - nuc13-081
     - nuc13-082
     - nuc13-083
+    - nuc13-084
     - nuc13-085
     - nuc13-086
+    - nuc13-087
     - nuc13-088
     - nuc13-089
     - nuc13-090
+    - nuc13-092
+    - nuc13-094
+    - nuc13-095
     - nuc13-096
     - nuc13-097
+    - nuc13-098
+    - nuc13-099
+    - nuc13-100
     - nuc13-101
+    - nuc13-102
     - nuc13-104
     - nuc13-105
     - nuc13-108
