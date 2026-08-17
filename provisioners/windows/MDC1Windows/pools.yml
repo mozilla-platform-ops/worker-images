@@ -130,6 +130,33 @@ pools:
     # Speedometer results in the 2026-08-17 x100 runs. Tracked in RELOPS-2514.
     - nuc13-125
     - nuc13-131
+    # Fifth PSU swap-out validation batch - the remainder of
+    # win11-64-24h2-hw-alpha. Tracked in RELOPS-2514. Known state going in, from the
+    # 2026-08-17 sweep: nuc13-022, nuc13-023 and nuc13-028 are confirmed down;
+    # nuc13-143, nuc13-146, nuc13-147 and nuc13-148 were unresponsive; nuc13-158 is
+    # reachable but has an empty bootstrap_stage, so it appears never to have
+    # bootstrapped. nuc13-019, nuc13-020 and nuc13-038 were previously recorded as
+    # down but are up and healthy.
+    - nuc13-143
+    - nuc13-146
+    - nuc13-147
+    - nuc13-148
+    - nuc13-152
+    - nuc13-158
+    - nuc13-045
+    - nuc13-006
+    - nuc13-093
+    - nuc13-011
+    - nuc13-012
+    - nuc13-032
+    - nuc13-091
+    - nuc13-151
+    - nuc13-019
+    - nuc13-020
+    - nuc13-022
+    - nuc13-023
+    - nuc13-028
+    - nuc13-038
   - name: "win11-64-24h2-hw-alpha"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
@@ -144,36 +171,10 @@ pools:
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    - nuc13-143
-    - nuc13-146
-    - nuc13-147
-    - nuc13-148
-    - nuc13-152
-    - nuc13-158
-    # Belongs in alpha; was previously misplaced.
-    - nuc13-045
-    - nuc13-006
-    - nuc13-093
-    # Degraded performers moved out of win11-64-24h2-hw.
-    # nuc13-011: slightly underperforming.
-    - nuc13-011
-    # nuc13-012: slightly degraded for over a month.
-    - nuc13-012
-    # nuc13-032: degraded after 2026-07-22.
-    - nuc13-032
-    # nuc13-091: slightly degraded for over a month.
-    - nuc13-091
-    # nuc13-151: slightly degraded since 2026-07-12.
-    - nuc13-151
-    # Down and unreachable — cannot be PXE-booted until manually recovered.
-    # Being addressed after the PSU swap-out batch is worked through; new nodes
-    # found down should be added to the bottom of this block.
-    - nuc13-019
-    - nuc13-020
-    - nuc13-022
-    - nuc13-023
-    - nuc13-028
-    - nuc13-038
+    # Placeholder only - nuc13-999 is not real hardware and does not resolve. It keeps
+    # this pool's node list non-empty while every real node is out being validated in
+    # win11-64-24h2-hw-perf-debug. Remove it when real nodes return to alpha.
+    - nuc13-999
   - name: "win11-64-24h2-hw-perf-sheriff"
     openvox_version: "8.19.2"
     puppet_version: "8.10.0"
