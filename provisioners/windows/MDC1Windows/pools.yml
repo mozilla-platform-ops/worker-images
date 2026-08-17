@@ -125,27 +125,11 @@ pools:
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    # Fourth PSU swap-out validation batch, moved from win11-64-24h2-hw-alpha.
-    # Tracked in RELOPS-2514.
-    - nuc13-103
-    - nuc13-106
-    - nuc13-114
-    - nuc13-115
-    - nuc13-116
-    - nuc13-117
-    - nuc13-120
-    - nuc13-122
+    # Crashed during the fourth batch re-image and left in place deliberately - not
+    # moved to relops1213 and not to be re-imaged for now. Both produced no
+    # Speedometer results in the 2026-08-17 x100 runs. Tracked in RELOPS-2514.
     - nuc13-125
-    - nuc13-129
     - nuc13-131
-    - nuc13-133
-    - nuc13-134
-    - nuc13-136
-    - nuc13-138
-    - nuc13-139
-    - nuc13-140
-    - nuc13-141
-    - nuc13-142
   - name: "win11-64-24h2-hw-alpha"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
@@ -292,21 +276,38 @@ pools:
     - nuc13-097
     - nuc13-100
     - nuc13-101
+    - nuc13-103
     - nuc13-104
     - nuc13-105
+    - nuc13-106
     - nuc13-108
     - nuc13-109
     - nuc13-110
     - nuc13-113
+    - nuc13-114
+    - nuc13-115
+    - nuc13-116
+    - nuc13-117
     - nuc13-118
+    - nuc13-120
     - nuc13-121
+    - nuc13-122
     - nuc13-123
     - nuc13-126
     - nuc13-127
     - nuc13-128
+    - nuc13-129
     - nuc13-130
+    - nuc13-133
+    - nuc13-134
     - nuc13-135
+    - nuc13-136
     - nuc13-137
+    - nuc13-138
+    - nuc13-139
+    - nuc13-140
+    - nuc13-141
+    - nuc13-142
     - nuc13-144
     - nuc13-145
     - nuc13-149
