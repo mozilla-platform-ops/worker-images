@@ -64,8 +64,10 @@ pools:
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    # Pre-validation - present before the RELOPS-2514 PSU swap-out validation began.
-    # Originally moved here from alpha. No per-node history recorded.
+    # Known dead PSUs - present before the RELOPS-2514 PSU swap-out validation began.
+    # Originally moved here from alpha. These are not awaiting a swap like the nodes in
+    # win11-64-24h2-hw-alpha; their PSUs are known dead. They appear in none of the swap
+    # tickets (IO-3797, IO-3844, IO-3884).
     - nuc13-035
     - nuc13-060
     - nuc13-068
