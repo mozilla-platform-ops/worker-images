@@ -34,8 +34,8 @@ pools:
     image: "win11-24h2-hw-20260811-202701"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "RELOPS-2195-thermal"
-    hash: "e47164b"
+    src_Branch: "wim-bake-role"
+    hash: "48a8b9d4"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
