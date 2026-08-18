@@ -399,19 +399,60 @@ class TestWorkerBreakdown(RunnerTestBase):
         runs = self._scored([("nuc13-024", 25.0), ("nuc13-059", 24.5)])
         self.assertNotIn("⚠️", "\n".join(self.mod.worker_summary_lines(runs)))
 
-    def test_node_that_ran_nothing_still_gets_a_row(self):
+    def test_only_nodes_that_produced_a_result_get_a_row(self):
+        # What this replaced: idle nodes were worked out per suite, so a pool of
+        # 41 nodes running each test once rendered one row and forty "no result"
+        # rows per suite -- eleven suites of that in run 32180165353.
         runs = self._scored(
             [("nuc13-024", 25.0)], nodes=["nuc13-024", "nuc13-059", "nuc13-119"]
         )
         table = "\n".join(self.mod.worker_summary_lines(runs))
-        for node in ("nuc13-024", "nuc13-059", "nuc13-119"):
-            self.assertIn(f"`{node}`", table)
-        self.assertEqual(
-            self.mod.silent_nodes(
-                runs[0], runs[0]["scores"]["speedometer3"]["samples"]
-            ),
-            ["nuc13-059", "nuc13-119"],
+        rows = [line for line in table.splitlines() if line.startswith("| win11")]
+        self.assertEqual(len(rows), 1)
+        self.assertIn("`nuc13-024`", rows[0])
+        for node in ("nuc13-059", "nuc13-119"):
+            self.assertNotIn(f"`{node}`", table)
+
+    def test_a_node_missing_from_one_suite_is_not_idle(self):
+        runs = self._scored([("nuc13-024", 25.0)], nodes=["nuc13-024", "nuc13-059"])
+        runs[0]["scores"]["youtube-playback-hfr"] = {
+            "unit": "score",
+            "lower_is_better": True,
+            "samples": [
+                {
+                    "worker": "nuc13-059",
+                    "value": 0.5,
+                    "task_id": "task9",
+                    "replicates": [],
+                }
+            ],
+        }
+        self.assertEqual(self.mod.idle_nodes(runs[0]), [])
+        self.assertEqual(self.mod.idle_note(runs[0]), "")
+
+    def test_idle_nodes_are_named_when_the_run_had_work_for_all_of_them(self):
+        runs = self._scored(
+            [("nuc13-024", 25.0), ("nuc13-024", 25.0), ("nuc13-059", 25.0)],
+            nodes=["nuc13-024", "nuc13-059", "nuc13-119"],
         )
+        note = self.mod.idle_note(runs[0])
+        self.assertIn("1 of 3", note)
+        self.assertIn("nuc13-119", note)
+        self.assertIn(f"- {note}", "\n".join(self.mod.worker_summary_lines(runs)))
+
+    def test_an_uneven_split_is_counted_rather_than_named(self):
+        # One result across three nodes: the idle two are arithmetic, not a fault.
+        runs = self._scored(
+            [("nuc13-024", 25.0)], nodes=["nuc13-024", "nuc13-059", "nuc13-119"]
+        )
+        note = self.mod.idle_note(runs[0])
+        self.assertIn("2 of 3", note)
+        self.assertIn("uneven split", note)
+        self.assertNotIn("nuc13-119", note)
+
+    def test_a_run_without_a_node_list_gets_no_note(self):
+        runs = self._scored([("nuc13-024", 25.0)])
+        self.assertEqual(self.mod.idle_note(runs[0]), "")
 
     def test_outlier_threshold_is_symmetric(self):
         self.assertTrue(self.mod.is_outlier(self.mod.WORKER_OUTLIER_PERCENT))

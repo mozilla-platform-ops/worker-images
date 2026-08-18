@@ -514,16 +514,51 @@ def by_worker(samples: list[dict]) -> dict[str, list[dict]]:
     return dict(sorted(grouped.items()))
 
 
-def silent_nodes(run: dict, samples: list[dict]) -> list[str]:
-    """pools.yml nodes that produced no score.
+def result_count(run: dict) -> int:
+    return sum(len(entry["samples"]) for entry in (run.get("scores") or {}).values())
 
-    Taskcluster hands each task to whichever node is free, so an idle node is
-    usually just an uneven split -- but a node that never claims anything across
-    a whole run is worth seeing, and a per-worker table cannot show a row that
-    does not exist.
+
+def idle_nodes(run: dict) -> list[str]:
+    """pools.yml nodes that produced no score anywhere in this run.
+
+    Run-level, not per-suite. Taskcluster hands each task to whichever node is
+    free, so a node missing from one suite means nothing -- and asking the
+    question per suite is what produced forty "no result" rows per suite on a
+    run that had one result per suite. A node that claims nothing across a whole
+    run is the only version of this worth reading.
     """
-    ran = {sample["worker"] for sample in samples}
+    ran = {
+        sample["worker"]
+        for entry in (run.get("scores") or {}).values()
+        for sample in entry["samples"]
+    }
     return [node for node in run.get("nodes") or [] if node not in ran]
+
+
+def idle_note(run: dict) -> str:
+    """One line accounting for the nodes the per-worker table cannot show, or ""
+    when every node in the pool produced something.
+
+    Idleness is only a signal when there was enough work to reach everyone: an
+    os-integration run is one task per test, so most of a 41-node pool sitting
+    it out is arithmetic, not a fault. That case gets a count; a run that had at
+    least as many results as nodes gets the names, because there a silent node
+    means it never claimed its share.
+    """
+    nodes = run.get("nodes") or []
+    idle = idle_nodes(run)
+    if not nodes or not idle:
+        return ""
+    results = result_count(run)
+    head = (
+        f"{run['pool']}: {len(idle)} of {len(nodes)} pools.yml nodes produced no score"
+    )
+    if results < len(nodes):
+        return (
+            f"{head} -- {results} result(s) across {len(nodes)} nodes, so an "
+            "uneven split rather than a signal"
+        )
+    return f"{head} over {results} result(s): " + ", ".join(idle)
 
 
 def summarize(values: list[float]) -> dict:
@@ -595,8 +630,9 @@ def print_scores(runs: list[dict]) -> None:
                     f"({delta:+.1f}% vs peers, {worker_stats['cv']:.1f}% CV over "
                     f"{worker_stats['n']} run(s)){flag}"
                 )
-            for node in silent_nodes(run, samples):
-                notice(f"  {node}: no result")
+        note = idle_note(run)
+        if note:
+            notice(note)
 
 
 def score_summary_lines(runs: list[dict]) -> list[str]:
@@ -648,7 +684,11 @@ def score_summary_lines(runs: list[dict]) -> list[str]:
 
 def worker_summary_lines(runs: list[dict]) -> list[str]:
     """Per-node breakdown. A pool mean of three NUCs hides the one that is slow,
-    which on staging hardware is usually the thing being looked for."""
+    which on staging hardware is usually the thing being looked for.
+
+    Only nodes that produced a result get a row; the rest are accounted for in
+    one line per pool by idle_note(), rather than a row per suite each.
+    """
     lines = [
         "#### By worker",
         "",
@@ -674,18 +714,17 @@ def worker_summary_lines(runs: list[dict]) -> list[str]:
                     f"{s['mean']:.2f} | {s['median']:.2f} | {s['min']:.2f} | "
                     f"{s['max']:.2f} | {s['cv']:.1f}% | {delta:+.1f}% |"
                 )
-            for node in silent_nodes(run, samples):
-                lines.append(
-                    f"| {run['pool']} | `{node}` | {name} | 0 | - | - | - | - | - | - |"
-                )
     lines.append("")
+
+    notes = [f"- {note}" for note in map(idle_note, runs) if note]
+    lines += notes
 
     for pool, worker, suite, delta, count in flagged:
         lines.append(
             f"- ⚠️ **{worker}** ({pool}) is {delta:+.1f}% off its peers on "
             f"{suite} over {count} run(s)"
         )
-    if flagged:
+    if notes or flagged:
         lines.append("")
     return lines
 
