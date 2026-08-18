@@ -100,11 +100,15 @@ pools:
     openvox_version: "8.19.2"
     git_version: "2.50.0"
     Description: "NUC12 Hardware Performance Staging/Testing Pool"
+    # RELOPS-2487 canary: run this pool's deploy from the feature branch. OS-deploy.ps1 on that
+    # branch refreshes pools.yml from it, so the baked-WIM + DISM /Apply-Image config
+    # (image/src_Branch/hash) lives on the branch; main only needs this `dev:` trigger.
+    dev: "nuc-wim-pipeline"
     image: "win11-24H2-NUC-01-16-2025"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "master"
-    hash: "655bf64"
+    src_Branch: "RELOPS-2467-xperf-dynamic-trace"
+    hash: "a22e7ac"
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
