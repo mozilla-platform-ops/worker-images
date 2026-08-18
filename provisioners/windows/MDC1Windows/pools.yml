@@ -61,9 +61,10 @@ pools:
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    # Moved from alpha.
-    - nuc13-159
-    - nuc13-160
+    # Known dead PSUs - present before the RELOPS-2514 PSU swap-out validation began.
+    # Originally moved here from alpha. These are not awaiting a swap like the nodes in
+    # win11-64-24h2-hw-alpha; their PSUs are known dead. They appear in none of the swap
+    # tickets (IO-3797, IO-3844, IO-3884).
     - nuc13-035
     - nuc13-060
     - nuc13-068
@@ -72,7 +73,31 @@ pools:
     - nuc13-150
     - nuc13-155
     - nuc13-157
-  # First 20 nodes to swap out PSUs and be tested: 10 down/assumed-PSU-failure nodes from relops1213 and 10 poorly-performing nodes from alpha.
+    # No KVM - cannot be re-imaged or inspected remotely until console access is fixed.
+    # Two cross-wired pairs are in here: nuc13-037's KVM port is swapped with
+    # nuc13-038's and nuc13-053's with nuc13-054's, so connecting to one reaches the
+    # other and KVM-derived status for any of the four is unreliable.
+    - nuc13-011
+    - nuc13-037
+    - nuc13-053
+    - nuc13-078
+    - nuc13-132
+    - nuc13-143
+    # Down / no SSH - unresponsive on every SSH attempt. nuc13-119 PXE-booted once and
+    # never returned to the network.
+    - nuc13-022
+    - nuc13-023
+    - nuc13-028
+    - nuc13-069
+    - nuc13-119
+    # Other - individual cases, see the note above each node.
+    # nuc13-077: PXE does not take. It accepts the bootsequence change and reboots but comes
+    #   back on its original 05-01 image, confirmed across three checks over three
+    #   days. Needs a recovery route other than a repeat PXE.
+    - nuc13-077
+    # nuc13-111: Unreachable with its display flashing. Did not come back after being
+    #   PXE-booted, so it could not be scored.
+    - nuc13-111
   - name: "win11-64-24h2-hw-perf-debug"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
