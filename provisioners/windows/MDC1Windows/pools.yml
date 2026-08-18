@@ -93,11 +93,16 @@ pools:
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    - nuc13-024
-    - nuc13-059
-    - nuc13-119
-  # Questionable nodes — CPU suppression confirmed or notable floor events detected in stress testing.
-  # Not cleared for high-priority CPU-intensive work. Pending PSU inspection/replacement.
+    # nuc13-158: never successfully validated. It was reachable but with an empty
+    # bootstrap_stage before this re-image, and produced no Speedometer results in any
+    # of the three 2026-08-17 runs (32073991787, 32074035219, 32074056736) while all
+    # 22 of its pool peers scored. Under investigation. Tracked in RELOPS-2514.
+    - nuc13-158
+    # Development work - two nodes pulled from win11-64-24h2-hw at random to have a
+    # working pair available in this pool. Both have swapped PSUs and passed
+    # validation, so they are not here for a fault.
+    - nuc13-074
+    - nuc13-115
   - name: "win11-64-24h2-hw-alpha"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
@@ -112,90 +117,50 @@ pools:
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    # Known-good nodes moved from win11-64-24h2-hw for fleetbench testing.
-    - nuc13-001
-    - nuc13-003
-    - nuc13-027
-    - nuc13-038
-    - nuc13-082
-    - nuc13-126
-    - nuc13-132
-    - nuc13-002
-    - nuc13-013
-    - nuc13-014
-    - nuc13-019
-    - nuc13-020
-    - nuc13-022
-    - nuc13-023
-    - nuc13-025
-    - nuc13-026
-    - nuc13-028
-    - nuc13-030
-    - nuc13-031
-    - nuc13-034
-    - nuc13-037
-    - nuc13-039
-    - nuc13-042
-    - nuc13-043
-    - nuc13-047
-    - nuc13-050
-    - nuc13-051
-    - nuc13-052
-    - nuc13-053
-    - nuc13-054
-    - nuc13-055
-    - nuc13-058
-    - nuc13-063
-    - nuc13-065
-    - nuc13-067
-    - nuc13-069
-    - nuc13-071
-    - nuc13-072
-    - nuc13-073
-    - nuc13-076
-    - nuc13-077
-    - nuc13-078
-    - nuc13-079
-    - nuc13-080
-    - nuc13-084
-    - nuc13-087
-    - nuc13-092
-    - nuc13-094
-    - nuc13-095
-    - nuc13-098
-    - nuc13-099
-    - nuc13-100
-    - nuc13-102
-    - nuc13-103
-    - nuc13-106
-    - nuc13-111
-    - nuc13-114
-    - nuc13-115
-    - nuc13-116
-    - nuc13-117
-    - nuc13-120
-    - nuc13-122
-    - nuc13-125
-    - nuc13-129
-    - nuc13-131
-    - nuc13-133
-    - nuc13-134
-    - nuc13-136
-    - nuc13-138
-    - nuc13-139
-    - nuc13-140
-    - nuc13-141
-    - nuc13-142
-    - nuc13-143
-    - nuc13-146
-    - nuc13-147
-    - nuc13-148
-    - nuc13-152
-    - nuc13-158
-    # Belongs in alpha; was previously misplaced.
-    - nuc13-045
-    - nuc13-006
-    - nuc13-093
+    # Original PSUs - these 39 nodes were never included in a PSU swap-out. They are
+    # not covered by IO-3797 (20 nodes, 2026-05-29), IO-3844 (nuc13-159 and nuc13-160,
+    # 2026-07-08) or IO-3884 (87 PSUs plus nuc13-101 and nuc13-046, 2026-08-07), and
+    # so have not been through the RELOPS-2514 validation either. Moved from
+    # win11-64-24h2-hw.
+    - nuc13-004
+    - nuc13-005
+    - nuc13-007
+    - nuc13-008
+    - nuc13-009
+    - nuc13-010
+    - nuc13-015
+    - nuc13-016
+    - nuc13-017
+    - nuc13-018
+    - nuc13-033
+    - nuc13-040
+    - nuc13-041
+    - nuc13-048
+    - nuc13-049
+    - nuc13-056
+    - nuc13-057
+    - nuc13-064
+    - nuc13-066
+    - nuc13-081
+    - nuc13-083
+    - nuc13-086
+    - nuc13-088
+    - nuc13-089
+    - nuc13-090
+    - nuc13-097
+    - nuc13-104
+    - nuc13-108
+    - nuc13-109
+    - nuc13-110
+    - nuc13-113
+    - nuc13-118
+    - nuc13-121
+    - nuc13-123
+    - nuc13-127
+    - nuc13-128
+    - nuc13-135
+    - nuc13-145
+    - nuc13-153
   - name: "win11-64-24h2-hw-perf-sheriff"
     openvox_version: "8.19.2"
     puppet_version: "8.10.0"
@@ -223,68 +188,100 @@ pools:
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    - nuc13-004
-    - nuc13-005
-    - nuc13-007
-    - nuc13-008
-    - nuc13-009
-    - nuc13-010
-    - nuc13-011
+    - nuc13-001
+    - nuc13-002
+    - nuc13-003
+    - nuc13-006
     - nuc13-012
-    - nuc13-015
-    - nuc13-016
-    - nuc13-017
-    - nuc13-018
+    - nuc13-013
+    - nuc13-014
+    - nuc13-019
+    - nuc13-020
+    - nuc13-024
+    - nuc13-025
+    - nuc13-026
+    - nuc13-027
     - nuc13-029
+    - nuc13-030
+    - nuc13-031
     - nuc13-032
-    - nuc13-033
+    - nuc13-034
     - nuc13-036
-    - nuc13-040
-    - nuc13-041
+    - nuc13-038
+    - nuc13-039
+    - nuc13-042
+    - nuc13-043
     - nuc13-044
+    - nuc13-045
     - nuc13-046
-    - nuc13-048
-    - nuc13-049
-    - nuc13-056
-    - nuc13-057
+    - nuc13-047
+    - nuc13-050
+    - nuc13-051
+    - nuc13-052
+    - nuc13-054
+    - nuc13-055
+    - nuc13-058
+    - nuc13-059
     - nuc13-061
     - nuc13-062
-    - nuc13-064
-    - nuc13-066
+    - nuc13-063
+    - nuc13-065
+    - nuc13-067
     - nuc13-070
-    - nuc13-074
-    - nuc13-081
-    - nuc13-083
+    - nuc13-071
+    - nuc13-072
+    - nuc13-073
+    - nuc13-076
+    - nuc13-079
+    - nuc13-080
+    - nuc13-082
+    - nuc13-084
     - nuc13-085
-    - nuc13-086
-    - nuc13-088
-    - nuc13-089
-    - nuc13-090
+    - nuc13-087
     - nuc13-091
+    - nuc13-092
+    - nuc13-093
+    - nuc13-094
+    - nuc13-095
     - nuc13-096
-    - nuc13-097
+    - nuc13-098
+    - nuc13-099
+    - nuc13-100
     - nuc13-101
-    - nuc13-104
+    - nuc13-102
+    - nuc13-103
     - nuc13-105
-    - nuc13-108
-    - nuc13-109
-    - nuc13-110
-    - nuc13-113
-    - nuc13-118
-    - nuc13-121
-    - nuc13-123
-    - nuc13-127
-    - nuc13-128
+    - nuc13-106
+    - nuc13-114
+    - nuc13-116
+    - nuc13-117
+    - nuc13-120
+    - nuc13-122
+    - nuc13-125
+    - nuc13-126
+    - nuc13-129
     - nuc13-130
-    - nuc13-135
+    - nuc13-131
+    - nuc13-133
+    - nuc13-134
+    - nuc13-136
     - nuc13-137
+    - nuc13-138
+    - nuc13-139
+    - nuc13-140
+    - nuc13-141
+    - nuc13-142
     - nuc13-144
-    - nuc13-145
+    - nuc13-146
+    - nuc13-147
+    - nuc13-148
     - nuc13-149
     - nuc13-151
-    - nuc13-153
+    - nuc13-152
     - nuc13-154
     - nuc13-156
+    - nuc13-159
+    - nuc13-160
 defaults:
   NV_domain: "mdc1.mozilla.com"
 Validate:
