@@ -10,9 +10,12 @@ installed where it runs.
 """
 
 import importlib.util
+import os
 import sys
+import tempfile
 import types
 import unittest
+import unittest.mock
 from pathlib import Path
 
 RUNNER = (
@@ -468,6 +471,371 @@ class TestWorkerBreakdown(RunnerTestBase):
         self.assertIn("### Scores", section)
         self.assertIn("#### By worker", section)
         self.assertIn("25.00 (nuc13-024)", section)
+
+
+POOLS_YAML = """
+pools:
+  - name: "win11-64-24h2-hw-alpha"
+    Description: "NUC13 staging"
+    image: "{image}"
+    src_Organisation: "mozilla-platform-ops"
+    src_Repository: "ronin_puppet"
+    src_Branch: "master"
+    hash: "{hash}"
+    puppet_version: "8.10.0"
+    openvox_version: "8.19.2"
+    git_version: "2.50.0"
+    secret_date: "02-24-2026"
+    domain_suffix: "wintest2.releng.mdc1.mozilla.com"
+    nodes:
+{nodes}
+"""
+
+
+def _pools_yaml(
+    image="win11-24H2-NUC-01-16-2025", hash="74e8909", nodes=("nuc13-024",)
+):
+    return POOLS_YAML.format(
+        image=image, hash=hash, nodes="\n".join(f"    - {n}" for n in nodes)
+    )
+
+
+class _FakePool:
+    """Enough of HwPool for the deployment-record code, which only reads these."""
+
+    def __init__(self, name, dev_branch=None, deployment=None):
+        self.name = name
+        self.dev_branch = dev_branch
+        self.nodes = ("nuc13-024",)
+        self.deployment = deployment or {
+            "image": "checkout-image",
+            "src_branch": "master",
+            "revision": "74e8909",
+            "dev_branch": dev_branch,
+        }
+        self.identity = {
+            key: self.deployment.get(key) for key in ("image", "src_branch", "revision")
+        }
+        self.config_url = "https://example/tree/74e8909"
+
+
+class TestDeploymentDetails(RunnerTestBase):
+    """pools.yml is the only record of what a hardware pool is running, so the
+    run has to say which configuration produced its numbers."""
+
+    POOL = "win11-64-24h2-hw-alpha"
+
+    def _run(self, **overrides):
+        deployment = {
+            "description": "NUC13 staging",
+            "image": "win11-24H2-NUC-01-16-2025",
+            "src_organisation": "mozilla-platform-ops",
+            "src_repository": "ronin_puppet",
+            "src_branch": "master",
+            "revision": "74e8909",
+            "dev_branch": None,
+            "puppet_version": "8.10.0",
+            "openvox_version": "8.19.2",
+            "git_version": "2.50.0",
+            "secret_date": "02-24-2026",
+            "domain_suffix": "wintest2.releng.mdc1.mozilla.com",
+        }
+        deployment.update(overrides)
+        return [
+            {
+                "pool": self.POOL,
+                "deployment": deployment,
+                "config_url": (
+                    "https://github.com/mozilla-platform-ops/ronin_puppet/tree/74e8909"
+                ),
+                "nodes": ["nuc13-024", "nuc13-059"],
+            }
+        ]
+
+    def test_block_names_the_config_the_tasks_ran_on(self):
+        block = "\n".join(self.mod.deployment_summary_lines(self._run()))
+        self.assertIn("### Pool deployment", block)
+        self.assertIn("| Pool | NUC13 staging |", block)
+        self.assertIn("| WIM image | `win11-24H2-NUC-01-16-2025` |", block)
+        # org, repo, branch and revision are one row, linking the tree that ran
+        self.assertIn(
+            "| Config | [mozilla-platform-ops/ronin_puppet @ master (74e8909)]"
+            "(https://github.com/mozilla-platform-ops/ronin_puppet/tree/74e8909) |",
+            block,
+        )
+        self.assertIn("| Nodes | 2 (`nuc13-024` … `nuc13-059`) |", block)
+
+    def test_what_the_config_link_already_carries_is_not_a_row(self):
+        """Four rows naming one tree, and five more of what that tree sets, is a
+        table nobody reads. The link and the pre-flight log carry them."""
+        runs = self._run(dev_branch="nuc-wim-pipeline")
+        runs[0]["deployment_source"] = "nuc-wim-pipeline"
+        block = "\n".join(self.mod.deployment_summary_lines(runs))
+        for dropped in (
+            "Config org",
+            "Config repo",
+            "Config branch",
+            "Config revision",
+            "Deploy branch (dev)",
+            "Puppet",
+            "OpenVox",
+            "Git",
+            "Secrets",
+            "Domain",
+        ):
+            self.assertNotIn(f"| {dropped} |", block)
+        # ...but the pre-flight log still says all of it, key=value
+        logged = self.mod.deployment_log_lines(runs[0]["deployment"])
+        self.assertIn("puppet_version=8.10.0", logged)
+        self.assertIn("secret_date=02-24-2026", logged)
+        self.assertIn("domain_suffix=wintest2.releng.mdc1.mozilla.com", logged)
+        # and drift can still name any of them
+        self.assertEqual(self.mod.DRIFT_LABELS["puppet_version"], "Puppet")
+        self.assertEqual(self.mod.DRIFT_LABELS["dev_branch"], "Deploy branch (dev)")
+
+    def test_the_config_row_survives_a_pin_it_cannot_link(self):
+        # No revision means no tree URL; the branch is still worth printing.
+        runs = self._run(revision=None)
+        runs[0]["config_url"] = None
+        block = "\n".join(self.mod.deployment_summary_lines(runs))
+        self.assertIn(
+            "| Config | `mozilla-platform-ops/ronin_puppet @ master` |", block
+        )
+
+    def test_a_field_pools_yaml_omits_is_left_out(self):
+        block = "\n".join(
+            self.mod.deployment_summary_lines(self._run(description=None))
+        )
+        self.assertNotIn("| Pool |", block)
+
+    def test_a_dev_branch_pool_notes_that_the_details_came_from_the_branch(self):
+        runs = self._run(dev_branch="nuc-wim-pipeline")
+        runs[0]["deployment_source"] = "nuc-wim-pipeline"
+        block = "\n".join(self.mod.deployment_summary_lines(runs))
+        self.assertIn("[!NOTE]", block)
+        self.assertIn("is on the dev option: `dev: nuc-wim-pipeline`", block)
+        # the branch's pools.yml is a link, so the record can actually be read
+        self.assertIn(
+            "read from [that branch's `pools.yml`](https://github.com/"
+            "mozilla-platform-ops/worker-images/blob/nuc-wim-pipeline/",
+            block,
+        )
+
+    def test_the_dev_link_follows_the_repo_the_workflow_runs_in(self):
+        with unittest.mock.patch.dict(
+            os.environ, {"GITHUB_REPOSITORY": "someone/fork"}
+        ):
+            runs = self._run(dev_branch="wip")
+            runs[0]["deployment_source"] = "wip"
+            block = "\n".join(self.mod.deployment_summary_lines(runs))
+        self.assertIn("https://github.com/someone/fork/blob/wip/", block)
+
+    def test_an_unreadable_dev_branch_says_the_details_may_lag(self):
+        runs = self._run(dev_branch="nuc-wim-pipeline")
+        runs[0]["deployment_source"] = "main"
+        block = "\n".join(self.mod.deployment_summary_lines(runs))
+        self.assertIn("is on the dev option: `dev: nuc-wim-pipeline`", block)
+        self.assertIn("could not be read", block)
+        self.assertIn("may lag the hardware", block)
+
+    def test_a_pool_without_a_dev_branch_says_nothing_about_branches(self):
+        block = "\n".join(self.mod.deployment_summary_lines(self._run()))
+        self.assertNotIn("[!NOTE]", block)
+        self.assertNotIn("dev option", block)
+
+    def test_a_dev_pool_reports_the_branch_record_not_the_checkout(self):
+        # The live case on 2026-08-19: ref-alpha's deploy branch records a baked
+        # WIM and a different ronin pin, and the branch is what is on the metal.
+        checkout = _FakePool(
+            "win11-64-24h2-hw-ref-alpha",
+            dev_branch="nuc-wim-pipeline",
+            deployment={
+                "image": "win11-24H2-NUC-01-16-2025",
+                "src_branch": "RELOPS-2467-xperf-dynamic-trace",
+                "revision": "a22e7ac",
+                "dev_branch": "nuc-wim-pipeline",
+            },
+        )
+        snapshot = {
+            "nuc-wim-pipeline": {
+                checkout.name: {
+                    "deployment": {
+                        "image": "win11-24h2-hw-20260811-202701",
+                        "src_branch": "wim-bake-role",
+                        "revision": "48a8b9d4",
+                        "dev_branch": None,
+                    },
+                    "config_url": "https://example/tree/48a8b9d4",
+                    "nodes": ("t-nuc12-002",),
+                }
+            }
+        }
+        records = self.mod.deployment_records([checkout], "main", snapshot)
+        record = records[checkout.name]
+        self.assertEqual(record["source"], "nuc-wim-pipeline")
+        self.assertEqual(record["deployment"]["image"], "win11-24h2-hw-20260811-202701")
+        self.assertEqual(record["identity"]["revision"], "48a8b9d4")
+        self.assertEqual(record["config_url"], "https://example/tree/48a8b9d4")
+        # the branch's own copy has no `dev:` key; keep the flag that pointed here
+        self.assertEqual(record["deployment"]["dev_branch"], "nuc-wim-pipeline")
+
+    def test_a_pool_without_dev_is_read_from_the_checkout(self):
+        pool = _FakePool("win11-64-24h2-hw-alpha")
+        records = self.mod.deployment_records([pool], "main", {})
+        self.assertEqual(records[pool.name]["source"], "main")
+        self.assertEqual(records[pool.name]["deployment"]["image"], "checkout-image")
+
+    def test_an_unreadable_dev_branch_falls_back_to_the_checkout(self):
+        pool = _FakePool("win11-64-24h2-hw-ref-alpha", dev_branch="gone")
+        records = self.mod.deployment_records([pool], "main", {})
+        self.assertEqual(records[pool.name]["source"], "main")
+        self.assertEqual(records[pool.name]["deployment"]["image"], "checkout-image")
+
+    def test_refs_cover_the_checkout_and_every_dev_branch_once(self):
+        pools = [
+            _FakePool("a", dev_branch="feature"),
+            _FakePool("b"),
+            _FakePool("c", dev_branch="feature"),
+        ]
+        self.assertEqual(self.mod.deployment_refs(pools, "main"), ["main", "feature"])
+
+    def test_no_deployment_means_no_section(self):
+        self.assertEqual(self.mod.deployment_summary_lines([{"pool": self.POOL}]), [])
+
+    def test_log_lines_skip_what_is_unset(self):
+        lines = self.mod.deployment_log_lines(
+            {"image": "win11", "dev_branch": None, "git_version": ""}
+        )
+        self.assertEqual(lines, ["image=win11"])
+
+
+class TestDeploymentDrift(RunnerTestBase):
+    """A pools.yml edit that lands mid-run splits the results across two
+    configurations, which is worth shouting about."""
+
+    POOL = "win11-64-24h2-hw-alpha"
+
+    def _snapshot(self, image="win11-24H2-NUC-01-16-2025", nodes=("nuc13-024",)):
+        return {
+            "main": {
+                self.POOL: {
+                    "deployment": {"image": image, "revision": "74e8909"},
+                    "nodes": tuple(nodes),
+                }
+            }
+        }
+
+    def test_a_changed_field_is_reported_with_both_values(self):
+        changes = self.mod.compare_deployments(
+            self._snapshot(), self._snapshot(image="win11-24H2-NUC-08-18-2026")
+        )
+        self.assertEqual(len(changes), 1)
+        self.assertEqual(changes[0]["field"], "image")
+        self.assertEqual(changes[0]["before"], "win11-24H2-NUC-01-16-2025")
+        self.assertEqual(changes[0]["after"], "win11-24H2-NUC-08-18-2026")
+        self.assertEqual(changes[0]["ref"], "main")
+
+    def test_an_unchanged_snapshot_is_quiet(self):
+        self.assertEqual(
+            self.mod.compare_deployments(self._snapshot(), self._snapshot()), []
+        )
+        self.assertEqual(self.mod.drift_summary_lines([]), [])
+
+    def test_nodes_joining_or_leaving_the_pool_are_reported(self):
+        changes = self.mod.compare_deployments(
+            self._snapshot(nodes=("nuc13-024", "nuc13-059")),
+            self._snapshot(nodes=("nuc13-024", "nuc13-119")),
+        )
+        self.assertEqual([c["field"] for c in changes], ["nodes"])
+        self.assertIn("added nuc13-119", changes[0]["after"])
+        self.assertIn("removed nuc13-059", changes[0]["after"])
+
+    def test_a_pool_deleted_mid_run_is_a_change(self):
+        changes = self.mod.compare_deployments(self._snapshot(), {"main": {}})
+        self.assertEqual(changes[0]["after"], "removed from pools.yml")
+
+    def test_a_ref_that_could_not_be_reread_is_not_called_drift(self):
+        # fetch_registry returning None must not read as "everything changed"
+        self.assertEqual(self.mod.compare_deployments(self._snapshot(), {}), [])
+
+    def test_the_caution_block_leads_the_summary(self):
+        changes = self.mod.compare_deployments(
+            self._snapshot(), self._snapshot(image="other")
+        )
+        lines = self.mod.drift_summary_lines(changes)
+        self.assertEqual(lines[0], "> [!CAUTION]")
+        self.assertIn("changed while this run was in flight", lines[1])
+        table = "\n".join(lines)
+        self.assertIn("| win11-64-24h2-hw-alpha | WIM image | `main` |", table)
+
+    def test_summary_puts_the_caution_above_everything(self):
+        changes = self.mod.compare_deployments(
+            self._snapshot(), self._snapshot(image="other")
+        )
+        runs = [
+            {
+                "pool": self.POOL,
+                "identity": {"image": "i", "src_branch": "b", "revision": "r"},
+                "verdict": "✅ passed",
+                "task_group_id": GROUP,
+            }
+        ]
+        with tempfile.NamedTemporaryFile("r+", suffix=".md") as handle:
+            os.environ["GITHUB_STEP_SUMMARY"] = handle.name
+            try:
+                self.mod.write_github_summary(runs, "https://tc.example", "", changes)
+            finally:
+                del os.environ["GITHUB_STEP_SUMMARY"]
+            written = Path(handle.name).read_text()
+        self.assertLess(written.index("[!CAUTION]"), written.index("| Pool | Image |"))
+        self.assertTrue(written.startswith("## HW OS Integration Tests"))
+
+    def test_snapshot_reads_each_ref_and_survives_a_failure(self):
+        served = {
+            self.mod.pools_yaml_url("owner/repo", "main"): _pools_yaml(),
+            self.mod.pools_yaml_url("owner/repo", "dev-branch"): _pools_yaml(
+                image="branch-image", nodes=("nuc13-024", "nuc13-059")
+            ),
+        }
+
+        class Response:
+            def __init__(self, text):
+                self.text = text
+
+            def raise_for_status(self):
+                return None
+
+        def fake_get(url, timeout=None):
+            if url not in served:
+                raise self.mod.requests.RequestException(f"404 {url}")
+            return Response(served[url])
+
+        original = getattr(self.mod.requests, "get", None)
+        self.mod.requests.get = fake_get
+        try:
+            pools = [_FakePool(self.POOL, dev_branch="dev-branch")]
+            refs = self.mod.deployment_refs(pools, "main")
+            self.assertEqual(refs, ["main", "dev-branch"])
+            snapshot = self.mod.snapshot_deployments(
+                [self.POOL], "owner/repo", refs + ["gone"]
+            )
+            self.assertEqual(sorted(snapshot), ["dev-branch", "main"])
+            self.assertEqual(
+                snapshot["main"][self.POOL]["deployment"]["image"],
+                "win11-24H2-NUC-01-16-2025",
+            )
+            # the dev branch's copy is a different record of the same pool, which
+            # is the point of reading it separately
+            self.assertEqual(
+                snapshot["dev-branch"][self.POOL]["deployment"]["image"],
+                "branch-image",
+            )
+            self.assertEqual(len(snapshot["dev-branch"][self.POOL]["nodes"]), 2)
+        finally:
+            if original is None:
+                del self.mod.requests.get
+            else:
+                self.mod.requests.get = original
 
 
 if __name__ == "__main__":

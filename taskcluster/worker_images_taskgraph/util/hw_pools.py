@@ -54,6 +54,9 @@ class HwPool:
     domain_suffix: str | None = None
     description: str | None = None
     dev_branch: str | None = None
+    puppet_version: str | None = None
+    openvox_version: str | None = None
+    git_version: str | None = None
     nodes: tuple[str, ...] = field(default_factory=tuple)
 
     @property
@@ -94,6 +97,40 @@ class HwPool:
             "src_branch": self.src_branch,
             "revision": self.revision,
         }
+
+    @property
+    def deployment(self) -> dict[str, str | None]:
+        """Every pools.yml field that decides what the tasks actually ran on.
+
+        The identity triple is the short answer; this is the whole configuration,
+        so a result can be reproduced or blamed without going back to pools.yml
+        as it was on the day. Ordered for display, and every key is always
+        present so two snapshots can be compared field by field.
+        """
+        return {
+            "description": self.description,
+            "image": self.image,
+            "src_organisation": self.src_organisation,
+            "src_repository": self.src_repository,
+            "src_branch": self.src_branch,
+            "revision": self.revision,
+            "dev_branch": self.dev_branch,
+            "puppet_version": self.puppet_version,
+            "openvox_version": self.openvox_version,
+            "git_version": self.git_version,
+            "secret_date": self.secret_date,
+            "domain_suffix": self.domain_suffix,
+        }
+
+    @property
+    def config_url(self) -> str | None:
+        """The ronin_puppet tree the pool is pinned to, so it can be read."""
+        if not (self.src_organisation and self.src_repository and self.revision):
+            return None
+        return (
+            f"https://github.com/{self.src_organisation}/"
+            f"{self.src_repository}/tree/{self.revision}"
+        )
 
     def fqdn(self, node: str) -> str:
         if not self.domain_suffix:
@@ -194,7 +231,14 @@ def load_registry(repo_root: Path | str | None = None) -> HwPoolRegistry:
     if not pools_yaml.is_file():
         raise HwPoolError(f"{pools_yaml} does not exist")
 
-    data = yaml.safe_load(pools_yaml.read_text()) or {}
+    return parse_registry(pools_yaml.read_text(), source=str(pools_yaml))
+
+
+def parse_registry(text: str, source: str = "pools.yml") -> HwPoolRegistry:
+    """Parse pools.yml content. Split out from load_registry so a copy fetched
+    from another ref can be read the same way, for the after-the-run check that
+    the pool's configuration did not move under a live run."""
+    data = yaml.safe_load(text) or {}
 
     pools: dict[str, HwPool] = {}
     for entry in data.get("pools") or []:
@@ -215,11 +259,14 @@ def load_registry(repo_root: Path | str | None = None) -> HwPoolRegistry:
             domain_suffix=entry.get("domain_suffix"),
             description=entry.get("Description"),
             dev_branch=entry.get("dev"),
+            puppet_version=entry.get("puppet_version"),
+            openvox_version=entry.get("openvox_version"),
+            git_version=entry.get("git_version"),
             nodes=_coerce_nodes(entry.get("nodes")),
         )
 
     if not pools:
-        raise HwPoolError(f"no pools found in {pools_yaml}")
+        raise HwPoolError(f"no pools found in {source}")
 
     return HwPoolRegistry(
         pools=pools,
