@@ -10,6 +10,7 @@ on:
         options:
         - trusted-win11-a64-25h2-builder
         - trusted-win2022-64-2009
+        - trusted-win2025-64-24h2
 
 permissions:
   id-token: write

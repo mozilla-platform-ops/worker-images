@@ -24,6 +24,8 @@ on:
         - win2022-64-2009-alpha
         - win2022-64-2009-alpha-v6
         - win2022-64-2009
+        - win2025-64-24h2-alpha
+        - win2025-64-24h2
 
 permissions:
   id-token: write
@@ -110,7 +112,7 @@ jobs:
       commit_message: ${{ github.event.inputs.config }} - Release Notes
   os-integration:
     needs: packer
-    if: ${{ !startsWith(github.event.inputs.config, 'win2022') }}
+    if: ${{ !startsWith(github.event.inputs.config, 'win20') }}
     name: "OS Integration Tests"
     uses: ./.github/workflows/os-integration.yml
     with:
