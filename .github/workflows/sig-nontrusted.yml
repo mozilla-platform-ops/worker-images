@@ -25,6 +25,7 @@ on:
         - win2022-64-2009-alpha-v6
         - win2022-64-2009
         - win2025-64-24h2-alpha
+        - win2025-64-24h2
 
 permissions:
   id-token: write
