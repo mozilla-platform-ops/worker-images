@@ -44,7 +44,7 @@ on:
         type: string
         default: "1"
       timeout_hours:
-        description: "Hours to wait for completion before giving up"
+        description: "Hours to wait for completion before giving up (max 6; GitHub kills the job there)"
         type: string
         default: "6"
 
