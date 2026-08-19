@@ -56,6 +56,13 @@ DECISION_DISCOVERY_TIMEOUT_SECONDS = 1800
 TASK_GROUP_POLL_INTERVAL_SECONDS = 300
 TASK_GROUP_LOG_INTERVAL_SECONDS = 600
 DEFAULT_TIMEOUT_SECONDS = 6 * 60 * 60
+# GitHub cancels a hosted job at 6h and takes the step summary with it: run
+# 31516844982 died that way at 6h00m34s, results and all. So waiting stops at
+# 5.75h however long it was asked to wait, leaving a quarter of an hour to read
+# the task groups one last time and write the summary. The tasks are never
+# cancelled -- Taskcluster carries on and the group keeps the results, which is
+# what the summary links to.
+WAIT_CEILING_SECONDS = int(5.75 * 60 * 60)
 
 TASK_GROUP_ID_RE = re.compile(r'"taskGroupId":\s*"([A-Za-z0-9_-]{22})"')
 
@@ -734,6 +741,67 @@ def find_blocked(queue, tasks: list[dict], known: dict) -> dict:
     return known
 
 
+def elapsed_since_run_start(now: datetime | None = None) -> float:
+    """Seconds the workflow run has already burned, or 0.0 if it cannot be told.
+
+    The 6h clock GitHub is watching started before this script did -- checkout,
+    uv, pre-flight -- so the wait is budgeted from the run, not from here, where
+    the workflow passes the run's start time.
+    """
+    stamp = os.environ.get("GITHUB_RUN_STARTED_AT")
+    if not stamp:
+        return 0.0
+    try:
+        started = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+    except ValueError:
+        warn(f"cannot read GITHUB_RUN_STARTED_AT={stamp!r}; budgeting from now")
+        return 0.0
+    return max(((now or datetime.now(timezone.utc)) - started).total_seconds(), 0.0)
+
+
+def wait_budget(
+    requested: int, elapsed: float = 0.0, in_actions: bool | None = None
+) -> int:
+    """The requested wait, trimmed to what fits before the runner is cancelled.
+
+    Only in Actions: the ceiling exists because GitHub cancels the job, and a
+    local run has nobody to answer to.
+    """
+    if not (IN_GITHUB_ACTIONS if in_actions is None else in_actions):
+        return requested
+    remaining = max(WAIT_CEILING_SECONDS - int(elapsed), 0)
+    if requested <= remaining:
+        return requested
+    notice(
+        f"waiting {format_duration(remaining)} rather than the requested "
+        f"{format_duration(requested)}: GitHub cancels this job at "
+        f"{format_duration(6 * 60 * 60)} and the summary goes with it. Tasks still "
+        "running then are left to Taskcluster, not cancelled."
+    )
+    return remaining
+
+
+def refresh_run(queue, run: dict) -> bool:
+    """Re-read one run's task group. True when nothing of it is outstanding."""
+    try:
+        response = queue.listTaskGroup(run["task_group_id"])
+    except taskcluster.exceptions.TaskclusterRestFailure as exc:
+        warn(f"  {run['pool']}: error listing task group: {exc}")
+        return False
+
+    run["tasks"] = response.get("tasks", [])
+    run["blocked"] = find_blocked(
+        queue,
+        replicated_tasks(run["tasks"], run["task_group_id"]),
+        run.get("blocked") or {},
+    )
+    run["counts"] = tally(run["tasks"], run["task_group_id"], set(run["blocked"]))
+    decision_running = run["counts"]["decision"] in PENDING_STATES
+    if run["counts"]["pending"] == 0 and not decision_running:
+        run["done"] = True
+    return bool(run.get("done"))
+
+
 def monitor(queue, runs: list[dict], timeout: int, root_url: str) -> None:
     """Poll every run's task group until all are resolved or the timeout hits."""
     start = time.time()
@@ -744,26 +812,7 @@ def monitor(queue, runs: list[dict], timeout: int, root_url: str) -> None:
         for run in runs:
             if run.get("done"):
                 continue
-            try:
-                response = queue.listTaskGroup(run["task_group_id"])
-            except taskcluster.exceptions.TaskclusterRestFailure as exc:
-                warn(f"  {run['pool']}: error listing task group: {exc}")
-                outstanding += 1
-                continue
-
-            run["tasks"] = response.get("tasks", [])
-            run["blocked"] = find_blocked(
-                queue,
-                replicated_tasks(run["tasks"], run["task_group_id"]),
-                run.get("blocked") or {},
-            )
-            run["counts"] = tally(
-                run["tasks"], run["task_group_id"], set(run["blocked"])
-            )
-            decision_running = run["counts"]["decision"] in PENDING_STATES
-            if run["counts"]["pending"] == 0 and not decision_running:
-                run["done"] = True
-            else:
+            if not refresh_run(queue, run):
                 outstanding += 1
 
         now = time.time()
@@ -784,9 +833,24 @@ def monitor(queue, runs: list[dict], timeout: int, root_url: str) -> None:
             return
         time.sleep(TASK_GROUP_POLL_INTERVAL_SECONDS)
 
+    # The wait is over; the tasks are not. Read every group once more so the
+    # summary reports everything that landed -- the last poll can be five minutes
+    # stale -- then leave them running. Cancelling would throw away hardware time
+    # that is about to produce a result, and the group keeps it either way.
+    waited = int(time.time() - start)
     for run in runs:
+        if run.get("done"):
+            continue
+        refresh_run(queue, run)
         if not run.get("done"):
             run["timed_out"] = True
+            run["waited"] = waited
+            counts = run.get("counts") or {}
+            warn(
+                f"  {run['pool']}: still running after {format_duration(waited)} "
+                f"({counts.get('pending', '?')} task(s) outstanding). Not cancelling "
+                f"them: {root_url}/tasks/groups/{run['task_group_id']}"
+            )
 
 
 # ---- scores --------------------------------------------------------------- #
@@ -1095,6 +1159,37 @@ def worker_summary_lines(runs: list[dict]) -> list[str]:
     return lines
 
 
+def outran_wait_lines(runs: list[dict], root_url: str) -> list[str]:
+    """Say the wait ran out before the tasks did, and where they carried on.
+
+    The counts under such a block are a snapshot rather than a total, and this run
+    is not where the rest will appear -- the task group is.
+    """
+    late = [run for run in runs if run.get("timed_out")]
+    if not late:
+        return []
+
+    waited = max(run.get("waited") or 0 for run in late)
+    lines = [
+        "> [!WARNING]",
+        f"> These tasks ran longer than the {format_duration(waited)} this run "
+        "waited for them, so the counts below are what had landed by then, not the "
+        "whole answer. Nothing was cancelled -- the tasks are still running in "
+        "Taskcluster and their group keeps every result:",
+        ">",
+    ]
+    for run in late:
+        counts = run.get("counts") or {}
+        group = run["task_group_id"]
+        lines.append(
+            f"> - `{run['pool']}` — {counts.get('completed', 0)}/"
+            f"{counts.get('total', 0)} completed, {counts.get('pending', 0)} still "
+            f"running: [`{group}`]({root_url}/tasks/groups/{group})"
+        )
+    lines.append("")
+    return lines
+
+
 def write_github_summary(
     runs: list[dict],
     root_url: str,
@@ -1109,6 +1204,8 @@ def write_github_summary(
     # First thing under the heading: a run whose configuration moved is not a
     # result, and nobody scrolls to find that out.
     lines += drift_summary_lines(drift or [])
+    # Then, for the same reason: counts that are a snapshot rather than a total.
+    lines += outran_wait_lines(runs, root_url)
     if selection:
         lines += [selection, ""]
     lines += score_summary_lines(runs)
@@ -1236,7 +1333,9 @@ def main() -> int:
         "--timeout",
         type=int,
         default=DEFAULT_TIMEOUT_SECONDS,
-        help=f"Seconds to wait for completion (default: {DEFAULT_TIMEOUT_SECONDS})",
+        help=f"Seconds to wait for completion (default: {DEFAULT_TIMEOUT_SECONDS}; "
+        f"in GitHub Actions, capped at {WAIT_CEILING_SECONDS} so the summary is "
+        "written before the job is cancelled)",
     )
     args = parser.parse_args()
 
@@ -1363,7 +1462,9 @@ def main() -> int:
         write_github_summary(runs, root_url, selection)
         return 1
 
-    monitor(queue, live, args.timeout, root_url)
+    monitor(queue, live, wait_budget(args.timeout, elapsed_since_run_start()), root_url)
+    # Scores for whatever resolved, timed out or not: a run that ran out of wait
+    # still has results, and they are the reason it was started.
     collect_scores(queue, live)
 
     # ---- did the configuration move under us? ----------------------------- #
@@ -1378,7 +1479,9 @@ def main() -> int:
             failed_overall = True
             continue
         if run.get("timed_out"):
-            run["verdict"] = "⏳ timed out"
+            # Not a failure of the image, but not a result either: the numbers
+            # below it are partial, and the reader has to know which.
+            run["verdict"] = "⏳ ran past the wait"
             failed_overall = True
         elif counts and counts["decision"] in ("failed", "exception"):
             # Distinct from an empty graph below: the decision never got as far

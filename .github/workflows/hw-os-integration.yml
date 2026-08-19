@@ -9,12 +9,16 @@ run-name: HW OS Integration Tests ${{ inputs.repeat != '1' && format('x{0} ', in
 # test many times, which is a different question, use hw-speedometer.yml.
 #
 # The run always waits for its results, and repeat is capped at 10 so that it
-# can. This job sets no timeout-minutes, so GitHub's 6h hosted-runner limit
-# cancels it first and takes the step summary with it -- run 31516844982 stopped
-# that way at 6h00m34s. 11 tasks once has taken 31-66min and 100 tasks 1-4h, so
-# 10 runs of the set is roughly 110 tasks and fits inside 6h with room spare.
-# Anything that needs more repetition than that is a speedometer-shaped question:
-# one test, many runs, in hw-speedometer.yml.
+# can. 11 tasks once has taken 31-66min and 100 tasks 1-4h, so 10 runs of the
+# set is roughly 110 tasks and fits inside 6h with room spare. Anything needing
+# more repetition than that is a speedometer-shaped question: one test, many
+# runs, in hw-speedometer.yml.
+#
+# GitHub cancels a hosted job at 6h and takes the step summary with it -- run
+# 31516844982 died that way at 6h00m34s. So the script stops waiting 5.75h into
+# the run, collects what has landed, writes the summary, and says which pools
+# outran the wait, with a link to their task group. The Taskcluster tasks are
+# left running: they finish, and the group keeps every result.
 
 on:
   workflow_dispatch:
@@ -44,7 +48,7 @@ on:
         type: string
         default: "1"
       timeout_hours:
-        description: "Hours to wait for completion before giving up (max 6; GitHub kills the job there)"
+        description: "Hours to wait for results, 1-6 (waiting stops at 5.75h)"
         type: string
         default: "6"
 
@@ -105,6 +109,24 @@ jobs:
           fi
           echo "Runs of each task: $REPEAT"
 
+      # Whatever is asked for, the script stops waiting at 5.75h; anything above
+      # 6 would only be a lie about what this job can do.
+      - name: Check wait
+        env:
+          TIMEOUT_HOURS: ${{ inputs.timeout_hours }}
+        run: |
+          case "$TIMEOUT_HOURS" in
+            ''|*[!0-9]*)
+              echo "::error ::timeout_hours must be a whole number, 1 to 6"
+              exit 1
+              ;;
+          esac
+          if [ "$TIMEOUT_HOURS" -lt 1 ] || [ "$TIMEOUT_HOURS" -gt 6 ]; then
+            echo "::error ::timeout_hours must be 1 to 6, got $TIMEOUT_HOURS"
+            exit 1
+          fi
+          echo "Waiting up to ${TIMEOUT_HOURS}h, and no later than 5.75h into the run"
+
       - name: Install uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
 
@@ -123,6 +145,9 @@ jobs:
           POOLS: ${{ steps.pools.outputs.pools }}
           REPEAT: ${{ inputs.repeat }}
           TIMEOUT_HOURS: ${{ inputs.timeout_hours }}
+          # The 6h cancellation clock started here, not when this step did, so the
+          # script budgets its wait from the run rather than from itself.
+          GITHUB_RUN_STARTED_AT: ${{ github.run_started_at }}
           TASKCLUSTER_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
           TASKCLUSTER_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}
           PYTHONUNBUFFERED: "1"
