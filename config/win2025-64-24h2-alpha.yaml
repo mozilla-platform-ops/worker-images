@@ -15,6 +15,7 @@ azure:
   locations:
     - eastus2
 vm:
+  spot: true
   puppet_version: 8.10.0
   git_version: 2.54.0
   openvox_version: 8.25.0
