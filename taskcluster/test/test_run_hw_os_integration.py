@@ -9,6 +9,7 @@ package and the script's own dependencies (taskcluster, requests) are only
 installed where it runs.
 """
 
+import datetime
 import importlib.util
 import os
 import sys
@@ -836,6 +837,108 @@ class TestDeploymentDrift(RunnerTestBase):
                 del self.mod.requests.get
             else:
                 self.mod.requests.get = original
+
+
+class _FakeQueue:
+    """listTaskGroup over a script of responses, and a cancelTask nothing calls."""
+
+    def __init__(self, responses):
+        self.responses = list(responses)
+        self.cancelled = []
+        self.listed = 0
+
+    def listTaskGroup(self, group):
+        self.listed += 1
+        return self.responses[min(self.listed - 1, len(self.responses) - 1)]
+
+    def cancelTask(self, task_id):
+        self.cancelled.append(task_id)
+
+
+class TestWaitCeiling(RunnerTestBase):
+    """GitHub cancels the job at 6h and the step summary dies with it -- run
+    31516844982 did, at 6h00m34s. Waiting stops before that, with results."""
+
+    def test_the_ceiling_leaves_time_to_write_the_summary(self):
+        self.assertLessEqual(self.mod.WAIT_CEILING_SECONDS, int(5.75 * 3600))
+        self.assertGreaterEqual(6 * 3600 - self.mod.WAIT_CEILING_SECONDS, 600)
+
+    def test_a_wait_that_fits_is_left_alone(self):
+        self.assertEqual(self.mod.wait_budget(3600, 0, in_actions=True), 3600)
+
+    def test_a_six_hour_wait_is_trimmed_to_the_ceiling(self):
+        self.assertEqual(
+            self.mod.wait_budget(6 * 3600, 0, in_actions=True),
+            self.mod.WAIT_CEILING_SECONDS,
+        )
+
+    def test_time_the_run_already_burned_comes_off_the_budget(self):
+        # checkout, uv and pre-flight happen before the wait starts
+        self.assertEqual(
+            self.mod.wait_budget(6 * 3600, 900, in_actions=True),
+            self.mod.WAIT_CEILING_SECONDS - 900,
+        )
+
+    def test_a_run_already_past_the_ceiling_waits_no_longer(self):
+        self.assertEqual(self.mod.wait_budget(3600, 10 * 3600, in_actions=True), 0)
+
+    def test_off_ci_there_is_nothing_to_be_cancelled_by(self):
+        self.assertEqual(self.mod.wait_budget(8 * 3600, 0, in_actions=False), 8 * 3600)
+
+    def test_the_budget_is_measured_from_the_start_of_the_run(self):
+        started = "2026-08-19T12:00:00Z"
+        now = datetime.datetime(2026, 8, 19, 12, 20, tzinfo=datetime.timezone.utc)
+        with unittest.mock.patch.dict(os.environ, {"GITHUB_RUN_STARTED_AT": started}):
+            self.assertEqual(self.mod.elapsed_since_run_start(now), 1200.0)
+
+    def test_an_unusable_run_start_budgets_from_now_instead(self):
+        for stamp in ("", "yesterday"):
+            with unittest.mock.patch.dict(os.environ, {"GITHUB_RUN_STARTED_AT": stamp}):
+                self.assertEqual(self.mod.elapsed_since_run_start(), 0.0)
+
+    def test_running_out_of_wait_reads_the_group_once_more_and_leaves_it(self):
+        # The last poll can be five minutes stale, so the tasks that landed in
+        # that window are collected before the run gives up on them.
+        queue = _FakeQueue(
+            [{"tasks": [_task(GROUP, "completed"), _task("a" * 22, "running")]}]
+        )
+        run = {"pool": "win11-64-24h2-hw-alpha", "task_group_id": GROUP}
+        self.mod.monitor(queue, [run], 0, "https://tc.example")
+        self.assertEqual(queue.listed, 1, "the final reading is taken")
+        self.assertTrue(run["timed_out"])
+        self.assertEqual(run["counts"]["completed"], 0)
+        self.assertEqual(run["counts"]["pending"], 1)
+        self.assertEqual(queue.cancelled, [], "the tasks are Taskcluster's to finish")
+
+    def test_tasks_that_landed_in_the_last_poll_gap_are_not_a_timeout(self):
+        queue = _FakeQueue(
+            [{"tasks": [_task(GROUP, "completed"), _task("a" * 22, "completed")]}]
+        )
+        run = {"pool": "win11-64-24h2-hw-alpha", "task_group_id": GROUP}
+        self.mod.monitor(queue, [run], 0, "https://tc.example")
+        self.assertTrue(run["done"])
+        self.assertNotIn("timed_out", run)
+
+    def test_the_summary_says_they_outran_the_wait_and_links_the_group(self):
+        runs = [
+            {
+                "pool": "win11-64-24h2-hw-alpha",
+                "task_group_id": GROUP,
+                "timed_out": True,
+                "waited": int(5.75 * 3600),
+                "counts": {"completed": 34, "total": 110, "pending": 76},
+            }
+        ]
+        block = "\n".join(self.mod.outran_wait_lines(runs, "https://tc.example"))
+        self.assertIn("[!WARNING]", block)
+        self.assertIn("ran longer than the 5h 45m this run waited", block)
+        self.assertIn("Nothing was cancelled", block)
+        self.assertIn("34/110 completed, 76 still running", block)
+        self.assertIn(f"https://tc.example/tasks/groups/{GROUP}", block)
+
+    def test_a_run_that_finished_in_time_says_nothing(self):
+        runs = [{"pool": "win11-64-24h2-hw-alpha", "task_group_id": GROUP}]
+        self.assertEqual(self.mod.outran_wait_lines(runs, "https://tc.example"), [])
 
 
 if __name__ == "__main__":
