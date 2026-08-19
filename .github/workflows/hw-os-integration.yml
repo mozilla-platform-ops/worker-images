@@ -1,8 +1,20 @@
 name: HW OS Integration Tests - FXCI
-run-name: HW OS Integration Tests - ${{ github.actor }}
+run-name: HW OS Integration Tests ${{ inputs.repeat != '1' && format('x{0} ', inputs.repeat) || '' }}- ${{ github.actor }}
 
 # Validates a WIM or ronin_puppet change without a try push (RELOPS-2503).
 # Dispatch-only: hardware needs a PXE deploy first. One checkbox per pool.
+#
+# Each task runs once by default. Repeating the whole set is for intermittents --
+# a task that fails one run in five is the interesting kind of broken. For one
+# test many times, which is a different question, use hw-speedometer.yml.
+#
+# The run always waits for its results, and repeat is capped at 10 so that it
+# can. This job sets no timeout-minutes, so GitHub's 6h hosted-runner limit
+# cancels it first and takes the step summary with it -- run 31516844982 stopped
+# that way at 6h00m34s. 11 tasks once has taken 31-66min and 100 tasks 1-4h, so
+# 10 runs of the set is roughly 110 tasks and fits inside 6h with room spare.
+# Anything that needs more repetition than that is a speedometer-shaped question:
+# one test, many runs, in hw-speedometer.yml.
 
 on:
   workflow_dispatch:
@@ -27,18 +39,14 @@ on:
         description: "win11-64-24h2-hw-perf-sheriff (single node - very slow)"
         type: boolean
         default: false
-      min_healthy_nodes:
-        description: "Refuse a pool with fewer active workers than this"
+      repeat:
+        description: "Runs of each task, 1-10 (every run repeats the whole test set)"
         type: string
         default: "1"
       timeout_hours:
         description: "Hours to wait for completion before giving up"
         type: string
         default: "6"
-      no_wait:
-        description: "Trigger and exit without waiting for results"
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -78,6 +86,25 @@ jobs:
           echo "Selected pools: $pools"
           echo "pools=$pools" >> "$GITHUB_OUTPUT"
 
+      # 10, not the script's 100: a repeat here multiplies every task the pool's
+      # production counterpart runs, and the whole set has to resolve before
+      # GitHub cancels the job at 6h.
+      - name: Check repeat count
+        env:
+          REPEAT: ${{ inputs.repeat }}
+        run: |
+          case "$REPEAT" in
+            ''|*[!0-9]*)
+              echo "::error ::repeat must be a whole number between 1 and 10"
+              exit 1
+              ;;
+          esac
+          if [ "$REPEAT" -lt 1 ] || [ "$REPEAT" -gt 10 ]; then
+            echo "::error ::repeat must be between 1 and 10, got $REPEAT"
+            exit 1
+          fi
+          echo "Runs of each task: $REPEAT"
+
       - name: Install uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d
 
@@ -85,27 +112,21 @@ jobs:
       - name: Pre-flight
         env:
           POOLS: ${{ steps.pools.outputs.pools }}
-          MIN_HEALTHY: ${{ inputs.min_healthy_nodes }}
+          TASKCLUSTER_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
+          TASKCLUSTER_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}
+          PYTHONUNBUFFERED: "1"
+        run: |
+          uv run ci/run-hw-os-integration.py "$POOLS" --preflight-only
+
+      - name: Run HW OS Integration Tests
+        env:
+          POOLS: ${{ steps.pools.outputs.pools }}
+          REPEAT: ${{ inputs.repeat }}
+          TIMEOUT_HOURS: ${{ inputs.timeout_hours }}
           TASKCLUSTER_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
           TASKCLUSTER_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}
           PYTHONUNBUFFERED: "1"
         run: |
           uv run ci/run-hw-os-integration.py "$POOLS" \
-            --min-healthy-nodes "$MIN_HEALTHY" \
-            --preflight-only
-
-      - name: Run HW OS Integration Tests
-        env:
-          POOLS: ${{ steps.pools.outputs.pools }}
-          MIN_HEALTHY: ${{ inputs.min_healthy_nodes }}
-          TIMEOUT_HOURS: ${{ inputs.timeout_hours }}
-          NO_WAIT: ${{ inputs.no_wait }}
-          TASKCLUSTER_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
-          TASKCLUSTER_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}
-          PYTHONUNBUFFERED: "1"
-        run: |
-          args=(--min-healthy-nodes "$MIN_HEALTHY" --timeout "$(( TIMEOUT_HOURS * 3600 ))")
-          if [ "$NO_WAIT" = "true" ]; then
-            args+=(--no-wait)
-          fi
-          uv run ci/run-hw-os-integration.py "$POOLS" "${args[@]}"
+            --repeat "$REPEAT" \
+            --timeout "$(( TIMEOUT_HOURS * 3600 ))"
