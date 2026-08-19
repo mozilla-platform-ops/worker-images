@@ -91,23 +91,65 @@ def _fetch_source_tasks(index: str, provisioner: str) -> dict[str, list]:
     return dict(by_worker_type)
 
 
-def _sources_for_pool(pool, targets: list[str], provisioner: str, cache: dict):
+def _drop_uncurated_kinds(source_tasks, pool, index: str, drop_kinds) -> list:
+    """Trim a fall-back index to the kinds a curated one would have carried.
+
+    The first target is mozilla-central's own os-integration set: whatever it
+    holds for a pool is the answer, taken whole. Every target after it is a full
+    tier-1 push, which for a pool os-integration does not cover means every task
+    the counterpart runs -- for `win11-64-24h2-hw-ref` on 2026-08-19 that was 16
+    tasks and 10.6h of maxRunTime across two nodes, twelve of them the `ml-*`
+    perftest suite. os-integration names two perftests for the whole tree,
+    `service-worker` and `startup-geckoview`, and no ML ones, so dropping the
+    kind here follows that curation rather than inventing a rule of our own.
+    """
+    if not drop_kinds:
+        return source_tasks
+
+    dropped = [source for source in source_tasks if source.get("kind") in drop_kinds]
+    if not dropped:
+        return source_tasks
+
+    kept = [source for source in source_tasks if source.get("kind") not in drop_kinds]
+    kinds = ", ".join(sorted(drop_kinds))
+    if not kept:
+        raise HwPoolError(
+            f"hw-integration: {pool.name} stages {pool.source_worker_type}, and "
+            f"every task {index} schedules on it is of kind {kinds}, which is "
+            "dropped from an uncurated index. Nothing would run."
+        )
+
+    logger.info(
+        f"hw-integration: {pool.name}: {index} is not a curated set, so "
+        f"{len(dropped)} {kinds} task(s) were dropped and {len(kept)} kept: "
+        f"{_listed(_source_name(s) for s in dropped)}"
+    )
+    return kept
+
+
+def _sources_for_pool(
+    pool, targets: list[str], provisioner: str, cache: dict, drop_kinds=()
+):
     """Tasks for the pool's counterpart, from the first target index that has any.
 
     Ordered rather than merged: the os-integration index carries a curated set
     sized for a small pool, and the push decision -- the only index that
-    schedules `-hw-ref` tasks -- carries a full tier-1 run's worth. Fetching is
-    lazy so selecting only `-hw` pools never downloads the larger graph.
+    schedules `-hw-ref` tasks -- carries a full tier-1 run's worth, which is why
+    everything after the first index is trimmed by _drop_uncurated_kinds.
+    Fetching is lazy so selecting only `-hw` pools never downloads the larger
+    graph.
     """
     seen_worker_types = set()
 
-    for index in targets:
+    for position, index in enumerate(targets):
         if index not in cache:
             cache[index] = _fetch_source_tasks(index, provisioner)
         by_worker_type = cache[index]
         seen_worker_types.update(by_worker_type)
 
         if matched := by_worker_type.get(pool.source_worker_type):
+            if position:
+                matched = _drop_uncurated_kinds(matched, pool, index, drop_kinds)
             logger.info(
                 f"hw-integration: {pool.name} <- {len(matched)} "
                 f"{provisioner}/{pool.source_worker_type} task(s) from {index}"
@@ -309,6 +351,7 @@ def replicate_onto_hw_pools(config, tasks):
 
         provisioner = replicate_config["provisioner"]
         targets = list(replicate_config["targets"])
+        drop_kinds = frozenset(replicate_config.get("fallback-drop-kinds") or ())
         source_cache: dict[str, dict[str, list]] = {}
 
         test_filters = [f for f in (config.params.get("hw_tests") or []) if f]
@@ -343,7 +386,7 @@ def replicate_onto_hw_pools(config, tasks):
                 )
 
             source_tasks, source_index = _sources_for_pool(
-                pool, targets, provisioner, source_cache
+                pool, targets, provisioner, source_cache, drop_kinds
             )
             source_tasks = _select_tests(source_tasks, test_filters, pool)
             source_tasks = _drop_blocked(source_tasks, pool)

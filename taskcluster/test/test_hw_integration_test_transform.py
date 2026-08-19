@@ -93,6 +93,7 @@ def _source_task(
     name="test-windows11-64-24h2-shippable/opt-browsertime-benchmark-firefox-speedometer3",
     worker_type="win11-64-24h2-hw",
     scopes=None,
+    kind="browsertime",
 ):
     """A source task shaped like a real mozilla-central Windows HW task."""
     if scopes is None:
@@ -104,6 +105,7 @@ def _source_task(
         ]
     return {
         "label": name,
+        "kind": kind,
         "attributes": {"test_platform": "windows11-64-24h2-shippable/opt"},
         "dependencies": ["EPVLzXYQS8mqKN7Wkp0IIg", "VrVC0un-TJ-KGP8tePwtAA"],
         "task": {
@@ -518,7 +520,7 @@ class TestPoolToWorkerTypeMatching(HwPoolsTestBase):
             worker_type="gecko-t-osx-1500-m4",
         )
 
-    def _run(self, hw_pools, per_index):
+    def _run(self, hw_pools, per_index, drop_kinds=("perftest",)):
         fetched = []
 
         def fetch(index, provisioner):
@@ -538,6 +540,7 @@ class TestPoolToWorkerTypeMatching(HwPoolsTestBase):
             "hw-replicate": {
                 "targets": [OS_INTEGRATION_INDEX, PUSH_INDEX],
                 "provisioner": "releng-hardware",
+                "fallback-drop-kinds": list(drop_kinds),
             },
         }
         out = list(
@@ -614,6 +617,65 @@ class TestPoolToWorkerTypeMatching(HwPoolsTestBase):
         with self.assertRaises(self.hw_pools.HwPoolError) as ctx:
             self._run(["win11-64-24h2-hw-ref-alpha"], per_index)
         self.assertIn("win11-64-24h2-hw-ref", str(ctx.exception))
+
+    def test_the_ml_perftest_suite_is_dropped_when_falling_back(self):
+        # Nothing in mozilla-central curates an os-integration set for `-hw-ref`,
+        # so the fall-back is every task its counterpart runs: on 2026-08-19 that
+        # was 4 platform tests and 12 `ml-*` perftests, 10.6h across two nodes.
+        ml = [
+            _source_task(
+                name=f"perftest-windows11-24h2-ref-{name}",
+                worker_type="win11-64-24h2-hw-ref",
+                kind="perftest",
+            )
+            for name in ("ml-perf", "ml-summarizer-perf", "perftest-accessibility")
+        ]
+        per_index = {
+            OS_INTEGRATION_INDEX: [self.hw],
+            PUSH_INDEX: [self.hw, self.hw_ref, *ml],
+        }
+        out, _ = self._run(["win11-64-24h2-hw-ref-alpha"], per_index)
+        self.assertEqual(
+            [t["attributes"]["hw_source_label"] for t in out],
+            ["test-windows11-64-24h2-hw-ref-shippable/opt-mochitest-media-mda-gpu"],
+        )
+
+    def test_the_curated_index_keeps_its_perftests(self):
+        # os-integration names service-worker itself, so a pool it covers gets
+        # that task; the trim is for indexes that curate nothing.
+        service_worker = _source_task(
+            name="perftest-windows11-24h2-service-worker",
+            worker_type="win11-64-24h2-hw",
+            kind="perftest",
+        )
+        per_index = {OS_INTEGRATION_INDEX: [self.hw, service_worker]}
+        out, _ = self._run(["win11-64-24h2-hw-alpha"], per_index)
+        self.assertIn(
+            "perftest-windows11-24h2-service-worker",
+            [t["attributes"]["hw_source_label"] for t in out],
+        )
+
+    def test_a_counterpart_with_nothing_but_dropped_kinds_raises(self):
+        # Emitting zero tasks would report a green run that tested nothing.
+        ml = _source_task(
+            name="perftest-windows11-24h2-ref-ml-perf",
+            worker_type="win11-64-24h2-hw-ref",
+            kind="perftest",
+        )
+        per_index = {OS_INTEGRATION_INDEX: [self.hw], PUSH_INDEX: [self.hw, ml]}
+        with self.assertRaises(self.hw_pools.HwPoolError) as ctx:
+            self._run(["win11-64-24h2-hw-ref-alpha"], per_index)
+        self.assertIn("perftest", str(ctx.exception))
+
+    def test_no_configured_kinds_means_no_trimming(self):
+        ml = _source_task(
+            name="perftest-windows11-24h2-ref-ml-perf",
+            worker_type="win11-64-24h2-hw-ref",
+            kind="perftest",
+        )
+        per_index = {OS_INTEGRATION_INDEX: [self.hw], PUSH_INDEX: [self.hw_ref, ml]}
+        out, _ = self._run(["win11-64-24h2-hw-ref-alpha"], per_index, drop_kinds=())
+        self.assertEqual(len(out), 2)
 
     def test_macos_hardware_tasks_never_match_a_windows_pool(self):
         per_index = {

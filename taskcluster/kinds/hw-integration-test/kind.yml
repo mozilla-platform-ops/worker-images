@@ -19,11 +19,22 @@ tasks:
       # os-integration is the curated set the cloud path also replicates from --
       # ~11 win11-64-24h2-hw tasks, a few hours once a small pool serialises
       # them. It schedules no `-hw-ref` tasks, so a `-hw-ref` pool falls through
-      # to the push decision, which is a full tier-1 run: ~15 `-hw-ref` tasks,
+      # to the push decision, which is a full tier-1 run: ~16 `-hw-ref` tasks,
       # but also ~200 `-hw` ones, which is why order matters.
       targets:
         - gecko.v2.mozilla-central.latest.taskgraph.decision-os-integration
         - gecko.v2.mozilla-central.latest.taskgraph.decision
+      # Nothing in mozilla-central defines an os-integration set for `-hw-ref`:
+      # not the cron, and not `mach try --preset os-integration` either, since
+      # both match against test_configs/os-integration.yml and that file lists
+      # no ref platform. So the fall-back set is "everything the counterpart
+      # runs", which on 2026-08-19 was 16 tasks and 10.6h of maxRunTime across
+      # two nodes -- twelve of them the `ml-*` perftest suite. os-integration
+      # names two perftests for the whole tree, service-worker and
+      # startup-geckoview, and no ML ones, so an uncurated index is trimmed to
+      # the platform tests. The curated index above is never trimmed.
+      fallback-drop-kinds:
+        - perftest
       # Windows-only follows from matching each pool's own worker type; MDC1
       # macOS shares this provisioner but never matches a win11 pool name.
       provisioner: releng-hardware
