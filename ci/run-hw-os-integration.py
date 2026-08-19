@@ -134,16 +134,28 @@ def result_emoji(state: str) -> str:
 # ---- pre-flight ----------------------------------------------------------- #
 
 
-def preflight(queue, registry, pool, min_healthy: int) -> dict:
+def preflight(
+    queue, registry, pool, min_healthy: int, record: dict | None = None
+) -> dict:
     """Check a pool is alive and matches pools.yml; ``ok`` False means skip it.
 
     The worker list is claim-derived, so a low count usually just means idle; a
     worker pools.yml assigns elsewhere is the real drift signal.
+
+    ``record`` carries the pool's configuration from whichever pools.yml is
+    authoritative for it -- the deploy branch's, for a pool with `dev:` set.
     """
+    record = record or {
+        "identity": pool.identity,
+        "deployment": pool.deployment,
+        "source": "this checkout",
+    }
     expected = set(registry.healthy_nodes(pool.name))
     report = {
         "pool": pool.name,
-        "identity": pool.identity,
+        "identity": record["identity"],
+        "deployment": record["deployment"],
+        "deployment_source": record["source"],
         "expected_nodes": len(expected),
         "ok": True,
         "problems": [],
@@ -219,8 +231,11 @@ def print_preflight(report: dict) -> None:
     ident = report["identity"]
     notice(
         f"pre-flight {report['pool']}: "
-        f"image={ident['image']} branch={ident['src_branch']} rev={ident['revision']}"
+        f"image={ident['image']} branch={ident['src_branch']} rev={ident['revision']} "
+        f"(config from {report.get('deployment_source', 'this checkout')})"
     )
+    for line in deployment_log_lines(report.get("deployment") or {}):
+        notice(f"  {line}")
     notice(
         f"  nodes(pools.yml)={report['expected_nodes']} "
         f"active={report.get('active', 0)} quarantined={report.get('quarantined', 0)} "
@@ -230,6 +245,357 @@ def print_preflight(report: dict) -> None:
         notice(f"  note: {note}")
     for problem in report["problems"]:
         error(f"  {report['pool']}: {problem}")
+
+
+# ---- deployment ----------------------------------------------------------- #
+
+# pools.yml is the only record of what a hardware pool is running -- static
+# workers have no worker-manager entry to ask -- so "which configuration did this
+# result come from" is answered by these fields and nothing else.
+DEPLOYMENT_LABELS = {
+    "description": "Pool",
+    "image": "WIM image",
+    "src_organisation": "Config org",
+    "src_repository": "Config repo",
+    "src_branch": "Config branch",
+    "revision": "Config revision",
+    "dev_branch": "Deploy branch (dev)",
+    "puppet_version": "Puppet",
+    "openvox_version": "OpenVox",
+    "git_version": "Git",
+    "secret_date": "Secrets",
+    "domain_suffix": "Domain",
+}
+
+# Drift can also be reported against things that are not pools.yml settings.
+DRIFT_LABELS = {**DEPLOYMENT_LABELS, "nodes": "Nodes", "pool": "Pool entry"}
+
+# The table answers "what did this run on" at a glance and stops there: the pool,
+# the image, and a link to the config tree. The versions, secret date and domain
+# are all read *from* that tree, so the link carries them; they stay in the
+# pre-flight log's key=value lines and in drift reporting. dev_branch is left out
+# too -- it only ever has a value when the note under the table names it.
+SUMMARY_ROWS = {
+    "description": "Pool",
+    "image": "WIM image",
+    # org, repo, branch and revision name one tree; see config_cell().
+    "config": "Config",
+}
+
+DEFAULT_REPO = "mozilla-platform-ops/worker-images"
+
+
+def deployment_log_lines(deployment: dict) -> list[str]:
+    """The deployment as `key=value` log lines, skipping what pools.yml omits."""
+    return [
+        f"{key}={value}" for key, value in deployment.items() if value not in (None, "")
+    ]
+
+
+def config_cell(run: dict) -> str | None:
+    """org/repo, branch and revision as a single link to the tree that was tested.
+
+    Four rows naming one git tree is three rows more than a reader needs when
+    the tree itself can be opened instead.
+    """
+    deployment = run.get("deployment") or {}
+    slug = "/".join(
+        part
+        for part in (
+            deployment.get("src_organisation"),
+            deployment.get("src_repository"),
+        )
+        if part
+    )
+    text = " @ ".join(part for part in (slug, deployment.get("src_branch")) if part)
+    revision = deployment.get("revision")
+    if revision:
+        text = f"{text} ({revision})" if text else revision
+    if not text:
+        return None
+    url = run.get("config_url")
+    return f"[{text}]({url})" if url else f"`{text}`"
+
+
+def deployment_summary_lines(runs: list[dict]) -> list[str]:
+    """A block per pool, so the run says what it ran on without a pools.yml dig."""
+    if not any(run.get("deployment") for run in runs):
+        return []
+
+    lines = ["### Pool deployment", ""]
+    for run in runs:
+        deployment = run.get("deployment") or {}
+        if not deployment:
+            continue
+        lines += [
+            f"**{run['pool']}**",
+            "",
+            "| Setting | Value |",
+            "|---|---|",
+        ]
+        for key, label in SUMMARY_ROWS.items():
+            if key == "config":
+                cell = config_cell(run)
+                if cell:
+                    lines.append(f"| {label} | {cell} |")
+                continue
+            value = deployment.get(key)
+            if value in (None, ""):
+                continue
+            rendered = value if key == "description" else f"`{value}`"
+            lines.append(f"| {label} | {rendered} |")
+        nodes = run.get("nodes") or []
+        if nodes:
+            lines.append(f"| Nodes | {len(nodes)} (`{nodes[0]}` … `{nodes[-1]}`) |")
+        lines.append("")
+        lines += deployment_source_lines(run)
+    return lines
+
+
+def deployment_source_lines(run: dict) -> list[str]:
+    """Say the pool is on the `dev:` option, and where that option points.
+
+    Only pools with the flag get these lines -- for every other pool this
+    checkout is the record, which is the unremarkable case and needs no note.
+    """
+    dev_branch = (run.get("deployment") or {}).get("dev_branch")
+    source = run.get("deployment_source")
+    if not dev_branch:
+        return []
+
+    link = (
+        f"[that branch's `pools.yml`]({pools_yaml_blob_url(this_repo(), dev_branch)})"
+    )
+    if source == dev_branch:
+        body = (
+            f"> `{run['pool']}` is on the dev option: `dev: {dev_branch}`, so the "
+            f"details above are read from {link}. OS-deploy.ps1 on a dev branch "
+            "refreshes pools.yml from the branch, which makes it -- not this "
+            "checkout -- the record of what is on the hardware."
+        )
+    else:
+        body = (
+            f"> `{run['pool']}` is on the dev option: `dev: {dev_branch}`, so the "
+            f"record of what is on the hardware lives in {link}, but it could not "
+            "be read. The details above are this checkout's and may lag the "
+            "hardware."
+        )
+    return ["> [!NOTE]", body, ""]
+
+
+def this_repo() -> str:
+    """The repo the workflow is running from, or the canonical one off CI."""
+    return os.environ.get("GITHUB_REPOSITORY") or DEFAULT_REPO
+
+
+def pools_yaml_url(repo: str, ref: str) -> str:
+    return (
+        f"https://raw.githubusercontent.com/{repo}/{ref}/"
+        f"{hw_pools.POOLS_YAML_RELPATH.as_posix()}"
+    )
+
+
+def pools_yaml_blob_url(repo: str, ref: str) -> str:
+    """The readable-in-a-browser twin of pools_yaml_url, for links in the summary."""
+    return (
+        f"https://github.com/{repo}/blob/{ref}/{hw_pools.POOLS_YAML_RELPATH.as_posix()}"
+    )
+
+
+def fetch_registry(repo: str, ref: str):
+    """pools.yml as it stands on ``ref`` right now, or None if it cannot be read.
+
+    Never fatal. Failing to check for drift is worth saying out loud, but it is
+    not a reason to throw away a run's results.
+    """
+    url = pools_yaml_url(repo, ref)
+    try:
+        response = requests.get(url, timeout=60)
+        response.raise_for_status()
+        return hw_pools.parse_registry(response.text, source=url)
+    except (requests.RequestException, hw_pools.HwPoolError, ValueError) as exc:
+        warn(f"could not read pools.yml from {ref}: {exc}")
+        return None
+
+
+def deployment_refs(pools, checkout_ref: str) -> list[str]:
+    """Every ref whose pools.yml decides one of these pools' configuration."""
+    refs = [checkout_ref]
+    for pool in pools:
+        if pool.dev_branch and pool.dev_branch not in refs:
+            refs.append(pool.dev_branch)
+    return refs
+
+
+def deployment_records(pools, checkout_ref: str, snapshot: dict) -> dict[str, dict]:
+    """Each pool's configuration, from whichever pools.yml is authoritative for it.
+
+    A pool with `dev:` set is deployed by OS-deploy.ps1 from that branch, and that
+    script refreshes pools.yml from the branch -- so for those pools the branch's
+    copy is what is on the hardware and this checkout's can lag it. Read the
+    branch, fall back to the checkout if it cannot be read, and record which was
+    used so the run can say so.
+
+    Node lists stay with the checkout either way: which machines are in a pool is
+    bookkeeping this repo's `Known-BAD` map also governs, and pre-flight counts
+    against the same list.
+    """
+    records = {}
+    for pool in pools:
+        record = {
+            "deployment": pool.deployment,
+            "identity": pool.identity,
+            "config_url": pool.config_url,
+            "source": checkout_ref,
+        }
+        dev_branch = pool.dev_branch
+        state = (snapshot.get(dev_branch) or {}).get(pool.name) if dev_branch else None
+        if dev_branch and state is None:
+            warn(
+                f"{pool.name} has dev: {dev_branch}, which is where its deployed "
+                "configuration is recorded, but that branch's pools.yml could not "
+                "be read; reporting this checkout's values instead"
+            )
+        elif state is not None:
+            # The branch's own copy of the entry carries no `dev:` key, so keep
+            # this checkout's -- it is what pointed here in the first place.
+            deployment = {**state["deployment"], "dev_branch": dev_branch}
+            record.update(
+                {
+                    "deployment": deployment,
+                    "identity": {
+                        key: deployment.get(key)
+                        for key in ("image", "src_branch", "revision")
+                    },
+                    "config_url": state.get("config_url"),
+                    "source": dev_branch,
+                }
+            )
+            notice(
+                f"{pool.name}: dev: {dev_branch} is set, reading its deployed "
+                f"configuration from that branch (image={deployment.get('image')} "
+                f"branch={deployment.get('src_branch')} "
+                f"rev={deployment.get('revision')})"
+            )
+        records[pool.name] = record
+    return records
+
+
+def snapshot_deployments(pool_names, repo: str, refs: list[str]) -> dict:
+    """Per ref, each pool's deployment and node set as that ref records them.
+
+    Taken before the tasks are triggered and again after they finish, and the two
+    are compared field by field: pools.yml is a file in a repo that anyone can
+    land on mid-run, and a pool that was re-imaged halfway through has produced
+    results for two different configurations under one heading.
+    """
+    snapshot: dict[str, dict] = {}
+    for ref in refs:
+        registry = fetch_registry(repo, ref)
+        if registry is None:
+            continue
+        per_pool = {}
+        for name in pool_names:
+            pool = registry.pools.get(name)
+            if pool is None:
+                continue
+            per_pool[name] = {
+                "deployment": pool.deployment,
+                "config_url": pool.config_url,
+                "nodes": tuple(pool.nodes),
+            }
+        snapshot[ref] = per_pool
+    return snapshot
+
+
+def compare_deployments(before: dict, after: dict) -> list[dict]:
+    """Field-level changes between two snapshots, in a stable order."""
+    changes = []
+    for ref, pools_before in before.items():
+        pools_after = after.get(ref)
+        if pools_after is None:
+            continue
+        for pool_name, state_before in pools_before.items():
+            state_after = pools_after.get(pool_name)
+            if state_after is None:
+                changes.append(
+                    {
+                        "ref": ref,
+                        "pool": pool_name,
+                        "field": "pool",
+                        "before": "present",
+                        "after": "removed from pools.yml",
+                    }
+                )
+                continue
+            for key in state_before["deployment"]:
+                was = state_before["deployment"][key]
+                now = state_after["deployment"].get(key)
+                if was != now:
+                    changes.append(
+                        {
+                            "ref": ref,
+                            "pool": pool_name,
+                            "field": key,
+                            "before": was,
+                            "after": now,
+                        }
+                    )
+            gained = sorted(set(state_after["nodes"]) - set(state_before["nodes"]))
+            lost = sorted(set(state_before["nodes"]) - set(state_after["nodes"]))
+            if gained or lost:
+                moved = []
+                if gained:
+                    moved.append("added " + ", ".join(gained))
+                if lost:
+                    moved.append("removed " + ", ".join(lost))
+                changes.append(
+                    {
+                        "ref": ref,
+                        "pool": pool_name,
+                        "field": "nodes",
+                        "before": f"{len(state_before['nodes'])} node(s)",
+                        "after": "; ".join(moved),
+                    }
+                )
+    return changes
+
+
+def report_drift(changes: list[dict]) -> None:
+    for change in changes:
+        label = DRIFT_LABELS.get(change["field"], change["field"])
+        warn(
+            f"CONFIGURATION CHANGED MID-RUN -- {change['pool']} {label} on "
+            f"{change['ref']}: {change['before']!r} -> {change['after']!r}. "
+            "Results before and after the change are not the same experiment."
+        )
+
+
+def drift_summary_lines(changes: list[dict]) -> list[str]:
+    """A caution block at the top of the summary, where it cannot be missed."""
+    if not changes:
+        return []
+    lines = [
+        "> [!CAUTION]",
+        (
+            "> **The pool configuration changed while this run was in flight.** "
+            "pools.yml was edited between triggering these tasks and their "
+            "results, so the numbers below may span two different configurations "
+            "and are not attributable to one. Check when each task ran against "
+            "when the change landed before trusting anything here."
+        ),
+        "",
+        "| Pool | Setting | Ref | Before | After |",
+        "|---|---|---|---|---|",
+    ]
+    for change in changes:
+        label = DRIFT_LABELS.get(change["field"], change["field"])
+        lines.append(
+            f"| {change['pool']} | {label} | `{change['ref']}` | "
+            f"`{change['before']}` | `{change['after']}` |"
+        )
+    lines.append("")
+    return lines
 
 
 # ---- trigger + monitor ---------------------------------------------------- #
@@ -729,12 +1095,20 @@ def worker_summary_lines(runs: list[dict]) -> list[str]:
     return lines
 
 
-def write_github_summary(runs: list[dict], root_url: str, selection: str = "") -> None:
+def write_github_summary(
+    runs: list[dict],
+    root_url: str,
+    selection: str = "",
+    drift: list[dict] | None = None,
+) -> None:
     summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
     if not summary_file:
         return
 
     lines = ["## HW OS Integration Tests", ""]
+    # First thing under the heading: a run whose configuration moved is not a
+    # result, and nobody scrolls to find that out.
+    lines += drift_summary_lines(drift or [])
     if selection:
         lines += [selection, ""]
     lines += score_summary_lines(runs)
@@ -767,6 +1141,8 @@ def write_github_summary(runs: list[dict], root_url: str, selection: str = "") -
             )
         )
     lines.append("")
+
+    lines += deployment_summary_lines(runs)
 
     for run in runs:
         tasks = replicated_tasks(run.get("tasks") or [], run.get("task_group_id"))
@@ -901,10 +1277,21 @@ def main() -> int:
     options = taskcluster.optionsFromEnvironment()
     queue = taskcluster.Queue(options)
 
+    # ---- what is on the hardware ------------------------------------------ #
+    # Resolved before pre-flight so its log names the deployed configuration, and
+    # kept to be re-read once the tasks have resolved.
+    repo = this_repo()
+    checkout_ref = os.environ.get("GITHUB_REF_NAME") or "main"
+    refs = deployment_refs(pools, checkout_ref)
+    pool_names = [pool.name for pool in pools]
+    before = snapshot_deployments(pool_names, repo, refs)
+    records = deployment_records(pools, checkout_ref, before)
+
     # ---- pre-flight ------------------------------------------------------- #
     if not args.skip_preflight:
         reports = [
-            preflight(queue, registry, pool, args.min_healthy_nodes) for pool in pools
+            preflight(queue, registry, pool, args.min_healthy_nodes, records[pool.name])
+            for pool in pools
         ]
         for report in reports:
             print_preflight(report)
@@ -939,12 +1326,16 @@ def main() -> int:
     # ---- trigger ---------------------------------------------------------- #
     runs = []
     for pool in pools:
+        record = records[pool.name]
         decision_task_id = trigger(hooks, pool.name, tests, args.repeat)
         notice(f"  {pool.name}: decision {root_url}/tasks/{decision_task_id}")
         runs.append(
             {
                 "pool": pool.name,
-                "identity": pool.identity,
+                "identity": record["identity"],
+                "deployment": record["deployment"],
+                "deployment_source": record["source"],
+                "config_url": record["config_url"],
                 "decision_task_id": decision_task_id,
                 # For the by-worker breakdown: a node that claimed nothing all
                 # run has no task to be found from.
@@ -974,6 +1365,10 @@ def main() -> int:
 
     monitor(queue, live, args.timeout, root_url)
     collect_scores(queue, live)
+
+    # ---- did the configuration move under us? ----------------------------- #
+    drift = compare_deployments(before, snapshot_deployments(pool_names, repo, refs))
+    report_drift(drift)
 
     # ---- verdicts --------------------------------------------------------- #
     failed_overall = False
@@ -1023,7 +1418,7 @@ def main() -> int:
         else:
             run["verdict"] = "✅ passed"
 
-    write_github_summary(runs, root_url, selection)
+    write_github_summary(runs, root_url, selection, drift)
     print_scores(runs)
 
     for run in runs:
@@ -1032,6 +1427,14 @@ def main() -> int:
             f"{run['pool']}: {run['verdict']} "
             f"({counts.get('completed', 0)}/{counts.get('total', 0)} completed) "
             f"image={run['identity']['image']} rev={run['identity']['revision']}"
+        )
+
+    if drift:
+        # Last line of the log as well as the first block of the summary: the
+        # verdict above means less than the fact that it moved.
+        error(
+            f"{len(drift)} configuration change(s) landed while this run was in "
+            "flight; the results are not attributable to one configuration"
         )
 
     return 1 if failed_overall else 0
