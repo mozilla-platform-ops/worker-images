@@ -43,12 +43,16 @@ ronin:
   org: default
   repo: default
   branch: wim-bake-role         # feature branch carrying the bake role (until merged)
-  hash: "b64eb0b5"              # ronin_puppet#1297 HEAD; bake role excludes hardware_observability (no marlin_pw lookup). Bump when the branch moves.
-                                # b64eb0b5 (RELOPS-2487): the bake no longer disables AppXSvc, so the WIM ships it Manual
-                                # and the per-task user can register the HEVC/AV1/VP9 media extensions. Baking the disable
-                                # (plus its \Hardening\Hard-Disable-AppXSvc task) defeated the ref/ref-alpha exemption for
-                                # bug 2013985 and cost Firefox its WMF hardware decoders. Same commit skips the 600s
-                                # Wait-AppxIdle when the image is already debloated, so deploys do not pay for the change.
+  hash: "7dac7f0a"              # ronin_puppet#1297 HEAD; bake role excludes hardware_observability (no marlin_pw lookup). Bump when the branch moves.
+                                # 7dac7f0a (RELOPS-2487) SUPERSEDES b64eb0b5. b64eb0b5 stopped the bake disabling
+                                # AppXSvc so the image shipped it Manual; that fixed the codecs but changed sysprep -
+                                # the WIM then got a full generalize, and the first-boot specialize pass regenerated a
+                                # random WIN-xxxxxxxx into ActiveComputerName, which sent maintainsystem-hw into a
+                                # Set-PXE re-image loop. The bake never needed changing: the media extensions are
+                                # PROVISIONED at bake time (DISM-level, no AppXSvc), and only the per-user registration
+                                # at first task_* logon needs the service. So 7dac7f0a bakes the disable again and
+                                # re-enables AppXSvc at DEPLOY time for ref/ref-alpha instead. Stage at bake, register
+                                # at deploy.
   bake_role: win116424h2hwbake  # trimmed hw role that performs the one-time AppX/catalog bake
 
 vm:
