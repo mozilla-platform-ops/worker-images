@@ -150,6 +150,9 @@ jobs:
           GITHUB_RUN_STARTED_AT: ${{ github.run_started_at }}
           TASKCLUSTER_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
           TASKCLUSTER_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}
+          # Only read on a red run, to say whether the failures are the image or
+          # the infrastructure. Absent, the summary is written without that block.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           PYTHONUNBUFFERED: "1"
         run: |
           uv run ci/run-hw-os-integration.py "$POOLS" \

@@ -5,6 +5,7 @@
 #     "taskcluster",
 #     "requests",
 #     "pyyaml",
+#     "anthropic",
 # ]
 # ///
 """
@@ -72,15 +73,20 @@ HW_POOLS_MODULE = (
 )
 
 
-def _load_hw_pools():
-    """Load by path: a package import would pull in mozilla_taskgraph."""
-    spec = importlib.util.spec_from_file_location("hw_pools", HW_POOLS_MODULE)
+FAILURE_SUMMARY_MODULE = Path(__file__).resolve().parent / "hw_failure_summary.py"
+
+
+def _load_by_path(name: str, path: Path):
+    """Load a sibling module by path: `ci/` is not a package, and a package
+    import of hw_pools would pull in mozilla_taskgraph."""
+    spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
 
-hw_pools = _load_hw_pools()
+hw_pools = _load_by_path("hw_pools", HW_POOLS_MODULE)
+hw_failure_summary = _load_by_path("hw_failure_summary", FAILURE_SUMMARY_MODULE)
 
 
 def _escape_github_command_message(message: str) -> str:
@@ -1195,6 +1201,7 @@ def write_github_summary(
     root_url: str,
     selection: str = "",
     drift: list[dict] | None = None,
+    failure_summary: list[str] | None = None,
 ) -> None:
     summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
     if not summary_file:
@@ -1238,6 +1245,10 @@ def write_github_summary(
             )
         )
     lines.append("")
+
+    # Straight under the verdict table: the reader has just seen which pool went
+    # red and wants to know whether it says anything about the image.
+    lines += failure_summary or []
 
     lines += deployment_summary_lines(runs)
 
@@ -1521,7 +1532,15 @@ def main() -> int:
         else:
             run["verdict"] = "✅ passed"
 
-    write_github_summary(runs, root_url, selection, drift)
+    # Only a red run pays for this, and only after the verdict is decided: it
+    # explains the failures the reader is already looking at.
+    failure_summary = []
+    if failed_overall:
+        failure_summary, _ = hw_failure_summary.build(
+            queue, runs, replicated_tasks, drift, root_url, warn
+        )
+
+    write_github_summary(runs, root_url, selection, drift, failure_summary)
     print_scores(runs)
 
     for run in runs:
