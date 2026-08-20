@@ -186,6 +186,11 @@ pools:
     - nuc13-135
     - nuc13-145
     - nuc13-153
+    # Under performing - moved out of win11-64-24h2-hw for investigation. Unlike the 39
+    # nodes above, both have swapped PSUs and passed the RELOPS-2514 validation, so they
+    # are not here awaiting a swap. Tracked in RELOPS-2522.
+    - nuc13-085
+    - nuc13-103
   - name: "win11-64-24h2-hw-perf-sheriff"
     openvox_version: "8.19.2"
     puppet_version: "8.10.0"
@@ -261,7 +266,6 @@ pools:
     - nuc13-080
     - nuc13-082
     - nuc13-084
-    - nuc13-085
     - nuc13-087
     - nuc13-091
     - nuc13-092
@@ -274,7 +278,6 @@ pools:
     - nuc13-100
     - nuc13-101
     - nuc13-102
-    - nuc13-103
     - nuc13-105
     - nuc13-106
     - nuc13-114
