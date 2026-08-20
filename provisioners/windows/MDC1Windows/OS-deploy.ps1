@@ -866,6 +866,69 @@ else {
     Copy-Item -Path $unattend -Destination (Join-Path $panther "unattend.xml") -Force
     Write-Host "== Placed unattend at $panther\unattend.xml =="
 
+    ## --- Re-assert the node name AFTER specialize (RELOPS-2487) ---
+    ## The offline rename above is necessary but NOT sufficient: it runs in WinPE, and the
+    ## first-boot SPECIALIZE pass runs AFTER it and regenerates a random WIN-xxxxxxxx into
+    ## ActiveComputerName (the unattend's <ComputerName> does not take effect on this image).
+    ## Observed 2026-08-20 on nuc13-158: ComputerName=NUC13-158 but ActiveComputerName=
+    ## WIN-D81J5HC82S0, with Tcpip Hostname/NV Hostname still correct. That mismatch is not
+    ## cosmetic - maintainsystem-hw looked the node up under the WIN- name, missed, and
+    ## Set-PXE'd into an unbreakable re-image loop, and generic-worker's workerId reads the
+    ## same value.
+    ##
+    ## SetupComplete.cmd is the first hook that runs AFTER specialize/oobeSystem and before
+    ## any logon, so it is the earliest point where the name can be made authoritative.
+    ## Deliberately NOT a Rename-Computer: that cmdlet compares against the PERSISTENT name,
+    ## which is already correct, so it refuses with "the new name is the same as the current
+    ## name". Writing ActiveComputerName directly is the only thing that works (verified on
+    ## all five canary nodes, 2026-08-20).
+    $setupScripts = Join-Path "$winVol\" "Windows\Setup\Scripts"
+    New-Item -ItemType Directory -Path $setupScripts -Force | Out-Null
+
+    $nameFixPs1 = @'
+# Set-ActiveComputerName.ps1 - re-assert the node name after the specialize pass.
+# Reads nothing from the deploy; the authoritative value is the persistent ComputerName
+# that OS-deploy.ps1 set offline, so this is safe to run unconditionally on first boot.
+$log = 'C:\Windows\Temp\setupcomplete-name.log'
+function W([string]$m) { "$([DateTime]::UtcNow.ToString('o')) $m" | Out-File -FilePath $log -Append -Encoding utf8 }
+
+$cnKey  = 'HKLM:\SYSTEM\CurrentControlSet\Control\ComputerName\ComputerName'
+$acnKey = 'HKLM:\SYSTEM\CurrentControlSet\Control\ComputerName\ActiveComputerName'
+$tcpip  = 'HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters'
+
+try {
+    $persistent = "$((Get-ItemProperty -Path $cnKey -ErrorAction Stop).ComputerName)".Trim()
+    $active     = "$((Get-ItemProperty -Path $acnKey -ErrorAction SilentlyContinue).ComputerName)".Trim()
+    W "persistent=$persistent active=$active"
+
+    if (-not $persistent) { W 'persistent ComputerName empty - nothing to assert'; exit 0 }
+    if ($active -eq $persistent) { W 'already in sync - no action'; exit 0 }
+
+    New-ItemProperty -Path $acnKey -Name ComputerName   -Value $persistent -PropertyType String -Force | Out-Null
+    New-ItemProperty -Path $tcpip  -Name Hostname       -Value $persistent -PropertyType String -Force | Out-Null
+    New-ItemProperty -Path $tcpip  -Name 'NV Hostname'  -Value $persistent -PropertyType String -Force | Out-Null
+    W "wrote ActiveComputerName/Hostname/NV Hostname = $persistent; restarting"
+    Restart-Computer -Force
+}
+catch {
+    W "FAILED: $($_.Exception.Message)"
+    exit 1
+}
+'@
+
+    $setupCompleteCmd = @'
+@echo off
+REM RELOPS-2487: re-assert the node name after specialize. See Set-ActiveComputerName.ps1.
+powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%~dp0Set-ActiveComputerName.ps1"
+exit /b 0
+'@
+
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText((Join-Path $setupScripts 'Set-ActiveComputerName.ps1'), $nameFixPs1, $utf8NoBom)
+    # SetupComplete.cmd must be ANSI/ASCII - cmd.exe will not parse a UTF-8 BOM.
+    [System.IO.File]::WriteAllText((Join-Path $setupScripts 'SetupComplete.cmd'), $setupCompleteCmd, [System.Text.Encoding]::ASCII)
+    Write-Host "== Placed SetupComplete.cmd + Set-ActiveComputerName.ps1 in $setupScripts =="
+
     Write-Host "Baked WIM applied. Rebooting into the deployed OS. Have a nice day! :)"
     Start-Sleep -Seconds 5
     wpeutil reboot
