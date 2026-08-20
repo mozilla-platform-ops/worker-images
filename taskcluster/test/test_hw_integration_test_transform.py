@@ -1,3 +1,4 @@
+import datetime
 import importlib
 import json
 import os
@@ -133,7 +134,11 @@ def _source_task(
                     {"content": {"taskId": "VrVC0un-TJ-KGP8tePwtAA"}, "file": "x"},
                 ],
                 "artifacts": [
-                    {"name": "public/logs", "path": "logs", "expires": "2027-01-01T00:00:00Z"}
+                    {
+                        "name": "public/logs",
+                        "path": "logs",
+                        "expires": "2027-01-01T00:00:00Z",
+                    }
                 ],
                 "env": {
                     "GECKO_HEAD_REV": "deadbeefcafe",
@@ -233,7 +238,9 @@ class TestHwPoolRegistry(HwPoolsTestBase):
         self.assertEqual(len(reg.pools), 6)
 
         pool = reg["win11-64-24h2-hw-relops1213"]
-        self.assertEqual(pool.task_queue_id, "releng-hardware/win11-64-24h2-hw-relops1213")
+        self.assertEqual(
+            pool.task_queue_id, "releng-hardware/win11-64-24h2-hw-relops1213"
+        )
         self.assertEqual(
             pool.identity,
             {
@@ -346,12 +353,15 @@ class TestHwIntegrationTransform(HwPoolsTestBase):
         def fetch(index, provisioner):
             fetched.append(index)
             by_worker_type = {}
+            labels = {}
             for source in per_index.get(index, []):
                 task = source["task"]
+                for dep in task.get("dependencies", []):
+                    labels.setdefault(dep, f"fetch-{dep}")
                 if task["provisionerId"] != provisioner:
                     continue
                 by_worker_type.setdefault(task["workerType"], []).append(source)
-            return by_worker_type
+            return {"by_worker_type": by_worker_type, "labels": labels}
 
         self.mod._fetch_source_tasks = fetch
         return fetched
@@ -426,7 +436,9 @@ class TestHwIntegrationTransform(HwPoolsTestBase):
             sorted(task["payload"]["cache"]),
             ["relops-level-3-pip", "relops-level-3-uv"],
         )
-        self.assertEqual(task["payload"]["mounts"][0]["cacheName"], "relops-level-3-pip")
+        self.assertEqual(
+            task["payload"]["mounts"][0]["cacheName"], "relops-level-3-pip"
+        )
         cache_scopes = sorted(
             s for s in task["scopes"] if s.startswith("generic-worker:cache:")
         )
@@ -526,12 +538,15 @@ class TestPoolToWorkerTypeMatching(HwPoolsTestBase):
         def fetch(index, provisioner):
             fetched.append(index)
             by_worker_type = {}
+            labels = {}
             for source in per_index.get(index, []):
                 task = source["task"]
+                for dep in task.get("dependencies", []):
+                    labels.setdefault(dep, f"fetch-{dep}")
                 if task["provisionerId"] != provisioner:
                     continue
                 by_worker_type.setdefault(task["workerType"], []).append(source)
-            return by_worker_type
+            return {"by_worker_type": by_worker_type, "labels": labels}
 
         self.mod._fetch_source_tasks = fetch
         task = {
@@ -711,7 +726,8 @@ class TestTestFilterAndRepeat(HwPoolsTestBase):
     def _run(self, hw_tests=None, hw_repeat=None, sources=None):
         sources = self.sources if sources is None else sources
         self.mod._fetch_source_tasks = lambda index, provisioner: {
-            "win11-64-24h2-hw": sources
+            "labels": {},
+            "by_worker_type": {"win11-64-24h2-hw": sources},
         }
         task = {
             "name": "gecko-hw",
@@ -778,7 +794,9 @@ class TestTestFilterAndRepeat(HwPoolsTestBase):
         for t in out:
             self.assertEqual(t["attributes"]["hw_run_count"], 5)
             self.assertEqual(t["task"]["metadata"]["name"], t["label"])
-            self.assertTrue(t["label"].endswith(f"-run{t['attributes']['hw_run_index']}"))
+            self.assertTrue(
+                t["label"].endswith(f"-run{t['attributes']['hw_run_index']}")
+            )
 
     def test_repeat_copies_are_otherwise_identical(self):
         out = self._run(hw_tests=["firefox-speedometer"], hw_repeat=3)
@@ -810,7 +828,8 @@ class TestBlockedDependencies(HwPoolsTestBase):
 
     def _run(self, sources, dep_states):
         self.mod._fetch_source_tasks = lambda index, provisioner: {
-            "win11-64-24h2-hw": sources
+            "labels": {},
+            "by_worker_type": {"win11-64-24h2-hw": sources},
         }
         self.mod._dependency_states = lambda dep_ids: {
             d: dep_states.get(d, "completed") for d in dep_ids
@@ -865,6 +884,161 @@ class TestBlockedDependencies(HwPoolsTestBase):
         with self.assertRaises(self.hw_pools.HwPoolError) as ctx:
             self._run([source], {"dep" + "0" * 19: "failed"})
         self.assertIn("only-test", str(ctx.exception))
+
+
+CANARY = "public/cft-cd-win64-canary.tar.bz2"
+EXPIRED_FETCH = "MlQ-iRxpSTmvwuR4uSg2-A"
+LIVE_FETCH = "JoV-a2X0RIGmnd6p07sXlQ"
+DAILY = "gecko.v2.mozilla-central.latest.taskgraph.decision-custom-car-perf-testing"
+
+
+class TestExpiredFetches(HwPoolsTestBase):
+    """A replicated task keeps mozilla-central's fetch task ids, and the
+    Chrome-for-Testing artifacts live two days against a weekly cron. On
+    2026-08-19 that cost every repeat of custom-car-speedometer3 eight minutes
+    of hardware time and an HTTP 410."""
+
+    def setUp(self):
+        super().setUp()
+        self.now = datetime.datetime.now(datetime.timezone.utc)
+        self.live = self.now + datetime.timedelta(days=1, hours=8)
+        self.dead = self.now - datetime.timedelta(hours=17)
+
+    def _source(self, name="custom-car-speedometer3", fetch_task=EXPIRED_FETCH):
+        source = _source_task(name=name)
+        source["task"]["dependencies"] = [fetch_task, "OTHERDEP" + "0" * 14]
+        source["task"]["payload"]["env"] = {
+            "MOZ_FETCHES": json.dumps(
+                [
+                    {"artifact": CANARY, "extract": True, "task": fetch_task},
+                    {
+                        "artifact": "public/build/node.tar.zst",
+                        "extract": True,
+                        "task": "OTHERDEP" + "0" * 14,
+                    },
+                ]
+            )
+        }
+        return source
+
+    def _stub_artifacts(self, expiries):
+        """expiries maps task id -> {artifact: datetime}."""
+        self.mod._artifact_expiries = lambda task_id: expiries.get(task_id, {})
+
+    def _repair(self, sources, expiries, graphs=None):
+        self._stub_artifacts(expiries)
+        graphs = graphs or {}
+        self.mod.find_task_id = lambda index: f"decision-of-{index}"
+        self.mod.get_artifact = lambda decision, artifact: graphs.get(
+            decision.replace("decision-of-", ""), {}
+        )
+        pool = self.hw_pools.load_registry(self.root)["win11-64-24h2-hw-alpha"]
+        return self.mod._repair_fetches(
+            sources,
+            pool,
+            {EXPIRED_FETCH: "fetch-win64-cft-cd-canary"},
+            [DAILY],
+        )
+
+    def test_a_live_fetch_is_left_alone(self):
+        source = self._source()
+        out = self._repair(
+            [source],
+            {
+                EXPIRED_FETCH: {CANARY: self.live},
+                "OTHERDEP" + "0" * 14: {"public/build/node.tar.zst": self.live},
+            },
+        )
+        self.assertEqual(len(out), 1)
+        fetches = json.loads(out[0]["task"]["payload"]["env"]["MOZ_FETCHES"])
+        self.assertEqual(fetches[0]["task"], EXPIRED_FETCH, "no needless rewrite")
+        self.assertNotIn("hw-integration", out[0]["task"].get("extra", {}))
+
+    def test_an_expired_fetch_is_repointed_at_a_live_copy(self):
+        source = self._source()
+        out = self._repair(
+            [source],
+            {
+                EXPIRED_FETCH: {CANARY: self.dead},
+                LIVE_FETCH: {CANARY: self.live},
+                "OTHERDEP" + "0" * 14: {"public/build/node.tar.zst": self.live},
+            },
+            graphs={DAILY: {"fetch-win64-cft-cd-canary": LIVE_FETCH}},
+        )
+        self.assertEqual(len(out), 1)
+        fetches = json.loads(out[0]["task"]["payload"]["env"]["MOZ_FETCHES"])
+        self.assertEqual(fetches[0]["task"], LIVE_FETCH)
+        self.assertEqual(fetches[0]["artifact"], CANARY, "same artifact, new task")
+        # the dependency has to move with it, or the task waits on a dead task
+        self.assertIn(LIVE_FETCH, out[0]["task"]["dependencies"])
+        self.assertNotIn(EXPIRED_FETCH, out[0]["task"]["dependencies"])
+        # and the substitution is recorded on the task, not just in the log
+        recorded = out[0]["task"]["extra"]["hw-integration"]["substituted-fetches"]
+        self.assertEqual(recorded[0]["replacement_task"], LIVE_FETCH)
+        self.assertEqual(recorded[0]["source_index"], DAILY)
+
+    def test_an_artifact_expiring_mid_run_counts_as_expired(self):
+        source = self._source()
+        soon = self.now + datetime.timedelta(hours=1)
+        out = self._repair(
+            [source],
+            {
+                EXPIRED_FETCH: {CANARY: soon},
+                LIVE_FETCH: {CANARY: self.live},
+                "OTHERDEP" + "0" * 14: {"public/build/node.tar.zst": self.live},
+            },
+            graphs={DAILY: {"fetch-win64-cft-cd-canary": LIVE_FETCH}},
+        )
+        fetches = json.loads(out[0]["task"]["payload"]["env"]["MOZ_FETCHES"])
+        self.assertEqual(fetches[0]["task"], LIVE_FETCH, "a run queues for hours")
+
+    def test_a_replacement_that_is_also_expired_is_not_used(self):
+        source = self._source()
+        with self.assertRaises(self.hw_pools.HwPoolError):
+            self._repair(
+                [source],
+                {
+                    EXPIRED_FETCH: {CANARY: self.dead},
+                    LIVE_FETCH: {CANARY: self.dead},
+                    "OTHERDEP" + "0" * 14: {"public/build/node.tar.zst": self.live},
+                },
+                graphs={DAILY: {"fetch-win64-cft-cd-canary": LIVE_FETCH}},
+            )
+
+    def test_a_task_with_no_live_copy_is_skipped_not_run(self):
+        doomed = self._source(name="custom-car-speedometer3")
+        fine = self._source(
+            name="firefox-speedometer3", fetch_task="LIVEDEP" + "0" * 15
+        )
+        out = self._repair(
+            [doomed, fine],
+            {
+                EXPIRED_FETCH: {CANARY: self.dead},
+                "LIVEDEP" + "0" * 15: {CANARY: self.live},
+                "OTHERDEP" + "0" * 14: {"public/build/node.tar.zst": self.live},
+            },
+            graphs={DAILY: {}},
+        )
+        self.assertEqual(
+            [s["task"]["metadata"]["name"] for s in out], ["firefox-speedometer3"]
+        )
+
+    def test_a_missing_artifact_is_treated_as_expired(self):
+        source = self._source()
+        with self.assertRaises(self.hw_pools.HwPoolError):
+            self._repair(
+                [source],
+                {
+                    EXPIRED_FETCH: {},  # the task exists; the artifact is gone
+                    "OTHERDEP" + "0" * 14: {"public/build/node.tar.zst": self.live},
+                },
+                graphs={DAILY: {}},
+            )
+
+    def test_a_task_without_fetches_is_untouched(self):
+        source = _source_task(name="talos-webgl")
+        out = self._repair([source], {})
+        self.assertEqual(out, [source])
 
 
 class TestCloudAndHwSelectionAreDisjoint(unittest.TestCase):

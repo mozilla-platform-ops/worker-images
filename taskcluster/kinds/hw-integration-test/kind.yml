@@ -35,6 +35,24 @@ tasks:
       # the platform tests. The curated index above is never trimmed.
       fallback-drop-kinds:
         - perftest
+      # Where to look for a live copy of an expired fetch artifact. A replicated
+      # task keeps mozilla-central's concrete fetch task ids and MOZ_FETCHES can
+      # only name a task and an artifact, so re-pointing it at a fresher task is
+      # the only repair there is.
+      #
+      # It is needed because the Chrome-for-Testing fetches are `cached_task:
+      # false` in-tree: every graph builds its own and the artifact lives two
+      # days, against an os-integration cron that runs weekly. custom-car-perf-
+      # testing runs daily and carries the same canary fetches, which is what
+      # makes the substitution possible at all; the others are listed because
+      # they carry the rest of the perf fetch set, and the push decision last
+      # because it is the largest graph to read.
+      fetch-repair-targets:
+        - gecko.v2.mozilla-central.latest.taskgraph.decision-custom-car-perf-testing
+        - gecko.v2.mozilla-central.latest.taskgraph.decision-sp-perftests
+        - gecko.v2.mozilla-central.latest.taskgraph.decision-perftest
+        - gecko.v2.mozilla-central.latest.taskgraph.decision-general-perf-testing
+        - gecko.v2.mozilla-central.latest.taskgraph.decision
       # Windows-only follows from matching each pool's own worker type; MDC1
       # macOS shares this provisioner but never matches a win11 pool name.
       provisioner: releng-hardware

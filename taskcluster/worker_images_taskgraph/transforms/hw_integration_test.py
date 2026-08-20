@@ -15,13 +15,16 @@ different suites on different hardware models, so replicating both onto both
 would report failures that only mean the task was on the wrong machine.
 """
 
+import json
 import logging
 import os
 import re
 from collections import defaultdict
 from copy import deepcopy
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import requests
 from taskgraph.transforms.base import TransformSequence
 from taskgraph.util.taskcluster import (
     find_task_id,
@@ -70,17 +73,26 @@ def _repo_root(config) -> Path:
     return find_repo_root()
 
 
-def _fetch_source_tasks(index: str, provisioner: str) -> dict[str, list]:
-    """Hardware task definitions from a decision task's graph, by worker type."""
+def _fetch_source_tasks(index: str, provisioner: str) -> dict:
+    """A decision graph's hardware tasks by worker type, plus its label index.
+
+    The labels are kept because a replicated task's fetches name task ids, and
+    an expired one can only be re-resolved by asking a fresher graph for the
+    same label -- see _repair_fetches.
+    """
     decision_task_id = find_task_id(index)
     task_graph = get_artifact(decision_task_id, "public/task-graph.json")
 
+    # public/task-graph.json is keyed by task id, with the label inside each
+    # entry -- which is what makes an expired fetch re-resolvable by label.
     by_worker_type = defaultdict(list)
-    for label, task_def in sorted(task_graph.items()):
+    labels = {}
+    for task_id, task_def in sorted(task_graph.items()):
+        labels[task_id] = task_def.get("label", task_id)
         task = task_def.get("task", {})
         if task.get("provisionerId") != provisioner:
             continue
-        task_def.setdefault("label", label)
+        task_def.setdefault("label", task_id)
         by_worker_type[task["workerType"]].append(task_def)
 
     logger.info(
@@ -88,7 +100,7 @@ def _fetch_source_tasks(index: str, provisioner: str) -> dict[str, list]:
         f"{sum(len(v) for v in by_worker_type.values())} {provisioner} task(s) "
         f"across {len(by_worker_type)} worker type(s)"
     )
-    return dict(by_worker_type)
+    return {"by_worker_type": dict(by_worker_type), "labels": labels}
 
 
 def _drop_uncurated_kinds(source_tasks, pool, index: str, drop_kinds) -> list:
@@ -144,7 +156,7 @@ def _sources_for_pool(
     for position, index in enumerate(targets):
         if index not in cache:
             cache[index] = _fetch_source_tasks(index, provisioner)
-        by_worker_type = cache[index]
+        by_worker_type = cache[index]["by_worker_type"]
         seen_worker_types.update(by_worker_type)
 
         if matched := by_worker_type.get(pool.source_worker_type):
@@ -213,6 +225,178 @@ def _dependency_states(dep_ids: list[str]) -> dict[str, str]:
         for task_id, status in (status_task_batched(batch) or {}).items():
             states[task_id] = status.get("state", "unknown")
     return states
+
+
+# ---- expired fetches ------------------------------------------------------ #
+
+# A replicated task keeps mozilla-central's concrete fetch task ids, and
+# MOZ_FETCHES can only name a task and an artifact -- fetch-content builds the
+# URL from those two fields, so there is no way to point it at a plain URL.
+# Re-pointing it at a *different task* is therefore the only repair available.
+#
+# It is needed because the Chrome-for-Testing fetches carry `cached_task: false`
+# in mozilla-central: every graph builds its own copy and the artifact lives two
+# days, because the thing it wraps changes daily. Against a weekly
+# os-integration cron that is a guaranteed miss for most of the week -- on
+# 2026-08-19 `cft-cd-win64-canary.tar.bz2` had expired ten hours before the run
+# started, and browsertime-benchmark-custom-car-speedometer3 spent eight minutes
+# of hardware time collecting HTTP 410s before failing.
+FETCHES_ENV = "MOZ_FETCHES"
+
+# An artifact that expires while the run is still queuing is as good as gone:
+# hardware runs sit for hours behind a build.
+FETCH_EXPIRY_MARGIN = timedelta(hours=6)
+
+
+def _root_url() -> str:
+    return os.environ.get(
+        "TASKCLUSTER_ROOT_URL", "https://firefox-ci-tc.services.mozilla.com"
+    ).rstrip("/")
+
+
+def _artifact_expiries(task_id: str) -> dict:
+    """Each artifact of a task and when it expires. Empty if it cannot be read."""
+    url = f"{_root_url()}/api/queue/v1/task/{task_id}/artifacts"
+    try:
+        response = requests.get(url, timeout=60)
+        response.raise_for_status()
+        artifacts = response.json().get("artifacts", [])
+    except (requests.RequestException, ValueError) as exc:
+        logger.warning(f"hw-integration: could not list artifacts of {task_id}: {exc}")
+        return {}
+
+    expiries = {}
+    for artifact in artifacts:
+        stamp = artifact.get("expires")
+        if not stamp:
+            continue
+        try:
+            expiries[artifact["name"]] = datetime.fromisoformat(
+                stamp.replace("Z", "+00:00")
+            )
+        except ValueError:
+            continue
+    return expiries
+
+
+def _fetch_is_live(task_id: str, artifact: str, cache: dict, now) -> bool:
+    if task_id not in cache:
+        cache[task_id] = _artifact_expiries(task_id)
+    expires = cache[task_id].get(artifact)
+    return expires is not None and expires > now + FETCH_EXPIRY_MARGIN
+
+
+def _live_replacement(label, artifact, indexes, graphs, artifacts, now):
+    """The same fetch, from whichever fresher graph still has it."""
+    for index in indexes:
+        if index not in graphs:
+            try:
+                decision = find_task_id(index)
+                graphs[index] = get_artifact(decision, "public/label-to-taskid.json")
+            except Exception as exc:  # noqa: BLE001 -- one missing index is not fatal
+                logger.warning(f"hw-integration: could not read {index}: {exc}")
+                graphs[index] = {}
+        candidate = graphs[index].get(label)
+        if candidate and _fetch_is_live(candidate, artifact, artifacts, now):
+            return candidate, index
+    return None, None
+
+
+def _repair_fetches(source_tasks, pool, labels, indexes):
+    """Re-point expired fetches at a live copy; drop what cannot be repaired.
+
+    Substitution is deliberately loud. The replacement is a *newer build* of the
+    same thing -- for a Chrome-for-Testing canary that is what "canary" means,
+    but it is not the byte-for-byte artifact the source graph pinned, and the
+    log has to say so.
+    """
+    now = datetime.now(timezone.utc)
+    artifacts: dict[str, dict] = {}
+    graphs: dict[str, dict] = {}
+
+    runnable, unrepairable = [], {}
+    for source in source_tasks:
+        env = source["task"].get("payload", {}).get("env", {})
+        raw = env.get(FETCHES_ENV)
+        if not raw:
+            runnable.append(source)
+            continue
+        try:
+            fetches = json.loads(raw)
+        except ValueError:
+            runnable.append(source)
+            continue
+
+        name = _source_name(source)
+        substitutions, dead = [], []
+        for fetch in fetches:
+            task_id, artifact = fetch.get("task"), fetch.get("artifact")
+            if not task_id or not artifact:
+                continue
+            if _fetch_is_live(task_id, artifact, artifacts, now):
+                continue
+
+            label = labels.get(task_id)
+            replacement, index = (
+                _live_replacement(label, artifact, indexes, graphs, artifacts, now)
+                if label
+                else (None, None)
+            )
+            if not replacement:
+                dead.append(f"{artifact} (task {task_id}, label {label or 'unknown'})")
+                continue
+
+            expires = artifacts[replacement][artifact]
+            logger.warning(
+                f"hw-integration: {name}: {artifact} has expired on task "
+                f"{task_id}; using {replacement} from {index} instead, which "
+                f"expires {expires.isoformat()}. This is a newer build of the "
+                "same artifact, not the one the source graph pinned."
+            )
+            substitutions.append(
+                {
+                    "artifact": artifact,
+                    "expired_task": task_id,
+                    "replacement_task": replacement,
+                    "source_index": index,
+                }
+            )
+            fetch["task"] = replacement
+
+        if dead:
+            unrepairable[name] = dead
+            continue
+
+        if substitutions:
+            env[FETCHES_ENV] = json.dumps(fetches)
+            dependencies = source["task"].get("dependencies") or []
+            for change in substitutions:
+                # The dependency has to move with the fetch: waiting on a task
+                # whose artifact is gone is waiting for nothing.
+                dependencies = [
+                    change["replacement_task"] if dep == change["expired_task"] else dep
+                    for dep in dependencies
+                ]
+            source["task"]["dependencies"] = list(dict.fromkeys(dependencies))
+            source["task"].setdefault("extra", {}).setdefault("hw-integration", {})[
+                "substituted-fetches"
+            ] = substitutions
+
+        runnable.append(source)
+
+    for name, dead in sorted(unrepairable.items()):
+        logger.warning(
+            f"hw-integration: skipping {name} on {pool.name}: no live copy of "
+            f"{', '.join(dead)}. Running it would spend the hardware time and "
+            "then fail on an HTTP 410."
+        )
+
+    if not runnable:
+        raise HwPoolError(
+            f"hw-integration: every selected task for {pool.name} needs a fetch "
+            f"artifact that has expired with no live copy: {_listed(unrepairable)}"
+        )
+    return runnable
 
 
 def _drop_blocked(source_tasks, pool):
@@ -352,7 +536,8 @@ def replicate_onto_hw_pools(config, tasks):
         provisioner = replicate_config["provisioner"]
         targets = list(replicate_config["targets"])
         drop_kinds = frozenset(replicate_config.get("fallback-drop-kinds") or ())
-        source_cache: dict[str, dict[str, list]] = {}
+        repair_indexes = list(replicate_config.get("fetch-repair-targets") or ())
+        source_cache: dict[str, dict] = {}
 
         test_filters = [f for f in (config.params.get("hw_tests") or []) if f]
         # Unset means once; anything else is taken at face value, so `0` is a
@@ -389,6 +574,12 @@ def replicate_onto_hw_pools(config, tasks):
                 pool, targets, provisioner, source_cache, drop_kinds
             )
             source_tasks = _select_tests(source_tasks, test_filters, pool)
+            source_tasks = _repair_fetches(
+                source_tasks,
+                pool,
+                source_cache[source_index]["labels"],
+                repair_indexes,
+            )
             source_tasks = _drop_blocked(source_tasks, pool)
             _log_runtime_budget(pool, source_tasks, repeat)
 
