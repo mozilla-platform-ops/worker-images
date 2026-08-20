@@ -31,11 +31,11 @@ pools:
     git_version: "2.50.1"
     #dev: RELOPS-1470
     Description: "NUC12 Hardware Reference Staging/Testing Pool"
-    image: "win11-24h2-hw-20260811-202701"
+    image: "win11-24h2-hw-20260820-193703"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "wim-bake-role"
-    hash: "48a8b9d4"
+    hash: "b64eb0b5"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -110,11 +110,11 @@ pools:
     # *** REVERT before master: image win11-24H2-NUC-01-16-2025, dev (remove),
     #     src_Branch RELOPS-2467-xperf-dynamic-trace, hash a22e7ac. ***
     dev: "nuc-wim-pipeline"
-    image: "win11-24h2-hw-20260811-202701"
+    image: "win11-24h2-hw-20260820-193703"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "wim-bake-role"
-    hash: "48a8b9d4"
+    hash: "b64eb0b5"
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
