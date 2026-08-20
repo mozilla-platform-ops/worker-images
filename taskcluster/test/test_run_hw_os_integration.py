@@ -941,5 +941,109 @@ class TestWaitCeiling(RunnerTestBase):
         self.assertEqual(self.mod.outran_wait_lines(runs, "https://tc.example"), [])
 
 
+class TestVerdictPolicy(RunnerTestBase):
+    """Which outcomes are the image's fault, and which only look like it."""
+
+    def _counts(self, **overrides):
+        counts = {
+            "completed": 10,
+            "failed": 0,
+            "exception": 0,
+            "blocked": 0,
+            "pending": 0,
+            "total": 10,
+            "decision": "completed",
+        }
+        counts.update(overrides)
+        return counts
+
+    def test_a_task_that_ran_and_failed_is_the_only_red(self):
+        verdict, reason, failed = self.mod.classify_run(
+            {"pool": "p", "counts": self._counts(failed=1, completed=9)}
+        )
+        self.assertTrue(failed)
+        self.assertIsNone(reason)
+        self.assertEqual(verdict, "❌ failed")
+
+    def test_an_exception_counts_as_a_hardware_failure_too(self):
+        _, _, failed = self.mod.classify_run(
+            {"pool": "p", "counts": self._counts(exception=1, completed=9)}
+        )
+        self.assertTrue(failed)
+
+    def test_everything_that_never_reached_the_hardware_is_inconclusive(self):
+        cases = {
+            "outran the wait": {
+                "pool": "p",
+                "timed_out": True,
+                "counts": self._counts(pending=3),
+            },
+            "decision failed": {
+                "pool": "p",
+                "counts": self._counts(decision="failed", total=0, completed=0),
+            },
+            "empty graph": {"pool": "p", "counts": self._counts(total=0, completed=0)},
+            "no counts at all": {"pool": "p"},
+            "blocked upstream": {
+                "pool": "p",
+                "counts": self._counts(blocked=2, completed=8, total=10),
+            },
+            "no task group": {"pool": "p", "verdict": "⚠️ decision failed"},
+        }
+        for label, run in cases.items():
+            verdict, reason, failed = self.mod.classify_run(run)
+            self.assertFalse(failed, f"{label} must not be red")
+            self.assertTrue(reason, f"{label} must give the reader a reason")
+            self.assertNotIn("❌", verdict, label)
+
+    def test_a_clean_run_passes(self):
+        verdict, reason, failed = self.mod.classify_run(
+            {"pool": "p", "counts": self._counts()}
+        )
+        self.assertEqual(verdict, "✅ passed")
+        self.assertFalse(failed)
+        self.assertIsNone(reason)
+
+    def test_a_failure_outranks_a_blocked_task_in_the_same_pool(self):
+        # A pool that both failed a test and lost one upstream is red: the
+        # failure is the finding, the block is noise beside it.
+        _, _, failed = self.mod.classify_run(
+            {"pool": "p", "counts": self._counts(failed=1, blocked=2, completed=7)}
+        )
+        self.assertTrue(failed)
+
+
+class TestInconclusiveBlock(RunnerTestBase):
+    """A green run that proved nothing has to say so where the green is.
+
+    Red is reserved for a task that ran on the hardware and did not pass. On
+    2026-08-19 the perf-debug run went red because an artifact had expired and
+    the ref-alpha run went red because the baked image had no hardware video
+    decode; a reader trained by the first learns to skim the second.
+    """
+
+    def test_a_pass_says_nothing_extra(self):
+        self.assertEqual(self.mod.inconclusive_lines([]), [])
+
+    def test_each_pool_that_reached_no_verdict_is_named_with_its_reason(self):
+        block = "\n".join(
+            self.mod.inconclusive_lines(
+                [
+                    ("win11-64-24h2-hw-alpha", "nothing was replicated onto the pool"),
+                    (
+                        "win11-64-24h2-hw-ref-alpha",
+                        "the wait ran out while tasks were still running",
+                    ),
+                ]
+            )
+        )
+        self.assertIn("[!IMPORTANT]", block)
+        self.assertIn("green because nothing failed on the hardware", block)
+        self.assertIn("`win11-64-24h2-hw-alpha` — nothing was replicated", block)
+        self.assertIn("the wait ran out", block)
+        # the reader must not take it as a pass
+        self.assertIn("not because the image passed", block)
+
+
 if __name__ == "__main__":
     unittest.main()

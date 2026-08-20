@@ -1196,12 +1196,115 @@ def outran_wait_lines(runs: list[dict], root_url: str) -> list[str]:
     return lines
 
 
+def classify_run(run: dict) -> tuple:
+    """(verdict, inconclusive reason, is this the hardware's fault).
+
+    Only the third field decides the exit code, and only a task that ran on the
+    hardware and did not pass sets it. Everything else -- an empty graph, a
+    failed decision, an upstream that could never resolve, a wait that ran out
+    -- reached no verdict about the image, and failing the run for those trains
+    people to skim exactly the red that matters.
+    """
+    if run.get("verdict"):
+        # Set at trigger time: the hook fired but no decision came back.
+        return run["verdict"], "the decision never produced a task group", False
+
+    counts = run.get("counts")
+    if run.get("timed_out"):
+        return (
+            "⏳ ran past the wait",
+            "the wait ran out while tasks were still running",
+            False,
+        )
+    if counts and counts["decision"] in ("failed", "exception"):
+        # Distinct from an empty graph: the decision never got as far as
+        # deciding, so its log is where the answer is.
+        return (
+            "⚠️ decision failed",
+            f"the decision task {counts['decision']}",
+            False,
+        )
+    if not counts or counts["total"] == 0:
+        return (
+            "⚠️ no tasks scheduled",
+            "nothing was replicated onto the pool",
+            False,
+        )
+    if counts["failed"] or counts["exception"]:
+        return "❌ failed", None, True
+    if counts.get("blocked"):
+        # Nothing to do with this image: an upstream mozilla-central task
+        # failed, so a copy of a test that depends on it could never run.
+        return (
+            f"⚠️ {counts['blocked']} blocked upstream",
+            f"{counts['blocked']} task(s) could never be scheduled",
+            False,
+        )
+    return "✅ passed", None, False
+
+
+def log_verdict_detail(run: dict, root_url: str) -> None:
+    """The pointer a reader needs for the verdict they just got."""
+    counts = run.get("counts") or {}
+    verdict = run.get("verdict", "")
+    if verdict == "⚠️ decision failed":
+        warn(
+            f"{run['pool']}: decision task {counts.get('decision')} -- "
+            f"{root_url}/tasks/{run.get('task_group_id')}"
+        )
+    elif verdict == "⚠️ no tasks scheduled":
+        warn(
+            f"{run['pool']}: decision created an empty task group -- nothing was "
+            "replicated. Check that mozilla-central scheduled hardware tasks and "
+            "that the pool is spelled as in pools.yml."
+        )
+    elif verdict.endswith("blocked upstream"):
+        for task_id, dead in (run.get("blocked") or {}).items():
+            upstream = ", ".join(f"{d} {s}" for d, s in sorted(dead.items()))
+            warn(
+                f"{run['pool']}: {root_url}/tasks/{task_id} never ran -- "
+                f"upstream {upstream}"
+            )
+
+
+def inconclusive_lines(inconclusive: list[tuple]) -> list[str]:
+    """Say a green run proved nothing, where the reader is looking at the green.
+
+    A run that never got a task onto the hardware is not a pass, but it is not
+    the image's fault either -- and failing it teaches people that red means
+    "mozilla-central had a bad day", which is exactly the habit that makes a
+    real regression easy to skim past.
+    """
+    if not inconclusive:
+        return []
+    lines = [
+        "> [!IMPORTANT]",
+        (
+            "> This run is green because nothing failed on the hardware -- not "
+            "because the image passed. No verdict was reached for:"
+        ),
+        ">",
+    ]
+    for pool, reason in inconclusive:
+        lines.append(f"> - `{pool}` — {reason}")
+    lines += [
+        ">",
+        (
+            "> Re-run it once the cause above is resolved; nothing here says "
+            "anything about the image under test."
+        ),
+        "",
+    ]
+    return lines
+
+
 def write_github_summary(
     runs: list[dict],
     root_url: str,
     selection: str = "",
     drift: list[dict] | None = None,
     failure_summary: list[str] | None = None,
+    inconclusive: list[tuple] | None = None,
 ) -> None:
     summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
     if not summary_file:
@@ -1213,6 +1316,8 @@ def write_github_summary(
     lines += drift_summary_lines(drift or [])
     # Then, for the same reason: counts that are a snapshot rather than a total.
     lines += outran_wait_lines(runs, root_url)
+    # And then why a green run may not be a pass.
+    lines += inconclusive_lines(inconclusive or [])
     if selection:
         lines += [selection, ""]
     lines += score_summary_lines(runs)
@@ -1484,63 +1589,28 @@ def main() -> int:
 
     # ---- verdicts --------------------------------------------------------- #
     failed_overall = False
+    inconclusive = []
     for run in runs:
-        counts = run.get("counts")
-        if run.get("verdict"):
+        verdict, reason, failed = classify_run(run)
+        run["verdict"] = verdict
+        if failed:
             failed_overall = True
-            continue
-        if run.get("timed_out"):
-            # Not a failure of the image, but not a result either: the numbers
-            # below it are partial, and the reader has to know which.
-            run["verdict"] = "⏳ ran past the wait"
-            failed_overall = True
-        elif counts and counts["decision"] in ("failed", "exception"):
-            # Distinct from an empty graph below: the decision never got as far
-            # as deciding, so its log is where the answer is.
-            run["verdict"] = "❌ decision failed"
-            error(
-                f"{run['pool']}: decision task {counts['decision']} -- "
-                f"{root_url}/tasks/{run['task_group_id']}"
-            )
-            failed_overall = True
-        elif not counts or counts["total"] == 0:
-            # The cloud script calls this a pass; an empty graph means nothing
-            # replicated, which is a failure.
-            run["verdict"] = "❌ no tasks scheduled"
-            error(
-                f"{run['pool']}: decision created an empty task group -- nothing "
-                "was replicated. Check that mozilla-central scheduled hardware "
-                "tasks and that the pool is spelled as in pools.yml."
-            )
-            failed_overall = True
-        elif counts["failed"] or counts["exception"]:
-            run["verdict"] = "❌ failed"
-            failed_overall = True
-        elif counts.get("blocked"):
-            # Nothing to do with this image: an upstream mozilla-central task
-            # failed, so a copy of a test that depends on it could never run.
-            # Reported rather than passed, because the run did not test
-            # everything it set out to.
-            run["verdict"] = f"⚠️ {counts['blocked']} blocked upstream"
-            for task_id, dead in (run.get("blocked") or {}).items():
-                upstream = ", ".join(f"{d} {s}" for d, s in sorted(dead.items()))
-                warn(
-                    f"{run['pool']}: {root_url}/tasks/{task_id} never ran -- "
-                    f"upstream {upstream}"
-                )
-            failed_overall = True
-        else:
-            run["verdict"] = "✅ passed"
+        elif reason:
+            inconclusive.append((run["pool"], reason))
+        log_verdict_detail(run, root_url)
 
     # Only a red run pays for this, and only after the verdict is decided: it
-    # explains the failures the reader is already looking at.
+    # explains the failures the reader is already looking at. An inconclusive
+    # run has no failing task to read -- nothing ran -- so it makes no call.
     failure_summary = []
     if failed_overall:
         failure_summary, _ = hw_failure_summary.build(
             queue, runs, replicated_tasks, drift, root_url, warn
         )
 
-    write_github_summary(runs, root_url, selection, drift, failure_summary)
+    write_github_summary(
+        runs, root_url, selection, drift, failure_summary, inconclusive
+    )
     print_scores(runs)
 
     for run in runs:
@@ -1559,7 +1629,21 @@ def main() -> int:
             "flight; the results are not attributable to one configuration"
         )
 
-    return 1 if failed_overall else 0
+    if failed_overall:
+        return 1
+
+    # Green, but not a pass: nothing ran on the hardware that could have told us
+    # anything. Red is reserved for a task that ran and did not pass, because a
+    # red that means "mozilla-central had a bad day" teaches people to skim the
+    # red that means "this image is broken". The warnings above are the record.
+    for pool, reason in inconclusive:
+        warn(f"{pool}: inconclusive -- {reason}. This says nothing about the image.")
+    if inconclusive:
+        notice(
+            "run is green because nothing failed on the hardware, but "
+            f"{len(inconclusive)} pool(s) produced no verdict -- see the summary."
+        )
+    return 0
 
 
 if __name__ == "__main__":
