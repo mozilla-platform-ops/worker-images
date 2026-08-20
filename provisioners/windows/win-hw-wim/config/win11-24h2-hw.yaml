@@ -43,7 +43,12 @@ ronin:
   org: default
   repo: default
   branch: wim-bake-role         # feature branch carrying the bake role (until merged)
-  hash: "48a8b9d4"              # ronin_puppet#1297 HEAD; bake role excludes hardware_observability (no marlin_pw lookup). Bump when the branch moves.
+  hash: "b64eb0b5"              # ronin_puppet#1297 HEAD; bake role excludes hardware_observability (no marlin_pw lookup). Bump when the branch moves.
+                                # b64eb0b5 (RELOPS-2487): the bake no longer disables AppXSvc, so the WIM ships it Manual
+                                # and the per-task user can register the HEVC/AV1/VP9 media extensions. Baking the disable
+                                # (plus its \Hardening\Hard-Disable-AppXSvc task) defeated the ref/ref-alpha exemption for
+                                # bug 2013985 and cost Firefox its WMF hardware decoders. Same commit skips the 600s
+                                # Wait-AppxIdle when the image is already debloated, so deploys do not pay for the change.
   bake_role: win116424h2hwbake  # trimmed hw role that performs the one-time AppX/catalog bake
 
 vm:
