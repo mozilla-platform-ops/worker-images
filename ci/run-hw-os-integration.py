@@ -893,6 +893,84 @@ def task_worker(task: dict) -> str:
     return (task_runs[-1].get("workerId") if task_runs else None) or "unknown"
 
 
+def task_name(task: dict) -> str:
+    return (
+        task.get("task", {}).get("metadata", {}).get("name", task["status"]["taskId"])
+    )
+
+
+def short_pool(pool: str) -> str:
+    """The part of a pool name that differs between pools.
+
+    Every hardware pool is `win11-64-24h2-hw-<something>`. The full name is one
+    row up in the verdict table, so the family prefix on every task row is width
+    spent to say what the reader already knows.
+    """
+    return pool.split("-hw-", 1)[-1] if "-hw-" in pool else pool
+
+
+def short_task(name: str, pool: str) -> str:
+    """A replicated task name without the parts its pool already fixes.
+
+    `gecko-hw-<pool>-test-<platform>/opt-mochitest-media-mda-gpu` is ~100
+    characters of which only the tail varies within a pool. The platform is
+    reported once per pool by `task_platform`, so it comes off here rather than
+    being repeated on every row.
+    """
+    trimmed = name.removeprefix(f"gecko-hw-{pool}-")
+    if "/" not in trimmed:
+        return trimmed
+    suffix = trimmed.split("/", 1)[1]
+    for build_type in ("opt-", "debug-"):
+        if suffix.startswith(build_type):
+            return suffix.removeprefix(build_type)
+    return suffix
+
+
+def task_platform(tasks: list[dict], pool: str) -> str:
+    """The gecko test platform a pool's tasks were replicated from.
+
+    A pool stages exactly one worker type, so every task it runs carries the
+    same platform -- and which one it is, `-hw-ref-shippable` against plain
+    `-shippable`, is the difference between the reference pool and the rest.
+    Reported per pool because that is the granularity it varies at.
+    """
+    for task in tasks:
+        trimmed = (
+            task_name(task).removeprefix(f"gecko-hw-{pool}-").removeprefix("test-")
+        )
+        if "/" in trimmed:
+            platform, _, suffix = trimmed.partition("/")
+            return f"{platform}/{suffix.split('-', 1)[0]}"
+    return "-"
+
+
+def task_seconds(task: dict) -> int | None:
+    """Wall time of the last run, or None if it has not resolved."""
+    task_runs = task["status"].get("runs") or []
+    if not task_runs:
+        return None
+    started, resolved = task_runs[-1].get("started"), task_runs[-1].get("resolved")
+    if not (started and resolved):
+        return None
+    a = datetime.fromisoformat(started.replace("Z", "+00:00"))
+    b = datetime.fromisoformat(resolved.replace("Z", "+00:00"))
+    return int((b - a).total_seconds())
+
+
+# Worst first. Unresolved sorts above green because it is the row that decides
+# whether the run is finished; an unrecognised state sorts last but is still
+# named in the table rather than dropped.
+_STATE_ORDER = {
+    "failed": 0,
+    "exception": 1,
+    "pending": 2,
+    "running": 2,
+    "unscheduled": 2,
+    "completed": 3,
+}
+
+
 def collect_scores(queue, runs: list[dict]) -> None:
     """Attach each pool's suite scores, keyed by suite name.
 
@@ -1196,6 +1274,54 @@ def outran_wait_lines(runs: list[dict], root_url: str) -> list[str]:
     return lines
 
 
+def results_table_lines(runs: list[dict], root_url: str) -> list[str]:
+    """Every task from every pool in one table, worst first.
+
+    One table rather than a section per pool: with more than one pool selected
+    the reader is comparing them, and what they compare is which task failed
+    where -- a question that two tables separated by a screen of scores answers
+    badly. Sorted by state and then by wall time, so the row that decides the
+    verdict is the first one, and a green run still leads with its slowest task.
+    """
+    rows = [
+        (run, task)
+        for run in runs
+        for task in replicated_tasks(run.get("tasks") or [], run.get("task_group_id"))
+    ]
+    if not rows:
+        return []
+
+    rows.sort(
+        key=lambda row: (
+            _STATE_ORDER.get(row[1]["status"]["state"], len(_STATE_ORDER)),
+            -(task_seconds(row[1]) or 0),
+        )
+    )
+
+    lines = [
+        "### Results",
+        "",
+        "|  | Pool | Task | Worker | Duration |",
+        "|:---:|---|---|---|---:|",
+    ]
+    for run, task in rows:
+        state = task["status"]["state"]
+        seconds = task_seconds(task)
+        # The emoji carries every state `result_emoji` knows, which is why there
+        # is no State column; a state it does not know is named instead of lost.
+        label = short_task(task_name(task), run["pool"])
+        if state not in _STATE_ORDER:
+            label = f"{label} ({state})"
+        lines.append(
+            f"| {result_emoji(state)} | {short_pool(run['pool'])} | "
+            f"[{label}]({root_url}/tasks/{task['status']['taskId']}) | "
+            f"`{task_worker(task)}` | "
+            f"{format_duration(seconds) if seconds is not None else '-'} |"
+        )
+    lines.append("")
+    return lines
+
+
 def write_github_summary(
     runs: list[dict],
     root_url: str,
@@ -1218,17 +1344,17 @@ def write_github_summary(
     lines += score_summary_lines(runs)
 
     lines += [
-        "| Pool | Image | Branch | Revision | Result | Passed | Failed | "
+        "| Pool | Image | Branch | Revision | Platform | Result | Passed | Failed | "
         "Exception | Blocked | Pending |",
-        "|---|---|---|---|:---:|:---:|:---:|:---:|:---:|:---:|",
+        "|---|---|---|---|---|:---:|:---:|:---:|:---:|:---:|:---:|",
     ]
     for run in runs:
         ident = run["identity"]
         c = run.get("counts") or {}
         verdict = run.get("verdict", "not started")
         lines.append(
-            "| [{pool}]({url}) | `{image}` | `{branch}` | `{rev}` | {verdict} | "
-            "{ok} | {failed} | {exc} | {blocked} | {pending} |".format(
+            "| [{pool}]({url}) | `{image}` | `{branch}` | `{rev}` | `{platform}` | "
+            "{verdict} | {ok} | {failed} | {exc} | {blocked} | {pending} |".format(
                 pool=run["pool"],
                 url=f"{root_url}/tasks/groups/{run['task_group_id']}"
                 if run.get("task_group_id")
@@ -1236,6 +1362,7 @@ def write_github_summary(
                 image=ident.get("image"),
                 branch=ident.get("src_branch"),
                 rev=ident.get("revision"),
+                platform=task_platform(run.get("tasks") or [], run["pool"]),
                 verdict=verdict,
                 ok=c.get("completed", "-"),
                 failed=c.get("failed", "-"),
@@ -1246,41 +1373,15 @@ def write_github_summary(
         )
     lines.append("")
 
-    # Straight under the verdict table: the reader has just seen which pool went
-    # red and wants to know whether it says anything about the image.
+    # Which pool went red, then which task did it, then why. The per-task detail
+    # used to sit at the bottom under the deployment tables, which put a screen
+    # of configuration between a red verdict and the name of the thing that
+    # failed.
+    lines += results_table_lines(runs, root_url)
+
     lines += failure_summary or []
 
     lines += deployment_summary_lines(runs)
-
-    for run in runs:
-        tasks = replicated_tasks(run.get("tasks") or [], run.get("task_group_id"))
-        if not tasks:
-            continue
-        lines += [
-            f"### {run['pool']}",
-            "",
-            "| Status | Task | Worker | State | Duration |",
-            "|:---:|---|---|---|---|",
-        ]
-        for task in tasks:
-            status = task["status"]
-            task_id = status["taskId"]
-            name = task.get("task", {}).get("metadata", {}).get("name", task_id)
-            duration = "-"
-            runs_ = status.get("runs") or []
-            if runs_:
-                started = runs_[-1].get("started")
-                resolved = runs_[-1].get("resolved")
-                if started and resolved:
-                    a = datetime.fromisoformat(started.replace("Z", "+00:00"))
-                    b = datetime.fromisoformat(resolved.replace("Z", "+00:00"))
-                    duration = format_duration(int((b - a).total_seconds()))
-            lines.append(
-                f"| {result_emoji(status['state'])} | "
-                f"[{name}]({root_url}/tasks/{task_id}) | `{task_worker(task)}` | "
-                f"{status['state']} | {duration} |"
-            )
-        lines.append("")
 
     Path(summary_file).open("a").write("\n".join(lines))
 

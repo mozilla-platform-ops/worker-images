@@ -941,5 +941,184 @@ class TestWaitCeiling(RunnerTestBase):
         self.assertEqual(self.mod.outran_wait_lines(runs, "https://tc.example"), [])
 
 
+class TestResultsTable(unittest.TestCase):
+    """One table for every pool's tasks, worst first, without the boilerplate
+    each pool already fixes."""
+
+    REF = "win11-64-24h2-hw-ref-alpha"
+    PERF = "win11-64-24h2-hw-perf-debug"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.mod = _load_runner()
+
+    def _task(self, pool, platform, suite, state, worker, seconds=60):
+        started = datetime.datetime(2026, 8, 21, 18, 0, 0, tzinfo=datetime.timezone.utc)
+        resolved = started + datetime.timedelta(seconds=seconds)
+        return {
+            "status": {
+                "taskId": f"{suite[:22]:x<22}",
+                "state": state,
+                "runs": [
+                    {
+                        "runId": 0,
+                        "workerId": worker,
+                        "started": started.isoformat().replace("+00:00", "Z"),
+                        "resolved": resolved.isoformat().replace("+00:00", "Z"),
+                    }
+                ],
+            },
+            "task": {
+                "metadata": {"name": f"gecko-hw-{pool}-test-{platform}/opt-{suite}"}
+            },
+        }
+
+    def _runs(self):
+        return [
+            {
+                "pool": self.REF,
+                "task_group_id": GROUP,
+                "identity": {"image": "i", "src_branch": "b", "revision": "r"},
+                "verdict": "✅ passed",
+                "tasks": [
+                    self._task(
+                        self.REF,
+                        "windows11-64-24h2-hw-ref-shippable",
+                        "mochitest-media-mda-gpu",
+                        "completed",
+                        "t-nuc12-003",
+                        seconds=1664,
+                    ),
+                    self._task(
+                        self.REF,
+                        "windows11-64-24h2-hw-ref-shippable",
+                        "browsertime-benchmark-firefox-speedometer3",
+                        "completed",
+                        "t-nuc12-002",
+                        seconds=815,
+                    ),
+                ],
+            },
+            {
+                "pool": self.PERF,
+                "task_group_id": "PERFGROUPID1234567890",
+                "identity": {"image": "i", "src_branch": "b", "revision": "r"},
+                "verdict": "❌ failed",
+                "tasks": [
+                    self._task(
+                        self.PERF,
+                        "windows11-64-24h2-shippable",
+                        "talos-other",
+                        "failed",
+                        "nuc13-074",
+                        seconds=1502,
+                    )
+                ],
+            },
+        ]
+
+    def _rendered(self, runs=None):
+        with tempfile.NamedTemporaryFile("r+", suffix=".md") as handle:
+            os.environ["GITHUB_STEP_SUMMARY"] = handle.name
+            try:
+                self.mod.write_github_summary(
+                    runs or self._runs(), "https://tc.example"
+                )
+            finally:
+                del os.environ["GITHUB_STEP_SUMMARY"]
+            return Path(handle.name).read_text()
+
+    def test_every_pool_shares_one_table(self):
+        written = self._rendered()
+        self.assertEqual(written.count("### Results"), 1)
+        # ...and the pool headings the per-pool tables used are gone with them.
+        self.assertNotIn(f"### {self.REF}", written)
+        self.assertNotIn(f"### {self.PERF}", written)
+
+    def test_a_task_row_drops_what_its_pool_already_says(self):
+        row = next(
+            line
+            for line in self._rendered().splitlines()
+            if "mochitest-media-mda-gpu" in line
+        )
+        self.assertIn("| [mochitest-media-mda-gpu](", row)
+        self.assertIn("| ref-alpha |", row)
+        self.assertNotIn("gecko-hw-", row)
+        self.assertNotIn("hw-ref-shippable", row)
+
+    def test_the_failure_is_the_first_row(self):
+        lines = self._rendered().splitlines()
+        start = lines.index("|:---:|---|---|---|---:|")
+        self.assertIn("talos-other", lines[start + 1])
+        # Then longest-running first among the green ones, across both pools.
+        self.assertIn("mochitest-media-mda-gpu", lines[start + 2])
+        self.assertIn("speedometer3", lines[start + 3])
+
+    def test_the_state_column_is_gone_but_a_strange_state_is_not(self):
+        written = self._rendered()
+        self.assertNotIn("| Status | Task | Worker | State | Duration |", written)
+        self.assertNotIn("| completed |", written)
+
+        runs = self._runs()
+        runs[1]["tasks"][0]["status"]["state"] = "wedged"
+        row = next(
+            line for line in self._rendered(runs).splitlines() if "talos-other" in line
+        )
+        self.assertIn("talos-other (wedged)", row)
+        self.assertIn("❓", row)
+
+    def test_the_platform_is_reported_once_per_pool(self):
+        written = self._rendered()
+        self.assertIn("| `windows11-64-24h2-hw-ref-shippable/opt` |", written)
+        self.assertIn("| `windows11-64-24h2-shippable/opt` |", written)
+        # The distinction that matters is ref against non-ref, and it is stated
+        # once rather than on all three task rows.
+        self.assertEqual(written.count("windows11-64-24h2-hw-ref-shippable"), 1)
+
+    def test_results_sit_between_the_verdict_and_the_deployment(self):
+        runs = self._runs()
+        runs[0]["deployment"] = {"image": "win11-24h2-hw-20260820-235936"}
+        written = self._rendered(runs)
+        self.assertLess(written.index("| Pool | Image |"), written.index("### Results"))
+        self.assertLess(written.index("### Results"), written.index("### Pool deployment"))
+
+    def test_an_unresolved_task_has_no_duration_and_sorts_above_green(self):
+        runs = self._runs()
+        pending = self._task(
+            self.REF, "windows11-64-24h2-hw-ref-shippable", "xpcshell", "pending", None
+        )
+        pending["status"]["runs"] = []
+        runs[0]["tasks"].append(pending)
+        lines = self._rendered(runs).splitlines()
+        start = lines.index("|:---:|---|---|---|---:|")
+        self.assertIn("talos-other", lines[start + 1])
+        self.assertIn("xpcshell", lines[start + 2])
+        self.assertTrue(lines[start + 2].endswith("| - |"))
+        self.assertIn("`unknown`", lines[start + 2])
+
+    def test_a_name_that_does_not_fit_the_pattern_survives_whole(self):
+        # perftest tasks carry no `/opt-`, and a pool name may carry no `-hw-`.
+        self.assertEqual(
+            self.mod.short_task("gecko-hw-pool-a-perftest-ml-perf-wasm", "pool-a"),
+            "perftest-ml-perf-wasm",
+        )
+        self.assertEqual(self.mod.short_pool("some-other-pool"), "some-other-pool")
+        self.assertEqual(self.mod.task_platform([], self.REF), "-")
+
+    def test_a_debug_build_keeps_its_suite_name(self):
+        self.assertEqual(
+            self.mod.short_task(
+                f"gecko-hw-{self.REF}-test-windows11-64-24h2/debug-xpcshell", self.REF
+            ),
+            "xpcshell",
+        )
+
+    def test_no_tasks_means_no_table(self):
+        runs = self._runs()
+        for run in runs:
+            run["tasks"] = []
+        self.assertEqual(self.mod.results_table_lines(runs, "https://tc.example"), [])
+
+
 if __name__ == "__main__":
     unittest.main()
