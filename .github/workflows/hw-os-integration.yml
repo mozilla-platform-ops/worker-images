@@ -19,6 +19,14 @@ run-name: HW OS Integration Tests ${{ inputs.repeat != '1' && format('x{0} ', in
 # the run, collects what has landed, writes the summary, and says which pools
 # outran the wait, with a link to their task group. The Taskcluster tasks are
 # left running: they finish, and the group keeps every result.
+#
+# Red means one thing only: a task ran on the hardware and did not pass. A run
+# that never got that far -- an empty task group, a failed decision, an upstream
+# mozilla-central task that could never resolve, the wait running out -- is
+# green with warnings and an IMPORTANT block at the top of the summary saying no
+# verdict was reached. GitHub has no third conclusion to give a job, and failing
+# these teaches people that red means "mozilla-central had a bad day", which is
+# the habit that makes a real image regression easy to skim past.
 
 on:
   workflow_dispatch:
