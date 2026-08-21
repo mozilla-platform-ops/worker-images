@@ -893,6 +893,84 @@ def task_worker(task: dict) -> str:
     return (task_runs[-1].get("workerId") if task_runs else None) or "unknown"
 
 
+def task_name(task: dict) -> str:
+    return (
+        task.get("task", {}).get("metadata", {}).get("name", task["status"]["taskId"])
+    )
+
+
+def short_pool(pool: str) -> str:
+    """The part of a pool name that differs between pools.
+
+    Every hardware pool is `win11-64-24h2-hw-<something>`. The full name is one
+    row up in the verdict table, so the family prefix on every task row is width
+    spent to say what the reader already knows.
+    """
+    return pool.split("-hw-", 1)[-1] if "-hw-" in pool else pool
+
+
+def short_task(name: str, pool: str) -> str:
+    """A replicated task name without the parts its pool already fixes.
+
+    `gecko-hw-<pool>-test-<platform>/opt-mochitest-media-mda-gpu` is ~100
+    characters of which only the tail varies within a pool. The platform is
+    reported once per pool by `task_platform`, so it comes off here rather than
+    being repeated on every row.
+    """
+    trimmed = name.removeprefix(f"gecko-hw-{pool}-")
+    if "/" not in trimmed:
+        return trimmed
+    suffix = trimmed.split("/", 1)[1]
+    for build_type in ("opt-", "debug-"):
+        if suffix.startswith(build_type):
+            return suffix.removeprefix(build_type)
+    return suffix
+
+
+def task_platform(tasks: list[dict], pool: str) -> str:
+    """The gecko test platform a pool's tasks were replicated from.
+
+    A pool stages exactly one worker type, so every task it runs carries the
+    same platform -- and which one it is, `-hw-ref-shippable` against plain
+    `-shippable`, is the difference between the reference pool and the rest.
+    Reported per pool because that is the granularity it varies at.
+    """
+    for task in tasks:
+        trimmed = (
+            task_name(task).removeprefix(f"gecko-hw-{pool}-").removeprefix("test-")
+        )
+        if "/" in trimmed:
+            platform, _, suffix = trimmed.partition("/")
+            return f"{platform}/{suffix.split('-', 1)[0]}"
+    return "-"
+
+
+def task_seconds(task: dict) -> int | None:
+    """Wall time of the last run, or None if it has not resolved."""
+    task_runs = task["status"].get("runs") or []
+    if not task_runs:
+        return None
+    started, resolved = task_runs[-1].get("started"), task_runs[-1].get("resolved")
+    if not (started and resolved):
+        return None
+    a = datetime.fromisoformat(started.replace("Z", "+00:00"))
+    b = datetime.fromisoformat(resolved.replace("Z", "+00:00"))
+    return int((b - a).total_seconds())
+
+
+# Worst first. Unresolved sorts above green because it is the row that decides
+# whether the run is finished; an unrecognised state sorts last but is still
+# named in the table rather than dropped.
+_STATE_ORDER = {
+    "failed": 0,
+    "exception": 1,
+    "pending": 2,
+    "running": 2,
+    "unscheduled": 2,
+    "completed": 3,
+}
+
+
 def collect_scores(queue, runs: list[dict]) -> None:
     """Attach each pool's suite scores, keyed by suite name.
 
@@ -1196,12 +1274,163 @@ def outran_wait_lines(runs: list[dict], root_url: str) -> list[str]:
     return lines
 
 
+def classify_run(run: dict) -> tuple:
+    """(verdict, inconclusive reason, is this the hardware's fault).
+
+    Only the third field decides the exit code, and only a task that ran on the
+    hardware and did not pass sets it. Everything else -- an empty graph, a
+    failed decision, an upstream that could never resolve, a wait that ran out
+    -- reached no verdict about the image, and failing the run for those trains
+    people to skim exactly the red that matters.
+    """
+    if run.get("verdict"):
+        # Set at trigger time: the hook fired but no decision came back.
+        return run["verdict"], "the decision never produced a task group", False
+
+    counts = run.get("counts")
+    if run.get("timed_out"):
+        return (
+            "⏳ ran past the wait",
+            "the wait ran out while tasks were still running",
+            False,
+        )
+    if counts and counts["decision"] in ("failed", "exception"):
+        # Distinct from an empty graph: the decision never got as far as
+        # deciding, so its log is where the answer is.
+        return (
+            "⚠️ decision failed",
+            f"the decision task {counts['decision']}",
+            False,
+        )
+    if not counts or counts["total"] == 0:
+        return (
+            "⚠️ no tasks scheduled",
+            "nothing was replicated onto the pool",
+            False,
+        )
+    if counts["failed"] or counts["exception"]:
+        return "❌ failed", None, True
+    if counts.get("blocked"):
+        # Nothing to do with this image: an upstream mozilla-central task
+        # failed, so a copy of a test that depends on it could never run.
+        return (
+            f"⚠️ {counts['blocked']} blocked upstream",
+            f"{counts['blocked']} task(s) could never be scheduled",
+            False,
+        )
+    return "✅ passed", None, False
+
+
+def log_verdict_detail(run: dict, root_url: str) -> None:
+    """The pointer a reader needs for the verdict they just got."""
+    counts = run.get("counts") or {}
+    verdict = run.get("verdict", "")
+    if verdict == "⚠️ decision failed":
+        warn(
+            f"{run['pool']}: decision task {counts.get('decision')} -- "
+            f"{root_url}/tasks/{run.get('task_group_id')}"
+        )
+    elif verdict == "⚠️ no tasks scheduled":
+        warn(
+            f"{run['pool']}: decision created an empty task group -- nothing was "
+            "replicated. Check that mozilla-central scheduled hardware tasks and "
+            "that the pool is spelled as in pools.yml."
+        )
+    elif verdict.endswith("blocked upstream"):
+        for task_id, dead in (run.get("blocked") or {}).items():
+            upstream = ", ".join(f"{d} {s}" for d, s in sorted(dead.items()))
+            warn(
+                f"{run['pool']}: {root_url}/tasks/{task_id} never ran -- "
+                f"upstream {upstream}"
+            )
+
+
+def inconclusive_lines(inconclusive: list[tuple]) -> list[str]:
+    """Say a green run proved nothing, where the reader is looking at the green.
+
+    A run that never got a task onto the hardware is not a pass, but it is not
+    the image's fault either -- and failing it teaches people that red means
+    "mozilla-central had a bad day", which is exactly the habit that makes a
+    real regression easy to skim past.
+    """
+    if not inconclusive:
+        return []
+    lines = [
+        "> [!IMPORTANT]",
+        (
+            "> This run is green because nothing failed on the hardware -- not "
+            "because the image passed. No verdict was reached for:"
+        ),
+        ">",
+    ]
+    for pool, reason in inconclusive:
+        lines.append(f"> - `{pool}` — {reason}")
+    lines += [
+        ">",
+        (
+            "> Re-run it once the cause above is resolved; nothing here says "
+            "anything about the image under test."
+        ),
+        "",
+    ]
+    return lines
+
+
+def results_table_lines(runs: list[dict], root_url: str) -> list[str]:
+    """Every task from every pool in one table, worst first.
+
+    One table rather than a section per pool: with more than one pool selected
+    the reader is comparing them, and what they compare is which task failed
+    where -- a question that two tables separated by a screen of scores answers
+    badly. Sorted by state and then by wall time, so the row that decides the
+    verdict is the first one, and a green run still leads with its slowest task.
+    """
+    rows = [
+        (run, task)
+        for run in runs
+        for task in replicated_tasks(run.get("tasks") or [], run.get("task_group_id"))
+    ]
+    if not rows:
+        return []
+
+    rows.sort(
+        key=lambda row: (
+            _STATE_ORDER.get(row[1]["status"]["state"], len(_STATE_ORDER)),
+            -(task_seconds(row[1]) or 0),
+        )
+    )
+
+    lines = [
+        "### Results",
+        "",
+        "|  | Pool | Task | Worker | Duration |",
+        "|:---:|---|---|---|---:|",
+    ]
+    for run, task in rows:
+        state = task["status"]["state"]
+        seconds = task_seconds(task)
+        # The emoji carries every state `result_emoji` knows, which is why there
+        # is no State column; a state it does not know is named instead of lost.
+        label = short_task(task_name(task), run["pool"])
+        if state not in _STATE_ORDER:
+            label = f"{label} ({state})"
+        lines.append(
+            f"| {result_emoji(state)} | {short_pool(run['pool'])} | "
+            f"[{label}]({root_url}/tasks/{task['status']['taskId']}) | "
+            f"`{task_worker(task)}` | "
+            f"{format_duration(seconds) if seconds is not None else '-'} |"
+        )
+    lines.append("")
+    return lines
+
+
 def write_github_summary(
     runs: list[dict],
     root_url: str,
     selection: str = "",
     drift: list[dict] | None = None,
     failure_summary: list[str] | None = None,
+    inconclusive: list[tuple] | None = None,
 ) -> None:
     summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
     if not summary_file:
@@ -1213,22 +1442,24 @@ def write_github_summary(
     lines += drift_summary_lines(drift or [])
     # Then, for the same reason: counts that are a snapshot rather than a total.
     lines += outran_wait_lines(runs, root_url)
+    # And then why a green run may not be a pass.
+    lines += inconclusive_lines(inconclusive or [])
     if selection:
         lines += [selection, ""]
     lines += score_summary_lines(runs)
 
     lines += [
-        "| Pool | Image | Branch | Revision | Result | Passed | Failed | "
+        "| Pool | Image | Branch | Revision | Platform | Result | Passed | Failed | "
         "Exception | Blocked | Pending |",
-        "|---|---|---|---|:---:|:---:|:---:|:---:|:---:|:---:|",
+        "|---|---|---|---|---|:---:|:---:|:---:|:---:|:---:|:---:|",
     ]
     for run in runs:
         ident = run["identity"]
         c = run.get("counts") or {}
         verdict = run.get("verdict", "not started")
         lines.append(
-            "| [{pool}]({url}) | `{image}` | `{branch}` | `{rev}` | {verdict} | "
-            "{ok} | {failed} | {exc} | {blocked} | {pending} |".format(
+            "| [{pool}]({url}) | `{image}` | `{branch}` | `{rev}` | `{platform}` | "
+            "{verdict} | {ok} | {failed} | {exc} | {blocked} | {pending} |".format(
                 pool=run["pool"],
                 url=f"{root_url}/tasks/groups/{run['task_group_id']}"
                 if run.get("task_group_id")
@@ -1236,6 +1467,7 @@ def write_github_summary(
                 image=ident.get("image"),
                 branch=ident.get("src_branch"),
                 rev=ident.get("revision"),
+                platform=task_platform(run.get("tasks") or [], run["pool"]),
                 verdict=verdict,
                 ok=c.get("completed", "-"),
                 failed=c.get("failed", "-"),
@@ -1246,41 +1478,15 @@ def write_github_summary(
         )
     lines.append("")
 
-    # Straight under the verdict table: the reader has just seen which pool went
-    # red and wants to know whether it says anything about the image.
+    # Which pool went red, then which task did it, then why. The per-task detail
+    # used to sit at the bottom under the deployment tables, which put a screen
+    # of configuration between a red verdict and the name of the thing that
+    # failed.
+    lines += results_table_lines(runs, root_url)
+
     lines += failure_summary or []
 
     lines += deployment_summary_lines(runs)
-
-    for run in runs:
-        tasks = replicated_tasks(run.get("tasks") or [], run.get("task_group_id"))
-        if not tasks:
-            continue
-        lines += [
-            f"### {run['pool']}",
-            "",
-            "| Status | Task | Worker | State | Duration |",
-            "|:---:|---|---|---|---|",
-        ]
-        for task in tasks:
-            status = task["status"]
-            task_id = status["taskId"]
-            name = task.get("task", {}).get("metadata", {}).get("name", task_id)
-            duration = "-"
-            runs_ = status.get("runs") or []
-            if runs_:
-                started = runs_[-1].get("started")
-                resolved = runs_[-1].get("resolved")
-                if started and resolved:
-                    a = datetime.fromisoformat(started.replace("Z", "+00:00"))
-                    b = datetime.fromisoformat(resolved.replace("Z", "+00:00"))
-                    duration = format_duration(int((b - a).total_seconds()))
-            lines.append(
-                f"| {result_emoji(status['state'])} | "
-                f"[{name}]({root_url}/tasks/{task_id}) | `{task_worker(task)}` | "
-                f"{status['state']} | {duration} |"
-            )
-        lines.append("")
 
     Path(summary_file).open("a").write("\n".join(lines))
 
@@ -1484,63 +1690,28 @@ def main() -> int:
 
     # ---- verdicts --------------------------------------------------------- #
     failed_overall = False
+    inconclusive = []
     for run in runs:
-        counts = run.get("counts")
-        if run.get("verdict"):
+        verdict, reason, failed = classify_run(run)
+        run["verdict"] = verdict
+        if failed:
             failed_overall = True
-            continue
-        if run.get("timed_out"):
-            # Not a failure of the image, but not a result either: the numbers
-            # below it are partial, and the reader has to know which.
-            run["verdict"] = "⏳ ran past the wait"
-            failed_overall = True
-        elif counts and counts["decision"] in ("failed", "exception"):
-            # Distinct from an empty graph below: the decision never got as far
-            # as deciding, so its log is where the answer is.
-            run["verdict"] = "❌ decision failed"
-            error(
-                f"{run['pool']}: decision task {counts['decision']} -- "
-                f"{root_url}/tasks/{run['task_group_id']}"
-            )
-            failed_overall = True
-        elif not counts or counts["total"] == 0:
-            # The cloud script calls this a pass; an empty graph means nothing
-            # replicated, which is a failure.
-            run["verdict"] = "❌ no tasks scheduled"
-            error(
-                f"{run['pool']}: decision created an empty task group -- nothing "
-                "was replicated. Check that mozilla-central scheduled hardware "
-                "tasks and that the pool is spelled as in pools.yml."
-            )
-            failed_overall = True
-        elif counts["failed"] or counts["exception"]:
-            run["verdict"] = "❌ failed"
-            failed_overall = True
-        elif counts.get("blocked"):
-            # Nothing to do with this image: an upstream mozilla-central task
-            # failed, so a copy of a test that depends on it could never run.
-            # Reported rather than passed, because the run did not test
-            # everything it set out to.
-            run["verdict"] = f"⚠️ {counts['blocked']} blocked upstream"
-            for task_id, dead in (run.get("blocked") or {}).items():
-                upstream = ", ".join(f"{d} {s}" for d, s in sorted(dead.items()))
-                warn(
-                    f"{run['pool']}: {root_url}/tasks/{task_id} never ran -- "
-                    f"upstream {upstream}"
-                )
-            failed_overall = True
-        else:
-            run["verdict"] = "✅ passed"
+        elif reason:
+            inconclusive.append((run["pool"], reason))
+        log_verdict_detail(run, root_url)
 
     # Only a red run pays for this, and only after the verdict is decided: it
-    # explains the failures the reader is already looking at.
+    # explains the failures the reader is already looking at. An inconclusive
+    # run has no failing task to read -- nothing ran -- so it makes no call.
     failure_summary = []
     if failed_overall:
         failure_summary, _ = hw_failure_summary.build(
             queue, runs, replicated_tasks, drift, root_url, warn
         )
 
-    write_github_summary(runs, root_url, selection, drift, failure_summary)
+    write_github_summary(
+        runs, root_url, selection, drift, failure_summary, inconclusive
+    )
     print_scores(runs)
 
     for run in runs:
@@ -1559,7 +1730,21 @@ def main() -> int:
             "flight; the results are not attributable to one configuration"
         )
 
-    return 1 if failed_overall else 0
+    if failed_overall:
+        return 1
+
+    # Green, but not a pass: nothing ran on the hardware that could have told us
+    # anything. Red is reserved for a task that ran and did not pass, because a
+    # red that means "mozilla-central had a bad day" teaches people to skim the
+    # red that means "this image is broken". The warnings above are the record.
+    for pool, reason in inconclusive:
+        warn(f"{pool}: inconclusive -- {reason}. This says nothing about the image.")
+    if inconclusive:
+        notice(
+            "run is green because nothing failed on the hardware, but "
+            f"{len(inconclusive)} pool(s) produced no verdict -- see the summary."
+        )
+    return 0
 
 
 if __name__ == "__main__":
