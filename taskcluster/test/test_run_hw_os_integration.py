@@ -294,7 +294,19 @@ class TestScores(RunnerTestBase):
         self.assertIn("win11-64-24h2-hw-perf-debug", table)
         self.assertIn("speedometer3 ↑", table)
         self.assertIn("25.00", table)
-        self.assertIn("per run: 24.50 (nuc13-024), 25.50 (nuc13-024)", table)
+        # The headline table only: per-run values are detail and moved down.
+        self.assertNotIn("per run:", table)
+
+    def test_the_per_run_values_are_in_the_detail_section(self):
+        runs = self._run_with({"run1": _perfherder(24.5), "run2": _perfherder(25.5)})
+        detail = "\n".join(self.mod.score_detail_lines(runs))
+        self.assertIn("### Score detail", detail)
+        self.assertIn("per run: 24.50 (nuc13-024), 25.50 (nuc13-024)", detail)
+
+    def test_in_task_replicates_are_reported_when_the_task_carried_them(self):
+        runs = self._run_with({"run1": _perfherder(24.5, replicates=(24.0, 25.0))})
+        detail = "\n".join(self.mod.score_detail_lines(runs))
+        self.assertIn("2 in-task replicates, mean 24.50", detail)
 
 
 class TestWorkerBreakdown(RunnerTestBase):
@@ -466,12 +478,14 @@ class TestWorkerBreakdown(RunnerTestBase):
     def test_percent_delta_handles_a_zero_baseline(self):
         self.assertEqual(self.mod.percent_delta(1.0, 0.0), 0.0)
 
-    def test_breakdown_is_part_of_the_score_section(self):
+    def test_breakdown_is_part_of_the_score_detail_section(self):
         runs = self._scored([("nuc13-024", 25.0), ("nuc13-119", 25.0)])
-        section = "\n".join(self.mod.score_summary_lines(runs))
-        self.assertIn("### Scores", section)
+        section = "\n".join(self.mod.score_detail_lines(runs))
+        self.assertIn("### Score detail", section)
         self.assertIn("#### By worker", section)
         self.assertIn("25.00 (nuc13-024)", section)
+        # The headline table stays above; this section is only the breakdown.
+        self.assertNotIn("### Scores", section)
 
 
 POOLS_YAML = """
@@ -1217,6 +1231,43 @@ class TestResultsTable(unittest.TestCase):
                 f"gecko-hw-{self.REF}-test-windows11-64-24h2/debug-xpcshell", self.REF
             ),
             "xpcshell",
+        )
+
+    def test_the_summary_reads_results_then_scores_then_detail(self):
+        runs = self._runs()
+        runs[0]["deployment"] = {"image": "win11-24h2-hw-20260820-235936"}
+        runs[0]["nodes"] = ["t-nuc12-002", "t-nuc12-003"]
+        runs[0]["scores"] = {
+            "speedometer3": {
+                "unit": "score",
+                "lower_is_better": False,
+                "samples": [
+                    {
+                        "worker": "t-nuc12-003",
+                        "value": 22.70,
+                        "task_id": "t1",
+                        "replicates": [22.6, 22.8],
+                    }
+                ],
+            }
+        }
+        written = self._rendered(runs)
+        order = [
+            written.index("| Pool | Image |"),
+            written.index("### Results"),
+            written.index("### Scores"),
+            written.index("### Pool deployment"),
+            written.index("### Score detail"),
+        ]
+        self.assertEqual(order, sorted(order), written)
+        # The idle-node accounting and the replicates go with the detail, not
+        # between the reader and the verdict.
+        self.assertLess(written.index("### Results"), written.index("#### By worker"))
+        self.assertLess(
+            written.index("### Results"), written.index("in-task replicates")
+        )
+        self.assertLess(
+            written.index("### Results"), written.index("produced no score")
         )
 
     def test_no_tasks_means_no_table(self):
