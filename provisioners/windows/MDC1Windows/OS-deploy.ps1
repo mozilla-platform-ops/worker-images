@@ -54,6 +54,27 @@ function Deploy-OS-Dev {
     powershell $deploy_script -deployuser "deployment" -deploymentaccess "$Password" -devlopment_script -branch "$branch"
 }
 
+function Get-DeploySendoff {
+    param(
+    )
+    ## Sign-off line printed just before we hand the node over to Setup / reboot into the
+    ## deployed OS. Cosmetic only - nothing parses this.
+    $lines = @(
+        'This is probably fine in every timeline.'
+        'Please keep all limbs inside the deployment.'
+        'Here be undocumented behavior.'
+        'The wizard responsible has been notified.'
+        'Success is now statistically possible.'
+        'Do not feed the production environment.'
+        'We have angered the dependency gods.'
+        'Something ancient just returned exit code 1.'
+        'The deployment must flow.'
+        'Good luck. The machines are watching.'
+        'The machine spirit is willing.'
+    )
+    return (Get-Random -InputObject $lines)
+}
+
 function Mount-ZDrive {
     param(
     )
@@ -770,7 +791,7 @@ Write-Host "Initializing OS installation."
 if (Test-Path $setup) {
     ## Standard path: Windows Setup applies sources\install.wim per the unattend.
     Write-Host Running: Start-Process -FilePath $setup -ArgumentList "/unattend:$unattend"
-    Write-Host "Have a nice day! :)"
+    Write-Host (Get-DeploySendoff)
     Start-Process -FilePath $setup -ArgumentList "/unattend:$unattend"
 }
 else {
@@ -929,7 +950,7 @@ exit /b 0
     [System.IO.File]::WriteAllText((Join-Path $setupScripts 'SetupComplete.cmd'), $setupCompleteCmd, [System.Text.Encoding]::ASCII)
     Write-Host "== Placed SetupComplete.cmd + Set-ActiveComputerName.ps1 in $setupScripts =="
 
-    Write-Host "Baked WIM applied. Rebooting into the deployed OS. Have a nice day! :)"
+    Write-Host "Baked WIM applied. Rebooting into the deployed OS. $(Get-DeploySendoff)"
     Start-Sleep -Seconds 5
     wpeutil reboot
 }
