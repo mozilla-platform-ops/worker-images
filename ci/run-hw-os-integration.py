@@ -1150,6 +1150,13 @@ def print_scores(runs: list[dict]) -> None:
 
 
 def score_summary_lines(runs: list[dict]) -> list[str]:
+    """The headline number per pool and suite, and nothing else.
+
+    The per-node breakdown and the per-run replicates are a different question
+    -- "is one of these NUCs slow", not "what did the pool score" -- and they
+    are three times the length. They live in score_detail_lines() at the foot of
+    the summary, where looking for them is a deliberate act.
+    """
     if not any(run.get("scores") for run in runs):
         return []
 
@@ -1169,6 +1176,21 @@ def score_summary_lines(runs: list[dict]) -> list[str]:
                 f"{s['stdev']:.2f} | {s['cv']:.1f}% | {entry['unit']} |"
             )
     lines.append("")
+    return lines
+
+
+def score_detail_lines(runs: list[dict]) -> list[str]:
+    """Per-node and per-replicate scores, at the foot of the summary.
+
+    Everything here answers a question you have to already be asking: which node
+    is slow, how noisy was the sample, which pools.yml nodes never scored at
+    all. Above the results it is a wall of numbers between the reader and the
+    verdict; below them it is the detail they came back for.
+    """
+    if not any(run.get("scores") for run in runs):
+        return []
+
+    lines = ["### Score detail", ""]
 
     lines += worker_summary_lines(runs)
 
@@ -1446,8 +1468,9 @@ def write_github_summary(
     lines += inconclusive_lines(inconclusive or [])
     if selection:
         lines += [selection, ""]
-    lines += score_summary_lines(runs)
 
+    # Then the results, before anything that analyses them: what ran, where, and
+    # whether it passed.
     lines += [
         "| Pool | Image | Branch | Revision | Platform | Result | Passed | Failed | "
         "Exception | Blocked | Pending |",
@@ -1486,7 +1509,15 @@ def write_github_summary(
 
     lines += failure_summary or []
 
+    # The numbers come after the thing they are numbers about, and only the
+    # headline: one row per pool and suite.
+    lines += score_summary_lines(runs)
+
     lines += deployment_summary_lines(runs)
+
+    # Last, because it is the longest section and the least often wanted: the
+    # per-node breakdown, the idle-node accounting and the per-run replicates.
+    lines += score_detail_lines(runs)
 
     Path(summary_file).open("a").write("\n".join(lines))
 
