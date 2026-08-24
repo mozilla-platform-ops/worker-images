@@ -371,7 +371,7 @@ class TestWorkerBreakdown(RunnerTestBase):
             {"nuc13-024": 24.5, "nuc13-119": 20.0},
         )
 
-    def test_table_has_a_row_per_worker_with_delta(self):
+    def test_table_has_a_row_per_worker(self):
         runs = self._scored(
             [("nuc13-024", 25.0), ("nuc13-024", 25.0), ("nuc13-059", 25.0)]
         )
@@ -379,42 +379,40 @@ class TestWorkerBreakdown(RunnerTestBase):
         self.assertIn("#### By worker", table)
         self.assertIn("`nuc13-024`", table)
         self.assertIn("`nuc13-059`", table)
-        # every node is on the pool mean here, so nothing is flagged
-        self.assertNotIn("⚠️", table)
-        self.assertIn("+0.0%", table)
 
-    def test_slow_node_is_flagged_and_its_healthy_peers_are_not(self):
-        # nuc13-119 is 20% down on the others: the case this table exists for.
-        # Comparing against the pool mean would flag all three, since one slow
-        # node drags that mean down and leaves the healthy pair reading fast.
-        runs = self._scored(
-            [
-                ("nuc13-024", 25.0),
-                ("nuc13-059", 25.0),
-                ("nuc13-119", 20.0),
-                ("nuc13-119", 20.0),
-            ]
-        )
-        table = "\n".join(self.mod.worker_summary_lines(runs))
-        self.assertIn("`nuc13-119` ⚠️", table)
-        self.assertNotIn("`nuc13-024` ⚠️", table)
-        self.assertNotIn("`nuc13-059` ⚠️", table)
-        self.assertIn("-20.0%", table)
-        self.assertIn("nuc13-119** (win11-64-24h2-hw-perf-debug) is -20.0%", table)
-
-    def test_peer_baseline_is_unmoved_by_one_bad_node(self):
-        self.assertEqual(self.mod.peer_baseline([25.0, 25.0, 20.0]), 25.0)
-        self.assertEqual(self.mod.peer_baseline([]), 0.0)
-        # with two nodes that disagree there is no majority to appeal to, so
-        # both sit off the midpoint and both get flagged
+    def test_nodes_are_not_compared_against_each_other(self):
+        # Two nodes that disagree by 20%. The median of two node means is the
+        # midpoint, so a delta column would put both of them equally far from
+        # it and mark both -- which is arithmetic, not a finding.
         runs = self._scored([("nuc13-024", 25.0), ("nuc13-119", 20.0)])
         table = "\n".join(self.mod.worker_summary_lines(runs))
-        self.assertIn("`nuc13-024` ⚠️", table)
-        self.assertIn("`nuc13-119` ⚠️", table)
+        self.assertNotIn("⚠️", table)
+        self.assertNotIn("vs peers", table)
+        self.assertNotIn("%", table.splitlines()[2], "no delta column in the header")
+        self.assertIn("25.00", table)
+        self.assertIn("20.00", table)
 
-    def test_a_node_within_the_noise_floor_is_not_flagged(self):
-        runs = self._scored([("nuc13-024", 25.0), ("nuc13-059", 24.5)])
-        self.assertNotIn("⚠️", "\n".join(self.mod.worker_summary_lines(runs)))
+    def test_near_zero_scores_produce_no_flag(self):
+        # Run 32743362153: a node scoring 0.00 dropped frames against one
+        # scoring 0.48 was marked -100%, on a suite where 0.00 is the best
+        # possible result.
+        runs = self._scored([("nuc13-074", 0.0), ("nuc13-115", 0.48)])
+        table = "\n".join(self.mod.worker_summary_lines(runs))
+        self.assertNotIn("⚠️", table)
+        self.assertNotIn("100.0%", table)
+
+    def test_each_node_still_reports_its_own_spread(self):
+        # CV is what replaces the delta: it means the same thing whether the
+        # pool has two nodes or ten.
+        runs = self._scored([("nuc13-024", 20.0), ("nuc13-024", 30.0)])
+        row = next(
+            line
+            for line in self.mod.worker_summary_lines(runs)
+            if "`nuc13-024`" in line
+        )
+        self.assertIn("| 2 |", row)
+        self.assertIn("25.00", row)
+        self.assertIn("28.3%", row, "sample stdev 7.07 over a mean of 25")
 
     def test_only_nodes_that_produced_a_result_get_a_row(self):
         # What this replaced: idle nodes were worked out per suite, so a pool of
@@ -471,13 +469,9 @@ class TestWorkerBreakdown(RunnerTestBase):
         runs = self._scored([("nuc13-024", 25.0)])
         self.assertEqual(self.mod.idle_note(runs[0]), "")
 
-    def test_outlier_threshold_is_symmetric(self):
-        self.assertTrue(self.mod.is_outlier(self.mod.WORKER_OUTLIER_PERCENT))
-        self.assertTrue(self.mod.is_outlier(-self.mod.WORKER_OUTLIER_PERCENT))
-        self.assertFalse(self.mod.is_outlier(self.mod.WORKER_OUTLIER_PERCENT - 0.1))
-
-    def test_percent_delta_handles_a_zero_baseline(self):
-        self.assertEqual(self.mod.percent_delta(1.0, 0.0), 0.0)
+    def test_the_comparison_helpers_are_gone(self):
+        for name in ("peer_baseline", "percent_delta", "is_outlier"):
+            self.assertFalse(hasattr(self.mod, name), name)
 
     def test_breakdown_is_part_of_the_score_detail_section(self):
         runs = self._scored([("nuc13-024", 25.0), ("nuc13-119", 25.0)])
@@ -1271,6 +1265,57 @@ class TestResultsTable(unittest.TestCase):
             written.index("### Results"), written.index("produced no score")
         )
 
+    def test_the_pool_mapping_leads_the_summary(self):
+        runs = self._runs()
+        runs[0]["stages"] = "win11-64-24h2-hw-ref"
+        runs[0]["nodes"] = ["t-nuc12-002", "t-nuc12-003"]
+        runs[1]["stages"] = "win11-64-24h2-hw"
+        runs[1]["nodes"] = ["nuc13-074", "nuc13-115", "nuc13-158"]
+        written = self._rendered(runs)
+        self.assertTrue(
+            written.startswith("## HW OS Integration Tests\n\n### Pool mapping"),
+            written,
+        )
+        self.assertLess(
+            written.index("### Pool mapping"), written.index("| Pool | Image |")
+        )
+        self.assertIn(
+            f"| `{self.REF}` | `win11-64-24h2-hw-ref` | "
+            "`windows11-64-24h2-hw-ref-shippable/opt` | 2 |",
+            written,
+        )
+        self.assertIn(
+            f"| `{self.PERF}` | `win11-64-24h2-hw` | "
+            "`windows11-64-24h2-shippable/opt` | 3 |",
+            written,
+        )
+
+    def test_the_platform_is_not_repeated_in_the_verdict_table(self):
+        # It says what the pool is a stand-in for, so it belongs to the mapping.
+        runs = self._runs()
+        runs[0]["stages"] = "win11-64-24h2-hw-ref"
+        written = self._rendered(runs)
+        self.assertEqual(written.count("windows11-64-24h2-hw-ref-shippable/opt"), 1)
+        header = next(
+            line for line in written.splitlines() if line.startswith("| Pool | Image |")
+        )
+        self.assertNotIn("Platform", header)
+
+    def test_a_pool_that_stages_nothing_still_gets_a_row(self):
+        runs = self._runs()[:1]
+        runs[0].pop("stages", None)
+        runs[0]["nodes"] = []
+        line = next(
+            row
+            for row in self.mod.pool_mapping_lines(runs)
+            if row.startswith(f"| `{self.REF}`")
+        )
+        self.assertIn("| `-` |", line)
+        self.assertTrue(line.endswith("| - |"))
+
+    def test_no_runs_means_no_mapping(self):
+        self.assertEqual(self.mod.pool_mapping_lines([]), [])
+
     def test_no_tasks_means_no_table(self):
         runs = self._runs()
         for run in runs:
@@ -1286,6 +1331,10 @@ class TestBuildUnderTest(unittest.TestCase):
     SHIPPABLE = "Dqt4vebYTveKE-nU2_M_GQ"
     PLAIN = "JVUDzESdTUqMrEQQQVGSBw"
     REV = "a33c90571e92de766016d68eb74994cec1c0a75e"
+    URL = (
+        "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/"
+        "Dqt4vebYTveKE-nU2_M_GQ/artifacts/public/build/target.zip"
+    )
 
     @classmethod
     def setUpClass(cls):
@@ -1337,14 +1386,35 @@ class TestBuildUnderTest(unittest.TestCase):
         self.assertEqual(len(builds), 1)
         self.assertEqual(builds[0]["tasks"], 1)
 
-    def test_the_build_task_name_is_read_once_per_task_id(self):
-        asked = []
+    class _Queue:
+        """Shaped like the three queue calls build_metadata makes."""
 
-        class Queue:
-            def task(_self, task_id):
-                asked.append(task_id)
-                return {"metadata": {"name": "build-win64-shippable/opt"}}
+        def __init__(self):
+            self.asked = []
 
+        def task(self, task_id):
+            self.asked.append(("task", task_id))
+            return {"metadata": {"name": "build-win64-shippable/opt"}}
+
+        def status(self, task_id):
+            self.asked.append(("status", task_id))
+            return {"status": {"runs": [{"resolved": "2026-08-21T17:35:25.163Z"}]}}
+
+        def listLatestArtifacts(self, task_id):  # queue's own spelling
+            self.asked.append(("artifacts", task_id))
+            return {
+                "artifacts": [
+                    {"name": "public/build/other.zip", "expires": "2000-01-01T00:00Z"},
+                    {
+                        "name": "public/build/target.zip",
+                        "expires": "2027-08-21T15:38:08.163Z",
+                        "contentLength": 140084144,
+                    },
+                ]
+            }
+
+    def test_the_build_is_described_once_per_task_id(self):
+        queue = self._Queue()
         runs = [
             {
                 "pool": self.POOL,
@@ -1352,13 +1422,27 @@ class TestBuildUnderTest(unittest.TestCase):
                 "tasks": [self._task(f"t{i}", self.SHIPPABLE) for i in range(3)],
             }
         ]
-        self.mod.collect_builds(Queue(), runs)
-        self.assertEqual(asked, [self.SHIPPABLE], "one lookup, not one per task")
-        self.assertEqual(runs[0]["builds"][0]["name"], "build-win64-shippable/opt")
+        self.mod.collect_builds(queue, runs)
+        self.assertEqual(
+            queue.asked,
+            [
+                ("task", self.SHIPPABLE),
+                ("status", self.SHIPPABLE),
+                ("artifacts", self.SHIPPABLE),
+            ],
+            "one lookup each, not one per task",
+        )
+        build = runs[0]["builds"][0]
+        self.assertEqual(build["name"], "build-win64-shippable/opt")
+        self.assertEqual(build["built"], "2026-08-21T17:35:25.163Z")
+        self.assertEqual(build["expires"], "2027-08-21T15:38:08.163Z")
+        self.assertEqual(build["size"], 140084144)
+        self.assertEqual(build["url"], self.URL)
 
-    def test_a_queue_that_will_not_name_the_build_is_survivable(self):
-        class Queue:
-            def task(_self, task_id):
+    def test_each_lookup_fails_independently(self):
+        # A queue that will not give a name should still give a date.
+        class Queue(TestBuildUnderTest._Queue):
+            def task(self, task_id):
                 raise FakeRestFailure("500")
 
         runs = [
@@ -1369,8 +1453,36 @@ class TestBuildUnderTest(unittest.TestCase):
             }
         ]
         self.mod.collect_builds(Queue(), runs)
-        self.assertEqual(runs[0]["builds"][0]["name"], "")
-        self.assertEqual(runs[0]["builds"][0]["task_id"], self.SHIPPABLE)
+        build = runs[0]["builds"][0]
+        self.assertEqual(build["name"], "")
+        self.assertEqual(build["task_id"], self.SHIPPABLE)
+        self.assertEqual(build["built"], "2026-08-21T17:35:25.163Z")
+
+    def test_a_queue_that_will_say_nothing_is_survivable(self):
+        class Queue:
+            def task(self, task_id):
+                raise FakeRestFailure("500")
+
+            def status(self, task_id):
+                raise FakeRestFailure("500")
+
+            def listLatestArtifacts(self, task_id):
+                raise FakeRestFailure("500")
+
+        runs = [
+            {
+                "pool": self.POOL,
+                "task_group_id": GROUP,
+                "tasks": [self._task("t0", self.SHIPPABLE)],
+            }
+        ]
+        self.mod.collect_builds(Queue(), runs)
+        build = runs[0]["builds"][0]
+        self.assertEqual(
+            (build["name"], build["built"], build["expires"]), ("", "", "")
+        )
+        self.assertEqual(build["task_id"], self.SHIPPABLE)
+        self.assertEqual(build["url"], self.URL, "the URL never needed the queue")
 
     def test_the_table_links_the_revision_and_the_build(self):
         runs = [
@@ -1382,8 +1494,12 @@ class TestBuildUnderTest(unittest.TestCase):
                         "revision": self.REV,
                         "task_id": self.SHIPPABLE,
                         "artifact": "public/build/target.zip",
+                        "url": self.URL,
                         "tasks": 4,
                         "name": "build-win64-shippable/opt",
+                        "built": "2026-08-21T17:35:25.163Z",
+                        "expires": "2027-08-21T15:38:08.163Z",
+                        "size": 140084144,
                     }
                 ],
             }
@@ -1393,9 +1509,65 @@ class TestBuildUnderTest(unittest.TestCase):
         self.assertIn(f"[`{self.REV[:12]}`](https://hg.mozilla.org/", table)
         self.assertIn(f"/rev/{self.REV})", table)
         self.assertIn("[build-win64-shippable/opt](https://tc.example/tasks/", table)
-        self.assertIn("`public/build/target.zip`", table)
         # Shortened where it is read, full where it is followed.
         self.assertNotIn(f"`{self.REV}`", table)
+
+    def test_the_artifact_url_is_given_in_full_and_dated(self):
+        runs = [
+            {
+                "pool": self.POOL,
+                "builds": [
+                    {
+                        "repository": "https://hg.mozilla.org/mozilla-central",
+                        "revision": self.REV,
+                        "task_id": self.SHIPPABLE,
+                        "artifact": "public/build/target.zip",
+                        "url": self.URL,
+                        "tasks": 4,
+                        "name": "build-win64-shippable/opt",
+                        "built": "2026-08-21T17:35:25.163Z",
+                        "expires": "2027-08-21T15:38:08.163Z",
+                        "size": 140084144,
+                    }
+                ],
+            }
+        ]
+        table = "\n".join(self.mod.build_summary_lines(runs, "https://tc.example"))
+        # Verbatim and on its own line: this is the thing you would curl.
+        self.assertIn(f"\n  {self.URL}\n", table)
+        self.assertIn("2026-08-21 17:35Z", table)
+        self.assertIn("2027-08-21 15:38Z", table)
+        self.assertIn("(140 MB)", table)
+
+    def test_a_build_the_queue_would_not_describe_still_renders(self):
+        runs = [
+            {
+                "pool": self.POOL,
+                "builds": [
+                    {
+                        "repository": "",
+                        "revision": "",
+                        "task_id": self.SHIPPABLE,
+                        "artifact": "public/build/target.zip",
+                        "url": "",
+                        "tasks": 1,
+                    }
+                ],
+            }
+        ]
+        table = "\n".join(self.mod.build_summary_lines(runs, "https://tc.example"))
+        self.assertIn(f"[{self.SHIPPABLE}](https://tc.example/tasks/", table)
+        self.assertIn("`unknown`", table)
+        self.assertIn("| - | - | 1 |", table)
+        self.assertIn("(no installer_url)", table)
+
+    def test_a_timestamp_is_trimmed_to_the_minute(self):
+        self.assertEqual(
+            self.mod.stamp("2026-08-21T17:35:25.163Z"), "2026-08-21 17:35Z"
+        )
+        self.assertEqual(self.mod.stamp(""), "")
+        self.assertEqual(self.mod.stamp(None), "")
+        self.assertEqual(self.mod.stamp("not-a-timestamp"), "")
 
     def test_a_github_repository_links_to_a_commit_not_a_rev(self):
         self.assertEqual(

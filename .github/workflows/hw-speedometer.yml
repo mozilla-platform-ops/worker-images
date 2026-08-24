@@ -7,6 +7,13 @@ run-name: HW Speedometer x${{ inputs.repeat }} - ${{ github.actor }}
 # one run says little, so the question here is always "the same test, N times,
 # what is the spread". Dispatch-only; hardware needs a PXE deploy first.
 #
+# Every pool here is a stand-in for a production worker type, and which one
+# decides what it runs: `-ref-alpha` stages win11-64-24h2-hw-ref, everything
+# else stages win11-64-24h2-hw. Those are different suites on different
+# hardware, so a spread from one pool is not comparable with a spread from the
+# other. The pairing is in each checkbox below and in the "Pool mapping" table
+# at the top of the summary.
+#
 # The build under test comes from mozilla-central, not from here. Tasks are
 # replicated from a floating index, and each keeps its own
 # EXTRA_MOZHARNESS_CONFIG.installer_url -- normally `public/build/target.zip`
@@ -20,23 +27,23 @@ on:
   workflow_dispatch:
     inputs:
       win11_64_24h2_hw_alpha:
-        description: "win11-64-24h2-hw-alpha (nuc13, large staging pool)"
+        description: "win11-64-24h2-hw-alpha - stages win11-64-24h2-hw (nuc13, large staging pool)"
         type: boolean
         default: false
       win11_64_24h2_hw_relops1213:
-        description: "win11-64-24h2-hw-relops1213 (baked-WIM canary)"
+        description: "win11-64-24h2-hw-relops1213 - stages win11-64-24h2-hw (baked-WIM canary)"
         type: boolean
         default: false
       win11_64_24h2_hw_ref_alpha:
-        description: "win11-64-24h2-hw-ref-alpha (t-nuc12 reference)"
+        description: "win11-64-24h2-hw-ref-alpha - stages win11-64-24h2-hw-ref (t-nuc12 reference)"
         type: boolean
         default: false
       win11_64_24h2_hw_perf_debug:
-        description: "win11-64-24h2-hw-perf-debug"
+        description: "win11-64-24h2-hw-perf-debug - stages win11-64-24h2-hw"
         type: boolean
         default: false
       win11_64_24h2_hw_perf_sheriff:
-        description: "win11-64-24h2-hw-perf-sheriff (single node - very slow)"
+        description: "win11-64-24h2-hw-perf-sheriff - stages win11-64-24h2-hw (single node - very slow)"
         type: boolean
         default: false
       browser:

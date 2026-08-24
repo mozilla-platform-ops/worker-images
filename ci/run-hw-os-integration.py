@@ -1003,6 +1003,10 @@ def builds_under_test(tasks: list[dict]) -> list[dict]:
             env.get("GECKO_HEAD_REV", ""),
             match.group(1),
             match.group(2),
+            # Verbatim, not rebuilt from the parts: this is the exact string
+            # mozilla-central handed the task, and it is what you would curl to
+            # get the same bits the hardware installed.
+            config["installer_url"],
         )
         found[key] = found.get(key, 0) + 1
 
@@ -1012,33 +1016,61 @@ def builds_under_test(tasks: list[dict]) -> list[dict]:
             "revision": revision,
             "task_id": task_id,
             "artifact": artifact,
+            "url": url,
             "tasks": count,
         }
         # Most-used build first: the one-off variants are the footnote.
-        for (repository, revision, task_id, artifact), count in sorted(
+        for (repository, revision, task_id, artifact, url), count in sorted(
             found.items(), key=lambda item: (-item[1], item[0])
         )
     ]
 
 
+def build_metadata(queue, task_id: str, artifact: str) -> dict:
+    """Name the build, and date it.
+
+    Three questions the task id alone does not answer: what kind of build it is,
+    when it was produced -- which is how stale the thing under test was, and the
+    graph is replicated from a floating index so it is never today by default --
+    and when the artifact goes away, which is what #878 exists to work around.
+
+    Never fatal, and each field independently so one failure does not cost the
+    others: an unnamed, undated build is still an identified one.
+    """
+    metadata = {"name": "", "built": "", "expires": "", "size": 0}
+    try:
+        definition = queue.task(task_id)
+        metadata["name"] = (definition.get("metadata") or {}).get("name", "")
+    except Exception as exc:  # noqa: BLE001 - a name is not worth failing a run
+        warn(f"could not read build task {task_id}: {exc}")
+    try:
+        task_runs = (queue.status(task_id).get("status") or {}).get("runs") or []
+        metadata["built"] = task_runs[-1].get("resolved", "") if task_runs else ""
+    except Exception as exc:  # noqa: BLE001
+        warn(f"could not read build task status {task_id}: {exc}")
+    try:
+        for entry in queue.listLatestArtifacts(task_id).get("artifacts") or []:
+            if entry.get("name") == artifact:
+                metadata["expires"] = entry.get("expires", "")
+                metadata["size"] = entry.get("contentLength", 0)
+                break
+    except Exception as exc:  # noqa: BLE001
+        warn(f"could not list artifacts of build task {task_id}: {exc}")
+    return metadata
+
+
 def collect_builds(queue, runs: list[dict]) -> None:
-    """Attach each pool's builds, with the build task's own name where the queue
-    will give it. Never fatal: an unnamed build is still an identified one."""
-    names: dict[str, str] = {}
+    """Attach each pool's builds, each described well enough to go and fetch."""
+    known: dict[tuple, dict] = {}
     for run in runs:
         builds = builds_under_test(
             replicated_tasks(run.get("tasks") or [], run.get("task_group_id"))
         )
         for build in builds:
-            task_id = build["task_id"]
-            if task_id not in names:
-                try:
-                    definition = queue.task(task_id)
-                    names[task_id] = (definition.get("metadata") or {}).get("name", "")
-                except Exception as exc:  # noqa: BLE001 - a name is not worth failing
-                    warn(f"could not read build task {task_id}: {exc}")
-                    names[task_id] = ""
-            build["name"] = names[task_id]
+            key = (build["task_id"], build["artifact"])
+            if key not in known:
+                known[key] = build_metadata(queue, *key)
+            build.update(known[key])
         run["builds"] = builds
 
 
@@ -1161,29 +1193,14 @@ def summarize(values: list[float]) -> dict:
     return summary
 
 
-# A node this far from its peers is worth looking at rather than averaging away.
-# Speedometer3 run-to-run noise on a healthy NUC is ~1-2%, so 5% is well clear of
-# it without flagging every pool with an uneven split.
-WORKER_OUTLIER_PERCENT = 5.0
-
-
-def peer_baseline(worker_means: list[float]) -> float:
-    """What a node should be compared against: the median of the per-node means.
-
-    Not the pool mean. One slow node drags the pool mean down far enough that
-    every healthy node then reads as fast, which flags the whole pool and points
-    at nothing. A median of node means is unmoved by a single bad node, so the
-    node that is actually different is the one that stands out.
-    """
-    return statistics.median(worker_means) if worker_means else 0.0
-
-
-def percent_delta(value: float, baseline: float) -> float:
-    return 100 * (value - baseline) / baseline if baseline else 0.0
-
-
-def is_outlier(delta: float) -> bool:
-    return abs(delta) >= WORKER_OUTLIER_PERCENT
+# There is deliberately no node-against-node comparison here. These pools are two
+# and three nodes: the median of two node means is the midpoint between them, so
+# both nodes are always equidistant from it and either both are flagged or
+# neither is. Run 32743362153 produced six such flags and every one was an
+# artifact of that -- ±100% between a node scoring 0.00 dropped frames and one
+# scoring 0.48, on a suite where near-zero is the good answer. A pool this small
+# has no peer group, only the other node, so each node is reported on its own
+# terms: its mean, its spread, and how many runs it is drawn from.
 
 
 def print_scores(runs: list[dict]) -> None:
@@ -1206,14 +1223,11 @@ def print_scores(runs: list[dict]) -> None:
                 worker: summarize(sample_values(worker_samples))
                 for worker, worker_samples in grouped.items()
             }
-            baseline = peer_baseline([s["mean"] for s in per_worker.values()])
             for worker, worker_stats in per_worker.items():
-                delta = percent_delta(worker_stats["mean"], baseline)
-                flag = " OUTLIER" if is_outlier(delta) else ""
                 notice(
                     f"  {worker}: mean {worker_stats['mean']:.2f} "
-                    f"({delta:+.1f}% vs peers, {worker_stats['cv']:.1f}% CV over "
-                    f"{worker_stats['n']} run(s)){flag}"
+                    f"({worker_stats['cv']:.1f}% CV over "
+                    f"{worker_stats['n']} run(s))"
                 )
         note = idle_note(run)
         if note:
@@ -1280,18 +1294,22 @@ def score_detail_lines(runs: list[dict]) -> list[str]:
     lines.append("")
     lines.append(
         "`↑` higher is better. CV is stdev/mean: the run-to-run noise floor, "
-        "which is what a regression has to beat to be real. Δ is a node against "
-        "the median of its pool's nodes -- not the pool mean, which one bad node "
-        "drags far enough to flag the healthy ones -- and is marked past "
-        f"{WORKER_OUTLIER_PERCENT:.0f}%. A row of one run is noise, not a verdict."
+        "which is what a regression has to beat to be real. Nodes are not "
+        "compared against each other -- with two or three of them the "
+        "comparison says more about the arithmetic than the hardware -- so read "
+        "each node's own CV instead. A row of one run is noise, not a verdict."
     )
     lines.append("")
     return lines
 
 
 def worker_summary_lines(runs: list[dict]) -> list[str]:
-    """Per-node breakdown. A pool mean of three NUCs hides the one that is slow,
-    which on staging hardware is usually the thing being looked for.
+    """Per-node breakdown: what each node scored and how much it moved.
+
+    Each node on its own terms, with no node-against-node verdict -- see the
+    note above print_scores(). CV is the column to read: a node whose own runs
+    disagree is the finding, and unlike a delta it means the same thing whether
+    the pool has two nodes or ten.
 
     Only nodes that produced a result get a row; the rest are accounted for in
     one line per pool by idle_note(), rather than a row per suite each.
@@ -1299,40 +1317,26 @@ def worker_summary_lines(runs: list[dict]) -> list[str]:
     lines = [
         "#### By worker",
         "",
-        "| Pool | Worker | Suite | Runs | Mean | Median | Min | Max | CV | Δ vs peers |",
-        "|---|---|---|:---:|---:|---:|---:|---:|---:|---:|",
+        "| Pool | Worker | Suite | Runs | Mean | Median | Min | Max | CV |",
+        "|---|---|---|:---:|---:|---:|---:|---:|---:|",
     ]
-    flagged = []
     for run in runs:
         for name, entry in sorted((run.get("scores") or {}).items()):
-            samples = entry["samples"]
             per_worker = {
                 worker: summarize(sample_values(worker_samples))
-                for worker, worker_samples in by_worker(samples).items()
+                for worker, worker_samples in by_worker(entry["samples"]).items()
             }
-            baseline = peer_baseline([s["mean"] for s in per_worker.values()])
             for worker, s in per_worker.items():
-                delta = percent_delta(s["mean"], baseline)
-                mark = " ⚠️" if is_outlier(delta) else ""
-                if is_outlier(delta):
-                    flagged.append((run["pool"], worker, name, delta, s["n"]))
                 lines.append(
-                    f"| {run['pool']} | `{worker}`{mark} | {name} | {s['n']} | "
+                    f"| {run['pool']} | `{worker}` | {name} | {s['n']} | "
                     f"{s['mean']:.2f} | {s['median']:.2f} | {s['min']:.2f} | "
-                    f"{s['max']:.2f} | {s['cv']:.1f}% | {delta:+.1f}% |"
+                    f"{s['max']:.2f} | {s['cv']:.1f}% |"
                 )
     lines.append("")
 
     notes = [f"- {note}" for note in map(idle_note, runs) if note]
-    lines += notes
-
-    for pool, worker, suite, delta, count in flagged:
-        lines.append(
-            f"- ⚠️ **{worker}** ({pool}) is {delta:+.1f}% off its peers on "
-            f"{suite} over {count} run(s)"
-        )
-    if notes or flagged:
-        lines.append("")
+    if notes:
+        lines += notes + [""]
     return lines
 
 
@@ -1517,6 +1521,54 @@ def results_table_lines(runs: list[dict], root_url: str) -> list[str]:
     return lines
 
 
+def pool_mapping_lines(runs: list[dict]) -> list[str]:
+    """What each pool is standing in for, before any of its results.
+
+    A staging pool is only meaningful as a stand-in: `-perf-debug` takes the
+    tasks mozilla-central schedules on `win11-64-24h2-hw`, `-ref-alpha` takes
+    the ones it schedules on `win11-64-24h2-hw-ref`. Those are different suites
+    on different hardware, so which one a reader is looking at decides what the
+    numbers below can be compared with -- and until now it was implicit in the
+    pool name and the task-name prefix, neither of which says it.
+
+    The gecko platform comes off the replicated tasks themselves rather than the
+    pool name, so it also says whether the pool got what its counterpart runs.
+    """
+    if not runs:
+        return []
+
+    lines = [
+        "### Pool mapping",
+        "",
+        "| Pool | Stages | Gecko platform | Nodes |",
+        "|---|---|---|:---:|",
+    ]
+    for run in runs:
+        platform = task_platform(run.get("tasks") or [], run["pool"])
+        lines.append(
+            f"| `{run['pool']}` | `{run.get('stages') or '-'}` | "
+            f"`{platform}` | {len(run.get('nodes') or []) or '-'} |"
+        )
+    lines += [
+        "",
+        (
+            "Both sides are `releng-hardware` worker types: the pool the tasks "
+            "ran on, and the production one they were replicated from."
+        ),
+        "",
+    ]
+    return lines
+
+
+def stamp(iso: str | None) -> str:
+    """`2026-08-21T17:35:25.163Z` as `2026-08-21 17:35Z`. Minutes are as fine as
+    anyone reads a build date to, and seconds cost a column's width."""
+    if not iso or "T" not in iso:
+        return ""
+    date, _, rest = iso.partition("T")
+    return f"{date} {rest[:5]}Z"
+
+
 def revision_url(repository: str, revision: str) -> str:
     if not repository or not revision:
         return ""
@@ -1539,8 +1591,8 @@ def build_summary_lines(runs: list[dict], root_url: str) -> list[str]:
     lines = [
         "### Build under test",
         "",
-        "| Pool | Gecko revision | Build task | Artifact | Tasks |",
-        "|---|---|---|---|:---:|",
+        "| Pool | Gecko revision | Build task | Built | Artifact expires | Tasks |",
+        "|---|---|---|---|---|:---:|",
     ]
     for run, build in rows:
         revision = build.get("revision") or ""
@@ -1551,16 +1603,30 @@ def build_summary_lines(runs: list[dict], root_url: str) -> list[str]:
             f"{f'[`{shown}`]({url})' if url else f'`{shown}`'} | "
             f"[{build.get('name') or build['task_id']}]"
             f"({root_url}/tasks/{build['task_id']}) | "
-            f"`{build['artifact']}` | {build['tasks']} |"
+            f"{stamp(build.get('built')) or '-'} | "
+            f"{stamp(build.get('expires')) or '-'} | {build['tasks']} |"
         )
+
+    # The URL in full and on its own line rather than behind link text: it is
+    # the one thing here you might want to curl, and a table cell mangles it.
+    lines += ["", "The exact artifact each pool installed:", "", "```"]
+    for run, build in rows:
+        size = build.get("size") or 0
+        lines.append(
+            f"{short_pool(run['pool'])}{f'  ({size / 1e6:.0f} MB)' if size else ''}"
+        )
+        lines.append(f"  {build.get('url') or '(no installer_url)'}")
+    lines += ["```", ""]
+
     lines += [
-        "",
         (
             "Nothing above is built by this repo: a replicated task installs "
             "whatever build mozilla-central's own `installer_url` pointed at. "
             "The revision comes from the index the graph was replicated from, "
             "which floats -- two runs a day apart can test different revisions, "
-            "and a red run is only the image's fault if this row held still."
+            "and a red run is only the image's fault if this row held still. "
+            "**Built** is when that build finished, not when this run started: "
+            "the gap between them is how stale the thing under test was."
         ),
         "",
     ]
@@ -1580,8 +1646,11 @@ def write_github_summary(
         return
 
     lines = ["## HW OS Integration Tests", ""]
-    # First thing under the heading: a run whose configuration moved is not a
-    # result, and nobody scrolls to find that out.
+    # First: what each pool is a stand-in for. It is four lines, it never
+    # changes mid-run, and it decides how everything below it reads.
+    lines += pool_mapping_lines(runs)
+    # Then a run whose configuration moved, which is not a result at all and
+    # which nobody should have to scroll to find out about.
     lines += drift_summary_lines(drift or [])
     # Then, for the same reason: counts that are a snapshot rather than a total.
     lines += outran_wait_lines(runs, root_url)
@@ -1593,16 +1662,16 @@ def write_github_summary(
     # Then the results, before anything that analyses them: what ran, where, and
     # whether it passed.
     lines += [
-        "| Pool | Image | Branch | Revision | Platform | Result | Passed | Failed | "
+        "| Pool | Image | Branch | Revision | Result | Passed | Failed | "
         "Exception | Blocked | Pending |",
-        "|---|---|---|---|---|:---:|:---:|:---:|:---:|:---:|:---:|",
+        "|---|---|---|---|:---:|:---:|:---:|:---:|:---:|:---:|",
     ]
     for run in runs:
         ident = run["identity"]
         c = run.get("counts") or {}
         verdict = run.get("verdict", "not started")
         lines.append(
-            "| [{pool}]({url}) | `{image}` | `{branch}` | `{rev}` | `{platform}` | "
+            "| [{pool}]({url}) | `{image}` | `{branch}` | `{rev}` | "
             "{verdict} | {ok} | {failed} | {exc} | {blocked} | {pending} |".format(
                 pool=run["pool"],
                 url=f"{root_url}/tasks/groups/{run['task_group_id']}"
@@ -1611,7 +1680,6 @@ def write_github_summary(
                 image=ident.get("image"),
                 branch=ident.get("src_branch"),
                 rev=ident.get("revision"),
-                platform=task_platform(run.get("tasks") or [], run["pool"]),
                 verdict=verdict,
                 ok=c.get("completed", "-"),
                 failed=c.get("failed", "-"),
@@ -1808,6 +1876,9 @@ def main() -> int:
                 "deployment_source": record["source"],
                 "config_url": record["config_url"],
                 "decision_task_id": decision_task_id,
+                # What this pool is standing in for: the production worker type
+                # whose mozilla-central tasks get replicated onto it.
+                "stages": pool.source_worker_type,
                 # For the by-worker breakdown: a node that claimed nothing all
                 # run has no task to be found from.
                 "nodes": list(pool.nodes),
@@ -1846,10 +1917,11 @@ def main() -> int:
             notice(
                 f"  {run['pool']}: build under test "
                 f"{build.get('name') or build['task_id']} "
-                f"({root_url}/tasks/{build['task_id']}/artifacts/{build['artifact']}) "
                 f"gecko {build['revision'][:12] or 'unknown'} "
+                f"built {stamp(build.get('built')) or 'unknown'} "
                 f"for {build['tasks']} task(s)"
             )
+            notice(f"    {build.get('url') or '(no installer_url)'}")
 
     # ---- did the configuration move under us? ----------------------------- #
     drift = compare_deployments(before, snapshot_deployments(pool_names, repo, refs))
