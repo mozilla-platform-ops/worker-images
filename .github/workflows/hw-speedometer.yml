@@ -6,6 +6,15 @@ run-name: HW Speedometer x${{ inputs.repeat }} - ${{ github.actor }}
 # everything a pool's production counterpart runs once: a speedometer number on
 # one run says little, so the question here is always "the same test, N times,
 # what is the spread". Dispatch-only; hardware needs a PXE deploy first.
+#
+# The build under test comes from mozilla-central, not from here. Tasks are
+# replicated from a floating index, and each keeps its own
+# EXTRA_MOZHARNESS_CONFIG.installer_url -- normally `public/build/target.zip`
+# off a `build-win64-shippable/opt` task, though a custom-car task carries a
+# plain `build-win64/opt` instead. That matters more here than anywhere: the
+# spread across N runs is only a property of the hardware if every run
+# installed the same build. The run records the gecko revision and the build
+# task per pool, in the log and under "Build under test" in the step summary.
 
 on:
   workflow_dispatch:
