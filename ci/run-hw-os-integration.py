@@ -1161,29 +1161,14 @@ def summarize(values: list[float]) -> dict:
     return summary
 
 
-# A node this far from its peers is worth looking at rather than averaging away.
-# Speedometer3 run-to-run noise on a healthy NUC is ~1-2%, so 5% is well clear of
-# it without flagging every pool with an uneven split.
-WORKER_OUTLIER_PERCENT = 5.0
-
-
-def peer_baseline(worker_means: list[float]) -> float:
-    """What a node should be compared against: the median of the per-node means.
-
-    Not the pool mean. One slow node drags the pool mean down far enough that
-    every healthy node then reads as fast, which flags the whole pool and points
-    at nothing. A median of node means is unmoved by a single bad node, so the
-    node that is actually different is the one that stands out.
-    """
-    return statistics.median(worker_means) if worker_means else 0.0
-
-
-def percent_delta(value: float, baseline: float) -> float:
-    return 100 * (value - baseline) / baseline if baseline else 0.0
-
-
-def is_outlier(delta: float) -> bool:
-    return abs(delta) >= WORKER_OUTLIER_PERCENT
+# There is deliberately no node-against-node comparison here. These pools are two
+# and three nodes: the median of two node means is the midpoint between them, so
+# both nodes are always equidistant from it and either both are flagged or
+# neither is. Run 32743362153 produced six such flags and every one was an
+# artifact of that -- ±100% between a node scoring 0.00 dropped frames and one
+# scoring 0.48, on a suite where near-zero is the good answer. A pool this small
+# has no peer group, only the other node, so each node is reported on its own
+# terms: its mean, its spread, and how many runs it is drawn from.
 
 
 def print_scores(runs: list[dict]) -> None:
@@ -1206,14 +1191,11 @@ def print_scores(runs: list[dict]) -> None:
                 worker: summarize(sample_values(worker_samples))
                 for worker, worker_samples in grouped.items()
             }
-            baseline = peer_baseline([s["mean"] for s in per_worker.values()])
             for worker, worker_stats in per_worker.items():
-                delta = percent_delta(worker_stats["mean"], baseline)
-                flag = " OUTLIER" if is_outlier(delta) else ""
                 notice(
                     f"  {worker}: mean {worker_stats['mean']:.2f} "
-                    f"({delta:+.1f}% vs peers, {worker_stats['cv']:.1f}% CV over "
-                    f"{worker_stats['n']} run(s)){flag}"
+                    f"({worker_stats['cv']:.1f}% CV over "
+                    f"{worker_stats['n']} run(s))"
                 )
         note = idle_note(run)
         if note:
@@ -1280,18 +1262,22 @@ def score_detail_lines(runs: list[dict]) -> list[str]:
     lines.append("")
     lines.append(
         "`↑` higher is better. CV is stdev/mean: the run-to-run noise floor, "
-        "which is what a regression has to beat to be real. Δ is a node against "
-        "the median of its pool's nodes -- not the pool mean, which one bad node "
-        "drags far enough to flag the healthy ones -- and is marked past "
-        f"{WORKER_OUTLIER_PERCENT:.0f}%. A row of one run is noise, not a verdict."
+        "which is what a regression has to beat to be real. Nodes are not "
+        "compared against each other -- with two or three of them the "
+        "comparison says more about the arithmetic than the hardware -- so read "
+        "each node's own CV instead. A row of one run is noise, not a verdict."
     )
     lines.append("")
     return lines
 
 
 def worker_summary_lines(runs: list[dict]) -> list[str]:
-    """Per-node breakdown. A pool mean of three NUCs hides the one that is slow,
-    which on staging hardware is usually the thing being looked for.
+    """Per-node breakdown: what each node scored and how much it moved.
+
+    Each node on its own terms, with no node-against-node verdict -- see the
+    note above print_scores(). CV is the column to read: a node whose own runs
+    disagree is the finding, and unlike a delta it means the same thing whether
+    the pool has two nodes or ten.
 
     Only nodes that produced a result get a row; the rest are accounted for in
     one line per pool by idle_note(), rather than a row per suite each.
@@ -1299,40 +1285,26 @@ def worker_summary_lines(runs: list[dict]) -> list[str]:
     lines = [
         "#### By worker",
         "",
-        "| Pool | Worker | Suite | Runs | Mean | Median | Min | Max | CV | Δ vs peers |",
-        "|---|---|---|:---:|---:|---:|---:|---:|---:|---:|",
+        "| Pool | Worker | Suite | Runs | Mean | Median | Min | Max | CV |",
+        "|---|---|---|:---:|---:|---:|---:|---:|---:|",
     ]
-    flagged = []
     for run in runs:
         for name, entry in sorted((run.get("scores") or {}).items()):
-            samples = entry["samples"]
             per_worker = {
                 worker: summarize(sample_values(worker_samples))
-                for worker, worker_samples in by_worker(samples).items()
+                for worker, worker_samples in by_worker(entry["samples"]).items()
             }
-            baseline = peer_baseline([s["mean"] for s in per_worker.values()])
             for worker, s in per_worker.items():
-                delta = percent_delta(s["mean"], baseline)
-                mark = " ⚠️" if is_outlier(delta) else ""
-                if is_outlier(delta):
-                    flagged.append((run["pool"], worker, name, delta, s["n"]))
                 lines.append(
-                    f"| {run['pool']} | `{worker}`{mark} | {name} | {s['n']} | "
+                    f"| {run['pool']} | `{worker}` | {name} | {s['n']} | "
                     f"{s['mean']:.2f} | {s['median']:.2f} | {s['min']:.2f} | "
-                    f"{s['max']:.2f} | {s['cv']:.1f}% | {delta:+.1f}% |"
+                    f"{s['max']:.2f} | {s['cv']:.1f}% |"
                 )
     lines.append("")
 
     notes = [f"- {note}" for note in map(idle_note, runs) if note]
-    lines += notes
-
-    for pool, worker, suite, delta, count in flagged:
-        lines.append(
-            f"- ⚠️ **{worker}** ({pool}) is {delta:+.1f}% off its peers on "
-            f"{suite} over {count} run(s)"
-        )
-    if notes or flagged:
-        lines.append("")
+    if notes:
+        lines += notes + [""]
     return lines
 
 

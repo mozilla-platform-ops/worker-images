@@ -371,7 +371,7 @@ class TestWorkerBreakdown(RunnerTestBase):
             {"nuc13-024": 24.5, "nuc13-119": 20.0},
         )
 
-    def test_table_has_a_row_per_worker_with_delta(self):
+    def test_table_has_a_row_per_worker(self):
         runs = self._scored(
             [("nuc13-024", 25.0), ("nuc13-024", 25.0), ("nuc13-059", 25.0)]
         )
@@ -379,42 +379,40 @@ class TestWorkerBreakdown(RunnerTestBase):
         self.assertIn("#### By worker", table)
         self.assertIn("`nuc13-024`", table)
         self.assertIn("`nuc13-059`", table)
-        # every node is on the pool mean here, so nothing is flagged
-        self.assertNotIn("⚠️", table)
-        self.assertIn("+0.0%", table)
 
-    def test_slow_node_is_flagged_and_its_healthy_peers_are_not(self):
-        # nuc13-119 is 20% down on the others: the case this table exists for.
-        # Comparing against the pool mean would flag all three, since one slow
-        # node drags that mean down and leaves the healthy pair reading fast.
-        runs = self._scored(
-            [
-                ("nuc13-024", 25.0),
-                ("nuc13-059", 25.0),
-                ("nuc13-119", 20.0),
-                ("nuc13-119", 20.0),
-            ]
-        )
-        table = "\n".join(self.mod.worker_summary_lines(runs))
-        self.assertIn("`nuc13-119` ⚠️", table)
-        self.assertNotIn("`nuc13-024` ⚠️", table)
-        self.assertNotIn("`nuc13-059` ⚠️", table)
-        self.assertIn("-20.0%", table)
-        self.assertIn("nuc13-119** (win11-64-24h2-hw-perf-debug) is -20.0%", table)
-
-    def test_peer_baseline_is_unmoved_by_one_bad_node(self):
-        self.assertEqual(self.mod.peer_baseline([25.0, 25.0, 20.0]), 25.0)
-        self.assertEqual(self.mod.peer_baseline([]), 0.0)
-        # with two nodes that disagree there is no majority to appeal to, so
-        # both sit off the midpoint and both get flagged
+    def test_nodes_are_not_compared_against_each_other(self):
+        # Two nodes that disagree by 20%. The median of two node means is the
+        # midpoint, so a delta column would put both of them equally far from
+        # it and mark both -- which is arithmetic, not a finding.
         runs = self._scored([("nuc13-024", 25.0), ("nuc13-119", 20.0)])
         table = "\n".join(self.mod.worker_summary_lines(runs))
-        self.assertIn("`nuc13-024` ⚠️", table)
-        self.assertIn("`nuc13-119` ⚠️", table)
+        self.assertNotIn("⚠️", table)
+        self.assertNotIn("vs peers", table)
+        self.assertNotIn("%", table.splitlines()[2], "no delta column in the header")
+        self.assertIn("25.00", table)
+        self.assertIn("20.00", table)
 
-    def test_a_node_within_the_noise_floor_is_not_flagged(self):
-        runs = self._scored([("nuc13-024", 25.0), ("nuc13-059", 24.5)])
-        self.assertNotIn("⚠️", "\n".join(self.mod.worker_summary_lines(runs)))
+    def test_near_zero_scores_produce_no_flag(self):
+        # Run 32743362153: a node scoring 0.00 dropped frames against one
+        # scoring 0.48 was marked -100%, on a suite where 0.00 is the best
+        # possible result.
+        runs = self._scored([("nuc13-074", 0.0), ("nuc13-115", 0.48)])
+        table = "\n".join(self.mod.worker_summary_lines(runs))
+        self.assertNotIn("⚠️", table)
+        self.assertNotIn("100.0%", table)
+
+    def test_each_node_still_reports_its_own_spread(self):
+        # CV is what replaces the delta: it means the same thing whether the
+        # pool has two nodes or ten.
+        runs = self._scored([("nuc13-024", 20.0), ("nuc13-024", 30.0)])
+        row = next(
+            line
+            for line in self.mod.worker_summary_lines(runs)
+            if "`nuc13-024`" in line
+        )
+        self.assertIn("| 2 |", row)
+        self.assertIn("25.00", row)
+        self.assertIn("28.3%", row, "sample stdev 7.07 over a mean of 25")
 
     def test_only_nodes_that_produced_a_result_get_a_row(self):
         # What this replaced: idle nodes were worked out per suite, so a pool of
@@ -471,13 +469,9 @@ class TestWorkerBreakdown(RunnerTestBase):
         runs = self._scored([("nuc13-024", 25.0)])
         self.assertEqual(self.mod.idle_note(runs[0]), "")
 
-    def test_outlier_threshold_is_symmetric(self):
-        self.assertTrue(self.mod.is_outlier(self.mod.WORKER_OUTLIER_PERCENT))
-        self.assertTrue(self.mod.is_outlier(-self.mod.WORKER_OUTLIER_PERCENT))
-        self.assertFalse(self.mod.is_outlier(self.mod.WORKER_OUTLIER_PERCENT - 0.1))
-
-    def test_percent_delta_handles_a_zero_baseline(self):
-        self.assertEqual(self.mod.percent_delta(1.0, 0.0), 0.0)
+    def test_the_comparison_helpers_are_gone(self):
+        for name in ("peer_baseline", "percent_delta", "is_outlier"):
+            self.assertFalse(hasattr(self.mod, name), name)
 
     def test_breakdown_is_part_of_the_score_detail_section(self):
         runs = self._scored([("nuc13-024", 25.0), ("nuc13-119", 25.0)])
