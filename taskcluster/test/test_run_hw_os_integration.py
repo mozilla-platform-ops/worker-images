@@ -11,6 +11,7 @@ installed where it runs.
 
 import datetime
 import importlib.util
+import json
 import os
 import sys
 import tempfile
@@ -1275,6 +1276,139 @@ class TestResultsTable(unittest.TestCase):
         for run in runs:
             run["tasks"] = []
         self.assertEqual(self.mod.results_table_lines(runs, "https://tc.example"), [])
+
+
+class TestBuildUnderTest(unittest.TestCase):
+    """Which Firefox build a replicated task installed, which is the half of a
+    red run this repo did not produce."""
+
+    POOL = "win11-64-24h2-hw-perf-debug"
+    SHIPPABLE = "Dqt4vebYTveKE-nU2_M_GQ"
+    PLAIN = "JVUDzESdTUqMrEQQQVGSBw"
+    REV = "a33c90571e92de766016d68eb74994cec1c0a75e"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.mod = _load_runner()
+
+    def _task(self, task_id, build_task, rev=None, repo=None, config=None):
+        url = (
+            "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/"
+            f"{build_task}/artifacts/public/build/target.zip"
+        )
+        env = {
+            "GECKO_HEAD_REPOSITORY": repo or "https://hg.mozilla.org/mozilla-central",
+            "GECKO_HEAD_REV": rev or self.REV,
+            "EXTRA_MOZHARNESS_CONFIG": json.dumps({"installer_url": url})
+            if config is None
+            else config,
+        }
+        return {
+            "status": {"taskId": task_id, "state": "completed"},
+            "task": {"metadata": {"name": task_id}, "payload": {"env": env}},
+        }
+
+    def test_one_build_shared_by_every_task_is_one_row(self):
+        tasks = [self._task(f"t{i}", self.SHIPPABLE) for i in range(4)]
+        builds = self.mod.builds_under_test(tasks)
+        self.assertEqual(len(builds), 1)
+        self.assertEqual(builds[0]["task_id"], self.SHIPPABLE)
+        self.assertEqual(builds[0]["artifact"], "public/build/target.zip")
+        self.assertEqual(builds[0]["revision"], self.REV)
+        self.assertEqual(builds[0]["tasks"], 4)
+
+    def test_a_pool_can_install_more_than_one_build(self):
+        # Run 32408143910: custom-car carried build-win64/opt while the other
+        # nine tasks used build-win64-shippable/opt, at the same revision.
+        tasks = [self._task(f"t{i}", self.SHIPPABLE) for i in range(9)]
+        tasks.append(self._task("custom-car", self.PLAIN))
+        builds = self.mod.builds_under_test(tasks)
+        self.assertEqual([b["tasks"] for b in builds], [9, 1], "most-used first")
+        self.assertEqual({b["task_id"] for b in builds}, {self.SHIPPABLE, self.PLAIN})
+
+    def test_a_task_with_no_installer_is_skipped_not_fatal(self):
+        tasks = [
+            self._task("good", self.SHIPPABLE),
+            self._task("no-config", self.SHIPPABLE, config=""),
+            self._task("bad-json", self.SHIPPABLE, config="{not json"),
+            {"status": {"taskId": "bare", "state": "completed"}, "task": {}},
+        ]
+        builds = self.mod.builds_under_test(tasks)
+        self.assertEqual(len(builds), 1)
+        self.assertEqual(builds[0]["tasks"], 1)
+
+    def test_the_build_task_name_is_read_once_per_task_id(self):
+        asked = []
+
+        class Queue:
+            def task(_self, task_id):
+                asked.append(task_id)
+                return {"metadata": {"name": "build-win64-shippable/opt"}}
+
+        runs = [
+            {
+                "pool": self.POOL,
+                "task_group_id": GROUP,
+                "tasks": [self._task(f"t{i}", self.SHIPPABLE) for i in range(3)],
+            }
+        ]
+        self.mod.collect_builds(Queue(), runs)
+        self.assertEqual(asked, [self.SHIPPABLE], "one lookup, not one per task")
+        self.assertEqual(runs[0]["builds"][0]["name"], "build-win64-shippable/opt")
+
+    def test_a_queue_that_will_not_name_the_build_is_survivable(self):
+        class Queue:
+            def task(_self, task_id):
+                raise FakeRestFailure("500")
+
+        runs = [
+            {
+                "pool": self.POOL,
+                "task_group_id": GROUP,
+                "tasks": [self._task("t0", self.SHIPPABLE)],
+            }
+        ]
+        self.mod.collect_builds(Queue(), runs)
+        self.assertEqual(runs[0]["builds"][0]["name"], "")
+        self.assertEqual(runs[0]["builds"][0]["task_id"], self.SHIPPABLE)
+
+    def test_the_table_links_the_revision_and_the_build(self):
+        runs = [
+            {
+                "pool": self.POOL,
+                "builds": [
+                    {
+                        "repository": "https://hg.mozilla.org/mozilla-central",
+                        "revision": self.REV,
+                        "task_id": self.SHIPPABLE,
+                        "artifact": "public/build/target.zip",
+                        "tasks": 4,
+                        "name": "build-win64-shippable/opt",
+                    }
+                ],
+            }
+        ]
+        table = "\n".join(self.mod.build_summary_lines(runs, "https://tc.example"))
+        self.assertIn("### Build under test", table)
+        self.assertIn(f"[`{self.REV[:12]}`](https://hg.mozilla.org/", table)
+        self.assertIn(f"/rev/{self.REV})", table)
+        self.assertIn("[build-win64-shippable/opt](https://tc.example/tasks/", table)
+        self.assertIn("`public/build/target.zip`", table)
+        # Shortened where it is read, full where it is followed.
+        self.assertNotIn(f"`{self.REV}`", table)
+
+    def test_a_github_repository_links_to_a_commit_not_a_rev(self):
+        self.assertEqual(
+            self.mod.revision_url("https://github.com/mozilla-firefox/firefox", "abc"),
+            "https://github.com/mozilla-firefox/firefox/commit/abc",
+        )
+        self.assertEqual(self.mod.revision_url("", "abc"), "")
+
+    def test_no_builds_means_no_section(self):
+        self.assertEqual(
+            self.mod.build_summary_lines([{"pool": self.POOL}], "https://tc.example"),
+            [],
+        )
 
 
 if __name__ == "__main__":

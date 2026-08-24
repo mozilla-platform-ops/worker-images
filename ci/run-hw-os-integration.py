@@ -67,6 +67,10 @@ WAIT_CEILING_SECONDS = int(5.75 * 60 * 60)
 
 TASK_GROUP_ID_RE = re.compile(r'"taskGroupId":\s*"([A-Za-z0-9_-]{22})"')
 
+# A replicated test task installs the build mozilla-central pointed it at, named
+# in EXTRA_MOZHARNESS_CONFIG as a queue artifact URL.
+INSTALLER_URL_RE = re.compile(r"/task/([A-Za-z0-9_-]{22})/artifacts/(\S+)$")
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 HW_POOLS_MODULE = (
     REPO_ROOT / "taskcluster" / "worker_images_taskgraph" / "util" / "hw_pools.py"
@@ -971,6 +975,73 @@ _STATE_ORDER = {
 }
 
 
+def builds_under_test(tasks: list[dict]) -> list[dict]:
+    """The Firefox builds a pool's replicated tasks actually installed.
+
+    Nothing here is built by this repo. A replicated task keeps
+    mozilla-central's own `installer_url`, so what it tests is whatever build
+    that task pointed at -- and not necessarily one build per pool: a
+    custom-car run carries a plain `build-win64/opt` alongside the shippable
+    one every other task uses.
+
+    The gecko revision is the part worth recording. The graph is replicated from
+    a floating index, so which revision a run tested is a property of when it
+    ran, not of anything in this repo, and it is not otherwise written down.
+    """
+    found: dict[tuple, int] = {}
+    for task in tasks:
+        env = (task.get("task", {}).get("payload") or {}).get("env") or {}
+        try:
+            config = json.loads(env.get("EXTRA_MOZHARNESS_CONFIG") or "{}")
+        except ValueError:
+            continue
+        match = INSTALLER_URL_RE.search(config.get("installer_url") or "")
+        if not match:
+            continue
+        key = (
+            env.get("GECKO_HEAD_REPOSITORY", ""),
+            env.get("GECKO_HEAD_REV", ""),
+            match.group(1),
+            match.group(2),
+        )
+        found[key] = found.get(key, 0) + 1
+
+    return [
+        {
+            "repository": repository,
+            "revision": revision,
+            "task_id": task_id,
+            "artifact": artifact,
+            "tasks": count,
+        }
+        # Most-used build first: the one-off variants are the footnote.
+        for (repository, revision, task_id, artifact), count in sorted(
+            found.items(), key=lambda item: (-item[1], item[0])
+        )
+    ]
+
+
+def collect_builds(queue, runs: list[dict]) -> None:
+    """Attach each pool's builds, with the build task's own name where the queue
+    will give it. Never fatal: an unnamed build is still an identified one."""
+    names: dict[str, str] = {}
+    for run in runs:
+        builds = builds_under_test(
+            replicated_tasks(run.get("tasks") or [], run.get("task_group_id"))
+        )
+        for build in builds:
+            task_id = build["task_id"]
+            if task_id not in names:
+                try:
+                    definition = queue.task(task_id)
+                    names[task_id] = (definition.get("metadata") or {}).get("name", "")
+                except Exception as exc:  # noqa: BLE001 - a name is not worth failing
+                    warn(f"could not read build task {task_id}: {exc}")
+                    names[task_id] = ""
+            build["name"] = names[task_id]
+        run["builds"] = builds
+
+
 def collect_scores(queue, runs: list[dict]) -> None:
     """Attach each pool's suite scores, keyed by suite name.
 
@@ -1446,6 +1517,56 @@ def results_table_lines(runs: list[dict], root_url: str) -> list[str]:
     return lines
 
 
+def revision_url(repository: str, revision: str) -> str:
+    if not repository or not revision:
+        return ""
+    stem = repository.rstrip("/")
+    return f"{stem}/{'commit' if 'github.com' in stem else 'rev'}/{revision}"
+
+
+def build_summary_lines(runs: list[dict], root_url: str) -> list[str]:
+    """What each pool actually installed, and from which revision.
+
+    The run reports the worker image it tested to the commit, and until now said
+    nothing at all about the other half -- the Firefox build the tests ran. A
+    red run is only attributable to an image once you know the build under it
+    did not also move, and the index this graph is replicated from floats.
+    """
+    rows = [(run, build) for run in runs for build in (run.get("builds") or [])]
+    if not rows:
+        return []
+
+    lines = [
+        "### Build under test",
+        "",
+        "| Pool | Gecko revision | Build task | Artifact | Tasks |",
+        "|---|---|---|---|:---:|",
+    ]
+    for run, build in rows:
+        revision = build.get("revision") or ""
+        url = revision_url(build.get("repository", ""), revision)
+        shown = revision[:12] or "unknown"
+        lines.append(
+            f"| {short_pool(run['pool'])} | "
+            f"{f'[`{shown}`]({url})' if url else f'`{shown}`'} | "
+            f"[{build.get('name') or build['task_id']}]"
+            f"({root_url}/tasks/{build['task_id']}) | "
+            f"`{build['artifact']}` | {build['tasks']} |"
+        )
+    lines += [
+        "",
+        (
+            "Nothing above is built by this repo: a replicated task installs "
+            "whatever build mozilla-central's own `installer_url` pointed at. "
+            "The revision comes from the index the graph was replicated from, "
+            "which floats -- two runs a day apart can test different revisions, "
+            "and a red run is only the image's fault if this row held still."
+        ),
+        "",
+    ]
+    return lines
+
+
 def write_github_summary(
     runs: list[dict],
     root_url: str,
@@ -1506,6 +1627,9 @@ def write_github_summary(
     # of configuration between a red verdict and the name of the thing that
     # failed.
     lines += results_table_lines(runs, root_url)
+
+    # Straight after the results: what those results were a test of.
+    lines += build_summary_lines(runs, root_url)
 
     lines += failure_summary or []
 
@@ -1714,6 +1838,18 @@ def main() -> int:
     # Scores for whatever resolved, timed out or not: a run that ran out of wait
     # still has results, and they are the reason it was started.
     collect_scores(queue, live)
+    # Which Firefox build each pool installed. Recorded in the log as well as
+    # the summary: the summary dies with the job if GitHub cancels it at 6h.
+    collect_builds(queue, live)
+    for run in live:
+        for build in run.get("builds") or []:
+            notice(
+                f"  {run['pool']}: build under test "
+                f"{build.get('name') or build['task_id']} "
+                f"({root_url}/tasks/{build['task_id']}/artifacts/{build['artifact']}) "
+                f"gecko {build['revision'][:12] or 'unknown'} "
+                f"for {build['tasks']} task(s)"
+            )
 
     # ---- did the configuration move under us? ----------------------------- #
     drift = compare_deployments(before, snapshot_deployments(pool_names, repo, refs))

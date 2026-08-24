@@ -4,6 +4,16 @@ run-name: HW OS Integration Tests ${{ inputs.repeat != '1' && format('x{0} ', in
 # Validates a WIM or ronin_puppet change without a try push (RELOPS-2503).
 # Dispatch-only: hardware needs a PXE deploy first. One checkbox per pool.
 #
+# The build under test comes from mozilla-central, not from here. Tasks are
+# replicated from a floating index, and each keeps its own
+# EXTRA_MOZHARNESS_CONFIG.installer_url -- normally
+# `public/build/target.zip` off a `build-win64-shippable/opt` task, though a
+# custom-car task carries a plain `build-win64/opt` instead. Two runs a day
+# apart can therefore test different revisions, so the run records the gecko
+# revision and the build task per pool, in the log and under
+# "Build under test" in the step summary. A red run is only the image's fault
+# if that row held still.
+#
 # Each task runs once by default. Repeating the whole set is for intermittents --
 # a task that fails one run in five is the interesting kind of broken. For one
 # test many times, which is a different question, use hw-speedometer.yml.
