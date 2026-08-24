@@ -1003,6 +1003,10 @@ def builds_under_test(tasks: list[dict]) -> list[dict]:
             env.get("GECKO_HEAD_REV", ""),
             match.group(1),
             match.group(2),
+            # Verbatim, not rebuilt from the parts: this is the exact string
+            # mozilla-central handed the task, and it is what you would curl to
+            # get the same bits the hardware installed.
+            config["installer_url"],
         )
         found[key] = found.get(key, 0) + 1
 
@@ -1012,33 +1016,61 @@ def builds_under_test(tasks: list[dict]) -> list[dict]:
             "revision": revision,
             "task_id": task_id,
             "artifact": artifact,
+            "url": url,
             "tasks": count,
         }
         # Most-used build first: the one-off variants are the footnote.
-        for (repository, revision, task_id, artifact), count in sorted(
+        for (repository, revision, task_id, artifact, url), count in sorted(
             found.items(), key=lambda item: (-item[1], item[0])
         )
     ]
 
 
+def build_metadata(queue, task_id: str, artifact: str) -> dict:
+    """Name the build, and date it.
+
+    Three questions the task id alone does not answer: what kind of build it is,
+    when it was produced -- which is how stale the thing under test was, and the
+    graph is replicated from a floating index so it is never today by default --
+    and when the artifact goes away, which is what #878 exists to work around.
+
+    Never fatal, and each field independently so one failure does not cost the
+    others: an unnamed, undated build is still an identified one.
+    """
+    metadata = {"name": "", "built": "", "expires": "", "size": 0}
+    try:
+        definition = queue.task(task_id)
+        metadata["name"] = (definition.get("metadata") or {}).get("name", "")
+    except Exception as exc:  # noqa: BLE001 - a name is not worth failing a run
+        warn(f"could not read build task {task_id}: {exc}")
+    try:
+        task_runs = (queue.status(task_id).get("status") or {}).get("runs") or []
+        metadata["built"] = task_runs[-1].get("resolved", "") if task_runs else ""
+    except Exception as exc:  # noqa: BLE001
+        warn(f"could not read build task status {task_id}: {exc}")
+    try:
+        for entry in queue.listLatestArtifacts(task_id).get("artifacts") or []:
+            if entry.get("name") == artifact:
+                metadata["expires"] = entry.get("expires", "")
+                metadata["size"] = entry.get("contentLength", 0)
+                break
+    except Exception as exc:  # noqa: BLE001
+        warn(f"could not list artifacts of build task {task_id}: {exc}")
+    return metadata
+
+
 def collect_builds(queue, runs: list[dict]) -> None:
-    """Attach each pool's builds, with the build task's own name where the queue
-    will give it. Never fatal: an unnamed build is still an identified one."""
-    names: dict[str, str] = {}
+    """Attach each pool's builds, each described well enough to go and fetch."""
+    known: dict[tuple, dict] = {}
     for run in runs:
         builds = builds_under_test(
             replicated_tasks(run.get("tasks") or [], run.get("task_group_id"))
         )
         for build in builds:
-            task_id = build["task_id"]
-            if task_id not in names:
-                try:
-                    definition = queue.task(task_id)
-                    names[task_id] = (definition.get("metadata") or {}).get("name", "")
-                except Exception as exc:  # noqa: BLE001 - a name is not worth failing
-                    warn(f"could not read build task {task_id}: {exc}")
-                    names[task_id] = ""
-            build["name"] = names[task_id]
+            key = (build["task_id"], build["artifact"])
+            if key not in known:
+                known[key] = build_metadata(queue, *key)
+            build.update(known[key])
         run["builds"] = builds
 
 
@@ -1528,6 +1560,15 @@ def pool_mapping_lines(runs: list[dict]) -> list[str]:
     return lines
 
 
+def stamp(iso: str | None) -> str:
+    """`2026-08-21T17:35:25.163Z` as `2026-08-21 17:35Z`. Minutes are as fine as
+    anyone reads a build date to, and seconds cost a column's width."""
+    if not iso or "T" not in iso:
+        return ""
+    date, _, rest = iso.partition("T")
+    return f"{date} {rest[:5]}Z"
+
+
 def revision_url(repository: str, revision: str) -> str:
     if not repository or not revision:
         return ""
@@ -1550,8 +1591,8 @@ def build_summary_lines(runs: list[dict], root_url: str) -> list[str]:
     lines = [
         "### Build under test",
         "",
-        "| Pool | Gecko revision | Build task | Artifact | Tasks |",
-        "|---|---|---|---|:---:|",
+        "| Pool | Gecko revision | Build task | Built | Artifact expires | Tasks |",
+        "|---|---|---|---|---|:---:|",
     ]
     for run, build in rows:
         revision = build.get("revision") or ""
@@ -1562,16 +1603,30 @@ def build_summary_lines(runs: list[dict], root_url: str) -> list[str]:
             f"{f'[`{shown}`]({url})' if url else f'`{shown}`'} | "
             f"[{build.get('name') or build['task_id']}]"
             f"({root_url}/tasks/{build['task_id']}) | "
-            f"`{build['artifact']}` | {build['tasks']} |"
+            f"{stamp(build.get('built')) or '-'} | "
+            f"{stamp(build.get('expires')) or '-'} | {build['tasks']} |"
         )
+
+    # The URL in full and on its own line rather than behind link text: it is
+    # the one thing here you might want to curl, and a table cell mangles it.
+    lines += ["", "The exact artifact each pool installed:", "", "```"]
+    for run, build in rows:
+        size = build.get("size") or 0
+        lines.append(
+            f"{short_pool(run['pool'])}{f'  ({size / 1e6:.0f} MB)' if size else ''}"
+        )
+        lines.append(f"  {build.get('url') or '(no installer_url)'}")
+    lines += ["```", ""]
+
     lines += [
-        "",
         (
             "Nothing above is built by this repo: a replicated task installs "
             "whatever build mozilla-central's own `installer_url` pointed at. "
             "The revision comes from the index the graph was replicated from, "
             "which floats -- two runs a day apart can test different revisions, "
-            "and a red run is only the image's fault if this row held still."
+            "and a red run is only the image's fault if this row held still. "
+            "**Built** is when that build finished, not when this run started: "
+            "the gap between them is how stale the thing under test was."
         ),
         "",
     ]
@@ -1862,10 +1917,11 @@ def main() -> int:
             notice(
                 f"  {run['pool']}: build under test "
                 f"{build.get('name') or build['task_id']} "
-                f"({root_url}/tasks/{build['task_id']}/artifacts/{build['artifact']}) "
                 f"gecko {build['revision'][:12] or 'unknown'} "
+                f"built {stamp(build.get('built')) or 'unknown'} "
                 f"for {build['tasks']} task(s)"
             )
+            notice(f"    {build.get('url') or '(no installer_url)'}")
 
     # ---- did the configuration move under us? ----------------------------- #
     drift = compare_deployments(before, snapshot_deployments(pool_names, repo, refs))

@@ -1331,6 +1331,10 @@ class TestBuildUnderTest(unittest.TestCase):
     SHIPPABLE = "Dqt4vebYTveKE-nU2_M_GQ"
     PLAIN = "JVUDzESdTUqMrEQQQVGSBw"
     REV = "a33c90571e92de766016d68eb74994cec1c0a75e"
+    URL = (
+        "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/"
+        "Dqt4vebYTveKE-nU2_M_GQ/artifacts/public/build/target.zip"
+    )
 
     @classmethod
     def setUpClass(cls):
@@ -1382,14 +1386,35 @@ class TestBuildUnderTest(unittest.TestCase):
         self.assertEqual(len(builds), 1)
         self.assertEqual(builds[0]["tasks"], 1)
 
-    def test_the_build_task_name_is_read_once_per_task_id(self):
-        asked = []
+    class _Queue:
+        """Shaped like the three queue calls build_metadata makes."""
 
-        class Queue:
-            def task(_self, task_id):
-                asked.append(task_id)
-                return {"metadata": {"name": "build-win64-shippable/opt"}}
+        def __init__(self):
+            self.asked = []
 
+        def task(self, task_id):
+            self.asked.append(("task", task_id))
+            return {"metadata": {"name": "build-win64-shippable/opt"}}
+
+        def status(self, task_id):
+            self.asked.append(("status", task_id))
+            return {"status": {"runs": [{"resolved": "2026-08-21T17:35:25.163Z"}]}}
+
+        def listLatestArtifacts(self, task_id):  # queue's own spelling
+            self.asked.append(("artifacts", task_id))
+            return {
+                "artifacts": [
+                    {"name": "public/build/other.zip", "expires": "2000-01-01T00:00Z"},
+                    {
+                        "name": "public/build/target.zip",
+                        "expires": "2027-08-21T15:38:08.163Z",
+                        "contentLength": 140084144,
+                    },
+                ]
+            }
+
+    def test_the_build_is_described_once_per_task_id(self):
+        queue = self._Queue()
         runs = [
             {
                 "pool": self.POOL,
@@ -1397,13 +1422,27 @@ class TestBuildUnderTest(unittest.TestCase):
                 "tasks": [self._task(f"t{i}", self.SHIPPABLE) for i in range(3)],
             }
         ]
-        self.mod.collect_builds(Queue(), runs)
-        self.assertEqual(asked, [self.SHIPPABLE], "one lookup, not one per task")
-        self.assertEqual(runs[0]["builds"][0]["name"], "build-win64-shippable/opt")
+        self.mod.collect_builds(queue, runs)
+        self.assertEqual(
+            queue.asked,
+            [
+                ("task", self.SHIPPABLE),
+                ("status", self.SHIPPABLE),
+                ("artifacts", self.SHIPPABLE),
+            ],
+            "one lookup each, not one per task",
+        )
+        build = runs[0]["builds"][0]
+        self.assertEqual(build["name"], "build-win64-shippable/opt")
+        self.assertEqual(build["built"], "2026-08-21T17:35:25.163Z")
+        self.assertEqual(build["expires"], "2027-08-21T15:38:08.163Z")
+        self.assertEqual(build["size"], 140084144)
+        self.assertEqual(build["url"], self.URL)
 
-    def test_a_queue_that_will_not_name_the_build_is_survivable(self):
-        class Queue:
-            def task(_self, task_id):
+    def test_each_lookup_fails_independently(self):
+        # A queue that will not give a name should still give a date.
+        class Queue(TestBuildUnderTest._Queue):
+            def task(self, task_id):
                 raise FakeRestFailure("500")
 
         runs = [
@@ -1414,8 +1453,36 @@ class TestBuildUnderTest(unittest.TestCase):
             }
         ]
         self.mod.collect_builds(Queue(), runs)
-        self.assertEqual(runs[0]["builds"][0]["name"], "")
-        self.assertEqual(runs[0]["builds"][0]["task_id"], self.SHIPPABLE)
+        build = runs[0]["builds"][0]
+        self.assertEqual(build["name"], "")
+        self.assertEqual(build["task_id"], self.SHIPPABLE)
+        self.assertEqual(build["built"], "2026-08-21T17:35:25.163Z")
+
+    def test_a_queue_that_will_say_nothing_is_survivable(self):
+        class Queue:
+            def task(self, task_id):
+                raise FakeRestFailure("500")
+
+            def status(self, task_id):
+                raise FakeRestFailure("500")
+
+            def listLatestArtifacts(self, task_id):
+                raise FakeRestFailure("500")
+
+        runs = [
+            {
+                "pool": self.POOL,
+                "task_group_id": GROUP,
+                "tasks": [self._task("t0", self.SHIPPABLE)],
+            }
+        ]
+        self.mod.collect_builds(Queue(), runs)
+        build = runs[0]["builds"][0]
+        self.assertEqual(
+            (build["name"], build["built"], build["expires"]), ("", "", "")
+        )
+        self.assertEqual(build["task_id"], self.SHIPPABLE)
+        self.assertEqual(build["url"], self.URL, "the URL never needed the queue")
 
     def test_the_table_links_the_revision_and_the_build(self):
         runs = [
@@ -1427,8 +1494,12 @@ class TestBuildUnderTest(unittest.TestCase):
                         "revision": self.REV,
                         "task_id": self.SHIPPABLE,
                         "artifact": "public/build/target.zip",
+                        "url": self.URL,
                         "tasks": 4,
                         "name": "build-win64-shippable/opt",
+                        "built": "2026-08-21T17:35:25.163Z",
+                        "expires": "2027-08-21T15:38:08.163Z",
+                        "size": 140084144,
                     }
                 ],
             }
@@ -1438,9 +1509,65 @@ class TestBuildUnderTest(unittest.TestCase):
         self.assertIn(f"[`{self.REV[:12]}`](https://hg.mozilla.org/", table)
         self.assertIn(f"/rev/{self.REV})", table)
         self.assertIn("[build-win64-shippable/opt](https://tc.example/tasks/", table)
-        self.assertIn("`public/build/target.zip`", table)
         # Shortened where it is read, full where it is followed.
         self.assertNotIn(f"`{self.REV}`", table)
+
+    def test_the_artifact_url_is_given_in_full_and_dated(self):
+        runs = [
+            {
+                "pool": self.POOL,
+                "builds": [
+                    {
+                        "repository": "https://hg.mozilla.org/mozilla-central",
+                        "revision": self.REV,
+                        "task_id": self.SHIPPABLE,
+                        "artifact": "public/build/target.zip",
+                        "url": self.URL,
+                        "tasks": 4,
+                        "name": "build-win64-shippable/opt",
+                        "built": "2026-08-21T17:35:25.163Z",
+                        "expires": "2027-08-21T15:38:08.163Z",
+                        "size": 140084144,
+                    }
+                ],
+            }
+        ]
+        table = "\n".join(self.mod.build_summary_lines(runs, "https://tc.example"))
+        # Verbatim and on its own line: this is the thing you would curl.
+        self.assertIn(f"\n  {self.URL}\n", table)
+        self.assertIn("2026-08-21 17:35Z", table)
+        self.assertIn("2027-08-21 15:38Z", table)
+        self.assertIn("(140 MB)", table)
+
+    def test_a_build_the_queue_would_not_describe_still_renders(self):
+        runs = [
+            {
+                "pool": self.POOL,
+                "builds": [
+                    {
+                        "repository": "",
+                        "revision": "",
+                        "task_id": self.SHIPPABLE,
+                        "artifact": "public/build/target.zip",
+                        "url": "",
+                        "tasks": 1,
+                    }
+                ],
+            }
+        ]
+        table = "\n".join(self.mod.build_summary_lines(runs, "https://tc.example"))
+        self.assertIn(f"[{self.SHIPPABLE}](https://tc.example/tasks/", table)
+        self.assertIn("`unknown`", table)
+        self.assertIn("| - | - | 1 |", table)
+        self.assertIn("(no installer_url)", table)
+
+    def test_a_timestamp_is_trimmed_to_the_minute(self):
+        self.assertEqual(
+            self.mod.stamp("2026-08-21T17:35:25.163Z"), "2026-08-21 17:35Z"
+        )
+        self.assertEqual(self.mod.stamp(""), "")
+        self.assertEqual(self.mod.stamp(None), "")
+        self.assertEqual(self.mod.stamp("not-a-timestamp"), "")
 
     def test_a_github_repository_links_to_a_commit_not_a_rev(self):
         self.assertEqual(
