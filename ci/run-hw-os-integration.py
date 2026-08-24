@@ -1489,6 +1489,45 @@ def results_table_lines(runs: list[dict], root_url: str) -> list[str]:
     return lines
 
 
+def pool_mapping_lines(runs: list[dict]) -> list[str]:
+    """What each pool is standing in for, before any of its results.
+
+    A staging pool is only meaningful as a stand-in: `-perf-debug` takes the
+    tasks mozilla-central schedules on `win11-64-24h2-hw`, `-ref-alpha` takes
+    the ones it schedules on `win11-64-24h2-hw-ref`. Those are different suites
+    on different hardware, so which one a reader is looking at decides what the
+    numbers below can be compared with -- and until now it was implicit in the
+    pool name and the task-name prefix, neither of which says it.
+
+    The gecko platform comes off the replicated tasks themselves rather than the
+    pool name, so it also says whether the pool got what its counterpart runs.
+    """
+    if not runs:
+        return []
+
+    lines = [
+        "### Pool mapping",
+        "",
+        "| Pool | Stages | Gecko platform | Nodes |",
+        "|---|---|---|:---:|",
+    ]
+    for run in runs:
+        platform = task_platform(run.get("tasks") or [], run["pool"])
+        lines.append(
+            f"| `{run['pool']}` | `{run.get('stages') or '-'}` | "
+            f"`{platform}` | {len(run.get('nodes') or []) or '-'} |"
+        )
+    lines += [
+        "",
+        (
+            "Both sides are `releng-hardware` worker types: the pool the tasks "
+            "ran on, and the production one they were replicated from."
+        ),
+        "",
+    ]
+    return lines
+
+
 def revision_url(repository: str, revision: str) -> str:
     if not repository or not revision:
         return ""
@@ -1552,8 +1591,11 @@ def write_github_summary(
         return
 
     lines = ["## HW OS Integration Tests", ""]
-    # First thing under the heading: a run whose configuration moved is not a
-    # result, and nobody scrolls to find that out.
+    # First: what each pool is a stand-in for. It is four lines, it never
+    # changes mid-run, and it decides how everything below it reads.
+    lines += pool_mapping_lines(runs)
+    # Then a run whose configuration moved, which is not a result at all and
+    # which nobody should have to scroll to find out about.
     lines += drift_summary_lines(drift or [])
     # Then, for the same reason: counts that are a snapshot rather than a total.
     lines += outran_wait_lines(runs, root_url)
@@ -1565,16 +1607,16 @@ def write_github_summary(
     # Then the results, before anything that analyses them: what ran, where, and
     # whether it passed.
     lines += [
-        "| Pool | Image | Branch | Revision | Platform | Result | Passed | Failed | "
+        "| Pool | Image | Branch | Revision | Result | Passed | Failed | "
         "Exception | Blocked | Pending |",
-        "|---|---|---|---|---|:---:|:---:|:---:|:---:|:---:|:---:|",
+        "|---|---|---|---|:---:|:---:|:---:|:---:|:---:|:---:|",
     ]
     for run in runs:
         ident = run["identity"]
         c = run.get("counts") or {}
         verdict = run.get("verdict", "not started")
         lines.append(
-            "| [{pool}]({url}) | `{image}` | `{branch}` | `{rev}` | `{platform}` | "
+            "| [{pool}]({url}) | `{image}` | `{branch}` | `{rev}` | "
             "{verdict} | {ok} | {failed} | {exc} | {blocked} | {pending} |".format(
                 pool=run["pool"],
                 url=f"{root_url}/tasks/groups/{run['task_group_id']}"
@@ -1583,7 +1625,6 @@ def write_github_summary(
                 image=ident.get("image"),
                 branch=ident.get("src_branch"),
                 rev=ident.get("revision"),
-                platform=task_platform(run.get("tasks") or [], run["pool"]),
                 verdict=verdict,
                 ok=c.get("completed", "-"),
                 failed=c.get("failed", "-"),
@@ -1780,6 +1821,9 @@ def main() -> int:
                 "deployment_source": record["source"],
                 "config_url": record["config_url"],
                 "decision_task_id": decision_task_id,
+                # What this pool is standing in for: the production worker type
+                # whose mozilla-central tasks get replicated onto it.
+                "stages": pool.source_worker_type,
                 # For the by-worker breakdown: a node that claimed nothing all
                 # run has no task to be found from.
                 "nodes": list(pool.nodes),

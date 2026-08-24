@@ -1265,6 +1265,57 @@ class TestResultsTable(unittest.TestCase):
             written.index("### Results"), written.index("produced no score")
         )
 
+    def test_the_pool_mapping_leads_the_summary(self):
+        runs = self._runs()
+        runs[0]["stages"] = "win11-64-24h2-hw-ref"
+        runs[0]["nodes"] = ["t-nuc12-002", "t-nuc12-003"]
+        runs[1]["stages"] = "win11-64-24h2-hw"
+        runs[1]["nodes"] = ["nuc13-074", "nuc13-115", "nuc13-158"]
+        written = self._rendered(runs)
+        self.assertTrue(
+            written.startswith("## HW OS Integration Tests\n\n### Pool mapping"),
+            written,
+        )
+        self.assertLess(
+            written.index("### Pool mapping"), written.index("| Pool | Image |")
+        )
+        self.assertIn(
+            f"| `{self.REF}` | `win11-64-24h2-hw-ref` | "
+            "`windows11-64-24h2-hw-ref-shippable/opt` | 2 |",
+            written,
+        )
+        self.assertIn(
+            f"| `{self.PERF}` | `win11-64-24h2-hw` | "
+            "`windows11-64-24h2-shippable/opt` | 3 |",
+            written,
+        )
+
+    def test_the_platform_is_not_repeated_in_the_verdict_table(self):
+        # It says what the pool is a stand-in for, so it belongs to the mapping.
+        runs = self._runs()
+        runs[0]["stages"] = "win11-64-24h2-hw-ref"
+        written = self._rendered(runs)
+        self.assertEqual(written.count("windows11-64-24h2-hw-ref-shippable/opt"), 1)
+        header = next(
+            line for line in written.splitlines() if line.startswith("| Pool | Image |")
+        )
+        self.assertNotIn("Platform", header)
+
+    def test_a_pool_that_stages_nothing_still_gets_a_row(self):
+        runs = self._runs()[:1]
+        runs[0].pop("stages", None)
+        runs[0]["nodes"] = []
+        line = next(
+            row
+            for row in self.mod.pool_mapping_lines(runs)
+            if row.startswith(f"| `{self.REF}`")
+        )
+        self.assertIn("| `-` |", line)
+        self.assertTrue(line.endswith("| - |"))
+
+    def test_no_runs_means_no_mapping(self):
+        self.assertEqual(self.mod.pool_mapping_lines([]), [])
+
     def test_no_tasks_means_no_table(self):
         runs = self._runs()
         for run in runs:
