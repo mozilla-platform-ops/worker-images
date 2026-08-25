@@ -172,6 +172,9 @@ def _load_transform_module():
     setattr(base_module, "TransformSequence", DummyTransformSequence)
     setattr(util_taskcluster_module, "find_task_id", lambda _: "stub-decision-id")
     setattr(util_taskcluster_module, "get_artifact", lambda *_: {})
+    # Default: no pushlog-id route, so nothing walks back to an earlier push.
+    # Tests that care replace `mod._earlier_pushes` or this.
+    setattr(util_taskcluster_module, "get_task_definition", lambda _: {"routes": []})
     # Default: every dependency completed. Tests that care replace
     # `mod._dependency_states` instead of reaching through this.
     setattr(
@@ -884,6 +887,156 @@ class TestBlockedDependencies(HwPoolsTestBase):
         with self.assertRaises(self.hw_pools.HwPoolError) as ctx:
             self._run([source], {"dep" + "0" * 19: "failed"})
         self.assertIn("only-test", str(ctx.exception))
+
+    def test_the_all_blocked_refusal_is_the_retryable_one(self):
+        # Only this refusal has a chance of a different answer from another
+        # graph, so only this one is a subclass the retry loop catches.
+        self.assertTrue(issubclass(self.mod.HwUpstreamError, self.hw_pools.HwPoolError))
+
+
+PUSH_INDEX = "gecko.v2.mozilla-central.latest.taskgraph.decision"
+
+
+class TestWalkBackToAnEarlierPush(HwPoolsTestBase):
+    """The newest push's build may be cancelled or still running. Run
+    32768047542 reached no verdict because build-win64-shippable/opt was
+    cancelled 23 minutes after its own decision; push 45161 had a completed
+    build and would have served."""
+
+    def setUp(self):
+        super().setUp()
+        os.environ["TASK_ID"] = "DECISIONTASKID12345678"
+        self.addCleanup(os.environ.pop, "TASK_ID", None)
+
+    def _run(self, graphs, dep_states, walkback=3, pushes=None):
+        """`graphs` maps a source label to its task list, newest push first."""
+        labels = list(graphs)
+
+        def fetch_source(index, provisioner):
+            return {
+                "labels": {},
+                "decision": f"decision-for-{labels[0]}",
+                "by_worker_type": {"win11-64-24h2-hw": graphs[labels[0]]},
+            }
+
+        def fetch_decision(decision_task_id, provisioner, label):
+            return {
+                "labels": {},
+                "decision": decision_task_id,
+                "by_worker_type": {"win11-64-24h2-hw": graphs[label]},
+            }
+
+        for name in ("_fetch_source_tasks", "_fetch_decision_tasks", "_earlier_pushes"):
+            self.addCleanup(setattr, self.mod, name, getattr(self.mod, name))
+        self.mod._fetch_source_tasks = fetch_source
+        self.mod._fetch_decision_tasks = fetch_decision
+        self.mod._earlier_pushes = lambda decision, limit: (
+            pushes if pushes is not None else [(45161, "decision-for-pushlog-id 45161")]
+        )[:limit]
+        self.mod._dependency_states = lambda dep_ids: {
+            d: dep_states.get(d, "completed") for d in dep_ids
+        }
+        task = {
+            "name": "gecko-hw",
+            "description": "d",
+            "hw-replicate": {
+                "targets": [PUSH_INDEX],
+                "provisioner": "releng-hardware",
+                "blocked-walkback": walkback,
+            },
+        }
+        config = DummyConfig(self.root, ["win11-64-24h2-hw-alpha"])
+        return list(self.mod.replicate_onto_hw_pools(config, [task]))
+
+    def _with_deps(self, name, deps):
+        source = _source_task(name=name)
+        source["task"]["dependencies"] = deps
+        return source
+
+    def test_a_dead_build_falls_back_to_the_previous_push(self):
+        out = self._run(
+            {
+                PUSH_INDEX: [self._with_deps("a-test", ["dead" + "0" * 18])],
+                "pushlog-id 45161": [self._with_deps("a-test", ["live" + "0" * 18])],
+            },
+            {"dead" + "0" * 18: "exception"},
+        )
+        self.assertEqual([t["attributes"]["hw_source_label"] for t in out], ["a-test"])
+
+    def test_the_fallback_graph_is_recorded_as_the_source(self):
+        out = self._run(
+            {
+                PUSH_INDEX: [self._with_deps("a-test", ["dead" + "0" * 18])],
+                "pushlog-id 45161": [self._with_deps("a-test", ["live" + "0" * 18])],
+            },
+            {"dead" + "0" * 18: "exception"},
+        )
+        self.assertIn("45161", out[0]["attributes"]["hw_source_index"])
+
+    def test_a_walkback_of_zero_keeps_the_old_refusal(self):
+        with self.assertRaises(self.hw_pools.HwPoolError):
+            self._run(
+                {PUSH_INDEX: [self._with_deps("a-test", ["dead" + "0" * 18])]},
+                {"dead" + "0" * 18: "exception"},
+                walkback=0,
+            )
+
+    def test_an_earlier_push_that_is_also_dead_keeps_walking(self):
+        out = self._run(
+            {
+                PUSH_INDEX: [self._with_deps("a-test", ["dead" + "0" * 18])],
+                "pushlog-id 45161": [self._with_deps("a-test", ["also" + "0" * 18])],
+                "pushlog-id 45160": [self._with_deps("a-test", ["live" + "0" * 18])],
+            },
+            {"dead" + "0" * 18: "exception", "also" + "0" * 18: "failed"},
+            pushes=[
+                (45161, "decision-for-pushlog-id 45161"),
+                (45160, "decision-for-pushlog-id 45160"),
+            ],
+        )
+        self.assertEqual(len(out), 1)
+
+    def test_running_out_of_pushes_raises_the_original_refusal(self):
+        with self.assertRaises(self.hw_pools.HwPoolError) as ctx:
+            self._run(
+                {
+                    PUSH_INDEX: [self._with_deps("a-test", ["dead" + "0" * 18])],
+                    "pushlog-id 45161": [
+                        self._with_deps("a-test", ["also" + "0" * 18])
+                    ],
+                },
+                {"dead" + "0" * 18: "exception", "also" + "0" * 18: "failed"},
+            )
+        self.assertIn("a-test", str(ctx.exception))
+
+    def test_nothing_to_walk_to_keeps_the_refusal(self):
+        with self.assertRaises(self.hw_pools.HwPoolError):
+            self._run(
+                {PUSH_INDEX: [self._with_deps("a-test", ["dead" + "0" * 18])]},
+                {"dead" + "0" * 18: "exception"},
+                pushes=[],
+            )
+
+    def test_a_graph_with_no_pushlog_route_yields_no_pushes(self):
+        # A cron graph carries no pushlog-id route, and an older cron graph would
+        # be a week older rather than a push older. The stubbed
+        # get_task_definition returns no routes, which is that case.
+        self.assertEqual(self.mod._earlier_pushes("some-decision", 3), [])
+
+    def test_a_zero_limit_asks_the_index_nothing(self):
+        self.assertEqual(self.mod._earlier_pushes("some-decision", 0), [])
+
+    def test_the_pushlog_route_is_recognised(self):
+        match = self.mod._PUSHLOG_ROUTE_RE.match(
+            "index.gecko.v2.mozilla-central.pushlog-id.45154.decision"
+        )
+        self.assertEqual(match["prefix"], "gecko.v2.mozilla-central")
+        self.assertEqual(match["push"], "45154")
+        self.assertIsNone(
+            self.mod._PUSHLOG_ROUTE_RE.match(
+                "index.gecko.v2.mozilla-central.revision.abc.taskgraph.decision"
+            )
+        )
 
 
 CANARY = "public/cft-cd-win64-canary.tar.bz2"
