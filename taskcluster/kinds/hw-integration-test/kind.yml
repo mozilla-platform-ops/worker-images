@@ -35,6 +35,30 @@ tasks:
       # the platform tests. The curated index above is never trimmed.
       fallback-drop-kinds:
         - perftest
+      # ...and then trimmed to the set this repo names for the worker type.
+      # mozilla-central's test_configs/os-integration.yml lists no ref platform
+      # and we do not change that tree, so the choice lives here. Without it the
+      # set is whatever a tier-1 push happens to run: 16 tasks on 2026-08-19, 21
+      # on 2026-08-24, chosen by nobody. These four are what that fall-back has
+      # in fact been running all week, made explicit so it stops moving.
+      #
+      # Entries are substrings, as the workflow's `tests` filter is, so
+      # `speedometer3` alone would also select `speedometer3-no-nv`. A curated
+      # index -- one mozilla-central has a set for -- is never trimmed.
+      fallback-tests:
+        win11-64-24h2-hw-ref:
+          - browsertime-benchmark-firefox-speedometer3
+          - browsertime-benchmark-firefox-speedometer3-no-nv
+          - browsertime-benchmark-firefox-speedometer-experimental
+          - mochitest-media-mda-gpu
+      # How many pushes back to look when every selected task has a dead
+      # upstream. `latest.taskgraph.decision` is the newest push, whose build may
+      # still be running, superseded or cancelled: run 32768047542 reached no
+      # verdict because its build-win64-shippable/opt was cancelled 23 minutes
+      # after its own decision, while the push before it had a completed build.
+      # Only the uncurated push path can walk -- a cron graph carries no
+      # pushlog-id, and an older cron graph would be a week older, not a push.
+      blocked-walkback: 3
       # Where to look for a live copy of an expired fetch artifact. A replicated
       # task keeps mozilla-central's concrete fetch task ids and MOZ_FETCHES can
       # only name a task and an artifact, so re-pointing it at a fresher task is

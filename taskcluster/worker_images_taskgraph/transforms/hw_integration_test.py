@@ -29,6 +29,7 @@ from taskgraph.transforms.base import TransformSequence
 from taskgraph.util.taskcluster import (
     find_task_id,
     get_artifact,
+    get_task_definition,
     status_task_batched,
 )
 
@@ -73,6 +74,15 @@ def _repo_root(config) -> Path:
     return find_repo_root()
 
 
+class HwUpstreamError(HwPoolError):
+    """Every candidate task for a pool has a dead upstream.
+
+    Distinct from the other refusals because it is the one that another graph
+    might not have: the same tasks from an earlier push depend on that push's
+    own build. See _earlier_push_source.
+    """
+
+
 def _fetch_source_tasks(index: str, provisioner: str) -> dict:
     """A decision graph's hardware tasks by worker type, plus its label index.
 
@@ -80,7 +90,11 @@ def _fetch_source_tasks(index: str, provisioner: str) -> dict:
     an expired one can only be re-resolved by asking a fresher graph for the
     same label -- see _repair_fetches.
     """
-    decision_task_id = find_task_id(index)
+    return _fetch_decision_tasks(find_task_id(index), provisioner, index)
+
+
+def _fetch_decision_tasks(decision_task_id: str, provisioner: str, label: str) -> dict:
+    """As _fetch_source_tasks, for a decision task already in hand."""
     task_graph = get_artifact(decision_task_id, "public/task-graph.json")
 
     # public/task-graph.json is keyed by task id, with the label inside each
@@ -96,11 +110,15 @@ def _fetch_source_tasks(index: str, provisioner: str) -> dict:
         by_worker_type[task["workerType"]].append(task_def)
 
     logger.info(
-        f"hw-integration: {index} (decision {decision_task_id}) has "
+        f"hw-integration: {label} (decision {decision_task_id}) has "
         f"{sum(len(v) for v in by_worker_type.values())} {provisioner} task(s) "
         f"across {len(by_worker_type)} worker type(s)"
     )
-    return {"by_worker_type": dict(by_worker_type), "labels": labels}
+    return {
+        "by_worker_type": dict(by_worker_type),
+        "labels": labels,
+        "decision": decision_task_id,
+    }
 
 
 def _drop_uncurated_kinds(source_tasks, pool, index: str, drop_kinds) -> list:
@@ -139,8 +157,56 @@ def _drop_uncurated_kinds(source_tasks, pool, index: str, drop_kinds) -> list:
     return kept
 
 
+def _curate(source_tasks, pool, index: str, curated) -> list:
+    """Trim an uncurated index to the set this repo has chosen for the pool.
+
+    mozilla-central's test_configs/os-integration.yml names no set for
+    `win11-64-24h2-hw-ref`, and we do not change that tree, so the choice has to
+    live here. Without it the set is whatever a tier-1 push happens to schedule
+    on the platform -- 16 tasks on 2026-08-19, 21 on 2026-08-24 -- which nobody
+    picked and which moves whenever the tree does.
+
+    Entries are matched as substrings, as the `--tests` filter is, so
+    `speedometer3` also selects `speedometer3-no-nv`. An entry that matches
+    nothing is a warning rather than an error: mozilla-central renaming a task
+    should not take a whole run down with it.
+    """
+    wanted = [name for name in (curated.get(pool.source_worker_type) or []) if name]
+    if not wanted:
+        return source_tasks
+
+    kept, matched = [], set()
+    for source in source_tasks:
+        name = _source_name(source).lower()
+        hits = [w for w in wanted if w.lower() in name]
+        if hits:
+            kept.append(source)
+            matched.update(hits)
+
+    for missing in sorted(set(wanted) - matched):
+        logger.warning(
+            f"hw-integration: {pool.name}: curated entry {missing!r} matched no "
+            f"task in {index}. It may have been renamed or removed in-tree."
+        )
+
+    if not kept:
+        raise HwPoolError(
+            f"hw-integration: {pool.name}: none of the curated tasks "
+            f"({', '.join(wanted)}) are scheduled by {index}. Its "
+            f"{len(source_tasks)} available task(s): "
+            f"{_listed(_source_name(s) for s in source_tasks)}"
+        )
+
+    logger.info(
+        f"hw-integration: {pool.name}: {index} is not a curated set, so it was "
+        f"trimmed to the {len(kept)} task(s) this repo names for "
+        f"{pool.source_worker_type}: {_listed(_source_name(s) for s in kept)}"
+    )
+    return kept
+
+
 def _sources_for_pool(
-    pool, targets: list[str], provisioner: str, cache: dict, drop_kinds=()
+    pool, targets: list[str], provisioner: str, cache: dict, drop_kinds=(), curated=None
 ):
     """Tasks for the pool's counterpart, from the first target index that has any.
 
@@ -162,6 +228,7 @@ def _sources_for_pool(
         if matched := by_worker_type.get(pool.source_worker_type):
             if position:
                 matched = _drop_uncurated_kinds(matched, pool, index, drop_kinds)
+                matched = _curate(matched, pool, index, curated or {})
             logger.info(
                 f"hw-integration: {pool.name} <- {len(matched)} "
                 f"{provisioner}/{pool.source_worker_type} task(s) from {index}"
@@ -439,11 +506,91 @@ def _drop_blocked(source_tasks, pool):
         )
 
     if not runnable:
-        raise HwPoolError(
+        raise HwUpstreamError(
             f"hw-integration: every selected task for {pool.name} depends on a "
             f"mozilla-central task that failed: {_listed(blocked)}"
         )
     return runnable
+
+
+# `index.gecko.v2.mozilla-central.pushlog-id.45154.decision` -> prefix and 45154.
+_PUSHLOG_ROUTE_RE = re.compile(
+    r"^index\.(?P<prefix>.+)\.pushlog-id\.(?P<push>\d+)\.decision$"
+)
+
+# How many pushes back to look, and how many ids to scan getting there. Not every
+# id resolves to an indexed decision -- 45160 does not, while 45161 and 45162 do
+# -- so the walk skips gaps rather than assuming the ids are contiguous.
+_WALKBACK_SCAN_MULTIPLIER = 4
+
+
+def _earlier_pushes(decision_task_id: str, limit: int) -> list[tuple[int, str]]:
+    """(push id, decision task id) for the pushes before this one, newest first.
+
+    Only a push decision carries a pushlog-id route, so a curated cron graph
+    yields nothing here and never walks -- which is right: its build finished
+    long ago, and an older cron graph is a week older, not a push older.
+    """
+    if limit < 1:
+        return []
+    try:
+        routes = get_task_definition(decision_task_id).get("routes") or []
+    except Exception as exc:  # noqa: BLE001 - no walk is worse than no run
+        logger.warning(f"hw-integration: could not read {decision_task_id}: {exc}")
+        return []
+
+    for route in routes:
+        if match := _PUSHLOG_ROUTE_RE.match(route):
+            prefix, newest = match["prefix"], int(match["push"])
+            break
+    else:
+        return []
+
+    found: list[tuple[int, str]] = []
+    for push in range(
+        newest - 1, max(newest - 1 - limit * _WALKBACK_SCAN_MULTIPLIER, 0), -1
+    ):
+        if len(found) == limit:
+            break
+        try:
+            found.append((push, find_task_id(f"{prefix}.pushlog-id.{push}.decision")))
+        except Exception:  # noqa: BLE001,S112 - a gap in the pushlog is normal
+            continue
+    return found
+
+
+def _earlier_push_source(
+    pool, decision_task_id, provisioner, cache, drop_kinds, curated, limit, tried
+):
+    """The same pool's tasks from the most recent earlier push that has any.
+
+    A push whose build was cancelled leaves every replicated task unschedulable
+    -- run 32768047542 died that way, on a `build-win64-shippable/opt` cancelled
+    23 minutes after its own decision. The push before it had a completed build,
+    so the run was recoverable and simply was not recovered. Taken as a whole
+    graph rather than by repointing the build, so the test task and the build it
+    installs still come from one push.
+    """
+    if not decision_task_id:
+        return None, None
+    for push, earlier in _earlier_pushes(decision_task_id, limit):
+        label = f"pushlog-id {push}"
+        # A graph already refused cannot become runnable by being asked again,
+        # and without this the walk can be handed the same push forever.
+        if label in tried:
+            continue
+        if label not in cache:
+            cache[label] = _fetch_decision_tasks(earlier, provisioner, label)
+        matched = cache[label]["by_worker_type"].get(pool.source_worker_type)
+        if not matched:
+            continue
+        logger.warning(
+            f"hw-integration: {pool.name}: falling back to push {push} "
+            f"(decision {earlier}); the newer push's tasks all had a dead upstream"
+        )
+        matched = _drop_uncurated_kinds(matched, pool, label, drop_kinds)
+        return label, _curate(matched, pool, label, curated)
+    return None, None
 
 
 def _log_runtime_budget(pool, source_tasks, repeat):
@@ -536,6 +683,8 @@ def replicate_onto_hw_pools(config, tasks):
         provisioner = replicate_config["provisioner"]
         targets = list(replicate_config["targets"])
         drop_kinds = frozenset(replicate_config.get("fallback-drop-kinds") or ())
+        curated = dict(replicate_config.get("fallback-tests") or {})
+        walkback = replicate_config.get("blocked-walkback") or 0
         repair_indexes = list(replicate_config.get("fetch-repair-targets") or ())
         source_cache: dict[str, dict] = {}
 
@@ -571,16 +720,38 @@ def replicate_onto_hw_pools(config, tasks):
                 )
 
             source_tasks, source_index = _sources_for_pool(
-                pool, targets, provisioner, source_cache, drop_kinds
+                pool, targets, provisioner, source_cache, drop_kinds, curated
             )
-            source_tasks = _select_tests(source_tasks, test_filters, pool)
-            source_tasks = _repair_fetches(
-                source_tasks,
-                pool,
-                source_cache[source_index]["labels"],
-                repair_indexes,
-            )
-            source_tasks = _drop_blocked(source_tasks, pool)
+            tried = {source_index}
+            while True:
+                selected = _select_tests(source_tasks, test_filters, pool)
+                selected = _repair_fetches(
+                    selected,
+                    pool,
+                    source_cache[source_index]["labels"],
+                    repair_indexes,
+                )
+                try:
+                    source_tasks = _drop_blocked(selected, pool)
+                    break
+                except HwUpstreamError:
+                    # Only this refusal is retryable, and only against an older
+                    # push: a filter that matches nothing or a curated set the
+                    # graph does not have will match nothing there either.
+                    fallback_index, fallback_tasks = _earlier_push_source(
+                        pool,
+                        source_cache[source_index].get("decision"),
+                        provisioner,
+                        source_cache,
+                        drop_kinds,
+                        curated,
+                        max(walkback - (len(tried) - 1), 0),
+                        tried,
+                    )
+                    if not fallback_index:
+                        raise
+                    tried.add(fallback_index)
+                    source_index, source_tasks = fallback_index, fallback_tasks
             _log_runtime_budget(pool, source_tasks, repeat)
 
             for source in source_tasks:
