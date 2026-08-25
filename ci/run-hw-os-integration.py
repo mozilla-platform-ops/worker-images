@@ -1074,8 +1074,25 @@ def collect_builds(queue, runs: list[dict]) -> None:
         run["builds"] = builds
 
 
+def score_key(data: dict, suite_name: str) -> str:
+    """The suite name qualified by the browser that produced it.
+
+    Firefox and Chrome-for-Testing both emit a suite named literally
+    `speedometer3`. Keying on the suite name alone averaged Firefox's ~26.7 with
+    custom-car's ~32.9 into a meaningless ~29.8, reported the 23% gap between
+    two browsers as this pool's noise -- 11.2% CV on run 32743362153, against
+    0.5% for the same pool running Firefox alone -- and, per node, as one NUC
+    being 22% faster than another when they had run different browsers.
+
+    The blob says which application it was. Falls back to the bare suite name if
+    it does not, so a framework that omits it reads as it always did.
+    """
+    application = ((data.get("application") or {}).get("name") or "").strip()
+    return f"{application} {suite_name}" if application else suite_name
+
+
 def collect_scores(queue, runs: list[dict]) -> None:
-    """Attach each pool's suite scores, keyed by suite name.
+    """Attach each pool's suite scores, keyed by browser and suite name.
 
     Each sample keeps the node that produced it. On a staging pool that is the
     question behind the numbers: a pool mean hides one bad NUC, and one bad NUC
@@ -1093,16 +1110,18 @@ def collect_scores(queue, runs: list[dict]) -> None:
             data = fetch_perfherder(queue, task_id)
             if not data:
                 continue
+            application = data.get("application") or {}
             for suite in data.get("suites") or []:
                 name = suite.get("name")
                 value = suite.get("value")
                 if not name or value is None:
                     continue
                 entry = scores.setdefault(
-                    name,
+                    score_key(data, name),
                     {
                         "unit": suite.get("unit", ""),
                         "lower_is_better": bool(suite.get("lowerIsBetter")),
+                        "version": application.get("version", ""),
                         "samples": [],
                     },
                 )
@@ -1248,15 +1267,19 @@ def score_summary_lines(runs: list[dict]) -> list[str]:
     lines = [
         "### Scores",
         "",
-        "| Pool | Suite | Runs | Mean | Median | Min | Max | Stdev | CV | Unit |",
-        "|---|---|:---:|---:|---:|---:|---:|---:|---:|---|",
+        (
+            "| Pool | Suite | Version | Runs | Mean | Median | Min | Max | Stdev "
+            "| CV | Unit |"
+        ),
+        "|---|---|---|:---:|---:|---:|---:|---:|---:|---:|---|",
     ]
     for run in runs:
         for name, entry in sorted((run.get("scores") or {}).items()):
             s = summarize(sample_values(entry["samples"]))
             arrow = "↓" if entry["lower_is_better"] else "↑"
             lines.append(
-                f"| {run['pool']} | {name} {arrow} | {s['n']} | {s['mean']:.2f} | "
+                f"| {run['pool']} | {name} {arrow} | "
+                f"`{entry.get('version') or '-'}` | {s['n']} | {s['mean']:.2f} | "
                 f"{s['median']:.2f} | {s['min']:.2f} | {s['max']:.2f} | "
                 f"{s['stdev']:.2f} | {s['cv']:.1f}% | {entry['unit']} |"
             )
