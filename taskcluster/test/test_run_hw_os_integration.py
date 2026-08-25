@@ -55,9 +55,15 @@ def _task(task_id, state, name=None, worker=None):
     return {"status": status, "task": {"metadata": {"name": name or task_id}}}
 
 
-def _perfherder(value, replicates=(), name="speedometer3"):
-    """Shaped like the real public/test_info/perfherder-data.json."""
-    return {
+def _perfherder(
+    value, replicates=(), name="speedometer3", application="firefox", version="156.0a1"
+):
+    """Shaped like the real public/test_info/perfherder-data.json.
+
+    `application` is what separates Firefox's speedometer3 from custom-car's;
+    both suites are named `speedometer3`. Pass None for a blob that omits it.
+    """
+    blob = {
         "framework": {"name": "browsertime"},
         "suites": [
             {
@@ -70,6 +76,9 @@ def _perfherder(value, replicates=(), name="speedometer3"):
             }
         ],
     }
+    if application:
+        blob["application"] = {"name": application, "version": version}
+    return blob
 
 
 class RunnerTestBase(unittest.TestCase):
@@ -231,7 +240,7 @@ class TestScores(RunnerTestBase):
         self.mod.collect_scores(Queue(), runs)
         return runs
 
-    def _values(self, runs, suite="speedometer3"):
+    def _values(self, runs, suite="firefox speedometer3"):
         return self.mod.sample_values(runs[0]["scores"][suite]["samples"])
 
     def test_one_value_per_completed_task(self):
@@ -242,7 +251,7 @@ class TestScores(RunnerTestBase):
                 "run3": _perfherder(23.5),
             }
         )
-        entry = runs[0]["scores"]["speedometer3"]
+        entry = runs[0]["scores"]["firefox speedometer3"]
         self.assertEqual(sorted(self._values(runs)), [23.5, 24.5, 25.5])
         self.assertEqual(entry["unit"], "score")
         self.assertFalse(entry["lower_is_better"])
@@ -272,7 +281,57 @@ class TestScores(RunnerTestBase):
                 "run2": _perfherder(120.0, name="jetstream2"),
             }
         )
-        self.assertEqual(sorted(runs[0]["scores"]), ["jetstream2", "speedometer3"])
+        self.assertEqual(
+            sorted(runs[0]["scores"]),
+            ["firefox jetstream2", "firefox speedometer3"],
+        )
+
+    def test_two_browsers_on_one_suite_are_kept_apart(self):
+        # Run 32743362153: both blobs name the suite `speedometer3`, so keying
+        # on that alone averaged 26.7 with 32.9 into 29.8 and called the 23%
+        # gap between two browsers this pool's noise.
+        runs = self._run_with(
+            {
+                "firefox1": _perfherder(26.74),
+                "firefox2": _perfherder(26.65),
+                "car1": _perfherder(
+                    32.94, application="custom-car", version="154.0.8022.0"
+                ),
+            }
+        )
+        self.assertEqual(
+            sorted(runs[0]["scores"]),
+            ["custom-car speedometer3", "firefox speedometer3"],
+        )
+        self.assertEqual(self._values(runs, "firefox speedometer3"), [26.74, 26.65])
+        self.assertEqual(self._values(runs, "custom-car speedometer3"), [32.94])
+        # The pool's Firefox noise, no longer polluted by the other browser.
+        firefox = self.mod.summarize(self._values(runs, "firefox speedometer3"))
+        self.assertLess(firefox["cv"], 1.0)
+
+    def test_each_browsers_version_is_kept(self):
+        runs = self._run_with(
+            {
+                "firefox1": _perfherder(26.74),
+                "car1": _perfherder(
+                    32.94, application="custom-car", version="154.0.8022.0"
+                ),
+            }
+        )
+        self.assertEqual(
+            runs[0]["scores"]["firefox speedometer3"]["version"], "156.0a1"
+        )
+        self.assertEqual(
+            runs[0]["scores"]["custom-car speedometer3"]["version"], "154.0.8022.0"
+        )
+        table = "\n".join(self.mod.score_summary_lines(runs))
+        self.assertIn("| custom-car speedometer3 ↑ | `154.0.8022.0` |", table)
+        self.assertIn("| firefox speedometer3 ↑ | `156.0a1` |", table)
+
+    def test_a_blob_without_an_application_keeps_the_bare_suite_name(self):
+        runs = self._run_with({"run1": _perfherder(24.5, application=None)})
+        self.assertEqual(sorted(runs[0]["scores"]), ["speedometer3"])
+        self.assertEqual(self.mod.score_key({}, "talos-other"), "talos-other")
 
     def test_summarize_reports_spread_not_just_a_mean(self):
         stats = self.mod.summarize([24.5, 25.5, 23.0, 26.0])
@@ -365,7 +424,7 @@ class TestWorkerBreakdown(RunnerTestBase):
             blobs,
             workers={"run1": "nuc13-024", "run2": "nuc13-119"},
         )
-        samples = runs[0]["scores"]["speedometer3"]["samples"]
+        samples = runs[0]["scores"]["firefox speedometer3"]["samples"]
         self.assertEqual(
             {s["worker"]: s["value"] for s in samples},
             {"nuc13-024": 24.5, "nuc13-119": 20.0},
