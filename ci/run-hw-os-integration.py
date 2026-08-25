@@ -78,6 +78,7 @@ HW_POOLS_MODULE = (
 
 
 FAILURE_SUMMARY_MODULE = Path(__file__).resolve().parent / "hw_failure_summary.py"
+BASELINE_MODULE = Path(__file__).resolve().parent / "hw_baseline.py"
 
 
 def _load_by_path(name: str, path: Path):
@@ -91,6 +92,7 @@ def _load_by_path(name: str, path: Path):
 
 hw_pools = _load_by_path("hw_pools", HW_POOLS_MODULE)
 hw_failure_summary = _load_by_path("hw_failure_summary", FAILURE_SUMMARY_MODULE)
+hw_baseline = _load_by_path("hw_baseline", BASELINE_MODULE)
 
 
 def _escape_github_command_message(message: str) -> str:
@@ -1122,6 +1124,20 @@ def collect_scores(queue, runs: list[dict]) -> None:
                         "unit": suite.get("unit", ""),
                         "lower_is_better": bool(suite.get("lowerIsBetter")),
                         "version": application.get("version", ""),
+                        # Everything a baseline lookup needs, kept while the blob
+                        # is open: Perfherder keys a series by framework,
+                        # platform, suite, application and extra options, and all
+                        # five are here and nowhere else.
+                        "suite": name,
+                        "application": application.get("name", ""),
+                        "extra_options": list(suite.get("extraOptions") or []),
+                        "framework": (data.get("framework") or {}).get("name", ""),
+                        "test_platform": task_platform([task], run["pool"]),
+                        "source_task_id": (
+                            (task.get("task", {}).get("extra") or {})
+                            .get("hw-integration", {})
+                            .get("source-task-id", "")
+                        ),
                         "samples": [],
                     },
                 )
@@ -1222,6 +1238,97 @@ def summarize(values: list[float]) -> dict:
 # terms: its mean, its spread, and how many runs it is drawn from.
 
 
+def collect_baselines(queue, runs: list[dict], mode: str) -> None:
+    """Attach production's number for each suite, and whether ours is worse.
+
+    Never fatal: a summary without a baseline is the summary we had last week,
+    and Treeherder being down is not a result about the image.
+    """
+    if mode == "none":
+        return
+
+    cache: dict = {}
+    for run in runs:
+        for key, entry in (run.get("scores") or {}).items():
+            stats = summarize(sample_values(entry["samples"]))
+            try:
+                if mode == "counterpart":
+                    baseline = hw_baseline.counterpart_baseline(
+                        lambda task_id: fetch_perfherder(queue, task_id),
+                        entry.get("source_task_id"),
+                        entry["suite"],
+                        entry["application"],
+                    )
+                else:
+                    baseline = hw_baseline.perfherder_baseline(
+                        entry["test_platform"],
+                        entry["suite"],
+                        entry["application"],
+                        entry.get("extra_options"),
+                        entry.get("framework"),
+                        cache,
+                    )
+            except hw_baseline.BaselineError as exc:
+                warn(f"{run['pool']} {key}: no baseline -- {exc}")
+                continue
+            if not baseline:
+                notice(f"{run['pool']} {key}: production has no comparable series")
+                continue
+            entry["baseline"] = hw_baseline.compare(
+                stats["mean"], baseline, entry["lower_is_better"]
+            )
+
+
+def regression_lines(runs: list[dict]) -> list[str]:
+    """Only the suites where this run is worse than production by more than
+    production's own scatter explains.
+
+    Faster than production is not a regression and gets no words, which is most
+    of what these runs produce: perf-debug came out 8.6% *above* production's
+    speedometer3 mean on run 32743362153. A block that fires for any difference
+    would fire on every run and be read on none.
+    """
+    flagged = [
+        (run, key, entry)
+        for run in runs
+        for key, entry in sorted((run.get("scores") or {}).items())
+        if (entry.get("baseline") or {}).get("flag")
+    ]
+    if not flagged:
+        return []
+
+    lines = [
+        "> [!WARNING]",
+        (
+            "> Possibly slower than production, by more than production's own "
+            "spread accounts for. This pool's image or ronin configuration is "
+            "the difference between the two, so it is the first place to look:"
+        ),
+        ">",
+    ]
+    for run, key, entry in flagged:
+        comparison = entry["baseline"]
+        baseline = comparison["baseline"]
+        ours = summarize(sample_values(entry["samples"]))
+        lines.append(
+            f"> - `{run['pool']}` **{key}**: {ours['mean']:.2f} over "
+            f"{ours['n']} run(s) against {baseline['mean']:.2f} "
+            f"({baseline['detail']}, n={baseline['n']}, "
+            f"stdev {baseline['stdev']:.2f}) -- "
+            f"{comparison['percent']:+.1f}%, {comparison['sigmas']:.1f}x that stdev"
+        )
+    lines += [
+        ">",
+        (
+            "> Nothing here is a verdict: a production series spans revisions, "
+            "and a Firefox change of its own moves it. Check the build row above "
+            "before reading this as the image."
+        ),
+        "",
+    ]
+    return lines
+
+
 def print_scores(runs: list[dict]) -> None:
     for run in runs:
         for name, entry in sorted((run.get("scores") or {}).items()):
@@ -1253,6 +1360,22 @@ def print_scores(runs: list[dict]) -> None:
             notice(note)
 
 
+def production_cell(entry: dict) -> str:
+    """This suite against production, or `-` where there is nothing to compare.
+
+    Signed percentage rather than a verdict: whether `+8.6%` is good news
+    depends on the suite's direction, which the arrow beside the name already
+    gives. A flagged regression is marked, and only a regression is.
+    """
+    comparison = entry.get("baseline")
+    if not comparison:
+        return "-"
+    mark = " ⚠️" if comparison["flag"] else ""
+    sigmas = comparison["sigmas"]
+    spread = f" ({sigmas:.1f}σ)" if sigmas is not None else ""
+    return f"{comparison['percent']:+.1f}%{spread}{mark}"
+
+
 def score_summary_lines(runs: list[dict]) -> list[str]:
     """The headline number per pool and suite, and nothing else.
 
@@ -1269,9 +1392,9 @@ def score_summary_lines(runs: list[dict]) -> list[str]:
         "",
         (
             "| Pool | Suite | Version | Runs | Mean | Median | Min | Max | Stdev "
-            "| CV | Unit |"
+            "| CV | vs production | Unit |"
         ),
-        "|---|---|---|:---:|---:|---:|---:|---:|---:|---:|---|",
+        "|---|---|---|:---:|---:|---:|---:|---:|---:|---:|---:|---|",
     ]
     for run in runs:
         for name, entry in sorted((run.get("scores") or {}).items()):
@@ -1281,7 +1404,8 @@ def score_summary_lines(runs: list[dict]) -> list[str]:
                 f"| {run['pool']} | {name} {arrow} | "
                 f"`{entry.get('version') or '-'}` | {s['n']} | {s['mean']:.2f} | "
                 f"{s['median']:.2f} | {s['min']:.2f} | {s['max']:.2f} | "
-                f"{s['stdev']:.2f} | {s['cv']:.1f}% | {entry['unit']} |"
+                f"{s['stdev']:.2f} | {s['cv']:.1f}% | "
+                f"{production_cell(entry)} | {entry['unit']} |"
             )
     lines.append("")
     return lines
@@ -1679,6 +1803,8 @@ def write_github_summary(
     lines += outran_wait_lines(runs, root_url)
     # And then why a green run may not be a pass.
     lines += inconclusive_lines(inconclusive or [])
+    # ...including a pass that is slower than production.
+    lines += regression_lines(runs)
     if selection:
         lines += [selection, ""]
 
@@ -1775,6 +1901,15 @@ def main() -> int:
         "--skip-preflight",
         action="store_true",
         help="Trigger without checking pool health (not recommended)",
+    )
+    parser.add_argument(
+        "--baseline",
+        choices=hw_baseline.BASELINE_MODES,
+        default=hw_baseline.DEFAULT_BASELINE_MODE,
+        help="What to compare scores against: `perfherder` for mozilla-central's "
+        "own series for the production counterpart platform (default), "
+        "`counterpart` for the single production task this run was copied from, "
+        "or `none`",
     )
     parser.add_argument(
         "--tests",
@@ -1935,6 +2070,7 @@ def main() -> int:
     # Which Firefox build each pool installed. Recorded in the log as well as
     # the summary: the summary dies with the job if GitHub cancels it at 6h.
     collect_builds(queue, live)
+    collect_baselines(queue, live, args.baseline)
     for run in live:
         for build in run.get("builds") or []:
             notice(

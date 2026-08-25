@@ -103,6 +103,10 @@ def _fetch_decision_tasks(decision_task_id: str, provisioner: str, label: str) -
     labels = {}
     for task_id, task_def in sorted(task_graph.items()):
         labels[task_id] = task_def.get("label", task_id)
+        # The production task this one would be copied from. Kept so a staging
+        # result can be put next to the production result for the same build --
+        # see ci/hw_baseline.py, counterpart mode.
+        task_def.setdefault("task_id", task_id)
         task = task_def.get("task", {})
         if task.get("provisionerId") != provisioner:
             continue
@@ -782,6 +786,10 @@ def _build_task(
     task["priority"] = "low"
     task["routes"] = list(KEPT_ROUTES)
     task.get("extra", {}).pop("treeherder", None)
+    if source_task_id := source.get("task_id"):
+        task.setdefault("extra", {}).setdefault("hw-integration", {})[
+            "source-task-id"
+        ] = source_task_id
 
     _rewrite_caches(task, scheduler_id)
     _rewrite_scopes(task, old_pool, new_pool, scheduler_id)

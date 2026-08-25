@@ -53,6 +53,19 @@ on:
         options:
           - firefox
           - firefox-and-custom-car
+      baseline:
+        description: "Compare scores against"
+        type: choice
+        default: perfherder
+        options:
+          # mozilla-central's own 14-day series for the production counterpart
+          # platform: a spread, so a number can be called normal or outside the
+          # envelope. Not paired -- the series spans revisions.
+          - perfherder
+          # The single production task this run's tasks were copied from: same
+          # build, same revision, same day, but one node and no error bar.
+          - counterpart
+          - none
       repeat:
         description: "Runs of each selected task (1-100; past ~10 raise timeout_hours to match)"
         type: string
@@ -137,6 +150,7 @@ jobs:
       - name: Run HW Speedometer
         env:
           POOLS: ${{ steps.pools.outputs.pools }}
+          BASELINE: ${{ inputs.baseline }}
           TESTS: ${{ steps.filter.outputs.filter }}
           REPEAT: ${{ inputs.repeat }}
           TIMEOUT_HOURS: ${{ inputs.timeout_hours }}
@@ -146,6 +160,7 @@ jobs:
           PYTHONUNBUFFERED: "1"
         run: |
           args=(--tests "$TESTS" --repeat "$REPEAT")
+          args+=(--baseline "$BASELINE")
           args+=(--timeout "$(( TIMEOUT_HOURS * 3600 ))")
           if [ "$NO_WAIT" = "true" ]; then
             args+=(--no-wait)
