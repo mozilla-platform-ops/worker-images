@@ -1642,5 +1642,221 @@ class TestBuildUnderTest(unittest.TestCase):
         )
 
 
+class TestProductionBaseline(unittest.TestCase):
+    """Only a result worse than production, by more than production's own
+    scatter explains, is worth a word."""
+
+    POOL = "win11-64-24h2-hw-perf-debug"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.mod = _load_runner()
+        cls.baseline = cls.mod.hw_baseline
+
+    def _production(self, mean, stdev=0.44, n=40):
+        return {
+            "source": "perfherder",
+            "detail": "14d of mozilla-central",
+            "n": n,
+            "mean": mean,
+            "median": mean,
+            "min": mean - stdev,
+            "max": mean + stdev,
+            "stdev": stdev,
+        }
+
+    def test_faster_than_production_is_never_a_regression(self):
+        # Run 32743362153: 26.76 against production's 24.65, 4.8 sigma out and
+        # every bit of it good news.
+        higher = self.baseline.compare(26.76, self._production(24.65), False)
+        self.assertFalse(higher["worse"])
+        self.assertFalse(higher["flag"])
+        self.assertGreater(higher["sigmas"], 4)
+        # And the same on a lower-is-better suite, where faster is a smaller
+        # number: a11yr came out 11.3% below production.
+        lower = self.baseline.compare(66.97, self._production(75.5, stdev=2.8), True)
+        self.assertFalse(lower["worse"])
+        self.assertFalse(lower["flag"])
+
+    def test_slower_than_production_past_the_spread_is_flagged(self):
+        higher = self.baseline.compare(22.0, self._production(24.65), False)
+        self.assertTrue(higher["worse"])
+        self.assertTrue(higher["flag"])
+        lower = self.baseline.compare(30.0, self._production(24.65), True)
+        self.assertTrue(lower["worse"])
+        self.assertTrue(lower["flag"])
+
+    def test_slower_but_inside_the_spread_is_not_flagged(self):
+        comparison = self.baseline.compare(24.0, self._production(24.65), False)
+        self.assertTrue(comparison["worse"])
+        self.assertFalse(comparison["flag"], "1.5 sigma is production's own noise")
+
+    def test_a_thin_series_flags_nothing(self):
+        comparison = self.baseline.compare(
+            10.0,
+            self._production(24.65, n=self.baseline.MIN_BASELINE_POINTS - 1),
+            False,
+        )
+        self.assertTrue(comparison["worse"])
+        self.assertFalse(comparison["flag"])
+
+    def test_a_baseline_with_no_spread_flags_nothing(self):
+        # A counterpart baseline is one task, so it has no stdev to beat.
+        comparison = self.baseline.compare(
+            10.0, self._production(24.65, stdev=0), False
+        )
+        self.assertIsNone(comparison["sigmas"])
+        self.assertFalse(comparison["flag"])
+
+    def test_the_platform_loses_its_build_type(self):
+        self.assertEqual(
+            self.baseline.production_platform("windows11-64-24h2-hw-ref-shippable/opt"),
+            "windows11-64-24h2-hw-ref-shippable",
+        )
+
+    def test_frameworks_are_looked_up_and_fall_back(self):
+        cache = {}
+        with unittest.mock.patch.object(
+            self.baseline, "_get", return_value=[{"id": 13, "name": "browsertime"}]
+        ):
+            self.assertEqual(self.baseline.framework_id("browsertime", cache), 13)
+        # Our suites span two harnesses; talos comes from the fallback here.
+        self.assertEqual(self.baseline.framework_id("talos", {}), 1)
+        with unittest.mock.patch.object(
+            self.baseline, "_get", side_effect=self.baseline.BaselineError("down")
+        ):
+            self.assertEqual(self.baseline.framework_id("talos", {}), 1)
+        self.assertIsNone(self.baseline.framework_id("not-a-harness", {}))
+
+    def _entry(self, comparison=None, **kwargs):
+        entry = {
+            "suite": "speedometer3",
+            "application": "firefox",
+            "lower_is_better": False,
+            "samples": [
+                {"worker": "n", "value": 22.0, "task_id": "t", "replicates": []}
+            ],
+        }
+        entry.update(kwargs)
+        if comparison:
+            entry["baseline"] = comparison
+        return entry
+
+    def test_the_cell_is_a_dash_with_nothing_to_compare(self):
+        self.assertEqual(self.mod.production_cell(self._entry()), "-")
+
+    def test_the_cell_marks_only_a_regression(self):
+        good = self.mod.production_cell(
+            self._entry(self.baseline.compare(26.76, self._production(24.65), False))
+        )
+        self.assertIn("+8.6%", good)
+        self.assertIn("4.8σ", good)
+        self.assertNotIn("⚠️", good)
+
+        bad = self.mod.production_cell(
+            self._entry(self.baseline.compare(22.0, self._production(24.65), False))
+        )
+        self.assertIn("⚠️", bad)
+
+    def test_a_silent_run_gets_no_block(self):
+        runs = [
+            {
+                "pool": self.POOL,
+                "scores": {
+                    "firefox speedometer3": self._entry(
+                        self.baseline.compare(26.76, self._production(24.65), False)
+                    )
+                },
+            }
+        ]
+        self.assertEqual(self.mod.regression_lines(runs), [])
+
+    def test_the_block_names_the_pool_the_suite_and_the_gap(self):
+        runs = [
+            {
+                "pool": self.POOL,
+                "scores": {
+                    "firefox speedometer3": self._entry(
+                        self.baseline.compare(22.0, self._production(24.65), False)
+                    )
+                },
+            }
+        ]
+        block = "\n".join(self.mod.regression_lines(runs))
+        self.assertIn("[!WARNING]", block)
+        self.assertIn(self.POOL, block)
+        self.assertIn("firefox speedometer3", block)
+        self.assertIn("-10.8%", block)
+        self.assertIn("image or ronin configuration", block)
+        self.assertIn("Check the build row", block)
+
+    def test_baseline_none_asks_nothing_and_attaches_nothing(self):
+        called = []
+
+        class Queue:
+            def getLatestArtifact(_self, *args):
+                called.append(args)
+                return {}
+
+        runs = [{"pool": self.POOL, "scores": {"firefox speedometer3": self._entry()}}]
+        self.mod.collect_baselines(Queue(), runs, "none")
+        self.assertEqual(called, [])
+        self.assertNotIn("baseline", runs[0]["scores"]["firefox speedometer3"])
+
+    def test_a_baseline_that_cannot_be_read_is_not_fatal(self):
+        runs = [
+            {
+                "pool": self.POOL,
+                "scores": {"firefox speedometer3": self._entry(test_platform="p/opt")},
+            }
+        ]
+        with unittest.mock.patch.object(
+            self.baseline,
+            "perfherder_baseline",
+            side_effect=self.baseline.BaselineError("treeherder down"),
+        ):
+            self.mod.collect_baselines(None, runs, "perfherder")
+        self.assertNotIn("baseline", runs[0]["scores"]["firefox speedometer3"])
+
+    def test_the_counterpart_reads_the_production_task_it_was_copied_from(self):
+        blob = {
+            "application": {"name": "firefox", "version": "156.0a1"},
+            "suites": [{"name": "speedometer3", "value": 24.811}],
+        }
+        got = self.baseline.counterpart_baseline(
+            lambda task_id: blob, "PRODTASKID1234567890AB", "speedometer3", "firefox"
+        )
+        self.assertEqual(got["mean"], 24.811)
+        self.assertEqual(got["n"], 1)
+        self.assertIn("PRODTASKID1234567890AB", got["detail"])
+
+    def test_the_counterpart_refuses_a_different_browser(self):
+        blob = {
+            "application": {"name": "custom-car"},
+            "suites": [{"name": "speedometer3", "value": 31.479}],
+        }
+        self.assertIsNone(
+            self.baseline.counterpart_baseline(
+                lambda task_id: blob,
+                "PRODTASKID1234567890AB",
+                "speedometer3",
+                "firefox",
+            )
+        )
+
+    def test_the_counterpart_needs_a_source_task(self):
+        self.assertIsNone(
+            self.baseline.counterpart_baseline(
+                lambda task_id: {}, "", "speedometer3", "firefox"
+            )
+        )
+
+    def test_perfherder_is_the_default_mode(self):
+        self.assertEqual(self.baseline.DEFAULT_BASELINE_MODE, "perfherder")
+        self.assertEqual(
+            sorted(self.baseline.BASELINE_MODES), ["counterpart", "none", "perfherder"]
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

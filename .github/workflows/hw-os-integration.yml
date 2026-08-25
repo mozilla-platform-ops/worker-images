@@ -71,6 +71,19 @@ on:
         description: "Runs of each task, 1-10 (every run repeats the whole test set)"
         type: string
         default: "1"
+      baseline:
+        description: "Compare scores against"
+        type: choice
+        default: perfherder
+        options:
+          # mozilla-central's own 14-day series for the production counterpart
+          # platform: a spread, so a number can be called normal or outside the
+          # envelope. Not paired -- the series spans revisions.
+          - perfherder
+          # The single production task this run's tasks were copied from: same
+          # build, same revision, same day, but one node and no error bar.
+          - counterpart
+          - none
       timeout_hours:
         description: "Hours to wait for results, 1-6 (waiting stops at 5.75h)"
         type: string
@@ -167,6 +180,7 @@ jobs:
       - name: Run HW OS Integration Tests
         env:
           POOLS: ${{ steps.pools.outputs.pools }}
+          BASELINE: ${{ inputs.baseline }}
           REPEAT: ${{ inputs.repeat }}
           TIMEOUT_HOURS: ${{ inputs.timeout_hours }}
           # The 6h cancellation clock started here, not when this step did, so the
@@ -181,4 +195,5 @@ jobs:
         run: |
           uv run ci/run-hw-os-integration.py "$POOLS" \
             --repeat "$REPEAT" \
+            --baseline "$BASELINE" \
             --timeout "$(( TIMEOUT_HOURS * 3600 ))"
