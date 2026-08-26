@@ -3,7 +3,7 @@
 ## Build provenance
 
 - Image name: gw-fxci-gcp-l1-2404-amd64-headless-googlecompute-alpha
-- Taskcluster version: 105.0.0
+- Taskcluster version: 107.0.0
 - Taskcluster ref: unknown
 - Architecture: AMD64
 - Source image family: ubuntu-2404-lts-amd64
@@ -20,10 +20,10 @@
 
 | Name | Version |
 | --- | --- |
-| generic-worker | generic-worker (multiuser engine) 105.0.0 [ revision: https://github.com/taskcluster/taskcluster/commits/66ac7d3ec5cd069e97ce9b062395e3d119496003 ] |
-| start-worker | start-worker 105.0.0 |
-| livelog | livelog 105.0.0 |
-| taskcluster-proxy | Taskcluster proxy 105.0.0 (git revision 66ac7d3ec5cd069e97ce9b062395e3d119496003) |
+| generic-worker | generic-worker (multiuser engine) 107.0.0 [ revision: https://github.com/taskcluster/taskcluster/commits/6b2f6f681824840ed352ffbb66766adc2ce37134 ] |
+| start-worker | start-worker 107.0.0 |
+| livelog | livelog 107.0.0 |
+| taskcluster-proxy | Taskcluster proxy 107.0.0 (git revision 6b2f6f681824840ed352ffbb66766adc2ce37134) |
 
 ## Python packages
 
@@ -135,9 +135,9 @@
 | bash-completion | 1:2.11-8 | all |
 | bc | 1.07.1-3ubuntu4 | amd64 |
 | bcache-tools | 1.0.8-5build1 | amd64 |
-| bind9-dnsutils | 1:9.18.39-0ubuntu0.24.04.5 | amd64 |
-| bind9-host | 1:9.18.39-0ubuntu0.24.04.5 | amd64 |
-| bind9-libs:amd64 | 1:9.18.39-0ubuntu0.24.04.5 | amd64 |
+| bind9-dnsutils | 1:9.18.39-0ubuntu0.24.04.6 | amd64 |
+| bind9-host | 1:9.18.39-0ubuntu0.24.04.6 | amd64 |
+| bind9-libs:amd64 | 1:9.18.39-0ubuntu0.24.04.6 | amd64 |
 | binutils | 2.42-4ubuntu2.10 | amd64 |
 | binutils-common:amd64 | 2.42-4ubuntu2.10 | amd64 |
 | binutils-x86-64-linux-gnu | 2.42-4ubuntu2.10 | amd64 |
@@ -150,7 +150,7 @@
 | buildah | 1.33.7+ds1-1ubuntu0.24.04.3 | amd64 |
 | busybox-initramfs | 1:1.36.1-6ubuntu3.1 | amd64 |
 | busybox-static | 1:1.36.1-6ubuntu3.1 | amd64 |
-| byobu | 6.11-0ubuntu1 | all |
+| byobu | 6.11-0ubuntu1.1 | all |
 | bzip2 | 1.0.8-5.1build0.1 | amd64 |
 | ca-certificates | 20260601~24.04.1 | all |
 | catatonit | 0.1.7-1 | amd64 |
@@ -161,8 +161,8 @@
 | cloud-initramfs-dyn-netconf | 0.49~24.04.1 | all |
 | command-not-found | 23.04.0 | all |
 | conmon | 2.1.10+ds1-1build2 | amd64 |
-| console-setup | 1.226ubuntu1 | all |
-| console-setup-linux | 1.226ubuntu1 | all |
+| console-setup | 1.226ubuntu1.1 | all |
+| console-setup-linux | 1.226ubuntu1.1 | all |
 | containerd.io | 2.3.3-1~ubuntu.24.04~noble | amd64 |
 | containernetworking-plugins | 1.1.1+ds1-3ubuntu0.24.04.3 | amd64 |
 | coreutils | 9.4-3ubuntu6.2 | amd64 |
@@ -182,7 +182,7 @@
 | cudnn9 | 9.10.1-1 | amd64 |
 | cudnn9-cuda-12 | 9.10.1.4-1 | amd64 |
 | cudnn9-cuda-12-9 | 9.10.1.4-1 | amd64 |
-| curl | 8.5.0-2ubuntu10.11 | amd64 |
+| curl | 8.5.0-2ubuntu10.13 | amd64 |
 | dash | 0.5.12-6ubuntu5 | amd64 |
 | dbus | 1.14.10-4ubuntu4.1 | amd64 |
 | dbus-bin | 1.14.10-4ubuntu4.1 | amd64 |
@@ -261,7 +261,7 @@
 | gnupg-utils | 2.4.4-2ubuntu17.4 | amd64 |
 | golang-github-containers-common | 0.57.4+ds1-2ubuntu0.2 | all |
 | golang-github-containers-image | 5.29.2-2 | all |
-| google-compute-engine | 20260116.00-0ubuntu1~24.04.0 | all |
+| google-compute-engine | 20260121.00-0ubuntu1~24.04.0 | all |
 | google-compute-engine-oslogin | 20260116.00-0ubuntu1~24.04.0 | amd64 |
 | google-guest-agent | 20250116.00-0ubuntu1~24.04.4 | amd64 |
 | google-osconfig-agent | 20251028.00-0ubuntu2~24.04.0 | amd64 |
@@ -309,7 +309,7 @@
 | javascript-common | 11+nmu1 | all |
 | jq | 1.7.1-3ubuntu0.24.04.2 | amd64 |
 | kbd | 2.6.4-2ubuntu2 | amd64 |
-| keyboard-configuration | 1.226ubuntu1 | all |
+| keyboard-configuration | 1.226ubuntu1.1 | all |
 | keyboxd | 2.4.4-2ubuntu17.4 | amd64 |
 | klibc-utils | 2.0.13-4ubuntu0.2 | amd64 |
 | kmod | 31+20240202-2ubuntu7.2 | amd64 |
@@ -376,8 +376,8 @@
 | libcudnn9-samples | 9.10.1.4-1 | all |
 | libcudnn9-static-cuda-12 | 9.10.1.4-1 | amd64 |
 | libcups2t64:amd64 | 2.4.7-1.2ubuntu7.14 | amd64 |
-| libcurl3t64-gnutls:amd64 | 8.5.0-2ubuntu10.11 | amd64 |
-| libcurl4t64:amd64 | 8.5.0-2ubuntu10.11 | amd64 |
+| libcurl3t64-gnutls:amd64 | 8.5.0-2ubuntu10.13 | amd64 |
+| libcurl4t64:amd64 | 8.5.0-2ubuntu10.13 | amd64 |
 | libdatrie1:amd64 | 0.2.13-3build1 | amd64 |
 | libdaxctl1:amd64 | 77-2ubuntu2 | amd64 |
 | libdb5.3t64:amd64 | 5.3.28+dfsg2-7 | amd64 |
@@ -463,9 +463,9 @@
 | libgtk2.0-bin | 2.24.33-4ubuntu1.1 | amd64 |
 | libgtk2.0-common | 2.24.33-4ubuntu1.1 | all |
 | libharfbuzz0b:amd64 | 8.3.0-2build2 | amd64 |
-| libheif-plugin-aomdec:amd64 | 1.17.6-1ubuntu4.6 | amd64 |
-| libheif-plugin-aomenc:amd64 | 1.17.6-1ubuntu4.6 | amd64 |
-| libheif1:amd64 | 1.17.6-1ubuntu4.6 | amd64 |
+| libheif-plugin-aomdec:amd64 | 1.17.6-1ubuntu4.7 | amd64 |
+| libheif-plugin-aomenc:amd64 | 1.17.6-1ubuntu4.7 | amd64 |
+| libheif1:amd64 | 1.17.6-1ubuntu4.7 | amd64 |
 | libhogweed6t64:amd64 | 3.9.1-2.2build1.1 | amd64 |
 | libhunspell-1.7-0:amd64 | 1.7.2+really1.7.2-10build3 | amd64 |
 | libhunspell-dev:amd64 | 1.7.2+really1.7.2-10build3 | amd64 |
@@ -584,14 +584,14 @@
 | libpolkit-gobject-1-0:amd64 | 124-2ubuntu1.24.04.3 | amd64 |
 | libpopt0:amd64 | 1.19+dfsg-1build1 | amd64 |
 | libproc-processtable-perl:amd64 | 0.636-1build3 | amd64 |
-| libproc2-0:amd64 | 2:4.0.4-4ubuntu3.2 | amd64 |
+| libproc2-0:amd64 | 2:4.0.4-4ubuntu3.3 | amd64 |
 | libpsl5t64:amd64 | 0.21.2-1.1build1 | amd64 |
 | libpython3-dev:amd64 | 3.12.3-0ubuntu2.1 | amd64 |
 | libpython3-stdlib:amd64 | 3.12.3-0ubuntu2.1 | amd64 |
-| libpython3.12-dev:amd64 | 3.12.3-1ubuntu0.15 | amd64 |
-| libpython3.12-minimal:amd64 | 3.12.3-1ubuntu0.15 | amd64 |
-| libpython3.12-stdlib:amd64 | 3.12.3-1ubuntu0.15 | amd64 |
-| libpython3.12t64:amd64 | 3.12.3-1ubuntu0.15 | amd64 |
+| libpython3.12-dev:amd64 | 3.12.3-1ubuntu0.16 | amd64 |
+| libpython3.12-minimal:amd64 | 3.12.3-1ubuntu0.16 | amd64 |
+| libpython3.12-stdlib:amd64 | 3.12.3-1ubuntu0.16 | amd64 |
+| libpython3.12t64:amd64 | 3.12.3-1ubuntu0.16 | amd64 |
 | libquadmath0:amd64 | 14.2.0-4ubuntu2~24.04.1 | amd64 |
 | librados2 | 19.2.3-0ubuntu0.24.04.3 | amd64 |
 | librbd1 | 19.2.3-0ubuntu0.24.04.3 | amd64 |
@@ -624,7 +624,7 @@
 | libsqlite3-0:amd64 | 3.45.1-1ubuntu2.7 | amd64 |
 | libss2:amd64 | 1.47.0-2.4~exp1ubuntu4.1 | amd64 |
 | libssh-4:amd64 | 0.10.6-2ubuntu0.4 | amd64 |
-| libssl3t64:amd64 | 3.0.13-0ubuntu3.12 | amd64 |
+| libssl3t64:amd64 | 3.0.13-0ubuntu3.15 | amd64 |
 | libstdc++-13-dev:amd64 | 13.3.0-6ubuntu2~24.04.1 | amd64 |
 | libstdc++6:amd64 | 14.2.0-4ubuntu2~24.04.1 | amd64 |
 | libstemmer0d:amd64 | 2.2.0-4build1 | amd64 |
@@ -785,11 +785,11 @@
 | nvme-cli | 2.8-1ubuntu0.1 | amd64 |
 | ocl-icd-libopencl1:amd64 | 2.3.2-1build1 | amd64 |
 | open-iscsi | 2.1.9-3ubuntu5.4 | amd64 |
-| open-vm-tools | 2:13.0.0-2~ubuntu0.24.04.1 | amd64 |
+| open-vm-tools | 2:13.0.10-0ubuntu0.24.04.1 | amd64 |
 | openssh-client | 1:9.6p1-3ubuntu13.18 | amd64 |
 | openssh-server | 1:9.6p1-3ubuntu13.18 | amd64 |
 | openssh-sftp-server | 1:9.6p1-3ubuntu13.18 | amd64 |
-| openssl | 3.0.13-0ubuntu3.12 | amd64 |
+| openssl | 3.0.13-0ubuntu3.15 | amd64 |
 | os-prober | 1.81ubuntu4 | amd64 |
 | overlayroot | 0.49~24.04.1 | all |
 | packagekit | 1.2.8-2ubuntu1.5 | amd64 |
@@ -819,7 +819,7 @@
 | pollinate | 4.33-3.1ubuntu1.3 | all |
 | powermgmt-base | 1.37ubuntu0.1 | all |
 | powershell | 7.6.5-1.deb | amd64 |
-| procps | 2:4.0.4-4ubuntu3.2 | amd64 |
+| procps | 2:4.0.4-4ubuntu3.3 | amd64 |
 | psmisc | 23.7-1build1 | amd64 |
 | publicsuffix | 20231001.0357-0.1 | all |
 | python-apt-common | 2.7.7ubuntu5.2 | all |
@@ -915,10 +915,10 @@
 | python3-zope.interface | 6.1-1build1 | amd64 |
 | python3-zstandard | 0.22.0-1build1 | amd64 |
 | python3-zstd | 1.5.5.1-1build1 | amd64 |
-| python3.12 | 3.12.3-1ubuntu0.15 | amd64 |
-| python3.12-dev | 3.12.3-1ubuntu0.15 | amd64 |
-| python3.12-minimal | 3.12.3-1ubuntu0.15 | amd64 |
-| python3.12-venv | 3.12.3-1ubuntu0.15 | amd64 |
+| python3.12 | 3.12.3-1ubuntu0.16 | amd64 |
+| python3.12-dev | 3.12.3-1ubuntu0.16 | amd64 |
+| python3.12-minimal | 3.12.3-1ubuntu0.16 | amd64 |
+| python3.12-venv | 3.12.3-1ubuntu0.16 | amd64 |
 | readline-common | 8.2-4build1 | all |
 | rpcsvc-proto | 1.4.2-0ubuntu7 | amd64 |
 | rsync | 3.2.7-1ubuntu1.5 | amd64 |
@@ -937,7 +937,7 @@
 | shared-mime-info | 2.4-4 | amd64 |
 | shim-signed | 1.58+15.8-0ubuntu1 | amd64 |
 | slirp4netns | 1.2.1-1build2 | amd64 |
-| snapd | 2.76+ubuntu24.04.1 | amd64 |
+| snapd | 2.76.3+ubuntu24.04 | amd64 |
 | software-properties-common | 0.99.49.4 | all |
 | sosreport | 4.10.2-0ubuntu0~24.04.1 | amd64 |
 | squashfs-tools | 1:4.6.1-1build1 | amd64 |
@@ -985,11 +985,11 @@
 | v4l2loopback-dkms | 0.12.7-2ubuntu5.1 | all |
 | v4l2loopback-utils | 0.12.7-2ubuntu5.1 | all |
 | vdpau-driver-all:amd64 | 1.5-2build1 | amd64 |
-| vim | 2:9.1.0016-1ubuntu7.18 | amd64 |
-| vim-common | 2:9.1.0016-1ubuntu7.18 | all |
-| vim-runtime | 2:9.1.0016-1ubuntu7.18 | all |
-| vim-tiny | 2:9.1.0016-1ubuntu7.18 | amd64 |
-| wget | 1.21.4-1ubuntu4.4 | amd64 |
+| vim | 2:9.1.0016-1ubuntu7.20 | amd64 |
+| vim-common | 2:9.1.0016-1ubuntu7.20 | all |
+| vim-runtime | 2:9.1.0016-1ubuntu7.20 | all |
+| vim-tiny | 2:9.1.0016-1ubuntu7.20 | amd64 |
+| wget | 1.21.4-1ubuntu4.5 | amd64 |
 | whiptail | 0.52.24-2ubuntu2 | amd64 |
 | wireless-regdb | 2026.02.04-0ubuntu1~24.04.1 | all |
 | x11-common | 1:7.7+23ubuntu3 | all |
@@ -1006,7 +1006,7 @@
 | xserver-common | 2:21.1.12-1ubuntu1.6 | all |
 | xserver-xorg-core | 2:21.1.12-1ubuntu1.6 | amd64 |
 | xserver-xorg-video-nvidia-580 | 580.173.02-0ubuntu0.24.04.1 | amd64 |
-| xxd | 2:9.1.0016-1ubuntu7.18 | amd64 |
+| xxd | 2:9.1.0016-1ubuntu7.20 | amd64 |
 | xz-utils | 5.6.1+really5.4.5-1ubuntu0.3 | amd64 |
 | zerofree | 1.1.1-1build5 | amd64 |
 | zlib1g-dev:amd64 | 1:1.3.dfsg-3.1ubuntu2.1 | amd64 |
