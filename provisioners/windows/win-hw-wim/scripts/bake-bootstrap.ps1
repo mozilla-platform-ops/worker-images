@@ -175,8 +175,21 @@ foreach (`$e in 'C:\Program Files\Puppet Labs\Puppet\bin','C:\Program Files\Open
 `$env:custom_win_github_pat = '$($env:custom_win_github_pat)'
 `$env:FACTER_custom_win_role = '$role'
 Set-Location '$roninDir'
-& puppet apply manifests\nodes.pp --onetime --verbose --detailed-exitcodes --modulepath="modules;r10k_modules" --hiera_config=hiera.yaml --logdest console *>&1 | Tee-Object -FilePath '$puppetLog'
-Set-Content -Path '$exitFile' -Value `$LASTEXITCODE
+# Write the puppet log as UTF-8, NOT via Tee-Object. Windows PowerShell 5.1's Tee-Object
+# has no -Encoding and writes UTF-16LE, while the parent's Write-NewLog reads mid-stream at
+# a byte offset (so there is no BOM to detect) and decodes as UTF-8. The result was every
+# puppet line arriving space-interleaved - "N o t i c e :   / S t a g e [ m a i n ]" - which
+# is unreadable and, worse, ungreppable, so class-level output like
+# intel_graphics_software's "provisioned packages matching: N" could not be found in the
+# bake log at all. AutoFlush keeps it streaming live rather than landing in one lump.
+# --color=false drops the ANSI escapes that were also littering the log.
+`$sw = New-Object System.IO.StreamWriter('$puppetLog', `$false, (New-Object System.Text.UTF8Encoding(`$false)))
+`$sw.AutoFlush = `$true
+try {
+  & puppet apply manifests\nodes.pp --onetime --verbose --detailed-exitcodes --color=false --modulepath="modules;r10k_modules" --hiera_config=hiera.yaml --logdest console *>&1 | ForEach-Object { `$sw.WriteLine(`$_.ToString()) }
+  `$rc = `$LASTEXITCODE
+} finally { `$sw.Dispose() }
+Set-Content -Path '$exitFile' -Value `$rc
 "@
 [System.IO.File]::WriteAllText($sysScript, $child, $utf8NoBom)
 
@@ -190,7 +203,10 @@ function Write-NewLog {
     if ($fs.Length -lt $Offset.Value) { $Offset.Value = 0 }
     if ($fs.Length -eq $Offset.Value) { return }
     $fs.Seek($Offset.Value, 'Begin') | Out-Null
-    $sr = New-Object System.IO.StreamReader($fs)
+    # Decode explicitly as UTF-8 (the child writes UTF-8 via StreamWriter). Do NOT rely on
+    # BOM detection: every read after the first seeks to a byte offset mid-file, where
+    # there is no BOM, so the default would silently guess.
+    $sr = New-Object System.IO.StreamReader($fs, (New-Object System.Text.UTF8Encoding($false)))
     try {
       $content = $sr.ReadToEnd()
       if ($content) { $content.TrimEnd("`r", "`n").Split(@("`r`n", "`n"), [System.StringSplitOptions]::None) | ForEach-Object { if ($_) { Write-Host $_ } } }
