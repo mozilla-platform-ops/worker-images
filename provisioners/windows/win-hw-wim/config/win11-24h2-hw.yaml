@@ -57,8 +57,15 @@ ronin:
   org: default
   repo: default
   branch: wim-bake-role         # feature branch carrying the bake role (until merged)
-  hash: "7dac7f0a"              # ronin_puppet#1297 HEAD; bake role excludes hardware_observability (no marlin_pw lookup). Bump when the branch moves.
-                                # 7dac7f0a (RELOPS-2487) SUPERSEDES b64eb0b5. b64eb0b5 stopped the bake disabling
+  hash: "4c2e223d"              # ronin_puppet#1297 HEAD; bake role excludes hardware_observability (no marlin_pw lookup). Bump when the branch moves.
+                                # 4c2e223d SUPERSEDES 7dac7f0a. Two reasons: (a) wim-bake-role was rebased onto
+                                # master on 2026-08-26 and 7dac7f0a no longer exists on the branch - Get-Ronin does
+                                # a --single-branch clone, which carries no unreachable objects, so the checkout
+                                # would fail outright; (b) it predates the two things this bake is FOR - VBS/HVCI
+                                # (win_device_guard, so baked nodes match the MDT image's Credential Guard + HVCI)
+                                # and Intel Graphics Software (win_intel_graphics_software, run from the installer
+                                # that extras.files now stages to C:\bake\extras).
+                                # HISTORY: 7dac7f0a (RELOPS-2487) SUPERSEDED b64eb0b5. b64eb0b5 stopped the bake disabling
                                 # AppXSvc so the image shipped it Manual; that fixed the codecs but changed sysprep -
                                 # the WIM then got a full generalize, and the first-boot specialize pass regenerated a
                                 # random WIN-xxxxxxxx into ActiveComputerName, which sent maintainsystem-hw into a
