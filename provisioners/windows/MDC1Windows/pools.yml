@@ -89,6 +89,41 @@ pools:
     # nuc13-111: Unreachable with its display flashing. Did not come back after being
     #   PXE-booted, so it could not be scored.
     - nuc13-111
+    # Under performing - moved out of win11-64-24h2-hw for investigation. Both have
+    # swapped PSUs and passed the RELOPS-2514 validation, so they are not here for a
+    # PSU fault. Tracked in RELOPS-2522.
+    - nuc13-085
+    - nuc13-103
+    # Staged for validation - swapped PSUs, waiting their turn. These are held here so
+    # win11-64-24h2-hw-alpha only ever holds one batch of 20 at a time; promote the next
+    # batch into alpha as each one finishes.
+    - nuc13-066
+    - nuc13-068
+    - nuc13-075
+    - nuc13-081
+    - nuc13-083
+    - nuc13-086
+    - nuc13-088
+    - nuc13-089
+    - nuc13-090
+    - nuc13-097
+    - nuc13-104
+    - nuc13-108
+    - nuc13-109
+    - nuc13-110
+    - nuc13-113
+    - nuc13-118
+    - nuc13-121
+    - nuc13-123
+    - nuc13-124
+    - nuc13-127
+    - nuc13-128
+    - nuc13-135
+    - nuc13-145
+    - nuc13-150
+    - nuc13-153
+    - nuc13-155
+    - nuc13-157
   - name: "win11-64-24h2-hw-perf-debug"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
@@ -130,11 +165,10 @@ pools:
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    # Original PSUs - these 39 nodes were never included in a PSU swap-out. They are
-    # not covered by IO-3797 (20 nodes, 2026-05-29), IO-3844 (nuc13-159 and nuc13-160,
-    # 2026-07-08) or IO-3884 (87 PSUs plus nuc13-101 and nuc13-046, 2026-08-07), and
-    # so have not been through the RELOPS-2514 validation either. Moved from
-    # win11-64-24h2-hw.
+    # Batch 1 of the staged PSU-swap validation. All 160 NUC13 PSUs have now been
+    # swapped, so these are here to be re-imaged and scored, not to await hardware.
+    # The remaining nodes are parked in win11-64-24h2-hw-relops1213 and pulled in a
+    # batch at a time so the whole fleet is never in this pool at once.
     - nuc13-004
     - nuc13-005
     - nuc13-007
@@ -146,50 +180,15 @@ pools:
     - nuc13-017
     - nuc13-018
     - nuc13-033
+    - nuc13-035
     - nuc13-040
     - nuc13-041
     - nuc13-048
     - nuc13-049
     - nuc13-056
     - nuc13-057
-    - nuc13-064
-    - nuc13-066
-    - nuc13-081
-    - nuc13-083
-    - nuc13-086
-    - nuc13-088
-    - nuc13-089
-    - nuc13-090
-    - nuc13-097
-    - nuc13-104
-    - nuc13-108
-    - nuc13-109
-    - nuc13-110
-    - nuc13-113
-    - nuc13-118
-    - nuc13-121
-    - nuc13-123
-    - nuc13-127
-    - nuc13-128
-    - nuc13-135
-    - nuc13-145
-    - nuc13-153
-    # Under performing - moved out of win11-64-24h2-hw for investigation. Unlike the 39
-    # nodes above, both have swapped PSUs and passed the RELOPS-2514 validation, so they
-    # are not here awaiting a swap. Tracked in RELOPS-2522.
-    - nuc13-085
-    - nuc13-103
-    # Swapped PSUs - these were the known-dead-PSU group in win11-64-24h2-hw-relops1213.
-    # The PSUs have now been replaced, so they are here to be re-imaged and validated
-    # rather than to await a swap like the 39 nodes above.
-    - nuc13-035
     - nuc13-060
-    - nuc13-068
-    - nuc13-075
-    - nuc13-124
-    - nuc13-150
-    - nuc13-155
-    - nuc13-157
+    - nuc13-064
   - name: "win11-64-24h2-hw-perf-sheriff"
     openvox_version: "8.19.2"
     puppet_version: "8.10.0"
