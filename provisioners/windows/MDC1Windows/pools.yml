@@ -31,11 +31,14 @@ pools:
     git_version: "2.50.1"
     #dev: RELOPS-1470
     Description: "NUC12 Hardware Reference Staging/Testing Pool"
+    # RELOPS-2487 canary: same dev trigger perf-debug carries, so both canary
+    # pools run identically off the feature branches.
+    dev: "nuc-wim-pipeline"
     image: "win11-24h2-hw-20260820-235936"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "wim-bake-role"
-    hash: "aaf6203f"
+    hash: "4c2e223d"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -114,7 +117,7 @@ pools:
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "wim-bake-role"
-    hash: "aaf6203f"
+    hash: "4c2e223d"
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
