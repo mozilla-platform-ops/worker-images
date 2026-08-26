@@ -47,6 +47,12 @@ drivers:
   inject: false
   cabs: []
 
+# Payloads copied verbatim into the image at C:\bake\extras\ for the bake's puppet apply
+# to run. Not drivers: never expanded, never DISM-injected. sysprep removes C:\bake before
+# capture, so they are build-only. Off by default; set per image.
+extras:
+  files: []
+
 # Windows 11 ISO builder (SEPARATE from the ronin base WIMs). Enabled per-config via iso.enabled.
 # Source media is base.iso; provisioning is the config's scripts: list (inject-library scripts run
 # against the media before repackaging with oscdimg). e.g. scripts: [nocheck] writes the

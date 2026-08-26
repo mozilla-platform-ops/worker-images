@@ -39,6 +39,20 @@ drivers:
     # flips MS Basic Display Adapter (RR=1) -> Intel(R) Iris(R) Xe Graphics (RR=60).
     - "https://hardwareimaging.blob.core.windows.net/resources/drivers/nuc13-24h2-intel-gfx-32.0.101.7085.cab"
 
+# Payloads copied VERBATIM into the image at C:\bake\extras\ - not expanded, not
+# DISM-injected, not run here. The bake's puppet apply runs them; sysprep removes
+# C:\bake before capture, so they do not ship in the WIM.
+extras:
+  files:
+    # Intel's full graphics installer. Supplies IntelGraphicsSoftwareService, which the
+    # MDT production image has and a baked node did not: the service ships inside the
+    # AppUp.IntelArcSoftware MSIX at Resources/Extras/IntelGraphicsSoftware_26.18.2353.2_Release.exe,
+    # and under DCH that MSIX arrives via Windows Update as a driver companion app - which
+    # never happens here because WU is disabled by design, so the driver cab above (INF
+    # only) cannot supply it. ronin's win_intel_graphics_software runs this WITHOUT
+    # --noExtras, the flag that would skip exactly that folder.
+    - "https://hardwareimaging.blob.core.windows.net/resources/drivers/gfx_win_101.7088.exe"
+
 ronin:
   org: default
   repo: default

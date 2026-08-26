@@ -44,6 +44,15 @@ param(
     # array parameter (extra space-separated values spill onto the next positional param), so
     # New-WinHwWim joins the list with '|' and we split it here.
     [string] $DriverCabUrls,
+    # Optional payloads copied VERBATIM into the image at C:\bake\extras\ (no expansion,
+    # no execution here). Same '|'-delimited convention as -DriverCabUrls.
+    #
+    # This exists because a deployed NUC cannot reach our storage: hardwareimaging is
+    # Entra-only (anonymous GET -> 409) and the nodes have no Azure identity. Only the
+    # build host has one, so anything the bake needs to run in-guest has to be staged
+    # into the image from here. ronin's win_intel_graphics_software class then runs
+    # whatever it finds under C:\bake\extras during the bake's puppet apply.
+    [string] $ExtrasUrls,
     # Build-only WinRM account injected via unattend so Packer can connect.
     # Scrubbed by sysprep-generalize.ps1 before capture — never ships in the WIM.
     [string] $WinRMUser = 'packer',
@@ -59,6 +68,29 @@ function Assert-Admin {
     $p  = New-Object Security.Principal.WindowsPrincipal($id)
     if (-not $p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
         throw 'Must run elevated (Administrator).'
+    }
+}
+
+# Fetch a bake asset, picking the transport from the URL.
+#
+# Authenticated Azure blob (e.g. hardwareimaging - no anonymous access, an unauthenticated
+# GET returns 409): azcopy with the build host's AAD login. azcopy has its own credential
+# store and does NOT inherit `az login`, so AZCOPY_AUTO_LOGIN_TYPE drives OAuth (matches
+# download-wim.ps1; azcopy 10.32 dropped --auth-mode on copy). Anything else is treated as
+# a public URL (e.g. the roninpuppetassets prereq mirror).
+function Get-BakeAsset {
+    param(
+        [Parameter(Mandatory)] [string] $Url,
+        [Parameter(Mandatory)] [string] $Destination
+    )
+
+    if ($Url -match '\.blob\.core\.windows\.net/') {
+        if (-not $env:AZCOPY_AUTO_LOGIN_TYPE) { $env:AZCOPY_AUTO_LOGIN_TYPE = 'AZCLI' }
+        & azcopy copy "$Url" "$Destination" --overwrite=true
+        if ($LASTEXITCODE -ne 0) { throw "azcopy failed rc=$LASTEXITCODE for $Url" }
+    }
+    else {
+        Invoke-WebRequest -Uri $Url -OutFile $Destination -UseBasicParsing
     }
 }
 
@@ -140,19 +172,7 @@ try {
             $ext = [System.IO.Path]::GetExtension((($url -split '\?')[0])).ToLowerInvariant()
             $arc = Join-Path $sub ("pack" + $ext)
             Write-Host "== [$n/$($cabList.Count)] Downloading driver pack ($ext): $url =="
-            if ($url -match '\.blob\.core\.windows\.net/') {
-                # Authenticated Azure blob (e.g. hardwareimaging - no anonymous access): use azcopy with the
-                # bake VM's AAD login. azcopy has its own credential store and does NOT inherit az login,
-                # so AZCOPY_AUTO_LOGIN_TYPE drives OAuth (matches download-wim.ps1; azcopy 10.32 dropped
-                # --auth-mode on copy).
-                if (-not $env:AZCOPY_AUTO_LOGIN_TYPE) { $env:AZCOPY_AUTO_LOGIN_TYPE = 'AZCLI' }
-                & azcopy copy "$url" "$arc" --overwrite=true
-                if ($LASTEXITCODE -ne 0) { throw "azcopy failed rc=$LASTEXITCODE for $url" }
-            }
-            else {
-                # Public URL (e.g. the roninpuppetassets prereq mirror).
-                Invoke-WebRequest -Uri $url -OutFile $arc -UseBasicParsing
-            }
+            Get-BakeAsset -Url $url -Destination $arc
             switch ($ext) {
                 '.cab' {
                     Write-Host "== Expanding cab -> $sub =="
@@ -170,6 +190,37 @@ try {
         Write-Host "== DISM /Add-Driver (recurse) -> W:\ from $($cabList.Count) pack(s) =="
         & dism.exe /Image:W:\ /Add-Driver /Driver:"$drvRoot" /Recurse
         if ($LASTEXITCODE -ne 0) { throw "DISM /Add-Driver failed rc=$LASTEXITCODE" }
+    }
+
+    # --- Optional: stage in-guest payloads to C:\bake\extras (default: none) ---
+    # Copied verbatim - NOT expanded and NOT executed here. The bake's puppet apply is what
+    # runs them (ronin win_intel_graphics_software looks for C:\bake\extras\gfx_win_*.exe).
+    #
+    # These have to be staged offline because the guest cannot fetch them itself: the
+    # payloads live in hardwareimaging, which is Entra-only, and neither the packer guest
+    # nor a deployed NUC has an Azure identity. Only this build host does.
+    #
+    # sysprep-generalize.ps1 scrubs C:\bake before capture, so this is build-only and does
+    # not bloat the golden WIM.
+    if ($ExtrasUrls) {
+        $extraList = @($ExtrasUrls -split '\|' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+        if ($extraList.Count -gt 0) {
+            $extrasDir = 'W:\bake\extras'
+            New-Item -ItemType Directory -Path $extrasDir -Force | Out-Null
+            $m = 0
+            foreach ($url in $extraList) {
+                $m++
+                # Strip any ?query so the staged file keeps its real name - the ronin class
+                # globs on gfx_win_*.exe.
+                $leaf = [System.IO.Path]::GetFileName((($url -split '\?')[0]))
+                if (-not $leaf) { throw "Could not derive a file name from extras URL: $url" }
+                $dest = Join-Path $extrasDir $leaf
+                Write-Host "== [$m/$($extraList.Count)] Staging extra -> C:\bake\extras\$leaf =="
+                Get-BakeAsset -Url $url -Destination $dest
+                $sz = (Get-Item -LiteralPath $dest).Length
+                Write-Host ("== Staged {0} ({1:n0} bytes) ==" -f $leaf, $sz)
+            }
+        }
     }
 
     Write-Host "== Injecting build-only unattend (WinRM + admin) into Panther =="

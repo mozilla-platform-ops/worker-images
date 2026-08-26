@@ -122,6 +122,12 @@ $drvInject = ("$(Get-Val 'drivers' 'inject')".Trim() -match '^(true|1|yes)$')
 # Scalable driver injection: 'drivers.cabs' is a YAML list of cab URLs. Normalize to
 # a trimmed, non-empty string array. Back-compat: also accept a single 'drivers.cab_url'.
 $drvCabUrls = @(Get-Val 'drivers' 'cabs' | ForEach-Object { "$_".Trim() } | Where-Object { $_ })
+# 'extras.files' is a YAML list of payloads copied verbatim into the image at
+# C:\bake\extras\ for the bake's puppet apply to run (e.g. the Intel graphics installer,
+# which supplies IntelGraphicsSoftwareService). Not drivers: never expanded, never
+# DISM-injected. Staged offline because the guest has no Azure identity and the payloads
+# live in the Entra-only hardwareimaging account.
+$extraUrls = @(Get-Val 'extras' 'files' | ForEach-Object { "$_".Trim() } | Where-Object { $_ })
 if ($drvCabUrls.Count -eq 0) {
     $legacyCab = "$(Get-Val 'drivers' 'cab_url')".Trim()
     if ($legacyCab) { $drvCabUrls = @($legacyCab) }
@@ -318,6 +324,11 @@ if ($Stages -contains 'prep') {
         # Join with '|' into ONE arg: PowerShell -File can't bind a real array param
         # (extra space-separated values spill onto positional params). prepare-base-vhdx splits it.
         $prepArgs += @('-InjectDrivers', '-DriverCabUrls', ($drvCabUrls -join '|'))
+    }
+    if ($extraUrls.Count -gt 0) {
+        Write-Host "  staging $($extraUrls.Count) extra(s) -> C:\bake\extras:"
+        $extraUrls | ForEach-Object { Write-Host "    $_" }
+        $prepArgs += @('-ExtrasUrls', ($extraUrls -join '|'))
     }
     & $ps 'prepare-base-vhdx.ps1' $prepArgs
 
