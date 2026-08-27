@@ -31,6 +31,11 @@ drivers:
     # Hosted in hardwareimaging (Entra-secured, no anon) so the bake pulls it via azcopy AAD. Proven on 160:
     # flips MS Basic Display Adapter (RR=1) -> Intel(R) Iris(R) Xe Graphics (RR=60).
     - "https://hardwareimaging.blob.core.windows.net/resources/drivers/nuc13-24h2-intel-gfx-32.0.101.7085.cab"
+    # Platform/chipset packs - kept in step with win11-24h2-hw.yaml so a test bake has the same
+    # driver coverage. See that file for the full rationale (exported off the MDT reference nodes
+    # nuc13-006 / t-nuc12-005, DCH graphics family pruned so it cannot fight the 7085 cab above).
+    - "https://hardwareimaging.blob.core.windows.net/resources/drivers/nuc13-24h2-platform-drivers-20260827.zip"
+    - "https://hardwareimaging.blob.core.windows.net/resources/drivers/nuc12-24h2-platform-drivers-20260827.zip"
 
 ronin:
   org: default

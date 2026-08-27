@@ -22,7 +22,7 @@ base:
 # Offline driver injection into the applied base image (DISM /Add-Driver before
 # capture, so drivers land in the golden WIM). NUC13 (Arena Canyon / Raptor Lake)
 # pack: without it the DISM-applied node has no Intel drivers (iGPU A7A0, Smart
-# Sound audio, serial-IO/SMBus, DPTF, ISH/MEI, Bluetooth, NIC/GNA) and falls back
+# Sound audio, serial-IO GPIO/I2C/SMBus, MEI, Bluetooth, NIC/GNA) and falls back
 # to the Microsoft Basic Display Adapter (RELOPS-2487). Each URL must be publicly
 # reachable (the bake downloads it with an unauthenticated Invoke-WebRequest) and be
 # a .cab OR .zip that expands to an .inf tree. Source: MDT Out-of-Box Drivers.
@@ -38,6 +38,29 @@ drivers:
     # Hosted in hardwareimaging (Entra-secured, no anon) so the bake pulls it via azcopy AAD. Proven on 160:
     # flips MS Basic Display Adapter (RR=1) -> Intel(R) Iris(R) Xe Graphics (RR=60).
     - "https://hardwareimaging.blob.core.windows.net/resources/drivers/nuc13-24h2-intel-gfx-32.0.101.7085.cab"
+    # Platform/chipset packs (added 2026-08-27, RELOPS-2487). Exported with
+    # `Export-WindowsDriver -Online` off the MDT reference nodes - nuc13-006 (NUC13 / Raptor
+    # Lake-P) and t-nuc12-005 (NUC12 / Alder Lake-P) - i.e. the exact driver set production runs.
+    #
+    # Measured gap they close: a baked node has 10 devices in error 28 (CM_PROB_FAILED_INSTALL)
+    # that the MDT image binds cleanly - Serial IO GPIO INTC1055 + I2C 51E8/51E9
+    # (iaLPSS2_*_ADL), SMBus 51A3 + SPI 51A4 (AlderLakePCH-PSystem), Smart Sound audio
+    # 51CA/51C8 (IntcAudioBus/intcsst - a baked node's ONLY sound device is the Virtual Audio
+    # Cable), MEI 51E0 (heci), GNA A74F/464F, Wi-Fi 51F1/51F0 (Netwtw6e), Bluetooth PID_0033
+    # (ibtusb). NOTE: INTC1055 is Serial IO GPIO, NOT DPTF - Intel Dynamic Tuning is absent from
+    # the MDT image too, so it is not a baked-vs-production difference.
+    #
+    # PRUNED before upload: the DCH graphics family (iigd_dch, iigd_ext, hdbusext, cui_dch,
+    # igcc_dch, mshdadac). The cab above already supplies a COMPLETE and NEWER matched
+    # 32.0.101.7085 set (Display + Extension + MEDIA + 2 SoftwareComponent), while the reference
+    # nodes carry 32.0.101.7079 (NUC13) / 31.0.101.3729 (NUC12); mixing DCH graphics component
+    # versions against a 7085 base buys nothing and is what Intel warns against.
+    #
+    # BOTH packs are injected because ONE WIM serves BOTH canary pools (perf-debug = NUC13,
+    # ref-alpha = NUC12). Overlap is safe: DISM stores every version and PnP binds the best
+    # match per device (they share the Alder Lake-P PCH driver family, so most INFs cover both).
+    - "https://hardwareimaging.blob.core.windows.net/resources/drivers/nuc13-24h2-platform-drivers-20260827.zip"
+    - "https://hardwareimaging.blob.core.windows.net/resources/drivers/nuc12-24h2-platform-drivers-20260827.zip"
 
 # Payloads copied VERBATIM into the image at C:\bake\extras\ - not expanded, not
 # DISM-injected, not run here. The bake's puppet apply runs them; sysprep removes
