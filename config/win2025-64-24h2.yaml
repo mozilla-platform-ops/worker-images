@@ -13,6 +13,7 @@ azure:
   managed_image_storage_account_type: "default"
   build_location: eastus2
 vm:
+  spot: true
   puppet_version: "default"
   git_version: "default"
   openvox_version: "default"
@@ -22,8 +23,8 @@ vm:
     worker_pool_id: win2025-64-24h2
     sourceOrganization: "default"
     sourceRepository: "default"
-    sourceBranch: "default"
-    deploymentId: "default"
+    sourceBranch: "relops-2407-win2025-core"
+    deploymentId: "NA"
     managed_by: "default"
 tests:
   - microsoft_binscope.tests.ps1
