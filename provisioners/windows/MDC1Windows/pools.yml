@@ -97,26 +97,6 @@ pools:
     # Staged for validation - swapped PSUs, waiting their turn. These are held here so
     # win11-64-24h2-hw-alpha only ever holds one batch of 20 at a time; promote the next
     # batch into alpha as each one finishes.
-    - nuc13-066
-    - nuc13-068
-    - nuc13-075
-    - nuc13-081
-    - nuc13-083
-    - nuc13-086
-    - nuc13-088
-    - nuc13-089
-    - nuc13-090
-    - nuc13-097
-    - nuc13-104
-    - nuc13-108
-    - nuc13-109
-    - nuc13-110
-    - nuc13-113
-    - nuc13-118
-    - nuc13-121
-    - nuc13-123
-    - nuc13-124
-    - nuc13-127
     - nuc13-128
     - nuc13-135
     - nuc13-145
@@ -124,6 +104,17 @@ pools:
     - nuc13-153
     - nuc13-155
     - nuc13-157
+    # Come back to for validation - pulled out of batch 1 so it does not hold the batch
+    # up. Manually PXE-booted on 2026-08-26 and had not returned to the network by the
+    # time the batch was ready. Needs to come back, or be recovered, then be validated
+    # with a later batch. Tracked in RELOPS-2539.
+    - nuc13-064
+    # Under performing - scored 23.89 in the 2026-08-26 batch 1 Speedometer x100 run
+    # (GitHub run 33020421057) against a 24.76 mean for the other 18 nodes, roughly
+    # 3.5% low. Its own CV was 0.3% over 5 runs, so it is consistently slow rather
+    # than noisy, and it had been up 8 days, so this is not a settling artefact.
+    # Held back from promotion pending investigation. Tracked in RELOPS-2539.
+    - nuc13-005
   - name: "win11-64-24h2-hw-perf-debug"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
@@ -165,30 +156,30 @@ pools:
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    # Batch 1 of the staged PSU-swap validation. All 160 NUC13 PSUs have now been
-    # swapped, so these are here to be re-imaged and scored, not to await hardware.
-    # The remaining nodes are parked in win11-64-24h2-hw-relops1213 and pulled in a
-    # batch at a time so the whole fleet is never in this pool at once.
-    - nuc13-004
-    - nuc13-005
-    - nuc13-007
-    - nuc13-008
-    - nuc13-009
-    - nuc13-010
-    - nuc13-015
-    - nuc13-016
-    - nuc13-017
-    - nuc13-018
-    - nuc13-033
-    - nuc13-035
-    - nuc13-040
-    - nuc13-041
-    - nuc13-048
-    - nuc13-049
-    - nuc13-056
-    - nuc13-057
-    - nuc13-060
-    - nuc13-064
+    # Batch 2 of the staged PSU-swap validation. Promoted from the "Staged for
+    # validation" block in win11-64-24h2-hw-relops1213. Re-image and score these,
+    # then promote the passes to win11-64-24h2-hw and pull in the balance.
+    # Tracked in RELOPS-2539.
+    - nuc13-066
+    - nuc13-068
+    - nuc13-075
+    - nuc13-081
+    - nuc13-083
+    - nuc13-086
+    - nuc13-088
+    - nuc13-089
+    - nuc13-090
+    - nuc13-097
+    - nuc13-104
+    - nuc13-108
+    - nuc13-109
+    - nuc13-110
+    - nuc13-113
+    - nuc13-118
+    - nuc13-121
+    - nuc13-123
+    - nuc13-124
+    - nuc13-127
   - name: "win11-64-24h2-hw-perf-sheriff"
     openvox_version: "8.19.2"
     puppet_version: "8.10.0"
@@ -219,10 +210,19 @@ pools:
     - nuc13-001
     - nuc13-002
     - nuc13-003
+    - nuc13-004
     - nuc13-006
+    - nuc13-007
+    - nuc13-008
+    - nuc13-009
+    - nuc13-010
     - nuc13-012
     - nuc13-013
     - nuc13-014
+    - nuc13-015
+    - nuc13-016
+    - nuc13-017
+    - nuc13-018
     - nuc13-019
     - nuc13-020
     - nuc13-024
@@ -233,23 +233,32 @@ pools:
     - nuc13-030
     - nuc13-031
     - nuc13-032
+    - nuc13-033
     - nuc13-034
+    - nuc13-035
     - nuc13-036
     - nuc13-038
     - nuc13-039
+    - nuc13-040
+    - nuc13-041
     - nuc13-042
     - nuc13-043
     - nuc13-044
     - nuc13-045
     - nuc13-046
     - nuc13-047
+    - nuc13-048
+    - nuc13-049
     - nuc13-050
     - nuc13-051
     - nuc13-052
     - nuc13-054
     - nuc13-055
+    - nuc13-056
+    - nuc13-057
     - nuc13-058
     - nuc13-059
+    - nuc13-060
     - nuc13-061
     - nuc13-062
     - nuc13-063
