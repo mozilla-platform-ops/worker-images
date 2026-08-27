@@ -459,6 +459,14 @@ sbom_path        = "$($sbomMd -replace '\\','/')"
         # power-off until the sysprep provisioner announces its intended /shutdown.
         Write-Wd 'phase 2: restarting the VM on any guest-initiated power-off'
         $lastState = ''
+        # Packer logs 'Starting the virtual machine' BEFORE its Start-VM completes, so phase 1
+        # can break while the VM is still Off. Without this gate the very first phase-2 poll
+        # would race Packer's own start: whichever Start-VM lands second dies with "failed to
+        # change state / the operation cannot be performed while the object is in its current
+        # state" and the build errors in ~3 min at StepStartVM. Only ever restart a VM we have
+        # positively seen Running - that is what "guest-initiated power-off" means, and it makes
+        # the watchdog incapable of fighting Packer's initial start.
+        $hasRun = $false
         # Stall = Packer's log has not grown for this long. 10 min is well clear of the
         # normal quiet stretches (a WU pass or an AppX sweep logs nothing for minutes) while
         # still firing four times inside a 60m restart_timeout.
@@ -475,9 +483,15 @@ sbom_path        = "$($sbomMd -replace '\\','/')"
             $v = Get-VM -Name $vm -ErrorAction SilentlyContinue
             $state = if ($v) { [string]$v.State } else { '<missing>' }
             if ($state -ne $lastState) { Write-Wd "VM state -> $state"; $lastState = $state }
+            if ($v -and $v.State -eq 'Running') { $hasRun = $true }
             if ($v -and $v.State -eq 'Off') {
-                Write-Wd 'VM is Off; issuing Start-VM'
-                Start-VM -Name $vm -ErrorAction SilentlyContinue
+                if (-not $hasRun) {
+                    Write-Wd 'VM is Off but has never been seen Running - leaving it to Packer (not racing its initial start)'
+                }
+                else {
+                    Write-Wd 'VM is Off; issuing Start-VM'
+                    Start-VM -Name $vm -ErrorAction SilentlyContinue
+                }
             }
 
             $size = if (Test-Path $log) { (Get-Item $log -ErrorAction SilentlyContinue).Length } else { 0 }
