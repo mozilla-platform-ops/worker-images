@@ -13,6 +13,7 @@ azure:
   managed_image_storage_account_type: "default"
   build_location: eastus2
 vm:
+  spot: true
   puppet_version: "default"
   git_version: "default"
   openvox_version: "default"
