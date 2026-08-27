@@ -34,7 +34,7 @@ pools:
     # RELOPS-2487 canary: same dev trigger perf-debug carries, so both canary
     # pools run identically off the feature branches.
     dev: "nuc-wim-pipeline"
-    image: "win11-24h2-hw-20260826-180420"
+    image: "win11-24h2-hw-20260827-174334"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "wim-bake-role"
@@ -113,7 +113,7 @@ pools:
     # *** REVERT before master: image win11-24H2-NUC-01-16-2025, dev (remove),
     #     src_Branch RELOPS-2467-xperf-dynamic-trace, hash a22e7ac. ***
     dev: "nuc-wim-pipeline"
-    image: "win11-24h2-hw-20260826-180420"
+    image: "win11-24h2-hw-20260827-174334"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "wim-bake-role"
