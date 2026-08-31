@@ -75,6 +75,14 @@ pools:
     # than noisy, and it had been up 8 days, so this is not a settling artefact.
     # Held back from promotion pending investigation. Tracked in RELOPS-2539.
     - nuc13-005
+    # Down - 2026-08-31. Unreachable on TCP/22, so it could not be PXE-booted with the
+    # rest of the batch and manual recovery did not bring it back. Tracked in
+    # RELOPS-2539.
+    - nuc13-145
+    # No KVM - 2026-08-31. Cannot be re-imaged or inspected remotely until console
+    # access is fixed. Unreachable on TCP/22 and not recovered with the rest of the
+    # batch. Tracked in RELOPS-2539.
+    - nuc13-155
   - name: "win11-64-24h2-hw-perf-debug"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
@@ -157,10 +165,8 @@ pools:
     # producing no score. Score these, then promote the passes to win11-64-24h2-hw.
     - nuc13-128
     - nuc13-135
-    - nuc13-145
     - nuc13-150
     - nuc13-153
-    - nuc13-155
     - nuc13-157
     # Come back to for validation - pulled out of batch 1 so it does not hold the batch
     # up. Manually PXE-booted on 2026-08-26 and had not returned to the network by the
