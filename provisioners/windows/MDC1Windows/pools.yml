@@ -124,55 +124,40 @@ pools:
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    # Batch 2 leftovers - the other 18 batch-2 nodes scored clean in the 2026-08-27
-    # Speedometer runs (33120623022 and 33120652619) and were promoted to
-    # win11-64-24h2-hw. These two produced no score in either run over 167
-    # completed tasks, so they stay here to be chased. Tracked in RELOPS-2539.
-    - nuc13-089
-    - nuc13-124
-    # Batch 3 - the balance of the fleet, moved out of win11-64-24h2-hw-relops1213.
-    # Only the under-performing nodes stayed behind. The original grouping is kept
-    # below because several of these need hardware or console work before they can be
-    # re-imaged at all. Tracked in RELOPS-2539.
-    # No KVM - cannot be re-imaged or inspected remotely until console access is fixed.
-    # Two cross-wired pairs are in here: nuc13-037's KVM port is swapped with
-    # nuc13-038's and nuc13-053's with nuc13-054's, so connecting to one reaches the
-    # other and KVM-derived status for any of the four is unreliable.
-    - nuc13-011
+    # Validated in the 2026-08-31 Speedometer x100 runs (33444951345 and 33444971840)
+    # and promoted to win11-64-24h2-hw: 011 022 023 028 053 069 078 111 119 128 135 143
+    # 153 157. Ten of those had been filed here as No KVM or down/no SSH and scored at
+    # fleet norm once recovered and re-imaged, so those labels were wrong. What is left
+    # below is per-node, with the reason each one is still here. Tracked in RELOPS-2539.
+    # nuc13-037: unreachable on TCP/22 across the 2026-08-31 sweep and the follow-up
+    #   check. Was never recovered with the rest of the No KVM group. Its KVM port is
+    #   cross-wired with nuc13-038, so console-derived status for either is unreliable.
     - nuc13-037
-    - nuc13-053
-    - nuc13-078
-    - nuc13-132
-    - nuc13-143
-    # Down / no SSH - unresponsive on every SSH attempt. nuc13-119 PXE-booted once and
-    # never returned to the network.
-    - nuc13-022
-    - nuc13-023
-    - nuc13-028
-    - nuc13-069
-    - nuc13-119
-    # Other - individual cases, see the note above each node.
-    # nuc13-077: PXE does not take. It accepts the bootsequence change and reboots but comes
-    #   back on its original 05-01 image, confirmed across three checks over three
-    #   days. Needs a recovery route other than a repeat PXE.
-    - nuc13-077
-    # nuc13-111: Unreachable with its display flashing. Did not come back after being
-    #   PXE-booted, so it could not be scored.
-    - nuc13-111
-    # Ready to test - swapped PSUs, reachable, and the only nodes in this pool that can
-    # be re-imaged and scored as they stand. The other groups need hardware or console
-    # work first, so a Speedometer dispatch here will report most of the pool as
-    # producing no score. Score these, then promote the passes to win11-64-24h2-hw.
-    - nuc13-128
-    - nuc13-135
-    - nuc13-150
-    - nuc13-153
-    - nuc13-157
-    # Come back to for validation - pulled out of batch 1 so it does not hold the batch
-    # up. Manually PXE-booted on 2026-08-26 and had not returned to the network by the
-    # time the batch was ready. Needs to come back, or be recovered, then be validated
-    # with a later batch. Tracked in RELOPS-2539.
+    # nuc13-064: answers SSH but rejects the audit key, which is the normal window
+    #   while puppet is still installing it. Recovered 2026-08-31; give it a cycle and
+    #   re-check before treating it as stuck.
     - nuc13-064
+    # nuc13-077: PXE does not take. It accepts the bootsequence change and reboots but
+    #   comes back on its original image, confirmed repeatedly since 2026-08-17, most
+    #   recently in the 2026-08-31 sweep. Needs a recovery route other than a re-PXE.
+    - nuc13-077
+    # nuc13-089: config is correct and bootstrap_stage is complete, but it produced no
+    #   score in any of the four Speedometer runs on 2026-08-27 and 2026-08-31 while
+    #   its pool peers scored. Last imaged 2026-08-28 and not re-imaged since.
+    #   Unexplained - this is not idleness.
+    - nuc13-089
+    # nuc13-124: no ronin_puppet key at all and OS build 26200 rather than the 26100
+    #   provisioned nodes report - the same state nuc13-086 and nuc13-119 were in, and
+    #   both recovered from it with a single re-PXE. Imaged 2026-08-29, untouched since.
+    - nuc13-124
+    # nuc13-132: answers SSH and reports its hostname, but claims no work and produced
+    #   no score in either 2026-08-31 run. Previously filed as No KVM, which no longer
+    #   fits.
+    - nuc13-132
+    # nuc13-150: bootstrap_stage=inprogress with last_run_exit=6, so puppet is failing.
+    #   bootstrap.ps1 treats exit 6 as a failure and arms Set-PXE, so it should self-
+    #   retry; leave it a cycle before intervening.
+    - nuc13-150
   - name: "win11-64-24h2-hw-perf-sheriff"
     openvox_version: "8.19.2"
     puppet_version: "8.10.0"
@@ -209,6 +194,7 @@ pools:
     - nuc13-008
     - nuc13-009
     - nuc13-010
+    - nuc13-011
     - nuc13-012
     - nuc13-013
     - nuc13-014
@@ -218,10 +204,13 @@ pools:
     - nuc13-018
     - nuc13-019
     - nuc13-020
+    - nuc13-022
+    - nuc13-023
     - nuc13-024
     - nuc13-025
     - nuc13-026
     - nuc13-027
+    - nuc13-028
     - nuc13-029
     - nuc13-030
     - nuc13-031
@@ -245,6 +234,7 @@ pools:
     - nuc13-050
     - nuc13-051
     - nuc13-052
+    - nuc13-053
     - nuc13-054
     - nuc13-055
     - nuc13-056
@@ -259,12 +249,14 @@ pools:
     - nuc13-066
     - nuc13-067
     - nuc13-068
+    - nuc13-069
     - nuc13-070
     - nuc13-071
     - nuc13-072
     - nuc13-073
     - nuc13-075
     - nuc13-076
+    - nuc13-078
     - nuc13-079
     - nuc13-080
     - nuc13-081
@@ -293,11 +285,13 @@ pools:
     - nuc13-108
     - nuc13-109
     - nuc13-110
+    - nuc13-111
     - nuc13-113
     - nuc13-114
     - nuc13-116
     - nuc13-117
     - nuc13-118
+    - nuc13-119
     - nuc13-120
     - nuc13-121
     - nuc13-122
@@ -305,11 +299,13 @@ pools:
     - nuc13-125
     - nuc13-126
     - nuc13-127
+    - nuc13-128
     - nuc13-129
     - nuc13-130
     - nuc13-131
     - nuc13-133
     - nuc13-134
+    - nuc13-135
     - nuc13-136
     - nuc13-137
     - nuc13-138
@@ -317,6 +313,7 @@ pools:
     - nuc13-140
     - nuc13-141
     - nuc13-142
+    - nuc13-143
     - nuc13-144
     - nuc13-146
     - nuc13-147
@@ -324,8 +321,10 @@ pools:
     - nuc13-149
     - nuc13-151
     - nuc13-152
+    - nuc13-153
     - nuc13-154
     - nuc13-156
+    - nuc13-157
     - nuc13-159
     - nuc13-160
 defaults:
