@@ -11,8 +11,7 @@ azure:
   managed_image_storage_account_type: "Standard_LRS"
 vm:
   providerType: "azure"
-  vm_size: Standard_NV12s_v3
+  vm_size: Standard_NV12ads_A10_v5
   bootstrapscript: "generic-worker-win2022-staging"
   tc_arch: "amd64"
-  tags:
-    - image_set: markco-generic-worker-win2022-gpu-staging
+  tags: {}
