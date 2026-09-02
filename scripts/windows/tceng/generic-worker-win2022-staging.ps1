@@ -405,7 +405,7 @@ Run-Executable "pacman" @("-Sc", "--noconfirm", "--noprogressbar")
 $hasNvidiaGpu = Get-PnpDevice -PresentOnly | Where-Object { $_.InstanceId -match "^PCI\\VEN_10DE" }
 
 if ($hasNvidiaGpu) {
-    Invoke-WebRequest -Uri "https://download.microsoft.com/download/a/3/1/a3186ac9-1f9f-4351-a8e7-b5b34ea4e4ea/538.46_grid_win10_win11_server2019_server2022_dch_64bit_international_azure_swl.exe" -OutFile "C:\Downloads\nvidia_driver.exe"
+    Invoke-WebRequest -Uri "https://download.microsoft.com/download/e9a86343-1981-4ac8-883a-49bf5e2c4d18/574.24_grid_win10_win11_server2022_dch_server2025_64bit_international_azure_swl.exe" -OutFile "C:\Downloads\nvidia_driver.exe"
     Run-Executable "C:\Downloads\nvidia_driver.exe" @("-s", "-noreboot")
 
     # Need to fix this CUDA installation in staging...
