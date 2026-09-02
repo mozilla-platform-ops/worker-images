@@ -3,7 +3,7 @@
 ## Build provenance
 
 - Image name: gw-fxci-gcp-l3-2404-arm64-headless-googlecompute-alpha
-- Taskcluster version: 107.0.0
+- Taskcluster version: 108.0.0
 - Taskcluster ref: unknown
 - Architecture: ARM64
 - Source image family: ubuntu-2404-lts-arm64
@@ -20,10 +20,10 @@
 
 | Name | Version |
 | --- | --- |
-| generic-worker | generic-worker (multiuser engine) 107.0.0 [ revision: https://github.com/taskcluster/taskcluster/commits/6b2f6f681824840ed352ffbb66766adc2ce37134 ] |
-| start-worker | start-worker 107.0.0 |
-| livelog | livelog 107.0.0 |
-| taskcluster-proxy | Taskcluster proxy 107.0.0 (git revision 6b2f6f681824840ed352ffbb66766adc2ce37134) |
+| generic-worker | generic-worker (multiuser engine) 108.0.0 [ revision: https://github.com/taskcluster/taskcluster/commits/ae7697a5449cc29e7d41ae62ef6e5f725b929ed3 ] |
+| start-worker | start-worker 108.0.0 |
+| livelog | livelog 108.0.0 |
+| taskcluster-proxy | Taskcluster proxy 108.0.0 (git revision ae7697a5449cc29e7d41ae62ef6e5f725b929ed3) |
 
 ## Python packages
 
@@ -129,22 +129,22 @@
 | bash-completion | 1:2.11-8 | all |
 | bc | 1.07.1-3ubuntu4 | arm64 |
 | bcache-tools | 1.0.8-5build1 | arm64 |
-| bind9-dnsutils | 1:9.18.39-0ubuntu0.24.04.6 | arm64 |
-| bind9-host | 1:9.18.39-0ubuntu0.24.04.6 | arm64 |
-| bind9-libs:arm64 | 1:9.18.39-0ubuntu0.24.04.6 | arm64 |
+| bind9-dnsutils | 1:9.18.39-0ubuntu0.24.04.7 | arm64 |
+| bind9-host | 1:9.18.39-0ubuntu0.24.04.7 | arm64 |
+| bind9-libs:arm64 | 1:9.18.39-0ubuntu0.24.04.7 | arm64 |
 | binutils | 2.42-4ubuntu2.10 | arm64 |
 | binutils-aarch64-linux-gnu | 2.42-4ubuntu2.10 | arm64 |
 | binutils-common:arm64 | 2.42-4ubuntu2.10 | arm64 |
 | bpfcc-tools | 0.29.1+ds-1ubuntu7 | all |
 | bpftrace | 0.20.2-1ubuntu4.3 | arm64 |
-| bsdextrautils | 2.39.3-9ubuntu6.5 | arm64 |
-| bsdutils | 1:2.39.3-9ubuntu6.5 | arm64 |
+| bsdextrautils | 2.39.3-9ubuntu6.6 | arm64 |
+| bsdutils | 1:2.39.3-9ubuntu6.6 | arm64 |
 | btrfs-progs | 6.6.3-1.1build2 | arm64 |
 | build-essential | 12.10ubuntu1 | arm64 |
 | busybox-initramfs | 1:1.36.1-6ubuntu3.1 | arm64 |
 | busybox-static | 1:1.36.1-6ubuntu3.1 | arm64 |
 | byobu | 6.11-0ubuntu1.1 | all |
-| bzip2 | 1.0.8-5.1build0.1 | arm64 |
+| bzip2 | 1.0.8-5.1ubuntu0.1 | arm64 |
 | ca-certificates | 20260601~24.04.1 | all |
 | chrony | 4.5-1ubuntu4.2 | arm64 |
 | cloud-guest-utils | 0.33-1 | all |
@@ -154,9 +154,9 @@
 | command-not-found | 23.04.0 | all |
 | console-setup | 1.226ubuntu1.1 | all |
 | console-setup-linux | 1.226ubuntu1.1 | all |
-| containerd.io | 2.3.3-1~ubuntu.24.04~noble | arm64 |
-| coreutils | 9.4-3ubuntu6.2 | arm64 |
-| cpio | 2.15+dfsg-1ubuntu2 | arm64 |
+| containerd.io | 2.3.4-1~ubuntu.24.04~noble | arm64 |
+| coreutils | 9.4-3ubuntu6.3 | arm64 |
+| cpio | 2.15+dfsg-1ubuntu2.1 | arm64 |
 | cpp | 4:13.2.0-7ubuntu1 | arm64 |
 | cpp-13 | 13.3.0-6ubuntu2~24.04.1 | arm64 |
 | cpp-13-aarch64-linux-gnu | 13.3.0-6ubuntu2~24.04.1 | arm64 |
@@ -179,7 +179,7 @@
 | debianutils | 5.17build1 | arm64 |
 | dhcpcd-base | 1:10.0.6-1ubuntu3.2 | arm64 |
 | dictionaries-common | 1.29.7 | all |
-| diffutils | 1:3.10-1build1 | arm64 |
+| diffutils | 1:3.10-1ubuntu0.1 | arm64 |
 | dirmngr | 2.4.4-2ubuntu17.4 | arm64 |
 | distro-info | 1.7build1 | arm64 |
 | distro-info-data | 0.72-0ubuntu0.24.04.1 | all |
@@ -187,7 +187,7 @@
 | dmeventd | 2:1.02.185-3ubuntu3.2 | arm64 |
 | dmidecode | 3.5-3ubuntu0.1 | arm64 |
 | dmsetup | 2:1.02.185-3ubuntu3.2 | arm64 |
-| docker-buildx-plugin | 0.36.1-1~ubuntu.24.04~noble | arm64 |
+| docker-buildx-plugin | 0.37.0-1~ubuntu.24.04~noble | arm64 |
 | docker-ce | 5:29.5.3-1~ubuntu.24.04~noble | arm64 |
 | docker-ce-cli | 5:29.5.3-1~ubuntu.24.04~noble | arm64 |
 | docker-ce-rootless-extras | 5:29.7.2-1~ubuntu.24.04~noble | arm64 |
@@ -201,11 +201,11 @@
 | eatmydata | 131-1ubuntu1 | all |
 | ed | 1.20.1-1 | arm64 |
 | efibootmgr | 18-1build2 | arm64 |
-| eject | 2.39.3-9ubuntu6.5 | arm64 |
+| eject | 2.39.3-9ubuntu6.6 | arm64 |
 | emacsen-common | 3.0.5 | all |
 | ethtool | 1:6.7-1build1 | arm64 |
 | fakeroot | 1.33-1 | arm64 |
-| fdisk | 2.39.3-9ubuntu6.5 | arm64 |
+| fdisk | 2.39.3-9ubuntu6.6 | arm64 |
 | file | 1:5.45-3build1 | arm64 |
 | finalrd | 9build1 | all |
 | findutils | 4.9.0-5build1 | arm64 |
@@ -303,18 +303,18 @@
 | libassuan0:arm64 | 2.5.6-1build1 | arm64 |
 | libatm1t64:arm64 | 1:2.5.1-5.1build1 | arm64 |
 | libatomic1:arm64 | 14.2.0-4ubuntu2~24.04.1 | arm64 |
-| libattr1:arm64 | 1:2.5.2-1build1.1 | arm64 |
+| libattr1:arm64 | 1:2.5.2-1ubuntu0.1 | arm64 |
 | libaudit-common | 1:3.1.2-2.1build1.1 | all |
 | libaudit1:arm64 | 1:3.1.2-2.1build1.1 | arm64 |
 | libbinutils:arm64 | 2.42-4ubuntu2.10 | arm64 |
-| libblkid1:arm64 | 2.39.3-9ubuntu6.5 | arm64 |
+| libblkid1:arm64 | 2.39.3-9ubuntu6.6 | arm64 |
 | libboost-iostreams1.83.0:arm64 | 1.83.0-2.1ubuntu3.2 | arm64 |
 | libboost-thread1.83.0:arm64 | 1.83.0-2.1ubuntu3.2 | arm64 |
 | libbpf1:arm64 | 1:1.3.0-2build2 | arm64 |
 | libbpfcc:arm64 | 0.29.1+ds-1ubuntu7 | arm64 |
 | libbrotli1:arm64 | 1.1.0-2build2 | arm64 |
 | libbsd0:arm64 | 0.12.1-1build1.1 | arm64 |
-| libbz2-1.0:arm64 | 1.0.8-5.1build0.1 | arm64 |
+| libbz2-1.0:arm64 | 1.0.8-5.1ubuntu0.1 | arm64 |
 | libc-bin | 2.39-0ubuntu8.8 | arm64 |
 | libc-dev-bin | 2.39-0ubuntu8.8 | arm64 |
 | libc-devtools | 2.39-0ubuntu8.8 | arm64 |
@@ -355,13 +355,13 @@
 | liberror-perl | 0.17029-2 | all |
 | libestr0:arm64 | 0.1.11-1build1 | arm64 |
 | libevdev2:arm64 | 1.13.1+dfsg-1build1 | arm64 |
-| libevent-core-2.1-7t64:arm64 | 2.1.12-stable-9ubuntu2 | arm64 |
+| libevent-core-2.1-7t64:arm64 | 2.1.12-stable-9ubuntu2.1 | arm64 |
 | libexpat1-dev:arm64 | 2.6.1-2ubuntu0.4 | arm64 |
 | libexpat1:arm64 | 2.6.1-2ubuntu0.4 | arm64 |
 | libext2fs2t64:arm64 | 1.47.0-2.4~exp1ubuntu4.1 | arm64 |
 | libfakeroot:arm64 | 1.33-1 | arm64 |
 | libfastjson4:arm64 | 1.2304.0-1build1 | arm64 |
-| libfdisk1:arm64 | 2.39.3-9ubuntu6.5 | arm64 |
+| libfdisk1:arm64 | 2.39.3-9ubuntu6.6 | arm64 |
 | libffi8:arm64 | 3.4.6-1build1 | arm64 |
 | libfido2-1:arm64 | 1.14.0-1build3 | arm64 |
 | libfile-fcntllock-perl | 0.22-4ubuntu5 | arm64 |
@@ -371,7 +371,7 @@
 | libfuse3-3:arm64 | 3.14.0-5build1 | arm64 |
 | libgcc-13-dev:arm64 | 13.3.0-6ubuntu2~24.04.1 | arm64 |
 | libgcc-s1:arm64 | 14.2.0-4ubuntu2~24.04.1 | arm64 |
-| libgcrypt20:arm64 | 1.10.3-2ubuntu0.1 | arm64 |
+| libgcrypt20:arm64 | 1.10.3-2ubuntu0.2 | arm64 |
 | libgd3:arm64 | 2.3.3-9ubuntu5 | arm64 |
 | libgdbm-compat4t64:arm64 | 1.23-5.1build1 | arm64 |
 | libgdbm6t64:arm64 | 1.23-5.1build1 | arm64 |
@@ -392,9 +392,9 @@
 | libgprofng0:arm64 | 2.42-4ubuntu2.10 | arm64 |
 | libgssapi-krb5-2:arm64 | 1.20.1-6ubuntu2.8 | arm64 |
 | libgstreamer1.0-0:arm64 | 1.24.2-1ubuntu0.1 | arm64 |
-| libheif-plugin-aomdec:arm64 | 1.17.6-1ubuntu4.7 | arm64 |
-| libheif-plugin-aomenc:arm64 | 1.17.6-1ubuntu4.7 | arm64 |
-| libheif1:arm64 | 1.17.6-1ubuntu4.7 | arm64 |
+| libheif-plugin-aomdec:arm64 | 1.17.6-1ubuntu4.8 | arm64 |
+| libheif-plugin-aomenc:arm64 | 1.17.6-1ubuntu4.8 | arm64 |
+| libheif1:arm64 | 1.17.6-1ubuntu4.8 | arm64 |
 | libhogweed6t64:arm64 | 3.9.1-2.2build1.1 | arm64 |
 | libhunspell-1.7-0:arm64 | 1.7.2+really1.7.2-10build3 | arm64 |
 | libhunspell-dev:arm64 | 1.7.2+really1.7.2-10build3 | arm64 |
@@ -445,13 +445,13 @@
 | libmnl0:arm64 | 1.0.5-2build1 | arm64 |
 | libmodule-find-perl | 0.16-2 | all |
 | libmodule-scandeps-perl | 1.35-1ubuntu0.24.04.1 | all |
-| libmount1:arm64 | 2.39.3-9ubuntu6.5 | arm64 |
+| libmount1:arm64 | 2.39.3-9ubuntu6.6 | arm64 |
 | libmpc3:arm64 | 1.3.1-1build1.1 | arm64 |
 | libmpfr6:arm64 | 4.2.1-1build1.1 | arm64 |
 | libmspack0t64:arm64 | 0.11-1.1build1 | arm64 |
 | libnbd0 | 1.20.0-1 | arm64 |
-| libncurses6:arm64 | 6.4+20240113-1ubuntu2.1 | arm64 |
-| libncursesw6:arm64 | 6.4+20240113-1ubuntu2.1 | arm64 |
+| libncurses6:arm64 | 6.4+20240113-1ubuntu2.2 | arm64 |
+| libncursesw6:arm64 | 6.4+20240113-1ubuntu2.2 | arm64 |
 | libndctl6:arm64 | 77-2ubuntu2 | arm64 |
 | libnetfilter-conntrack3:arm64 | 1.0.9-6build1 | arm64 |
 | libnetplan1:arm64 | 1.1.2-8ubuntu1~24.04.2 | arm64 |
@@ -471,19 +471,19 @@
 | libnvme1t64 | 1.8-3ubuntu1 | arm64 |
 | libonig5:arm64 | 6.9.9-1build1 | arm64 |
 | libopeniscsiusr | 2.1.9-3ubuntu5.4 | arm64 |
-| libp11-kit0:arm64 | 0.25.3-4ubuntu2.1 | arm64 |
+| libp11-kit0:arm64 | 0.25.3-4ubuntu2.2 | arm64 |
 | libpackagekit-glib2-18:arm64 | 1.2.8-2ubuntu1.5 | arm64 |
 | libpam-cap:arm64 | 1:2.66-5ubuntu2.4 | arm64 |
-| libpam-modules-bin | 1.5.3-5ubuntu5.6 | arm64 |
-| libpam-modules:arm64 | 1.5.3-5ubuntu5.6 | arm64 |
-| libpam-runtime | 1.5.3-5ubuntu5.6 | all |
+| libpam-modules-bin | 1.5.3-5ubuntu5.7 | arm64 |
+| libpam-modules:arm64 | 1.5.3-5ubuntu5.7 | arm64 |
+| libpam-runtime | 1.5.3-5ubuntu5.7 | all |
 | libpam-systemd:arm64 | 255.4-1ubuntu8.17 | arm64 |
-| libpam0g:arm64 | 1.5.3-5ubuntu5.6 | arm64 |
+| libpam0g:arm64 | 1.5.3-5ubuntu5.7 | arm64 |
 | libparted2t64:arm64 | 3.6-4build1 | arm64 |
 | libpcap0.8t64:arm64 | 1.10.4-4.1ubuntu3 | arm64 |
 | libpci3:arm64 | 1:3.10.0-2build1 | arm64 |
 | libpcre2-8-0:arm64 | 10.42-4ubuntu2.1 | arm64 |
-| libperl5.38t64:arm64 | 5.38.2-3.2ubuntu0.3 | arm64 |
+| libperl5.38t64:arm64 | 5.38.2-3.2ubuntu0.4 | arm64 |
 | libpipeline1:arm64 | 1.5.7-2 | arm64 |
 | libplymouth5:arm64 | 24.004.60-1ubuntu7.2 | arm64 |
 | libpmem1:arm64 | 1.13.1-1.1ubuntu2 | arm64 |
@@ -522,12 +522,12 @@
 | libsharpyuv0:arm64 | 1.3.2-0.4build3 | arm64 |
 | libsigsegv2:arm64 | 2.14-1ubuntu2 | arm64 |
 | libslang2:arm64 | 2.3.3-3build2 | arm64 |
-| libsmartcols1:arm64 | 2.39.3-9ubuntu6.5 | arm64 |
+| libsmartcols1:arm64 | 2.39.3-9ubuntu6.6 | arm64 |
 | libsodium23:arm64 | 1.0.18-1ubuntu0.24.04.1 | arm64 |
 | libsort-naturally-perl | 1.03-4 | all |
 | libsqlite3-0:arm64 | 3.45.1-1ubuntu2.7 | arm64 |
 | libss2:arm64 | 1.47.0-2.4~exp1ubuntu4.1 | arm64 |
-| libssh-4:arm64 | 0.10.6-2ubuntu0.4 | arm64 |
+| libssh-4:arm64 | 0.10.6-2ubuntu0.5 | arm64 |
 | libssl3t64:arm64 | 3.0.13-0ubuntu3.15 | arm64 |
 | libstdc++-13-dev:arm64 | 13.3.0-6ubuntu2~24.04.1 | arm64 |
 | libstdc++6:arm64 | 14.2.0-4ubuntu2~24.04.1 | arm64 |
@@ -540,7 +540,7 @@
 | libtext-iconv-perl:arm64 | 1.7-8build3 | arm64 |
 | libtext-wrapi18n-perl | 0.06-10 | all |
 | libtiff6:arm64 | 4.5.1+git230720-4ubuntu2.5 | arm64 |
-| libtinfo6:arm64 | 6.4+20240113-1ubuntu2.1 | arm64 |
+| libtinfo6:arm64 | 6.4+20240113-1ubuntu2.2 | arm64 |
 | libtirpc-common | 1.3.4+ds-1.1build1 | all |
 | libtirpc3t64:arm64 | 1.3.4+ds-1.1build1 | arm64 |
 | libtraceevent1-plugin:arm64 | 1:1.8.2-1ubuntu2.1 | arm64 |
@@ -555,7 +555,7 @@
 | liburcu8t64:arm64 | 0.14.0-3.1build1 | arm64 |
 | libusb-1.0-0:arm64 | 2:1.0.27-1 | arm64 |
 | libutempter0:arm64 | 1.2.1-3build1 | arm64 |
-| libuuid1:arm64 | 2.39.3-9ubuntu6.5 | arm64 |
+| libuuid1:arm64 | 2.39.3-9ubuntu6.6 | arm64 |
 | libuv1t64:arm64 | 1.48.0-1.1build1 | arm64 |
 | libv4l-0t64:arm64 | 1.26.1-4build3 | arm64 |
 | libv4l2rds0t64:arm64 | 1.26.1-4build3 | arm64 |
@@ -617,13 +617,13 @@
 | mercurial-common | 6.7.2-1ubuntu2.2 | all |
 | mokutil | 0.6.0-2build3 | arm64 |
 | motd-news-config | 13ubuntu10.4 | all |
-| mount | 2.39.3-9ubuntu6.5 | arm64 |
+| mount | 2.39.3-9ubuntu6.6 | arm64 |
 | mtr-tiny | 0.95-1.1ubuntu0.1 | arm64 |
 | multipath-tools | 0.9.4-5ubuntu8.2 | arm64 |
 | nano | 7.2-2ubuntu0.2 | arm64 |
-| ncurses-base | 6.4+20240113-1ubuntu2.1 | all |
-| ncurses-bin | 6.4+20240113-1ubuntu2.1 | arm64 |
-| ncurses-term | 6.4+20240113-1ubuntu2.1 | all |
+| ncurses-base | 6.4+20240113-1ubuntu2.2 | all |
+| ncurses-bin | 6.4+20240113-1ubuntu2.2 | arm64 |
+| ncurses-term | 6.4+20240113-1ubuntu2.2 | all |
 | needrestart | 3.6-7ubuntu4.5 | all |
 | netbase | 6.4 | all |
 | netcat-openbsd | 1.226-1ubuntu2 | arm64 |
@@ -651,9 +651,9 @@
 | patch | 2.7.6-7build3 | arm64 |
 | pci.ids | 0.0~2024.03.31-1ubuntu0.1 | all |
 | pciutils | 1:3.10.0-2build1 | arm64 |
-| perl | 5.38.2-3.2ubuntu0.3 | arm64 |
-| perl-base | 5.38.2-3.2ubuntu0.3 | arm64 |
-| perl-modules-5.38 | 5.38.2-3.2ubuntu0.3 | all |
+| perl | 5.38.2-3.2ubuntu0.4 | arm64 |
+| perl-base | 5.38.2-3.2ubuntu0.4 | arm64 |
+| perl-modules-5.38 | 5.38.2-3.2ubuntu0.4 | all |
 | pigz | 2.8-1 | arm64 |
 | pinentry-curses | 1.2.1-3ubuntu5 | arm64 |
 | plymouth | 24.004.60-1ubuntu7.2 | arm64 |
@@ -729,7 +729,7 @@
 | python3-problem-report | 2.28.3-0ubuntu0.1 | all |
 | python3-psutil | 5.9.8-2build2 | arm64 |
 | python3-ptyprocess | 0.7.0-5 | all |
-| python3-pyasn1 | 0.4.8-4ubuntu0.2 | all |
+| python3-pyasn1 | 0.4.8-4ubuntu0.3 | all |
 | python3-pyasn1-modules | 0.2.8-1 | all |
 | python3-pygments | 2.17.2+dfsg-1 | all |
 | python3-pyparsing | 3.1.1-1 | all |
@@ -815,8 +815,8 @@
 | update-notifier-common | 3.192.68.2 | all |
 | usb.ids | 2024.03.18-1 | all |
 | usbutils | 1:017-3build1 | arm64 |
-| util-linux | 2.39.3-9ubuntu6.5 | arm64 |
-| uuid-runtime | 2.39.3-9ubuntu6.5 | arm64 |
+| util-linux | 2.39.3-9ubuntu6.6 | arm64 |
+| uuid-runtime | 2.39.3-9ubuntu6.6 | arm64 |
 | v4l-utils | 1.26.1-4build3 | arm64 |
 | v4l2loopback-dkms | 0.12.7-2ubuntu5.1 | all |
 | v4l2loopback-utils | 0.12.7-2ubuntu5.1 | all |
@@ -835,6 +835,6 @@
 | xxd | 2:9.1.0016-1ubuntu7.20 | arm64 |
 | xz-utils | 5.6.1+really5.4.5-1ubuntu0.3 | arm64 |
 | zerofree | 1.1.1-1build5 | arm64 |
-| zlib1g-dev:arm64 | 1:1.3.dfsg-3.1ubuntu2.1 | arm64 |
-| zlib1g:arm64 | 1:1.3.dfsg-3.1ubuntu2.1 | arm64 |
+| zlib1g-dev:arm64 | 1:1.3.dfsg-3.1ubuntu2.2 | arm64 |
+| zlib1g:arm64 | 1:1.3.dfsg-3.1ubuntu2.2 | arm64 |
 | zstd | 1.5.5+dfsg2-2build1.1 | arm64 |
