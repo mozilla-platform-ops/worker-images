@@ -20,5 +20,4 @@ vm:
   bootstrapscript: "generic-worker-win2022"
   tc_arch: "amd64"
   taskcluster_version: 108.0.0
-  tags:
-    - image_set: markco-generic-worker-win2022-gpu-staging
+  tags: {}

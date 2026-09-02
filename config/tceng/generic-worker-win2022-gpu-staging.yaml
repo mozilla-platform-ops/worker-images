@@ -14,5 +14,4 @@ vm:
   vm_size: Standard_NV12ads_A10_v5
   bootstrapscript: "generic-worker-win2022-staging"
   tc_arch: "amd64"
-  tags:
-    - image_set: markco-generic-worker-win2022-gpu-staging
+  tags: {}
