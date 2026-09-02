@@ -24,8 +24,8 @@ vm:
     worker_pool_id: win11-a64-25h2-tester
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "master"
-    deploymentId: "default"
+    sourceBranch: "bump-windows-taskcluster-108.0.0"
+    deploymentId: "NA"
     managed_by: packer
 tests:
   - error_reporting.tests.ps1

@@ -25,7 +25,7 @@ vm:
     worker_pool_id: win2025-64-24h2-alpha
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "relops-2407-win2025-core"
+    sourceBranch: "bump-windows-taskcluster-108.0.0"
     deploymentId: "NA"
     managed_by: packer
 tests:
