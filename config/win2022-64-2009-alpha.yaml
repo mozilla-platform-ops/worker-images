@@ -22,7 +22,7 @@ vm:
     worker_pool_id: win2022-64-2009
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "bump-windows-taskcluster-108.0.0"
+    sourceBranch: "remove-dead-code-windows"
     deploymentId: "NA"
     managed_by: packer
 tests:
