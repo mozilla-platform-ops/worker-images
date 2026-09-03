@@ -24,7 +24,7 @@ vm:
     worker_pool_id: win11-a64-25h2-tester
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "bump-windows-taskcluster-108.0.0"
+    sourceBranch: "remove-dead-code-windows"
     deploymentId: "NA"
     managed_by: packer
 tests:
