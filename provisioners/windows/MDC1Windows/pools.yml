@@ -28,7 +28,10 @@ pools:
   - name: "win11-64-24h2-hw-ref-alpha"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
-    git_version: "2.50.1"
+    # Matched to perf-debug (was 2.50.1) so the two canary pools are identical on every
+    # deployment field. Inert either way: the WIM bakes Git 2.54.0 and the deploy-time
+    # install is version-guarded, so neither value ever triggers an install.
+    git_version: "2.50.0"
     #dev: RELOPS-1470
     Description: "NUC12 Hardware Reference Staging/Testing Pool"
     # RELOPS-2487 canary: same dev trigger perf-debug carries, so both canary
