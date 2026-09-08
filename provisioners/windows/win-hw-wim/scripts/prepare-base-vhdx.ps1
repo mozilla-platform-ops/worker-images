@@ -44,14 +44,19 @@ param(
     # array parameter (extra space-separated values spill onto the next positional param), so
     # New-WinHwWim joins the list with '|' and we split it here.
     [string] $DriverCabUrls,
-    # Optional payloads copied VERBATIM into the image at C:\bake\extras\ (no expansion,
+    # Optional payloads copied VERBATIM into the image at C:\extras\ (no expansion,
     # no execution here). Same '|'-delimited convention as -DriverCabUrls.
     #
     # This exists because a deployed NUC cannot reach our storage: hardwareimaging is
     # Entra-only (anonymous GET -> 409) and the nodes have no Azure identity. Only the
-    # build host has one, so anything the bake needs to run in-guest has to be staged
-    # into the image from here. ronin's win_intel_graphics_software class then runs
-    # whatever it finds under C:\bake\extras during the bake's puppet apply.
+    # build host has one, so anything a NUC needs to run has to be staged into the
+    # image from here.
+    #
+    # NOTE the destination is C:\extras, NOT C:\bake\extras: these payloads must SHIP in
+    # the golden WIM, and sysprep-generalize.ps1 deletes C:\bake wholesale before capture.
+    # ronin's win_intel_graphics_software runs the Intel installer from here at DEPLOY
+    # time, on real hardware - it cannot run at bake (rc=1008 in the GPU-less Hyper-V
+    # guest, and the MSIX it installs is per-user, so sysprep would strip it anyway).
     [string] $ExtrasUrls,
     # Build-only WinRM account injected via unattend so Packer can connect.
     # Scrubbed by sysprep-generalize.ps1 before capture — never ships in the WIM.
@@ -192,20 +197,20 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "DISM /Add-Driver failed rc=$LASTEXITCODE" }
     }
 
-    # --- Optional: stage in-guest payloads to C:\bake\extras (default: none) ---
-    # Copied verbatim - NOT expanded and NOT executed here. The bake's puppet apply is what
-    # runs them (ronin win_intel_graphics_software looks for C:\bake\extras\gfx_win_*.exe).
+    # --- Optional: stage payloads to C:\extras (default: none) ---
+    # Copied verbatim - NOT expanded and NOT executed here. The DEPLOY-time puppet apply is
+    # what runs them (ronin win_intel_graphics_software globs C:\extras\gfx_win_*.exe).
     #
-    # These have to be staged offline because the guest cannot fetch them itself: the
-    # payloads live in hardwareimaging, which is Entra-only, and neither the packer guest
-    # nor a deployed NUC has an Azure identity. Only this build host does.
+    # These have to be staged offline because neither the packer guest nor a deployed NUC
+    # can fetch them: the payloads live in hardwareimaging, which is Entra-only, and only
+    # this build host has an Azure identity.
     #
-    # sysprep-generalize.ps1 scrubs C:\bake before capture, so this is build-only and does
-    # not bloat the golden WIM.
+    # C:\extras SHIPS in the golden WIM by design - that is the point. Do not move it under
+    # C:\bake, which sysprep-generalize.ps1 deletes before capture.
     if ($ExtrasUrls) {
         $extraList = @($ExtrasUrls -split '\|' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
         if ($extraList.Count -gt 0) {
-            $extrasDir = 'W:\bake\extras'
+            $extrasDir = 'W:\extras'
             New-Item -ItemType Directory -Path $extrasDir -Force | Out-Null
             $m = 0
             foreach ($url in $extraList) {
@@ -215,7 +220,7 @@ try {
                 $leaf = [System.IO.Path]::GetFileName((($url -split '\?')[0]))
                 if (-not $leaf) { throw "Could not derive a file name from extras URL: $url" }
                 $dest = Join-Path $extrasDir $leaf
-                Write-Host "== [$m/$($extraList.Count)] Staging extra -> C:\bake\extras\$leaf =="
+                Write-Host "== [$m/$($extraList.Count)] Staging extra -> C:\extras\$leaf =="
                 Get-BakeAsset -Url $url -Destination $dest
                 $sz = (Get-Item -LiteralPath $dest).Length
                 Write-Host ("== Staged {0} ({1:n0} bytes) ==" -f $leaf, $sz)

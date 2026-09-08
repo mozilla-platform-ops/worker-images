@@ -47,9 +47,10 @@ drivers:
   inject: false
   cabs: []
 
-# Payloads copied verbatim into the image at C:\bake\extras\ for the bake's puppet apply
-# to run. Not drivers: never expanded, never DISM-injected. sysprep removes C:\bake before
-# capture, so they are build-only. Off by default; set per image.
+# Payloads copied verbatim into the image at C:\extras\ for the DEPLOY-time puppet apply
+# to run. Not drivers: never expanded, never DISM-injected. Unlike C:\bake (which sysprep
+# deletes before capture) these SHIP in the golden WIM, so each entry costs its own size in
+# every WIM. Off by default; set per image.
 extras:
   files: []
 

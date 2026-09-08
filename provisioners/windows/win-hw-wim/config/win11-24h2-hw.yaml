@@ -62,9 +62,9 @@ drivers:
     - "https://hardwareimaging.blob.core.windows.net/resources/drivers/nuc13-24h2-platform-drivers-20260827.zip"
     - "https://hardwareimaging.blob.core.windows.net/resources/drivers/nuc12-24h2-platform-drivers-20260827.zip"
 
-# Payloads copied VERBATIM into the image at C:\bake\extras\ - not expanded, not
-# DISM-injected, not run here. The bake's puppet apply runs them; sysprep removes
-# C:\bake before capture, so they do not ship in the WIM.
+# Payloads copied VERBATIM into the image at C:\extras\ - not expanded, not DISM-injected,
+# not run here. They SHIP in the golden WIM (~+740 MB for the entry below) and the
+# DEPLOY-time puppet apply is what runs them.
 extras:
   files:
     # Intel's full graphics installer. Supplies IntelGraphicsSoftwareService, which the
@@ -74,20 +74,31 @@ extras:
     # never happens here because WU is disabled by design, so the driver cab above (INF
     # only) cannot supply it. ronin's win_intel_graphics_software runs this WITHOUT
     # --noExtras, the flag that would skip exactly that folder.
+    #
+    # It is staged rather than installed at bake because installing at bake CANNOT work:
+    # the installer returns rc=1008 in the GPU-less Hyper-V build guest (rc=1001 + service
+    # Running on real NUC13 hardware), and the MSIX it lays down is per-user, which
+    # sysprep /generalize strips from the WIM. So the WIM carries the installer and the
+    # node installs it on first puppet run.
     - "https://hardwareimaging.blob.core.windows.net/resources/drivers/gfx_win_101.7088.exe"
 
 ronin:
   org: default
   repo: default
   branch: wim-bake-role         # feature branch carrying the bake role (until merged)
-  hash: "4c2e223d"              # ronin_puppet#1297 HEAD; bake role excludes hardware_observability (no marlin_pw lookup). Bump when the branch moves.
-                                # 4c2e223d SUPERSEDES 7dac7f0a. Two reasons: (a) wim-bake-role was rebased onto
+  hash: "a312287f"              # ronin_puppet#1297 HEAD; bake role excludes hardware_observability (no marlin_pw lookup). Bump when the branch moves.
+                                # a312287f SUPERSEDES 4c2e223d: the bake role no longer includes
+                                # intel_graphics_software (rc=1008 in the GPU-less build guest, and the MSIX is a
+                                # per-user install sysprep would strip anyway). The installer is staged to C:\extras
+                                # by extras.files below and run at DEPLOY time instead. Pin BOTH this and the
+                                # pools.yml hash to a312287f or the deployed node looks for the old C:\bake\extras.
+                                # 4c2e223d SUPERSEDED 7dac7f0a. Two reasons: (a) wim-bake-role was rebased onto
                                 # master on 2026-08-26 and 7dac7f0a no longer exists on the branch - Get-Ronin does
                                 # a --single-branch clone, which carries no unreachable objects, so the checkout
                                 # would fail outright; (b) it predates the two things this bake is FOR - VBS/HVCI
                                 # (win_device_guard, so baked nodes match the MDT image's Credential Guard + HVCI)
-                                # and Intel Graphics Software (win_intel_graphics_software, run from the installer
-                                # that extras.files now stages to C:\bake\extras).
+                                # and Intel Graphics Software (win_intel_graphics_software, run at DEPLOY time from
+                                # the installer that extras.files stages into the WIM at C:\extras).
                                 # HISTORY: 7dac7f0a (RELOPS-2487) SUPERSEDED b64eb0b5. b64eb0b5 stopped the bake disabling
                                 # AppXSvc so the image shipped it Manual; that fixed the codecs but changed sysprep -
                                 # the WIM then got a full generalize, and the first-boot specialize pass regenerated a
