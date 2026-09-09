@@ -109,13 +109,15 @@ source "googlecompute" "gw-fxci-gcp-l1-2404-headless-alpha" {
   image_guest_os_features = ["GVNIC"]
 }
 
+# ponytail: pin the base until newer ARM64 images accept SSH during Packer builds.
 source "googlecompute" "gw-fxci-gcp-l1-2404-arm64-headless-alpha" {
   disk_size               = var.disk_size
   image_licenses          = ["projects/vm-options/global/licenses/enable-vmx"]
   image_name              = var.image_name
   machine_type            = "t2a-standard-4"
   project_id              = var.project_id
-  source_image_family     = var.source_image_family
+  source_image            = "ubuntu-2404-noble-arm64-v20260723"
+  source_image_project_id = ["ubuntu-os-cloud"]
   ssh_username            = "ubuntu"
   zone                    = var.zone
   use_iap                 = true
@@ -128,7 +130,8 @@ source "googlecompute" "trusted-gw-fxci-gcp-l3-2404-arm64-headless-alpha" {
   image_name              = var.image_name
   machine_type            = "t2a-standard-4"
   project_id              = var.project_id
-  source_image_family     = var.source_image_family
+  source_image            = "ubuntu-2404-noble-arm64-v20260723"
+  source_image_project_id = ["ubuntu-os-cloud"]
   ssh_username            = "ubuntu"
   zone                    = var.zone
   use_iap                 = true
