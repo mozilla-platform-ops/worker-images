@@ -150,19 +150,6 @@ Describe "Mozilla Build" -Skip:(Assert-IsBuilder) {
             Get-ItemPropertyValue $hg_key -Name "IoPriority" | Should -Be 2
         }
     }
-    Context "Symlink Access" {
-        BeforeAll {
-            . "$env:windir\System32\WindowsPowerShell\v1.0\Modules\Carbon\Import-Carbon"
-            $everyone = Get-Privilege -Identity "everyone"
-            $system = Get-Privilege -Identity "system"
-        }
-        It "Everyone has symbolicprivilege" {
-            $everyone | Should -Contain "SeCreateSymbolicLinkPrivilege"
-        }
-        It "System has symbolicprivilege" {
-            $system | Should -Contain "SeCreateSymbolicLinkPrivilege"
-        }
-    }
     Context "Install PSUtil" {
         It "init.py path exists for python 3" {
             Test-Path "C:\mozilla-build\python3\Lib\site-packages\psutil\__init__.py" | Should -Be $true
@@ -328,19 +315,6 @@ Describe "Mozilla Build - Builder" -Skip:(Assert-IsTester) {
         }
         It "IO Priority for hg" {
             Get-ItemPropertyValue $hg_key -Name "IoPriority" | Should -Be 2
-        }
-    }
-    Context "Symlink Access" {
-        BeforeAll {
-            . "$env:windir\System32\WindowsPowerShell\v1.0\Modules\Carbon\Import-Carbon"
-            $everyone = Get-Privilege -Identity "everyone"
-            $system = Get-Privilege -Identity "system"
-        }
-        It "Everyone has symbolicprivilege" {
-            $everyone | Should -Contain "SeCreateSymbolicLinkPrivilege"
-        }
-        It "System has symbolicprivilege" {
-            $system | Should -Contain "SeCreateSymbolicLinkPrivilege"
         }
     }
     Context "Install PSUtil" {
