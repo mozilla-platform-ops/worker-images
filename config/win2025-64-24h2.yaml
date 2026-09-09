@@ -23,8 +23,8 @@ vm:
     worker_pool_id: win2025-64-24h2
     sourceOrganization: "default"
     sourceRepository: "default"
-    sourceBranch: "relops-2407-win2025-core"
-    deploymentId: "NA"
+    sourceBranch: master
+    deploymentId: "65149e3"
     managed_by: "default"
 tests:
   - microsoft_binscope.tests.ps1

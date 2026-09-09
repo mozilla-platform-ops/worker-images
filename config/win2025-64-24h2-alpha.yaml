@@ -25,8 +25,8 @@ vm:
     worker_pool_id: win2025-64-24h2-alpha
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "remove-dead-code-windows"
-    deploymentId: "NA"
+    sourceBranch: master
+    deploymentId: "65149e3"
     managed_by: packer
 tests:
   - microsoft_binscope.tests.ps1
