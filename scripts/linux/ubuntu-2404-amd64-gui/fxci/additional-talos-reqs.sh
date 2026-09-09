@@ -35,28 +35,8 @@ apt-get install -y dkms kmod llvm sox libxcb1 nodejs xvfb apt-utils
 
 
 #
-# install v4l2loopback
-#
-apt-get install -y v4l2loopback-dkms v4l2loopback-utils
-# verify
-dkms status
-
-
-#
 # enable v4loopback
 #
-
-# required on 22.04?
-#
-# if [[ "$BUILD_V4L2LOOPBACK" ]]; then
-#     # This is for Ubuntu 18.04 in GCP. We have to build the module, otherwise it will not work.
-#     V4L2LOOPBACK_VERSION=${V4L2LOOPBACK_VERSION:-0.12.5}
-#     git clone -b v$V4L2LOOPBACK_VERSION https://github.com/umlaeute/v4l2loopback /usr/src/v4l2loopback-$V4L2LOOPBACK_VERSION
-#     # Edit the file `v4l2looback.c` and change the `MAX_DEVICES` definition to `100`
-#     # (NOTE: ignore the comments about overriding it in a `make` invocation; this isn't possible via dkms)
-#     sed -i -e "s/# *define MAX_DEVICES *[0-9]*/# define MAX_DEVICES $NUM_LOOPBACK_VIDEO_DEVICES/g" /usr/src/v4l2loopback-$V4L2LOOPBACK_VERSION/v4l2loopback.c
-#     dkms install -m v4l2loopback -v $V4L2LOOPBACK_VERSION
-# fi
 
 # Required in GCP.
 apt-get install linux-modules-extra-gcp -y

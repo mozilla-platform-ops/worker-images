@@ -30,7 +30,17 @@ header_package="linux-headers-$kernel_version"
 retry apt-get update
 retry apt-get -y reinstall linux-headers-gcp $header_package
 
-retry apt-get install -y v4l2loopback-dkms v4l2loopback-utils
+# Ubuntu's v4l2loopback-dkms package does not build with kernel 7.0.
+# Install a current upstream release with DKMS.
+V4L2LOOPBACK_VERSION=0.15.4
+retry apt-get install -y dkms v4l2loopback-utils
+retry curl -fsSL "https://github.com/v4l2loopback/v4l2loopback/archive/refs/tags/v${V4L2LOOPBACK_VERSION}.tar.gz" \
+  -o /tmp/v4l2loopback.tar.gz
+tar xz -C /usr/src -f /tmp/v4l2loopback.tar.gz
+rm -f /tmp/v4l2loopback.tar.gz
+dkms add -m v4l2loopback -v "${V4L2LOOPBACK_VERSION}"
+dkms build -m v4l2loopback -v "${V4L2LOOPBACK_VERSION}" -k "$kernel_version"
+dkms install -m v4l2loopback -v "${V4L2LOOPBACK_VERSION}" -k "$kernel_version"
 # verify
 dkms status
 
