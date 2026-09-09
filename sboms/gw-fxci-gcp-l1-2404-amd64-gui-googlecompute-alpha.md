@@ -3,7 +3,7 @@
 ## Build provenance
 
 - Image name: gw-fxci-gcp-l1-2404-amd64-gui-googlecompute-alpha
-- Taskcluster version: 108.0.0
+- Taskcluster version: 108.1.0
 - Taskcluster ref: unknown
 - Architecture: AMD64
 - Source image family: ubuntu-2404-lts-amd64
@@ -12,18 +12,18 @@
 
 ## Operating system
 
-- OS: Ubuntu 24.04.4 LTS (Noble Numbat)
-- Kernel: Linux 6.17.0-1022-gcp x86_64 GNU/Linux
+- OS: Ubuntu 24.04.5 LTS (Noble Numbat)
+- Kernel: Linux 7.0.0-1011-gcp x86_64 GNU/Linux
 - Machine architecture: x86_64
 
 ## Taskcluster tools
 
 | Name | Version |
 | --- | --- |
-| generic-worker | generic-worker (multiuser engine) 108.0.0 [ revision: https://github.com/taskcluster/taskcluster/commits/ae7697a5449cc29e7d41ae62ef6e5f725b929ed3 ] |
-| start-worker | start-worker 108.0.0 |
-| livelog | livelog 108.0.0 |
-| taskcluster-proxy | Taskcluster proxy 108.0.0 (git revision ae7697a5449cc29e7d41ae62ef6e5f725b929ed3) |
+| generic-worker | generic-worker (multiuser engine) 108.1.0 [ revision: https://github.com/taskcluster/taskcluster/commits/f86624a8bf3761cdbc48de2c7f74bae44d7464dd ] |
+| start-worker | start-worker 108.1.0 |
+| livelog | livelog 108.1.0 |
+| taskcluster-proxy | Taskcluster proxy 108.1.0 (git revision f86624a8bf3761cdbc48de2c7f74bae44d7464dd) |
 
 ## Python packages
 
@@ -100,7 +100,7 @@
 | pyparsing | 3.1.1 |
 | pyrsistent | 0.20.0 |
 | pyserial | 3.5 |
-| python-apt | 2.7.7+ubuntu5.2 |
+| python-apt | 2.7.7+ubuntu5.3 |
 | python-dateutil | 2.8.2 |
 | python-debian | 0.1.49+ubuntu2 |
 | python-magic | 0.4.27 |
@@ -166,7 +166,7 @@
 | at-spi2-core | 2.52.0-1build1 | amd64 |
 | avahi-daemon | 0.8-13ubuntu6.2 | amd64 |
 | baobab | 46.0-1build1 | amd64 |
-| base-files | 13ubuntu10.4 | amd64 |
+| base-files | 13ubuntu10.5 | amd64 |
 | base-passwd | 3.6.3build1 | amd64 |
 | bash | 5.2.21-2ubuntu4 | amd64 |
 | bash-completion | 1:2.11-8 | all |
@@ -211,7 +211,7 @@
 | conmon | 2.1.10+ds1-1build2 | amd64 |
 | console-setup | 1.226ubuntu1.1 | all |
 | console-setup-linux | 1.226ubuntu1.1 | all |
-| containerd.io | 2.3.4-1~ubuntu.24.04~noble | amd64 |
+| containerd.io | 2.3.5-1~ubuntu.24.04~noble | amd64 |
 | containernetworking-plugins | 1.1.1+ds1-3ubuntu0.24.04.3 | amd64 |
 | coreutils | 9.4-3ubuntu6.3 | amd64 |
 | cpio | 2.15+dfsg-1ubuntu2.1 | amd64 |
@@ -260,7 +260,7 @@
 | dhcpcd-base | 1:10.0.6-1ubuntu3.2 | amd64 |
 | dictionaries-common | 1.29.7 | all |
 | diffutils | 1:3.10-1ubuntu0.1 | amd64 |
-| dirmngr | 2.4.4-2ubuntu17.4 | amd64 |
+| dirmngr | 2.4.4-2ubuntu17.6 | amd64 |
 | distro-info | 1.7build1 | amd64 |
 | distro-info-data | 0.72-0ubuntu0.24.04.1 | all |
 | dkms | 3.0.11-1ubuntu13 | all |
@@ -274,8 +274,8 @@
 | docker-buildx-plugin | 0.37.0-1~ubuntu.24.04~noble | amd64 |
 | docker-ce | 5:29.5.3-1~ubuntu.24.04~noble | amd64 |
 | docker-ce-cli | 5:29.5.3-1~ubuntu.24.04~noble | amd64 |
-| docker-ce-rootless-extras | 5:29.7.2-1~ubuntu.24.04~noble | amd64 |
-| docker-compose-plugin | 5.5.0-1~ubuntu.24.04~noble | amd64 |
+| docker-ce-rootless-extras | 5:29.8.0-1~ubuntu.24.04~noble | amd64 |
+| docker-compose-plugin | 5.5.1-1~ubuntu.24.04~noble | amd64 |
 | dosfstools | 4.2-1.1build1 | amd64 |
 | dpkg | 1.22.6ubuntu6.6 | amd64 |
 | dpkg-dev | 1.22.6ubuntu6.6 | all |
@@ -453,22 +453,22 @@
 | gnome-themes-extra-data | 3.28-2ubuntu5 | all |
 | gnome-themes-extra:amd64 | 3.28-2ubuntu5 | amd64 |
 | gnome-user-docs | 46.0-1ubuntu1 | all |
-| gnupg | 2.4.4-2ubuntu17.4 | all |
-| gnupg-agent | 2.4.4-2ubuntu17.4 | all |
-| gnupg-l10n | 2.4.4-2ubuntu17.4 | all |
-| gnupg-utils | 2.4.4-2ubuntu17.4 | amd64 |
+| gnupg | 2.4.4-2ubuntu17.6 | all |
+| gnupg-agent | 2.4.4-2ubuntu17.6 | all |
+| gnupg-l10n | 2.4.4-2ubuntu17.6 | all |
+| gnupg-utils | 2.4.4-2ubuntu17.6 | amd64 |
 | golang-github-containers-common | 0.57.4+ds1-2ubuntu0.2 | all |
 | golang-github-containers-image | 5.29.2-2 | all |
 | google-compute-engine | 20260121.00-0ubuntu1~24.04.0 | all |
 | google-compute-engine-oslogin | 20260116.00-0ubuntu1~24.04.0 | amd64 |
 | google-guest-agent | 20250116.00-0ubuntu1~24.04.4 | amd64 |
 | google-osconfig-agent | 20251028.00-0ubuntu2~24.04.0 | amd64 |
-| gpg | 2.4.4-2ubuntu17.4 | amd64 |
-| gpg-agent | 2.4.4-2ubuntu17.4 | amd64 |
-| gpg-wks-client | 2.4.4-2ubuntu17.4 | amd64 |
-| gpgconf | 2.4.4-2ubuntu17.4 | amd64 |
-| gpgsm | 2.4.4-2ubuntu17.4 | amd64 |
-| gpgv | 2.4.4-2ubuntu17.4 | amd64 |
+| gpg | 2.4.4-2ubuntu17.6 | amd64 |
+| gpg-agent | 2.4.4-2ubuntu17.6 | amd64 |
+| gpg-wks-client | 2.4.4-2ubuntu17.6 | amd64 |
+| gpgconf | 2.4.4-2ubuntu17.6 | amd64 |
+| gpgsm | 2.4.4-2ubuntu17.6 | amd64 |
+| gpgv | 2.4.4-2ubuntu17.6 | amd64 |
 | grep | 3.11-4build1 | amd64 |
 | grilo-plugins-0.3-base:amd64 | 0.3.16-1.1ubuntu6.1~24.04.1 | amd64 |
 | groff-base | 1.23.0-3build2 | amd64 |
@@ -551,7 +551,7 @@
 | kbd | 2.6.4-2ubuntu2 | amd64 |
 | kerneloops | 0.12+git20140509-6ubuntu8 | amd64 |
 | keyboard-configuration | 1.226ubuntu1.1 | all |
-| keyboxd | 2.4.4-2ubuntu17.4 | amd64 |
+| keyboxd | 2.4.4-2ubuntu17.6 | amd64 |
 | klibc-utils | 2.0.13-4ubuntu0.2 | amd64 |
 | kmod | 31+20240202-2ubuntu7.2 | amd64 |
 | kpartx | 0.9.4-5ubuntu8.2 | amd64 |
@@ -981,7 +981,7 @@
 | libio-stringy-perl | 2.111-3 | all |
 | libip4tc2:amd64 | 1.8.10-3ubuntu2 | amd64 |
 | libip6tc2:amd64 | 1.8.10-3ubuntu2 | amd64 |
-| libipa-hbac0t64 | 2.9.4-1.1ubuntu6.7 | amd64 |
+| libipa-hbac0t64 | 2.9.4-1.1ubuntu6.8 | amd64 |
 | libipc-system-simple-perl | 1.30-2 | all |
 | libipt2 | 2.0.6-1build1 | amd64 |
 | libiscsi7:amd64 | 1.19.0-3build4 | amd64 |
@@ -1031,6 +1031,7 @@
 | liblilv-0-0:amd64 | 0.24.22-1build1 | amd64 |
 | liblirc-client0t64:amd64 | 0.10.2-0.8build1 | amd64 |
 | libllvm18:amd64 | 1:18.1.3-1ubuntu1 | amd64 |
+| libllvm19:amd64 | 1:19.1.1-1ubuntu1~24.04.2 | amd64 |
 | libllvm20:amd64 | 1:20.1.2-0ubuntu1~24.04.3 | amd64 |
 | liblmdb0:amd64 | 0.9.31-1build1 | amd64 |
 | liblocale-gettext-perl | 1.07-6ubuntu5 | amd64 |
@@ -1125,7 +1126,7 @@
 | libnspr4:amd64 | 2:4.35-1.1build1 | amd64 |
 | libnss-mdns:amd64 | 0.15.1-4build1 | amd64 |
 | libnss-mymachines:amd64 | 255.4-1ubuntu8.17 | amd64 |
-| libnss-sss:amd64 | 2.9.4-1.1ubuntu6.7 | amd64 |
+| libnss-sss:amd64 | 2.9.4-1.1ubuntu6.8 | amd64 |
 | libnss-systemd:amd64 | 255.4-1ubuntu8.17 | amd64 |
 | libnss3:amd64 | 2:3.98-1ubuntu0.2 | amd64 |
 | libntfs-3g89t64:amd64 | 1:2022.10.3-1.2ubuntu3.2 | amd64 |
@@ -1154,7 +1155,7 @@
 | libpam-modules:amd64 | 1.5.3-5ubuntu5.7 | amd64 |
 | libpam-pwquality:amd64 | 1.4.5-3build1 | amd64 |
 | libpam-runtime | 1.5.3-5ubuntu5.7 | all |
-| libpam-sss:amd64 | 2.9.4-1.1ubuntu6.7 | amd64 |
+| libpam-sss:amd64 | 2.9.4-1.1ubuntu6.8 | amd64 |
 | libpam-systemd:amd64 | 255.4-1ubuntu8.17 | amd64 |
 | libpam0g:amd64 | 1.5.3-5ubuntu5.7 | amd64 |
 | libpango-1.0-0:amd64 | 1.52.1+ds-1build1 | amd64 |
@@ -1228,7 +1229,7 @@
 | libqpdf29t64:amd64 | 11.9.0-1.1ubuntu0.1 | amd64 |
 | libqrtr-glib0:amd64 | 1.2.2-1ubuntu4 | amd64 |
 | libquadmath0:amd64 | 14.2.0-4ubuntu2~24.04.1 | amd64 |
-| librabbitmq4:amd64 | 0.11.0-1ubuntu0.1 | amd64 |
+| librabbitmq4:amd64 | 0.11.0-1ubuntu0.2 | amd64 |
 | librados2 | 19.2.3-0ubuntu0.24.04.3 | amd64 |
 | libraptor2-0:amd64 | 2.0.16-3ubuntu0.1 | amd64 |
 | libraqm0:amd64 | 0.10.1-1build1 | amd64 |
@@ -1342,9 +1343,9 @@
 | libssh-4:amd64 | 0.10.6-2ubuntu0.5 | amd64 |
 | libssh-gcrypt-4:amd64 | 0.10.6-2ubuntu0.5 | amd64 |
 | libssl3t64:amd64 | 3.0.13-0ubuntu3.15 | amd64 |
-| libsss-certmap0 | 2.9.4-1.1ubuntu6.7 | amd64 |
-| libsss-idmap0 | 2.9.4-1.1ubuntu6.7 | amd64 |
-| libsss-nss-idmap0 | 2.9.4-1.1ubuntu6.7 | amd64 |
+| libsss-certmap0 | 2.9.4-1.1ubuntu6.8 | amd64 |
+| libsss-idmap0 | 2.9.4-1.1ubuntu6.8 | amd64 |
+| libsss-nss-idmap0 | 2.9.4-1.1ubuntu6.8 | amd64 |
 | libstartup-notification0:amd64 | 0.12-6build3 | amd64 |
 | libstdc++-13-dev:amd64 | 13.3.0-6ubuntu2~24.04.1 | amd64 |
 | libstdc++6:amd64 | 14.2.0-4ubuntu2~24.04.1 | amd64 |
@@ -1429,7 +1430,6 @@
 | libuuid1:amd64 | 2.39.3-9ubuntu6.6 | amd64 |
 | libuv1t64:amd64 | 1.48.0-1.1build1 | amd64 |
 | libv4l-0t64:amd64 | 1.26.1-4build3 | amd64 |
-| libv4l2rds0t64:amd64 | 1.26.1-4build3 | amd64 |
 | libv4lconvert0t64:amd64 | 1.26.1-4build3 | amd64 |
 | libva-drm2:amd64 | 2.20.0-2ubuntu0.2 | amd64 |
 | libva-wayland2:amd64 | 2.20.0-2ubuntu0.2 | amd64 |
@@ -1576,20 +1576,21 @@
 | libzvbi-common | 0.2.42-2 | all |
 | libzvbi0t64:amd64 | 0.2.42-2 | amd64 |
 | linux-base | 4.5ubuntu9+24.04.2 | all |
-| linux-gcp | 6.17.0-1022.25 | amd64 |
-| linux-gcp-6.17-headers-6.17.0-1022 | 6.17.0-1022.25 | amd64 |
-| linux-gcp-6.17-tools-6.17.0-1022 | 6.17.0-1022.25 | amd64 |
-| linux-headers-6.17.0-1022-gcp | 6.17.0-1022.25 | amd64 |
-| linux-headers-gcp | 6.17.0-1022.25 | amd64 |
-| linux-image-6.17.0-1022-gcp | 6.17.0-1022.25 | amd64 |
-| linux-image-gcp | 6.17.0-1022.25 | amd64 |
-| linux-libc-dev:amd64 | 6.8.0-138.138 | amd64 |
+| linux-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
+| linux-gcp-7.0-headers-7.0.0-1011 | 7.0.0-1011.11~24.04.1 | amd64 |
+| linux-gcp-7.0-tools-7.0.0-1011 | 7.0.0-1011.11~24.04.1 | amd64 |
+| linux-headers-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
+| linux-headers-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
+| linux-image-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
+| linux-image-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
+| linux-libc-dev:amd64 | 6.8.0-139.139 | amd64 |
 | linux-modules-6.17.0-1022-gcp | 6.17.0-1022.25 | amd64 |
+| linux-modules-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
 | linux-modules-extra-6.17.0-1022-gcp | 6.17.0-1022.25 | amd64 |
 | linux-modules-extra-gcp | 6.17.0-1022.25 | amd64 |
 | linux-sound-base | 1.0.25+dfsg-0ubuntu7 | all |
-| linux-tools-6.17.0-1022-gcp | 6.17.0-1022.25 | amd64 |
-| linux-tools-common | 6.8.0-138.138 | all |
+| linux-tools-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
+| linux-tools-common | 6.8.0-139.139 | all |
 | llvm | 1:18.0-59~exp2 | amd64 |
 | llvm-18 | 1:18.1.3-1ubuntu1 | amd64 |
 | llvm-18-dev | 1:18.1.3-1ubuntu1 | amd64 |
@@ -1629,7 +1630,7 @@
 | mobile-broadband-provider-info | 20230416-1 | all |
 | modemmanager | 1.23.4-0ubuntu2 | amd64 |
 | mokutil | 0.6.0-2build3 | amd64 |
-| motd-news-config | 13ubuntu10.4 | all |
+| motd-news-config | 13ubuntu10.5 | all |
 | mount | 2.39.3-9ubuntu6.6 | amd64 |
 | mousetweaks | 3.32.0-4build2 | amd64 |
 | mscompress | 0.4-10build1 | amd64 |
@@ -1675,9 +1676,9 @@
 | open-iscsi | 2.1.9-3ubuntu5.4 | amd64 |
 | open-vm-tools | 2:13.0.10-0ubuntu0.24.04.1 | amd64 |
 | openprinting-ppds | 20230202-1 | all |
-| openssh-client | 1:9.6p1-3ubuntu13.18 | amd64 |
-| openssh-server | 1:9.6p1-3ubuntu13.18 | amd64 |
-| openssh-sftp-server | 1:9.6p1-3ubuntu13.18 | amd64 |
+| openssh-client | 1:9.6p1-3ubuntu13.19 | amd64 |
+| openssh-server | 1:9.6p1-3ubuntu13.19 | amd64 |
+| openssh-sftp-server | 1:9.6p1-3ubuntu13.19 | amd64 |
 | openssl | 3.0.13-0ubuntu3.15 | amd64 |
 | openvpn | 2.6.19-0ubuntu0.24.04.3 | amd64 |
 | orca | 46.1-1ubuntu1 | all |
@@ -1724,7 +1725,7 @@
 | poppler-utils | 24.02.0-1ubuntu9.9 | amd64 |
 | power-profiles-daemon | 0.21-1ubuntu2 | amd64 |
 | powermgmt-base | 1.37ubuntu0.1 | all |
-| powershell | 7.6.5-1.deb | amd64 |
+| powershell | 7.6.6-1.deb | amd64 |
 | ppp | 2.4.9-1+1.1ubuntu4 | amd64 |
 | pptp-linux | 1.10.0-1build4 | amd64 |
 | printer-driver-brlaser | 6-3build2 | amd64 |
@@ -1744,11 +1745,11 @@
 | psmisc | 23.7-1build1 | amd64 |
 | publicsuffix | 20231001.0357-0.1 | all |
 | pulseaudio-utils | 1:16.1+dfsg1-2ubuntu10.1 | amd64 |
-| python-apt-common | 2.7.7ubuntu5.2 | all |
+| python-apt-common | 2.7.7ubuntu5.3 | all |
 | python-babel-localedata | 2.10.3-3build1 | all |
 | python3 | 3.12.3-0ubuntu2.1 | amd64 |
 | python3-apport | 2.28.3-0ubuntu0.1 | all |
-| python3-apt | 2.7.7ubuntu5.2 | amd64 |
+| python3-apt | 2.7.7ubuntu5.3 | amd64 |
 | python3-aptdaemon | 1.1.1+bzr982-0ubuntu44 | all |
 | python3-aptdaemon.gtk3widgets | 1.1.1+bzr982-0ubuntu44 | all |
 | python3-attr | 23.2.0-2 | all |
@@ -1780,7 +1781,7 @@
 | python3-dev | 3.12.3-0ubuntu2.1 | amd64 |
 | python3-distro | 1.9.0-1 | all |
 | python3-distro-info | 1.7build1 | all |
-| python3-distupgrade | 1:24.04.28 | all |
+| python3-distupgrade | 1:24.04.29 | all |
 | python3-fasteners | 0.18-2 | all |
 | python3-gdbm:amd64 | 3.12.3-0ubuntu1 | amd64 |
 | python3-gi | 3.48.2-1 | amd64 |
@@ -1841,7 +1842,7 @@
 | python3-six | 1.16.0-4 | all |
 | python3-software-properties | 0.99.49.4 | all |
 | python3-speechd | 0.12.0~rc2-2build3 | all |
-| python3-sss | 2.9.4-1.1ubuntu6.7 | amd64 |
+| python3-sss | 2.9.4-1.1ubuntu6.8 | amd64 |
 | python3-systemd | 235-1build4 | amd64 |
 | python3-tk:amd64 | 3.12.3-0ubuntu1 | amd64 |
 | python3-twisted | 24.3.0-1ubuntu0.2 | all |
@@ -1919,19 +1920,19 @@
 | speech-dispatcher | 0.12.0~rc2-2build3 | amd64 |
 | speech-dispatcher-audio-plugins:amd64 | 0.12.0~rc2-2build3 | amd64 |
 | speech-dispatcher-espeak-ng | 0.12.0~rc2-2build3 | amd64 |
-| spice-vdagent | 0.22.1-4build3 | amd64 |
+| spice-vdagent | 0.22.1-4ubuntu0.1 | amd64 |
 | squashfs-tools | 1:4.6.1-1build1 | amd64 |
 | ssh-import-id | 5.11-0ubuntu2.24.04.1 | all |
 | ssl-cert | 1.1.2ubuntu1 | all |
-| sssd | 2.9.4-1.1ubuntu6.7 | amd64 |
-| sssd-ad | 2.9.4-1.1ubuntu6.7 | amd64 |
-| sssd-ad-common | 2.9.4-1.1ubuntu6.7 | amd64 |
-| sssd-common | 2.9.4-1.1ubuntu6.7 | amd64 |
-| sssd-ipa | 2.9.4-1.1ubuntu6.7 | amd64 |
-| sssd-krb5 | 2.9.4-1.1ubuntu6.7 | amd64 |
-| sssd-krb5-common | 2.9.4-1.1ubuntu6.7 | amd64 |
-| sssd-ldap | 2.9.4-1.1ubuntu6.7 | amd64 |
-| sssd-proxy | 2.9.4-1.1ubuntu6.7 | amd64 |
+| sssd | 2.9.4-1.1ubuntu6.8 | amd64 |
+| sssd-ad | 2.9.4-1.1ubuntu6.8 | amd64 |
+| sssd-ad-common | 2.9.4-1.1ubuntu6.8 | amd64 |
+| sssd-common | 2.9.4-1.1ubuntu6.8 | amd64 |
+| sssd-ipa | 2.9.4-1.1ubuntu6.8 | amd64 |
+| sssd-krb5 | 2.9.4-1.1ubuntu6.8 | amd64 |
+| sssd-krb5-common | 2.9.4-1.1ubuntu6.8 | amd64 |
+| sssd-ldap | 2.9.4-1.1ubuntu6.8 | amd64 |
+| sssd-proxy | 2.9.4-1.1ubuntu6.8 | amd64 |
 | strace | 6.8-0ubuntu2 | amd64 |
 | sudo | 1.9.15p5-3ubuntu5.24.04.2 | amd64 |
 | switcheroo-control | 2.6-2build2 | amd64 |
@@ -1985,8 +1986,8 @@
 | ubuntu-mono | 24.04-0ubuntu1 | all |
 | ubuntu-pro-client | 37.2ubuntu~24.04.1 | amd64 |
 | ubuntu-pro-client-l10n | 37.2ubuntu~24.04.1 | amd64 |
-| ubuntu-release-upgrader-core | 1:24.04.28 | all |
-| ubuntu-release-upgrader-gtk | 1:24.04.28 | all |
+| ubuntu-release-upgrader-core | 1:24.04.29 | all |
+| ubuntu-release-upgrader-gtk | 1:24.04.29 | all |
 | ubuntu-report | 1.7.3ubuntu0.24.04.3 | amd64 |
 | ubuntu-restricted-addons | 29 | amd64 |
 | ubuntu-restricted-extras | 67 | amd64 |
@@ -2021,9 +2022,6 @@
 | usbutils | 1:017-3build1 | amd64 |
 | util-linux | 2.39.3-9ubuntu6.6 | amd64 |
 | uuid-runtime | 2.39.3-9ubuntu6.6 | amd64 |
-| v4l-utils | 1.26.1-4build3 | amd64 |
-| v4l2loopback-dkms | 0.12.7-2ubuntu5.1 | all |
-| v4l2loopback-utils | 0.12.7-2ubuntu5.1 | all |
 | va-driver-all:amd64 | 2.20.0-2ubuntu0.2 | amd64 |
 | vdpau-driver-all:amd64 | 1.5-2build1 | amd64 |
 | vim | 2:9.1.0016-1ubuntu7.20 | amd64 |
