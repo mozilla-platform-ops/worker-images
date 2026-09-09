@@ -83,6 +83,38 @@ pools:
     # access is fixed. Unreachable on TCP/22 and not recovered with the rest of the
     # batch. Tracked in RELOPS-2539.
     - nuc13-155
+    # Moved out of win11-64-24h2-hw-alpha 2026-09-09. The rest of that pool validated in
+    # the 2026-08-31 Speedometer x100 runs (33444951345 and 33444971840) and was promoted
+    # to win11-64-24h2-hw; these seven did not and are parked here. Tracked in RELOPS-2539.
+    # nuc13-037: unreachable on TCP/22 across the 2026-08-31 sweep and the follow-up
+    #   check. Was never recovered with the rest of the No KVM group. Its KVM port is
+    #   cross-wired with nuc13-038, so console-derived status for either is unreliable.
+    - nuc13-037
+    # nuc13-064: answers SSH but rejects the audit key, which is the normal window
+    #   while puppet is still installing it. Recovered 2026-08-31; give it a cycle and
+    #   re-check before treating it as stuck.
+    - nuc13-064
+    # nuc13-077: PXE does not take. It accepts the bootsequence change and reboots but
+    #   comes back on its original image, confirmed repeatedly since 2026-08-17, most
+    #   recently in the 2026-08-31 sweep. Needs a recovery route other than a re-PXE.
+    - nuc13-077
+    # nuc13-089: config is correct and bootstrap_stage is complete, but it produced no
+    #   score in any of the four Speedometer runs on 2026-08-27 and 2026-08-31 while
+    #   its pool peers scored. Last imaged 2026-08-28 and not re-imaged since.
+    #   Unexplained - this is not idleness.
+    - nuc13-089
+    # nuc13-124: no ronin_puppet key at all and OS build 26200 rather than the 26100
+    #   provisioned nodes report - the same state nuc13-086 and nuc13-119 were in, and
+    #   both recovered from it with a single re-PXE. Imaged 2026-08-29, untouched since.
+    - nuc13-124
+    # nuc13-132: answers SSH and reports its hostname, but claims no work and produced
+    #   no score in either 2026-08-31 run. Previously filed as No KVM, which no longer
+    #   fits.
+    - nuc13-132
+    # nuc13-150: bootstrap_stage=inprogress with last_run_exit=6, so puppet is failing.
+    #   bootstrap.ps1 treats exit 6 as a failure and arms Set-PXE, so it should self-
+    #   retry; leave it a cycle before intervening.
+    - nuc13-150
   - name: "win11-64-24h2-hw-perf-debug"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
@@ -124,40 +156,12 @@ pools:
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    # Validated in the 2026-08-31 Speedometer x100 runs (33444951345 and 33444971840)
-    # and promoted to win11-64-24h2-hw: 011 022 023 028 053 069 078 111 119 128 135 143
-    # 153 157. Ten of those had been filed here as No KVM or down/no SSH and scored at
-    # fleet norm once recovered and re-imaged, so those labels were wrong. What is left
-    # below is per-node, with the reason each one is still here. Tracked in RELOPS-2539.
-    # nuc13-037: unreachable on TCP/22 across the 2026-08-31 sweep and the follow-up
-    #   check. Was never recovered with the rest of the No KVM group. Its KVM port is
-    #   cross-wired with nuc13-038, so console-derived status for either is unreliable.
-    - nuc13-037
-    # nuc13-064: answers SSH but rejects the audit key, which is the normal window
-    #   while puppet is still installing it. Recovered 2026-08-31; give it a cycle and
-    #   re-check before treating it as stuck.
-    - nuc13-064
-    # nuc13-077: PXE does not take. It accepts the bootsequence change and reboots but
-    #   comes back on its original image, confirmed repeatedly since 2026-08-17, most
-    #   recently in the 2026-08-31 sweep. Needs a recovery route other than a re-PXE.
-    - nuc13-077
-    # nuc13-089: config is correct and bootstrap_stage is complete, but it produced no
-    #   score in any of the four Speedometer runs on 2026-08-27 and 2026-08-31 while
-    #   its pool peers scored. Last imaged 2026-08-28 and not re-imaged since.
-    #   Unexplained - this is not idleness.
-    - nuc13-089
-    # nuc13-124: no ronin_puppet key at all and OS build 26200 rather than the 26100
-    #   provisioned nodes report - the same state nuc13-086 and nuc13-119 were in, and
-    #   both recovered from it with a single re-PXE. Imaged 2026-08-29, untouched since.
-    - nuc13-124
-    # nuc13-132: answers SSH and reports its hostname, but claims no work and produced
-    #   no score in either 2026-08-31 run. Previously filed as No KVM, which no longer
-    #   fits.
-    - nuc13-132
-    # nuc13-150: bootstrap_stage=inprogress with last_run_exit=6, so puppet is failing.
-    #   bootstrap.ps1 treats exit 6 as a failure and arms Set-PXE, so it should self-
-    #   retry; leave it a cycle before intervening.
-    - nuc13-150
+    # Three nodes pulled from win11-64-24h2-hw at random 2026-09-09 to keep a working
+    # set in this pool after the previous membership moved to
+    # win11-64-24h2-hw-relops1213. Not here for a fault.
+    - nuc13-018
+    - nuc13-071
+    - nuc13-134
   - name: "win11-64-24h2-hw-perf-sheriff"
     openvox_version: "8.19.2"
     puppet_version: "8.10.0"
@@ -201,7 +205,6 @@ pools:
     - nuc13-015
     - nuc13-016
     - nuc13-017
-    - nuc13-018
     - nuc13-019
     - nuc13-020
     - nuc13-022
@@ -251,7 +254,6 @@ pools:
     - nuc13-068
     - nuc13-069
     - nuc13-070
-    - nuc13-071
     - nuc13-072
     - nuc13-073
     - nuc13-075
@@ -304,7 +306,6 @@ pools:
     - nuc13-130
     - nuc13-131
     - nuc13-133
-    - nuc13-134
     - nuc13-135
     - nuc13-136
     - nuc13-137
