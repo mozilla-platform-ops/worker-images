@@ -161,6 +161,22 @@ fi
   echo 'registries=["docker.io"]'
 ) >> /etc/containers/registries.conf
 
+# v4l2loopback is out-of-tree and is not in linux-modules on kernel 7.0.
+# Ubuntu's v4l2loopback-dkms package is too old to build against that
+# kernel, so install a current upstream release via DKMS.
+V4L2LOOPBACK_VERSION=0.15.4
+retry apt-get install -y dkms "linux-headers-$(uname -r)"
+retry curl -fsSL "https://github.com/v4l2loopback/v4l2loopback/archive/refs/tags/v${V4L2LOOPBACK_VERSION}.tar.gz" \
+  -o /tmp/v4l2loopback.tar.gz
+tar xz -C /usr/src -f /tmp/v4l2loopback.tar.gz
+rm -f /tmp/v4l2loopback.tar.gz
+dkms add -m v4l2loopback -v "${V4L2LOOPBACK_VERSION}"
+dkms build -m v4l2loopback -v "${V4L2LOOPBACK_VERSION}" -k "$(uname -r)"
+dkms install -m v4l2loopback -v "${V4L2LOOPBACK_VERSION}" -k "$(uname -r)"
+modprobe v4l2loopback
+lsmod | grep v4l2loopback
+echo 'v4l2loopback' >> /etc/modules
+
 # needed for mutter to work with DRM rather than falling back to X11
 grep -Fx vkms /etc/modules || echo vkms >> /etc/modules
 # disable udev rule that tags platform-vkms with "mutter-device-ignore"
