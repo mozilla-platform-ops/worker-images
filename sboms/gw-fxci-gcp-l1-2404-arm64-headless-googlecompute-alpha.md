@@ -3,7 +3,7 @@
 ## Build provenance
 
 - Image name: gw-fxci-gcp-l1-2404-arm64-headless-googlecompute-alpha
-- Taskcluster version: 108.0.0
+- Taskcluster version: 108.1.0
 - Taskcluster ref: unknown
 - Architecture: ARM64
 - Source image family: ubuntu-2404-lts-arm64
@@ -12,18 +12,18 @@
 
 ## Operating system
 
-- OS: Ubuntu 24.04.4 LTS (Noble Numbat)
-- Kernel: Linux 6.17.0-1022-gcp aarch64 GNU/Linux
+- OS: Ubuntu 24.04.5 LTS (Noble Numbat)
+- Kernel: Linux 7.0.0-1011-gcp aarch64 GNU/Linux
 - Machine architecture: aarch64
 
 ## Taskcluster tools
 
 | Name | Version |
 | --- | --- |
-| generic-worker | generic-worker (multiuser engine) 108.0.0 [ revision: https://github.com/taskcluster/taskcluster/commits/ae7697a5449cc29e7d41ae62ef6e5f725b929ed3 ] |
-| start-worker | start-worker 108.0.0 |
-| livelog | livelog 108.0.0 |
-| taskcluster-proxy | Taskcluster proxy 108.0.0 (git revision ae7697a5449cc29e7d41ae62ef6e5f725b929ed3) |
+| generic-worker | generic-worker (multiuser engine) 108.1.0 [ revision: https://github.com/taskcluster/taskcluster/commits/f86624a8bf3761cdbc48de2c7f74bae44d7464dd ] |
+| start-worker | start-worker 108.1.0 |
+| livelog | livelog 108.1.0 |
+| taskcluster-proxy | Taskcluster proxy 108.1.0 (git revision f86624a8bf3761cdbc48de2c7f74bae44d7464dd) |
 
 ## Python packages
 
@@ -83,7 +83,7 @@
 | pyparsing | 3.1.1 |
 | pyrsistent | 0.20.0 |
 | pyserial | 3.5 |
-| python-apt | 2.7.7+ubuntu5.2 |
+| python-apt | 2.7.7+ubuntu5.3 |
 | python-dateutil | 2.8.2 |
 | python-debian | 0.1.49+ubuntu2 |
 | python-magic | 0.4.27 |
@@ -123,7 +123,7 @@
 | apt | 2.8.3 | arm64 |
 | apt-transport-https | 2.8.3 | all |
 | apt-utils | 2.8.3 | arm64 |
-| base-files | 13ubuntu10.4 | arm64 |
+| base-files | 13ubuntu10.5 | arm64 |
 | base-passwd | 3.6.3build1 | arm64 |
 | bash | 5.2.21-2ubuntu4 | arm64 |
 | bash-completion | 1:2.11-8 | all |
@@ -154,7 +154,7 @@
 | command-not-found | 23.04.0 | all |
 | console-setup | 1.226ubuntu1.1 | all |
 | console-setup-linux | 1.226ubuntu1.1 | all |
-| containerd.io | 2.3.4-1~ubuntu.24.04~noble | arm64 |
+| containerd.io | 2.3.5-1~ubuntu.24.04~noble | arm64 |
 | coreutils | 9.4-3ubuntu6.3 | arm64 |
 | cpio | 2.15+dfsg-1ubuntu2.1 | arm64 |
 | cpp | 4:13.2.0-7ubuntu1 | arm64 |
@@ -180,7 +180,7 @@
 | dhcpcd-base | 1:10.0.6-1ubuntu3.2 | arm64 |
 | dictionaries-common | 1.29.7 | all |
 | diffutils | 1:3.10-1ubuntu0.1 | arm64 |
-| dirmngr | 2.4.4-2ubuntu17.4 | arm64 |
+| dirmngr | 2.4.4-2ubuntu17.6 | arm64 |
 | distro-info | 1.7build1 | arm64 |
 | distro-info-data | 0.72-0ubuntu0.24.04.1 | all |
 | dkms | 3.0.11-1ubuntu13 | all |
@@ -190,8 +190,8 @@
 | docker-buildx-plugin | 0.37.0-1~ubuntu.24.04~noble | arm64 |
 | docker-ce | 5:29.5.3-1~ubuntu.24.04~noble | arm64 |
 | docker-ce-cli | 5:29.5.3-1~ubuntu.24.04~noble | arm64 |
-| docker-ce-rootless-extras | 5:29.7.2-1~ubuntu.24.04~noble | arm64 |
-| docker-compose-plugin | 5.5.0-1~ubuntu.24.04~noble | arm64 |
+| docker-ce-rootless-extras | 5:29.8.0-1~ubuntu.24.04~noble | arm64 |
+| docker-compose-plugin | 5.5.1-1~ubuntu.24.04~noble | arm64 |
 | dosfstools | 4.2-1.1build1 | arm64 |
 | dpkg | 1.22.6ubuntu6.6 | arm64 |
 | dpkg-dev | 1.22.6ubuntu6.6 | all |
@@ -235,20 +235,20 @@
 | gir1.2-packagekitglib-1.0 | 1.2.8-2ubuntu1.5 | arm64 |
 | git | 1:2.43.0-1ubuntu7.3 | arm64 |
 | git-man | 1:2.43.0-1ubuntu7.3 | all |
-| gnupg | 2.4.4-2ubuntu17.4 | all |
-| gnupg-agent | 2.4.4-2ubuntu17.4 | all |
-| gnupg-l10n | 2.4.4-2ubuntu17.4 | all |
-| gnupg-utils | 2.4.4-2ubuntu17.4 | arm64 |
+| gnupg | 2.4.4-2ubuntu17.6 | all |
+| gnupg-agent | 2.4.4-2ubuntu17.6 | all |
+| gnupg-l10n | 2.4.4-2ubuntu17.6 | all |
+| gnupg-utils | 2.4.4-2ubuntu17.6 | arm64 |
 | google-compute-engine | 20260121.00-0ubuntu1~24.04.0 | all |
 | google-compute-engine-oslogin | 20260116.00-0ubuntu1~24.04.0 | arm64 |
 | google-guest-agent | 20250116.00-0ubuntu1~24.04.4 | arm64 |
 | google-osconfig-agent | 20251028.00-0ubuntu2~24.04.0 | arm64 |
-| gpg | 2.4.4-2ubuntu17.4 | arm64 |
-| gpg-agent | 2.4.4-2ubuntu17.4 | arm64 |
-| gpg-wks-client | 2.4.4-2ubuntu17.4 | arm64 |
-| gpgconf | 2.4.4-2ubuntu17.4 | arm64 |
-| gpgsm | 2.4.4-2ubuntu17.4 | arm64 |
-| gpgv | 2.4.4-2ubuntu17.4 | arm64 |
+| gpg | 2.4.4-2ubuntu17.6 | arm64 |
+| gpg-agent | 2.4.4-2ubuntu17.6 | arm64 |
+| gpg-wks-client | 2.4.4-2ubuntu17.6 | arm64 |
+| gpgconf | 2.4.4-2ubuntu17.6 | arm64 |
+| gpgsm | 2.4.4-2ubuntu17.6 | arm64 |
+| gpgv | 2.4.4-2ubuntu17.6 | arm64 |
 | grep | 3.11-4build1 | arm64 |
 | groff-base | 1.23.0-3build2 | arm64 |
 | grub-common | 2.12-1ubuntu7.3 | arm64 |
@@ -256,7 +256,6 @@
 | grub-efi-arm64-bin | 2.12-1ubuntu7.3 | arm64 |
 | grub-efi-arm64-signed | 1.202.5+2.12-1ubuntu7.3 | arm64 |
 | grub2-common | 2.12-1ubuntu7.3 | arm64 |
-| gstreamer1.0-tools | 1.24.2-1ubuntu0.1 | arm64 |
 | gzip | 1.12-1ubuntu3.2 | arm64 |
 | hdparm | 9.65+ds-1build1 | arm64 |
 | hostname | 3.23+nmu2ubuntu2 | arm64 |
@@ -282,7 +281,7 @@
 | jq | 1.7.1-3ubuntu0.24.04.2 | arm64 |
 | kbd | 2.6.4-2ubuntu2 | arm64 |
 | keyboard-configuration | 1.226ubuntu1.1 | all |
-| keyboxd | 2.4.4-2ubuntu17.4 | arm64 |
+| keyboxd | 2.4.4-2ubuntu17.6 | arm64 |
 | klibc-utils | 2.0.13-4ubuntu0.2 | arm64 |
 | kmod | 31+20240202-2ubuntu7.2 | arm64 |
 | kpartx | 0.9.4-5ubuntu8.2 | arm64 |
@@ -339,6 +338,8 @@
 | libdb5.3t64:arm64 | 5.3.28+dfsg2-7 | arm64 |
 | libdbus-1-3:arm64 | 1.14.10-4ubuntu4.1 | arm64 |
 | libdebconfclient0:arm64 | 0.271ubuntu3 | arm64 |
+| libdebuginfod-common | 0.190-1.1ubuntu0.1 | all |
+| libdebuginfod1t64:arm64 | 0.190-1.1ubuntu0.1 | arm64 |
 | libdeflate0:arm64 | 1.19-1build1.1 | arm64 |
 | libdevmapper-event1.02.1:arm64 | 2:1.02.185-3ubuntu3.2 | arm64 |
 | libdevmapper1.02.1:arm64 | 2:1.02.185-3ubuntu3.2 | arm64 |
@@ -430,6 +431,7 @@
 | libldap2:arm64 | 2.6.10+dfsg-0ubuntu0.24.04.1 | arm64 |
 | liblerc4:arm64 | 4.0.0+ds-4ubuntu2 | arm64 |
 | libllvm18:arm64 | 1:18.1.3-1ubuntu1 | arm64 |
+| libllvm19:arm64 | 1:19.1.1-1ubuntu1~24.04.2 | arm64 |
 | liblmdb0:arm64 | 0.9.31-1build1 | arm64 |
 | liblocale-gettext-perl | 1.07-6ubuntu5 | arm64 |
 | liblsan0:arm64 | 14.2.0-4ubuntu2~24.04.1 | arm64 |
@@ -559,9 +561,6 @@
 | libutempter0:arm64 | 1.2.1-3build1 | arm64 |
 | libuuid1:arm64 | 2.39.3-9ubuntu6.6 | arm64 |
 | libuv1t64:arm64 | 1.48.0-1.1build1 | arm64 |
-| libv4l-0t64:arm64 | 1.26.1-4build3 | arm64 |
-| libv4l2rds0t64:arm64 | 1.26.1-4build3 | arm64 |
-| libv4lconvert0t64:arm64 | 1.26.1-4build3 | arm64 |
 | libwebp7:arm64 | 1.3.2-0.4build3 | arm64 |
 | libwrap0:arm64 | 7.6.q-33 | arm64 |
 | libx11-6:arm64 | 2:1.8.7-1build1 | arm64 |
@@ -583,19 +582,20 @@
 | libyaml-0-2:arm64 | 0.2.5-1build1 | arm64 |
 | libzstd1:arm64 | 1.5.5+dfsg2-2build1.1 | arm64 |
 | linux-base | 4.5ubuntu9+24.04.2 | all |
-| linux-gcp | 6.17.0-1022.25 | arm64 |
-| linux-gcp-6.17-headers-6.17.0-1022 | 6.17.0-1022.25 | arm64 |
-| linux-gcp-6.17-tools-6.17.0-1022 | 6.17.0-1022.25 | arm64 |
-| linux-headers-6.17.0-1022-gcp | 6.17.0-1022.25 | arm64 |
-| linux-headers-gcp | 6.17.0-1022.25 | arm64 |
-| linux-image-6.17.0-1022-gcp | 6.17.0-1022.25 | arm64 |
-| linux-image-gcp | 6.17.0-1022.25 | arm64 |
-| linux-libc-dev:arm64 | 6.8.0-138.138 | arm64 |
+| linux-gcp | 7.0.0-1011.11~24.04.1 | arm64 |
+| linux-gcp-7.0-headers-7.0.0-1011 | 7.0.0-1011.11~24.04.1 | arm64 |
+| linux-gcp-7.0-tools-7.0.0-1011 | 7.0.0-1011.11~24.04.1 | arm64 |
+| linux-headers-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | arm64 |
+| linux-headers-gcp | 7.0.0-1011.11~24.04.1 | arm64 |
+| linux-image-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | arm64 |
+| linux-image-gcp | 7.0.0-1011.11~24.04.1 | arm64 |
+| linux-libc-dev:arm64 | 6.8.0-139.139 | arm64 |
 | linux-modules-6.17.0-1022-gcp | 6.17.0-1022.25 | arm64 |
+| linux-modules-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | arm64 |
 | linux-modules-extra-6.17.0-1022-gcp | 6.17.0-1022.25 | arm64 |
 | linux-modules-extra-gcp | 6.17.0-1022.25 | arm64 |
-| linux-tools-6.17.0-1022-gcp | 6.17.0-1022.25 | arm64 |
-| linux-tools-common | 6.8.0-138.138 | all |
+| linux-tools-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | arm64 |
+| linux-tools-common | 6.8.0-139.139 | all |
 | locales | 2.39-0ubuntu8.8 | all |
 | login | 1:4.13+dfsg1-4ubuntu3.2 | arm64 |
 | logrotate | 3.21.0-2build1 | arm64 |
@@ -618,7 +618,7 @@
 | mercurial | 6.7.2-1ubuntu2.2 | arm64 |
 | mercurial-common | 6.7.2-1ubuntu2.2 | all |
 | mokutil | 0.6.0-2build3 | arm64 |
-| motd-news-config | 13ubuntu10.4 | all |
+| motd-news-config | 13ubuntu10.5 | all |
 | mount | 2.39.3-9ubuntu6.6 | arm64 |
 | mtr-tiny | 0.95-1.1ubuntu0.1 | arm64 |
 | multipath-tools | 0.9.4-5ubuntu8.2 | arm64 |
@@ -640,9 +640,9 @@
 | nvme-cli | 2.8-1ubuntu0.1 | arm64 |
 | open-iscsi | 2.1.9-3ubuntu5.4 | arm64 |
 | open-vm-tools | 2:13.0.10-0ubuntu0.24.04.1 | arm64 |
-| openssh-client | 1:9.6p1-3ubuntu13.18 | arm64 |
-| openssh-server | 1:9.6p1-3ubuntu13.18 | arm64 |
-| openssh-sftp-server | 1:9.6p1-3ubuntu13.18 | arm64 |
+| openssh-client | 1:9.6p1-3ubuntu13.19 | arm64 |
+| openssh-server | 1:9.6p1-3ubuntu13.19 | arm64 |
+| openssh-sftp-server | 1:9.6p1-3ubuntu13.19 | arm64 |
 | openssl | 3.0.13-0ubuntu3.15 | arm64 |
 | os-prober | 1.81ubuntu4 | arm64 |
 | overlayroot | 0.49~24.04.1 | all |
@@ -668,11 +668,11 @@
 | procps | 2:4.0.4-4ubuntu3.3 | arm64 |
 | psmisc | 23.7-1build1 | arm64 |
 | publicsuffix | 20231001.0357-0.1 | all |
-| python-apt-common | 2.7.7ubuntu5.2 | all |
+| python-apt-common | 2.7.7ubuntu5.3 | all |
 | python-babel-localedata | 2.10.3-3build1 | all |
 | python3 | 3.12.3-0ubuntu2.1 | arm64 |
 | python3-apport | 2.28.3-0ubuntu0.1 | all |
-| python3-apt | 2.7.7ubuntu5.2 | arm64 |
+| python3-apt | 2.7.7ubuntu5.3 | arm64 |
 | python3-attr | 23.2.0-2 | all |
 | python3-automat | 22.10.0-2 | all |
 | python3-babel | 2.10.3-3build1 | all |
@@ -697,7 +697,7 @@
 | python3-dev | 3.12.3-0ubuntu2.1 | arm64 |
 | python3-distro | 1.9.0-1 | all |
 | python3-distro-info | 1.7build1 | all |
-| python3-distupgrade | 1:24.04.28 | all |
+| python3-distupgrade | 1:24.04.29 | all |
 | python3-gdbm:arm64 | 3.12.3-0ubuntu1 | arm64 |
 | python3-gi | 3.48.2-1 | arm64 |
 | python3-hamcrest | 2.1.0-1 | all |
@@ -808,7 +808,7 @@
 | ubuntu-minimal | 1.539.2 | arm64 |
 | ubuntu-pro-client | 37.2ubuntu~24.04.1 | arm64 |
 | ubuntu-pro-client-l10n | 37.2ubuntu~24.04.1 | arm64 |
-| ubuntu-release-upgrader-core | 1:24.04.28 | all |
+| ubuntu-release-upgrader-core | 1:24.04.29 | all |
 | ubuntu-server | 1.539.2 | arm64 |
 | ubuntu-standard | 1.539.2 | arm64 |
 | ucf | 3.0043+nmu1 | all |
@@ -821,9 +821,6 @@
 | usbutils | 1:017-3build1 | arm64 |
 | util-linux | 2.39.3-9ubuntu6.6 | arm64 |
 | uuid-runtime | 2.39.3-9ubuntu6.6 | arm64 |
-| v4l-utils | 1.26.1-4build3 | arm64 |
-| v4l2loopback-dkms | 0.12.7-2ubuntu5.1 | all |
-| v4l2loopback-utils | 0.12.7-2ubuntu5.1 | all |
 | vim | 2:9.1.0016-1ubuntu7.20 | arm64 |
 | vim-common | 2:9.1.0016-1ubuntu7.20 | all |
 | vim-runtime | 2:9.1.0016-1ubuntu7.20 | all |
