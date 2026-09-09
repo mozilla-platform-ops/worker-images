@@ -3,11 +3,11 @@ image:
   publisher: MicrosoftWindowsDesktop
   offer: Windows-11
   sku: win11-25h2-avd
-  version: 26200.8655.260607
+  version: latest
 sharedimage:
   gallery_name: "win11_64_25h2"
   image_name: "win11_64_25h2"
-  image_version: "1.0.7"
+  image_version: "1.0.8"
 azure:
   managed_image_resource_group_name: "default"
   managed_image_storage_account_type: "default"
