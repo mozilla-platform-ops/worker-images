@@ -24,7 +24,7 @@ vm:
     sourceOrganization: "default"
     sourceRepository: "default"
     sourceBranch: master
-    deploymentId: "65149e3"
+    deploymentId: "80cad41"
     managed_by: "default"
 tests:
   - microsoft_binscope.tests.ps1
