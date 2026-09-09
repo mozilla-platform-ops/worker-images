@@ -26,7 +26,7 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: master
-    deploymentId: "80cad41"
+    deploymentId: "default"
     managed_by: packer
 tests:
   - microsoft_binscope.tests.ps1
