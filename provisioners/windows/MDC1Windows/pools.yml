@@ -35,7 +35,7 @@ pools:
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "remove-dead-code-windows"
-    hash: "6471c84"
+    hash: "3ce35f3"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -116,7 +116,7 @@ pools:
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "remove-dead-code-windows"
-    hash: "6471c84"
+    hash: "3ce35f3"
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
