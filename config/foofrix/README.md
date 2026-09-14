@@ -53,8 +53,8 @@ The workflow uploads `foofrix-manifest.json`, containing the published artifact
 identifier, to the run. Perf's provisioner selects the gallery image version and
 owns VM creation, networking, disks, runtime identity attachment, and deletion.
 
-See [Provision Azure workers from the GCP Linux launcher](provisioning.md) for a
-Bash create/show/stop/delete example that Perf can adapt into its existing launcher.
+VM provisioning from the GCP Linux launcher and its GCP Secret Manager integration
+are tracked in [FooFrix PR #1](https://github.com/dpalmeiro/foofrix/pull/1).
 
 ## Editing the image without PowerShell experience
 
