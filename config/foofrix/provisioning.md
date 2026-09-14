@@ -13,7 +13,9 @@ only. Perf retains those queue, heartbeat, graceful-stop, and retry responsibili
 
 ## Prerequisites
 
-- Install Azure CLI on the GCP launcher.
+- Install Azure CLI, Python 3, and PyYAML on the GCP launcher. On Ubuntu/Debian,
+  PyYAML is available as `python3-yaml`; a Python virtual environment with
+  `pip install PyYAML` also works.
 - Deploy the FooFrix subscription, provisioning identity, worker managed identity,
   vault, storage, and gallery from infrastructure PR #339, and publish an image.
 - Provide a subnet and NSG in that subscription and the chosen region. Configure
@@ -23,7 +25,7 @@ only. Perf retains those queue, heartbeat, graceful-stop, and retry responsibili
   creates no public IP and opens no RDP/WinRM ports. A GCP VM can call Azure APIs
   without a private route, but direct connections to the Windows VM require one.
 - Confirm VM size availability/quota and image replication in the chosen region.
-  Match `AZURE_SECURITY_TYPE` to the gallery definition; the example defaults to
+  Match YAML `security_type` to the gallery definition; the script defaults to
   `Standard`. GPU drivers and performance checks remain image work.
 
 ## Configure and create
@@ -34,22 +36,21 @@ or dashboard logs. The admin password must satisfy Azure's Windows password rule
 Keep it in your secret store for operator access. The script uses an isolated,
 temporary Azure CLI login/cache and removes that cache when it exits.
 
-Set the non-secret environment variables using the infrastructure outputs:
+Copy the placeholder-only example and fill it in using infrastructure outputs.
+The local copy is ignored by Git. Its required settings are `tenant_id`,
+`subscription_id`, and the VM provisioner's `client_id`. Creating a worker also
+requires `image_version_id`, `worker_identity_id`, `subnet_id`, `nsg_id`, and
+`vm_size`. Use full resource IDs, with an exact numeric gallery image version.
+Optional empty settings use these defaults: `location: centralus`,
+`os_disk_gb: 1024`, `admin_username: foofrixadmin`, `security_type: Standard`.
+Settings come from YAML; passwords remain environment variables.
 
 ```bash
-export AZURE_TENANT_ID='<Mozilla tenant ID>'
-export AZURE_SUBSCRIPTION_ID='<FooFrix subscription ID>'
-export AZURE_CLIENT_ID='<FooFrix VM provisioner client ID>'
-export AZURE_WORKER_IDENTITY_ID='<worker managed identity resource ID>'
-export AZURE_IMAGE_VERSION_ID='/subscriptions/<subscription>/resourceGroups/rg-foofrix/providers/Microsoft.Compute/galleries/foofrix/images/foofrix_win11_25h2/versions/0.1.0'
-export AZURE_SUBNET_ID='<full existing subnet resource ID>'
-export AZURE_NSG_ID='<full existing NSG resource ID>'
-export AZURE_LOCATION=centralus
-export AZURE_VM_SIZE='<agreed size with regional quota>'
-export AZURE_OS_DISK_GB=1024
+cp config/foofrix/provisioning.example.yaml config/foofrix/provisioning.local.yaml
+# Edit provisioning.local.yaml with your settings; leave secrets out of the file.
 
-bash scripts/foofrix/azure-worker.sh create foofrix-win-01
-bash scripts/foofrix/azure-worker.sh show foofrix-win-01
+bash scripts/foofrix/azure-worker.sh create foofrix-win-01 --config config/foofrix/provisioning.local.yaml
+bash scripts/foofrix/azure-worker.sh show foofrix-win-01 --config config/foofrix/provisioning.local.yaml
 ```
 
 The final stdout is JSON containing the VM resource ID, name, resource group,
@@ -82,10 +83,10 @@ example intentionally does not invent that startup script or modify GCS state.
 After the harness has stopped gracefully and saved results:
 
 ```bash
-bash scripts/foofrix/azure-worker.sh stop foofrix-win-01
+bash scripts/foofrix/azure-worker.sh stop foofrix-win-01 --config config/foofrix/provisioning.local.yaml
 # Deallocates compute; the managed disk remains and continues to incur storage cost.
 
-bash scripts/foofrix/azure-worker.sh delete foofrix-win-01
+bash scripts/foofrix/azure-worker.sh delete foofrix-win-01 --config config/foofrix/provisioning.local.yaml
 # Permanently deletes the worker group, VM, NIC, and ALL disks in that group.
 ```
 

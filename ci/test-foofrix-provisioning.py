@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+import yaml
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts/foofrix/azure-worker.sh"
@@ -48,9 +49,23 @@ elif args[:2] == ['vm', 'show']:
         "AZURE_VM_SIZE": "Standard_D8ads_v5",
     }
 
-    def run(action, *, name="foofrix-win-01", success=True, **overrides):
+    fields = {
+        'tenant_id': 'AZURE_TENANT_ID', 'subscription_id': 'AZURE_SUBSCRIPTION_ID',
+        'client_id': 'AZURE_CLIENT_ID', 'image_version_id': 'AZURE_IMAGE_VERSION_ID',
+        'worker_identity_id': 'AZURE_WORKER_IDENTITY_ID', 'subnet_id': 'AZURE_SUBNET_ID',
+        'nsg_id': 'AZURE_NSG_ID', 'vm_size': 'AZURE_VM_SIZE', 'location': 'AZURE_LOCATION',
+        'os_disk_gb': 'AZURE_OS_DISK_GB', 'admin_username': 'WINDOWS_ADMIN_USERNAME',
+        'security_type': 'AZURE_SECURITY_TYPE',
+    }
+
+    def run(action, *, name="foofrix-win-01", success=True, config_text=None, **overrides):
         log.write_text("")
-        result = subprocess.run(["bash", str(SCRIPT), action, name], env={**env, **overrides}, text=True, capture_output=True)
+        values = {**env, **overrides}
+        config = root / 'settings.yaml'
+        config.write_text(config_text if config_text is not None else yaml.safe_dump({key: values.get(variable, '') for key, variable in fields.items()}))
+        # Non-secret Azure settings must actually come from YAML, not inherited env.
+        process_env = {key: value for key, value in values.items() if key not in fields.values()}
+        result = subprocess.run(["bash", str(SCRIPT), action, name, '--config', str(config)], env=process_env, text=True, capture_output=True)
         assert (result.returncode == 0) == success, result.stderr
         assert "dummy-secret" not in result.stdout + result.stderr
         assert "dummy-password" not in result.stdout + result.stderr
@@ -86,4 +101,14 @@ elif args[:2] == ['vm', 'show']:
     _, calls = run("stop")
     assert any(call[:2] == ["vm", "deallocate"] for call in calls)
     assert not any(call[:2] == ["group", "delete"] for call in calls)
+    for invalid in ('[]', 'client_secret: do-not-store-here', 'tenant_id: [nested]', 'tenant_id: true', 'tenant_id: "line1\\nline2"', 'tenant_id: ['):
+        _, calls = run('create', success=False, config_text=invalid)
+        assert not calls, 'Invalid config must fail before Azure login'
+    _, calls = run('create', success=False, config_text=(SCRIPT.parents[2] / 'config/foofrix/provisioning.example.yaml').read_text())
+    assert not calls, 'Unfilled example must fail before Azure login'
+    marker = root / 'must-not-exist'
+    _, calls = run('create', AZURE_VM_SIZE=f'$(touch {marker})')
+    assert not marker.exists(), 'Config must never execute shell substitutions'
+    vm = next(call for call in calls if call[:2] == ['vm', 'create'])
+    assert vm[vm.index('--size') + 1] == f'$(touch {marker})'
     print("All Azure provisioning example checks passed (mocked Azure CLI).")

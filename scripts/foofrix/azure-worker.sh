@@ -6,16 +6,15 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: bash scripts/foofrix/azure-worker.sh create|show|stop|delete VM_NAME
+Usage: bash scripts/foofrix/azure-worker.sh create|show|stop|delete VM_NAME --config CONFIG.yaml
 
 VM_NAME: foofrix- followed by lowercase letters/digits/hyphens; 15 characters max.
-All actions require AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_CLIENT_ID,
-and AZURE_CLIENT_SECRET for the FooFrix VM-provisioning service principal.
+Copy config/foofrix/provisioning.example.yaml and fill in the Azure settings.
+All actions require AZURE_CLIENT_SECRET in the environment for the FooFrix
+VM-provisioning service principal. Create also requires WINDOWS_ADMIN_PASSWORD.
 
-Create also requires AZURE_IMAGE_VERSION_ID, AZURE_WORKER_IDENTITY_ID,
-AZURE_SUBNET_ID, AZURE_NSG_ID, AZURE_VM_SIZE, and WINDOWS_ADMIN_PASSWORD.
-Optional: AZURE_LOCATION (centralus), WINDOWS_ADMIN_USERNAME (foofrixadmin),
-AZURE_OS_DISK_GB (1024), AZURE_SECURITY_TYPE (Standard).
+YAML optional defaults: location=centralus, admin_username=foofrixadmin,
+os_disk_gb=1024, security_type=Standard. Requires Python 3 with PyYAML.
 
 Creates a regular Windows VM with a private NIC and a managed OS disk.
 stop deallocates compute but retains disks. delete removes the worker resource
@@ -27,12 +26,50 @@ die() { echo "error: $*" >&2; exit 1; }
 require() { [[ -n "${!1:-}" ]] || die "Set $1"; }
 
 if [[ "${1:-}" == --help || "${1:-}" == -h ]]; then usage; exit 0; fi
-[[ $# == 2 ]] || { usage >&2; exit 1; }
+[[ $# == 4 && "$3" == --config ]] || { usage >&2; exit 1; }
 action=$1
 vm=$2
 case "$action" in create|show|stop|delete) ;; *) die "Unknown action: $action" ;; esac
 [[ "$vm" =~ ^foofrix-[a-z0-9]([a-z0-9-]*[a-z0-9])?$ && ${#vm} -le 15 ]] || die 'Use a foofrix- VM name, at most 15 characters'
 group="rg-$vm"
+
+# Parse only documented settings; never evaluate YAML content as shell code.
+config_values=$(python3 - "$4" <<'PY'
+import sys
+import yaml
+
+fields = {
+    'tenant_id': 'AZURE_TENANT_ID',
+    'subscription_id': 'AZURE_SUBSCRIPTION_ID',
+    'client_id': 'AZURE_CLIENT_ID',
+    'image_version_id': 'AZURE_IMAGE_VERSION_ID',
+    'worker_identity_id': 'AZURE_WORKER_IDENTITY_ID',
+    'subnet_id': 'AZURE_SUBNET_ID',
+    'nsg_id': 'AZURE_NSG_ID',
+    'vm_size': 'AZURE_VM_SIZE',
+    'location': 'AZURE_LOCATION',
+    'os_disk_gb': 'AZURE_OS_DISK_GB',
+    'admin_username': 'WINDOWS_ADMIN_USERNAME',
+    'security_type': 'AZURE_SECURITY_TYPE',
+}
+try:
+    with open(sys.argv[1]) as stream:
+        config = yaml.safe_load(stream)
+    if not isinstance(config, dict) or any(key not in fields for key in config):
+        raise ValueError('Use only the settings in provisioning.example.yaml; secrets must come from the environment')
+    for key, name in fields.items():
+        value = config.get(key, '')
+        if type(value) not in (str, int) or any(c in str(value) for c in '\r\n\0'):
+            raise ValueError(f'{key} must be a single-line string or integer')
+        print(f'{name}={value}')
+except (OSError, ValueError, yaml.YAMLError) as error:
+    sys.exit(f'Invalid provisioning YAML: {error}')
+PY
+) || die 'Could not load config (requires Python 3 and PyYAML)'
+while IFS='=' read -r name value; do
+  printf -v "$name" '%s' "$value"
+done <<< "$config_values"
+
 for variable in AZURE_TENANT_ID AZURE_SUBSCRIPTION_ID AZURE_CLIENT_ID AZURE_CLIENT_SECRET; do require "$variable"; done
 
 if [[ "$action" == create ]]; then

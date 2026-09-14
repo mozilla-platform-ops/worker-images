@@ -164,6 +164,7 @@ activemq-data/
 *.sage.py
 
 # Environments
+config/foofrix/provisioning.local.yaml
 .env
 .envrc
 .venv
