@@ -11,6 +11,27 @@ Install-BuildPackage -Name 'git'
 Install-BuildPackage -Name 'nodejs' -Version '24.13.0'
 Install-BuildPackage -Name 'python' -Version '3.13.12'
 
+# Native build prerequisites; these are shared by Rust tools and browser builds.
+Install-BuildPackage -Name 'visualstudio2022-workload-vctools' -PackageParameters '--includeRecommended'
+Install-BuildPackage -Name '7zip'
+
+# Rust must survive image generalization and be visible outside SYSTEM's profile.
+foreach ($directory in @('C:\FooFrix\cargo', 'C:\FooFrix\rustup', 'C:\FooFrix\src', 'C:\FooFrix\tools')) {
+    New-Item -ItemType Directory -Path $directory -Force | Out-Null
+}
+$env:CARGO_HOME = 'C:\FooFrix\cargo'
+$env:RUSTUP_HOME = 'C:\FooFrix\rustup'
+[Environment]::SetEnvironmentVariable('CARGO_HOME', $env:CARGO_HOME, 'Machine')
+[Environment]::SetEnvironmentVariable('RUSTUP_HOME', $env:RUSTUP_HOME, 'Machine')
+Invoke-WebRequest 'https://win.rustup.rs/x86_64' -OutFile "$env:TEMP\rustup-init.exe" -UseBasicParsing
+Install-BuildInstaller -Path "$env:TEMP\rustup-init.exe" -Arguments '-y --no-modify-path --profile minimal --default-toolchain stable'
+
+# Google documents /allusers for unattended machine-wide installation.
+Invoke-WebRequest 'https://dl.google.com/dl/cloudsdk/channels/rapid/GoogleCloudSDKInstaller.exe' -OutFile "$env:TEMP\GoogleCloudSDKInstaller.exe" -UseBasicParsing
+Install-BuildInstaller -Path "$env:TEMP\GoogleCloudSDKInstaller.exe" -Arguments '/S /allusers /noreporting /nostartmenu /nodesktop /D=C:\FooFrix\tools\google-cloud-sdk'
+$machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+[Environment]::SetEnvironmentVariable('Path', "$machinePath;C:\FooFrix\cargo\bin;C:\FooFrix\tools\google-cloud-sdk\google-cloud-sdk\bin", 'Machine')
+
 # 2. Resources uploaded to the private artifacts container are already local.
 # Keep this path aligned with the artifact_prefix selected when starting the build.
 # Example: blob windows/releases/example/chromium.zip arrives at

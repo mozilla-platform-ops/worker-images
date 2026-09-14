@@ -124,6 +124,13 @@ build {
   }
 
   provisioner "powershell" {
+    elevated_user     = "SYSTEM"
+    elevated_password = ""
+    inline            = ["& 'C:/Windows/Temp/foofrix-bootstrap/prebake-tools.ps1'"]
+    timeout           = "2h"
+  }
+
+  provisioner "powershell" {
     script = "${path.root}/../tests/win/foofrix-base.tests.ps1"
   }
 

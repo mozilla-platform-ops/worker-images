@@ -31,6 +31,10 @@ try {
     if (($script:packageArguments -join ' ') -ne 'install --yes --no-progress --use-package-exit-codes nodejs --version 24.13.0') {
         throw 'Package arguments were not preserved'
     }
+    Install-BuildPackage -Name 'visualstudio2022-workload-vctools' -PackageParameters '--includeRecommended'
+    if ($script:packageArguments[-2] -ne '--package-parameters' -or $script:packageArguments[-1] -ne '--includeRecommended') {
+        throw 'Compiler workload options were not preserved'
+    }
     $script:fakeExitCode = 3010
     Install-BuildPackage -Name 'git'
     $script:fakeExitCode = 1

@@ -1,7 +1,8 @@
 # FooFrix Windows images
 
 RELOPS-2570 adds a standalone image build path for Perf. The initial config is
-Windows 11 25H2 x64 with Git, Node.js 24, and Python. This is a base image draft;
+Windows 11 25H2 x64 with Git, Node.js 24, Python, C++ Build Tools, 7-Zip,
+Rust/Cargo, Samply, Searchfox CLI, and Google Cloud CLI. This is a base image draft;
 it is not yet a validated Firefox/Chromium build or FooFrix runtime image.
 
 Perf owns the config in this directory and `scripts/windows/foofrix/`. RelOps
@@ -46,7 +47,7 @@ Optionally supply a directory prefix such as `windows/releases/2026-09-14` in th
 private `artifacts` container. Actions downloads matching files with the dedicated
 OIDC identity and Packer copies them to `C:\FooFrix\artifacts`, preserving their
 blob paths. These files remain in the image. Only select source and binaries
-intended for image distribution; runtime credentials belong in Key Vault.
+intended for image distribution; runtime credentials are retrieved separately from GCP Secret Manager.
 Add installation commands to the reviewed bootstrap script as contents are agreed.
 
 The workflow uploads `foofrix-manifest.json`, containing the published artifact
@@ -101,8 +102,7 @@ For example, to include a Chromium ZIP:
 These are image-build steps, not commands to run on your laptop. They execute as
 Windows SYSTEM. Install tools for all users and use shared paths such as
 `C:\FooFrix`; installers targeting the current user's profile would populate the
-SYSTEM profile, not the account Perf later uses. User login, Rust user-profile
-setup, API keys, and starting FooFrix belong to the separately agreed runtime setup.
+SYSTEM profile, not the account Perf later uses. User login, API keys, and starting FooFrix belong to the separately agreed runtime setup.
 Packer handles the restart and image generalization after the recipe completes.
 
 To add more complex steps, provide RelOps the tool name, version, artifact path,
@@ -112,8 +112,9 @@ can be reviewed with Perf.
 
 ## Remaining runtime work
 
-- Agree on the Windows Firefox toolchain, Rust setup for the runtime user,
-  MozillaBuild, and benchmark/profiling tools. Add those installation steps and checks.
+- Add MozillaBuild, Firefox source/bootstrap/build caches, profiler-cli, and
+  benchmark dependencies after validating their Windows setup. C++ Build Tools
+  and shared Rust tooling are included, but do not constitute a full Firefox toolchain.
 - Validate the required Chromium patches and profiling support on Windows; the
   current FooFrix source-image scripts target Linux/GCE.
 - Agree on GPU model/driver and display-session requirements with Perf.
@@ -122,4 +123,17 @@ can be reviewed with Perf.
 - Boot a candidate, build Firefox, run the agreed benchmark/profile smoke test,
   and verify the long-running workload before marking the image ready for use.
 
-The build currently checks base tools and absence of Taskcluster services only.
+The build checks tool versions from the Packer account (separate from SYSTEM),
+compiles and runs a small Rust program to exercise MSVC linking, and checks for
+absence of Taskcluster services. It does not yet validate browser profiling.
+
+Rust lives in `C:\FooFrix\cargo` and `C:\FooFrix\rustup`, exposed through machine
+environment variables. Google Cloud CLI is installed for all users without login.
+The runtime account needs write access to the Rust directories if jobs update
+Rust or install Cargo tools; account creation and permissions remain runtime work.
+Samply follows FooFrix's current `main` selection; `C:\FooFrix\cargo-tools.txt`
+records resolved Cargo versions and the Git revision. These moving inputs mean
+rebuilding an image version later is not guaranteed to produce identical tools.
+
+Installation references: [Rust shared locations](https://rust-lang.github.io/rustup/installation/)
+and [Google unattended installer](https://docs.cloud.google.com/sdk/docs/downloads-interactive).
