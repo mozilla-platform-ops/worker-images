@@ -1,0 +1,96 @@
+name: FooFrix Azure Images
+run-name: FooFrix Azure - ${{ inputs.config }} - ${{ inputs.image_version }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      config:
+        type: choice
+        description: Image configuration
+        options:
+          - win11-25h2
+        required: true
+      image_version:
+        type: string
+        description: New gallery version (major.minor.patch)
+        required: true
+      artifact_prefix:
+        type: string
+        description: Directory in the private artifacts container to include (optional)
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: foofrix-image-${{ inputs.config }}-${{ inputs.image_version }}
+  cancel-in-progress: false
+
+jobs:
+  check-access:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Verify FooFrix or RelOps access
+        shell: pwsh
+        run: ./ci/check-authorized-user.ps1 -AdditionalUsersFile .github/foofrix.json
+
+  build:
+    needs: check-access
+    runs-on: ubuntu-latest
+    environment: foofrix-images
+    timeout-minutes: 360
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      PKR_VAR_config: ${{ inputs.config }}
+      PKR_VAR_image_version: ${{ inputs.image_version }}
+      PKR_VAR_client_id: ${{ vars.AZURE_CLIENT_ID_FOOFRIX_IMAGES }}
+      PKR_VAR_tenant_id: ${{ vars.AZURE_TENANT_ID }}
+      PKR_VAR_subscription_id: ${{ vars.AZURE_SUBSCRIPTION_ID_FOOFRIX }}
+      PKR_VAR_artifacts_directory: ${{ runner.temp }}/foofrix-artifacts
+      ARTIFACT_STORAGE_ACCOUNT: ${{ vars.AZURE_STORAGE_ACCOUNT_FOOFRIX }}
+      ARTIFACT_PREFIX: ${{ inputs.artifact_prefix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Check build settings
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${PKR_VAR_client_id:?Set AZURE_CLIENT_ID_FOOFRIX_IMAGES}"
+          : "${PKR_VAR_tenant_id:?Set AZURE_TENANT_ID}"
+          : "${PKR_VAR_subscription_id:?Set AZURE_SUBSCRIPTION_ID_FOOFRIX}"
+          [[ "$PKR_VAR_image_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          mkdir -p "$PKR_VAR_artifacts_directory"
+      - name: Azure login with FooFrix image-build identity
+        uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c
+        with:
+          client-id: ${{ env.PKR_VAR_client_id }}
+          tenant-id: ${{ env.PKR_VAR_tenant_id }}
+          subscription-id: ${{ env.PKR_VAR_subscription_id }}
+      - name: Download selected image artifacts
+        if: inputs.artifact_prefix != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${ARTIFACT_STORAGE_ACCOUNT:?Set AZURE_STORAGE_ACCOUNT_FOOFRIX}"
+          [[ "$ARTIFACT_PREFIX" =~ ^[a-zA-Z0-9_-]+(/[a-zA-Z0-9_.-]+)*$ ]]
+          az storage blob download-batch --auth-mode login \
+            --account-name "$ARTIFACT_STORAGE_ACCOUNT" --source artifacts \
+            --pattern "$ARTIFACT_PREFIX/*" --destination "$PKR_VAR_artifacts_directory" \
+            --only-show-errors --output none
+          test -n "$(find "$PKR_VAR_artifacts_directory" -type f -print -quit)"
+      - name: Validate and build image
+        shell: bash
+        run: |
+          set -euo pipefail
+          packer init packer/foofrix-azure.pkr.hcl
+          packer validate packer/foofrix-azure.pkr.hcl
+          packer build packer/foofrix-azure.pkr.hcl
+      - name: Publish image manifest
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: foofrix-${{ inputs.config }}-${{ inputs.image_version }}
+          path: foofrix-manifest.json
+          if-no-files-found: error

@@ -1,0 +1,16 @@
+image:
+  publisher: MicrosoftWindowsDesktop
+  offer: Windows-11
+  sku: win11-25h2-avd
+  version: latest
+azure:
+  location: centralus
+  resource_group: rg-foofrix
+  gallery: foofrix
+  image_definition: foofrix_win11_25h2
+  replication_regions:
+    - centralus
+vm:
+  size: Standard_D8ads_v5
+  os_disk_size_gb: 256
+bootstrap_script: windows-base.ps1
