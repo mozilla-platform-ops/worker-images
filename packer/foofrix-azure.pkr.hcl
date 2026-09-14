@@ -99,7 +99,7 @@ build {
   sources = ["source.azure-arm.foofrix"]
 
   provisioner "powershell" {
-    inline = ["New-Item -ItemType Directory -Force C:/FooFrix/artifacts | Out-Null"]
+    inline = ["New-Item -ItemType Directory -Force C:/FooFrix/artifacts, C:/Windows/Temp/foofrix-bootstrap | Out-Null"]
   }
 
   # Actions downloads the artifacts using OIDC; no storage credential enters the guest.
@@ -108,10 +108,15 @@ build {
     destination = "C:/FooFrix/artifacts"
   }
 
+  provisioner "file" {
+    source      = "${path.root}/../scripts/windows/foofrix/"
+    destination = "C:/Windows/Temp/foofrix-bootstrap"
+  }
+
   provisioner "powershell" {
     elevated_user     = "SYSTEM"
     elevated_password = ""
-    script            = "${path.root}/../scripts/windows/foofrix/${local.config.bootstrap_script}"
+    inline            = ["& 'C:/Windows/Temp/foofrix-bootstrap/${local.config.bootstrap_script}'"]
   }
 
   provisioner "windows-restart" {

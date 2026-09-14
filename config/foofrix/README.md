@@ -53,6 +53,60 @@ The workflow uploads `foofrix-manifest.json`, containing the published artifact
 identifier, to the run. Perf's provisioner selects the gallery image version and
 owns VM creation, networking, disks, runtime identity attachment, and deletion.
 
+## Editing the image without PowerShell experience
+
+Start with `scripts/windows/foofrix/windows-base.ps1`. It is the image's recipe:
+each uncommented line runs in order. Lines starting with `#` are comments or
+disabled examples. RelOps maintains the error handling in `bootstrap-helpers.ps1`.
+You normally only need to add or change recipe lines and their checks.
+
+| Need | Recipe line |
+| --- | --- |
+| Install a Chocolatey package | `Install-BuildPackage -Name 'git'` |
+| Pin a package version | `Install-BuildPackage -Name 'nodejs' -Version '24.13.0'` |
+| Install a private MSI | `Install-BuildInstaller -Path 'C:\FooFrix\artifacts\tools.msi'` |
+| Install a private EXE | `Install-BuildInstaller -Path 'C:\FooFrix\artifacts\setup.exe' -Arguments '/quiet /norestart'` |
+| Unpack a ZIP | `Expand-BuildArchive -Path 'C:\FooFrix\artifacts\chromium.zip' -Destination 'C:\FooFrix\chromium'` |
+
+Use the actual Chocolatey package name/version or uploaded file path. EXE silent
+switches depend on the installer: check its documentation or ask RelOps. MSI
+installs automatically use quiet mode and defer restart to Packer. A missing file
+or failed installer stops the build; do not ignore it or replace it with a success
+message. ZIPs should contain the directory layout you want at the destination.
+
+For example, to include a Chromium ZIP:
+
+1. In Azure Portal, open the FooFrix storage account, then **Containers → artifacts**.
+   Upload the ZIP as `windows/releases/example/chromium.zip` using your team access.
+2. In the recipe, uncomment the `$release` and `Expand-BuildArchive` example lines,
+   adjusting `example` to the actual release directory.
+3. Add this check to `tests/win/foofrix-base.tests.ps1`, adjusted to the ZIP layout:
+
+   ```powershell
+   if (-not (Test-Path 'C:\FooFrix\chromium\chrome.exe' -PathType Leaf)) {
+       throw 'Chromium executable is missing'
+   }
+   ```
+
+4. Commit the recipe/check changes on your reviewed branch. Run **FooFrix Azure
+   Images** with `artifact_prefix` set to `windows/releases/example` and a new
+   gallery version. The environment's allowed-branch/approval rules still apply.
+5. Check the Actions build log and manifest. Verify the resulting browser in a
+   candidate VM before using it for real jobs; a file check does not validate GPU
+   acceleration or profiling.
+
+These are image-build steps, not commands to run on your laptop. They execute as
+Windows SYSTEM. Install tools for all users and use shared paths such as
+`C:\FooFrix`; installers targeting the current user's profile would populate the
+SYSTEM profile, not the account Perf later uses. User login, Rust user-profile
+setup, API keys, and starting FooFrix belong to the separately agreed runtime setup.
+Packer handles the restart and image generalization after the recipe completes.
+
+To add more complex steps, provide RelOps the tool name, version, artifact path,
+silent install command (if known), expected installed location, and a command
+that proves it works. The base recipe is deliberately short so those additions
+can be reviewed with Perf.
+
 ## Remaining runtime work
 
 - Agree on the Windows Firefox toolchain, Rust setup for the runtime user,
