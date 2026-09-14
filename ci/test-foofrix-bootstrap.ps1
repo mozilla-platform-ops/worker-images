@@ -74,3 +74,16 @@ try {
 } finally {
     Remove-Item -LiteralPath $scratch -Recurse -Force
 }
+
+function fake-native {
+    $script:nativeArguments = @($args)
+    $global:LASTEXITCODE = $script:fakeExitCode
+}
+$script:fakeExitCode = 0
+Invoke-BuildCommand fake-native @('path with spaces', '--locked')
+if ($script:nativeArguments.Count -ne 2 -or $script:nativeArguments[0] -ne 'path with spaces') {
+    throw 'Native command arguments were not preserved'
+}
+$script:fakeExitCode = 1
+Assert-Fails { Invoke-BuildCommand fake-native @('build') }
+Write-Host 'Native build command checks passed.'

@@ -60,3 +60,13 @@ function Expand-BuildArchive {
     Write-Host "Extracting $Path to $Destination"
     Expand-Archive -LiteralPath $Path -DestinationPath $Destination -Force
 }
+
+# PowerShell 5 does not turn native nonzero exit codes into terminating errors.
+function Invoke-BuildCommand {
+    param (
+        [Parameter(Mandatory)] [string] $File,
+        [string[]] $Arguments = @()
+    )
+    & $File @Arguments
+    if ($LASTEXITCODE -ne 0) { throw "$File failed (exit $LASTEXITCODE)" }
+}

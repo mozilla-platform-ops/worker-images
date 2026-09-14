@@ -6,6 +6,10 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 . "$PSScriptRoot/bootstrap-helpers.ps1"
 
+if (-not (Test-Path 'C:\FooFrix\artifacts\foofrix.bundle' -PathType Leaf)) {
+    throw 'Required foofrix.bundle is missing from the selected artifact prefix'
+}
+
 # 1. Base tools. Add one Install-BuildPackage line for each Chocolatey package.
 Install-BuildPackage -Name 'git'
 Install-BuildPackage -Name 'nodejs' -Version '24.13.0'
@@ -46,3 +50,8 @@ $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
 # 3. Add a matching check in tests/win/foofrix-base.tests.ps1 for new tools.
 # Packer restarts Windows after this script, then runs those checks before publishing.
 # Do not log in, fetch API keys, start FooFrix, or reboot from this recipe.
+
+# MozillaBuild supplies the Windows Firefox build shell and native Python.
+Invoke-WebRequest 'https://ftp.mozilla.org/pub/mozilla/libraries/win32/MozillaBuildSetup-Latest.exe' -OutFile "$env:TEMP\MozillaBuildSetup.exe" -UseBasicParsing
+Install-BuildInstaller -Path "$env:TEMP\MozillaBuildSetup.exe" -Arguments '/S'
+Set-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' -Name LongPathsEnabled -Value 1

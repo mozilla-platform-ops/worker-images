@@ -2,7 +2,9 @@
 
 RELOPS-2570 adds a standalone image build path for Perf. The initial config is
 Windows 11 25H2 x64 with Git, Node.js 24, Python, C++ Build Tools, 7-Zip,
-Rust/Cargo, Samply, Searchfox CLI, and Google Cloud CLI. This is a base image draft;
+Rust/Cargo, Samply, Searchfox CLI, and Google Cloud CLI. The payload stage adds
+MozillaBuild, a full Firefox source build, FooFrix, run-speedometer, profiler-cli,
+Codex, the statistical comparison environment, and Playwright Firefox downloads. This is a base image draft;
 it is not yet a validated Firefox/Chromium build or FooFrix runtime image.
 
 Perf owns the config in this directory and `scripts/windows/foofrix/`. RelOps
@@ -43,12 +45,28 @@ Dispatch **FooFrix Azure Images**, selecting `win11-25h2` and a new numeric
 `major.minor.patch` gallery version. The workflow never forces replacement of an
 existing version. The Packer build size is independent of Perf's eventual VM size.
 
-Optionally supply a directory prefix such as `windows/releases/2026-09-14` in the
+Supply a directory prefix such as `windows/releases/2026-09-14` in the
 private `artifacts` container. Actions downloads matching files with the dedicated
 OIDC identity and Packer copies them to `C:\FooFrix\artifacts`, preserving their
 blob paths. These files remain in the image. Only select source and binaries
 intended for image distribution; runtime credentials are retrieved separately from GCP Secret Manager.
-Add installation commands to the reviewed bootstrap script as contents are agreed.
+The selected prefix must contain `foofrix.bundle`, a self-contained Git bundle of
+reviewed FooFrix source. From a full, authenticated FooFrix checkout, create it with:
+
+```bash
+git bundle create ../foofrix.bundle HEAD
+```
+
+Upload that file into the selected prefix using your existing blob access.
+A Git bundle contains committed source/history, not your checkout's credentials,
+Git configuration, untracked files, or installed dependencies. Review the selected
+commit and ensure its tracked history contains no secrets before distribution.
+Submodules are fetched at the revisions recorded by that commit. The current
+perfcompare submodule is public; a future private submodule needs separate staging.
+Actions checks for this bundle before starting Packer and stages a copy at
+`C:\FooFrix\artifacts\foofrix.bundle`. No GitHub token is sent to the guest.
+The bundle's selected source executes during the trusted image build; restrict
+artifact write access and review its commit as carefully as the image recipe.
 
 The workflow uploads `foofrix-manifest.json`, containing the published artifact
 identifier, to the run. Perf's provisioner selects the gallery image version and
@@ -110,11 +128,53 @@ silent install command (if known), expected installed location, and a command
 that proves it works. The base recipe is deliberately short so those additions
 can be reviewed with Perf.
 
+## Prebaked application and browser payload
+
+`prebake-payload.ps1` runs after the toolchain restart. It installs locked npm
+dependencies and compiles TypeScript directly, avoiding upstream setup's Unix
+`chmod`. It installs profiler-cli and its WASM file, initializes benchmark and
+perfcompare submodules, and downloads each project's matching Playwright Firefox.
+Public checkouts are pinned in the recipe. The supplied FooFrix commit and public
+source revisions are recorded in `C:\FooFrix\source-manifest.json`; global npm
+versions are recorded in `C:\FooFrix\npm-tools.json`.
+
+| Payload | Shared location |
+| --- | --- |
+| FooFrix checkout and installed dependencies | `C:\FooFrix\src\foofrix` |
+| Firefox checkout, object files and symbols | `C:\FooFrix\src\firefox` |
+| Firefox bootstrap tools and mach environments | `C:\FooFrix\mozbuild` |
+| Benchmark runner and Speedometer assets | `C:\FooFrix\tools\run-speedometer` |
+| Playwright browsers | `C:\FooFrix\playwright` |
+| Node CLI launchers | `C:\FooFrix\npm` |
+
+The Firefox recipe uses MozillaBuild and native Python to run `mach bootstrap`
+and a full optimized build with JS shell, retaining `obj-opt` and PDBs. It is
+not an artifact build. The build VM is now 16 vCPUs with a 512 GiB OS disk to
+accommodate source and build products. Image capture and disk costs will increase;
+startup savings must be measured on a candidate VM. The Actions job retains its
+six-hour limit; a timeout requires measuring the failing stage before resizing.
+
+Keep these paths and machine environment variables when provisioning workers.
+The runtime account needs modify access to its source/build/cache directories.
+Do not relocate Python venvs or Firefox object files; their paths can be embedded.
+Public clones are shallow, so jobs needing older history must fetch it. A revision
+or toolchain change can invalidate the baseline build and require recompilation.
+The baked Firefox remote uses native Git; Hg/try support remains separate work.
+
+Post-build checks launch the cached Playwright Firefox for both projects, import
+Python comparison dependencies, check CLI entry points, and take a headless
+screenshot with the compiled Firefox. They do not establish GPU performance,
+Windows profiling compatibility, or a working end-to-end FooFrix job.
+MozillaBuild currently uses the vendor's latest installer, and Python/npm global
+packages can resolve newer versions on rebuild; this is not a reproducible image.
+
+See [Mozilla's Windows build instructions](https://firefox-source-docs.mozilla.org/setup/windows_build.html)
+and [native mach invocation](https://firefox-source-docs.mozilla.org/mach/windows-usage-outside-mozillabuild.html).
+
 ## Remaining runtime work
 
-- Add MozillaBuild, Firefox source/bootstrap/build caches, profiler-cli, and
-  benchmark dependencies after validating their Windows setup. C++ Build Tools
-  and shared Rust tooling are included, but do not constitute a full Firefox toolchain.
+- Validate the prebaked payload in an Azure candidate and adapt the harness
+  runtime for Windows process invocation, paths, and worker lifecycle.
 - Validate the required Chromium patches and profiling support on Windows; the
   current FooFrix source-image scripts target Linux/GCE.
 - Agree on GPU model/driver and display-session requirements with Perf.

@@ -16,8 +16,8 @@ on:
         required: true
       artifact_prefix:
         type: string
-        description: Directory in the private artifacts container to include (optional)
-        required: false
+        description: Directory containing foofrix.bundle in the private artifacts container
+        required: true
 
 permissions:
   contents: read
@@ -70,7 +70,6 @@ jobs:
           tenant-id: ${{ env.PKR_VAR_tenant_id }}
           subscription-id: ${{ env.PKR_VAR_subscription_id }}
       - name: Download selected image artifacts
-        if: inputs.artifact_prefix != ''
         shell: bash
         run: |
           set -euo pipefail
@@ -80,7 +79,8 @@ jobs:
             --account-name "$ARTIFACT_STORAGE_ACCOUNT" --source artifacts \
             --pattern "$ARTIFACT_PREFIX/*" --destination "$PKR_VAR_artifacts_directory" \
             --only-show-errors --output none
-          test -n "$(find "$PKR_VAR_artifacts_directory" -type f -print -quit)"
+          test -s "$PKR_VAR_artifacts_directory/$ARTIFACT_PREFIX/foofrix.bundle"
+          cp "$PKR_VAR_artifacts_directory/$ARTIFACT_PREFIX/foofrix.bundle" "$PKR_VAR_artifacts_directory/foofrix.bundle"
       - name: Validate and build image
         shell: bash
         run: |
