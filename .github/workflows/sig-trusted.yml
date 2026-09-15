@@ -5,36 +5,37 @@ on:
   workflow_dispatch:
     inputs:
       config:
-        type: choice
-        description: Choose which pool to build
-        options:
-        - trusted-win11-a64-25h2-builder
-        - trusted-win2022-64-2009
-        - trusted-win2025-64-24h2
+        type: string
+        required: true
+        description: YAML basename from config/ (without .yaml)
 
 permissions:
   id-token: write
   contents: read
 
+env:
+  CONFIG: ${{ inputs.config }}
+
 jobs:
+  region-check:
+    uses: ./.github/workflows/check-azure-regions.yml
+
   check-access:
     name: "Verify User Access"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Validate image config
+        shell: pwsh
+        run: ./ci/validate-image-config.ps1 -Family azure-trusted
       - name: Load Authorized Users and Check Access
         shell: pwsh
-        run: |
-          $AUTHORIZED_USERS=$(Get-Content .github/relsre.json | Convertfrom-Json)
-          if ($authorized_users -contains "${{ github.actor }}") {
-            Write-host "User ${{ github.actor }} is authorized."
-          }
-          else {
-            Write-Host "User ${{ github.actor }} is unauthorized."
-            exit 1
-          }
+        run: ./ci/check-authorized-user.ps1
+
   packer:
-    needs: check-access
+    needs: [check-access, region-check]
     name: "Build ${{ github.event.inputs.config }}"
     runs-on: ubuntu-latest
     permissions:
@@ -42,42 +43,33 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - name: Azure Login
+        with:
+          persist-credentials: false
+      - name: Validate image config
+        shell: pwsh
+        run: ./ci/validate-image-config.ps1 -Family azure-trusted
+      # The SKU preflight uses Azure CLI; do not initialize an unused Az PowerShell session.
+      - name: Azure CLI login for SKU preflight
         uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID_FXCI_TRUSTED }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_TRUSTED }}
-          enable-AzPSSession: true
-      - name: 'Run Packer'
+      - name: Cache Packer plugins
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.config/packer/plugins
+          key: packer-azure-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('azure.pkr.hcl', 'packer/tceng-azure.pkr.hcl') }}
+      - name: Run Packer
         shell: pwsh
-        run: |
-          Import-Module .\bin\WorkerImages\WorkerImages.psm1
-          $Vars = @{
-            github_token = "${{ secrets.GITHUB_TOKEN }}"
-            Key = '${{ github.event.inputs.config }}'
-            Client_ID = "${{ secrets.AZURE_CLIENT_ID_FXCI_TRUSTED }}"
-            oidc_request_url = $env:ACTIONS_ID_TOKEN_REQUEST_URL
-            oidc_request_token = $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN
-            Subscription_ID = "${{ secrets.AZURE_SUBSCRIPTION_ID_TRUSTED }}"
-            Tenant_ID = "${{ secrets.AZURE_TENANT_ID }}"
-            Application_ID = "${{ secrets.AZURE_APPLICATION_ID_FXCI_TRUSTED }}"
-          }
-          $maxAttempts = 10
-          for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
-            Write-Host "Packer attempt $attempt of $maxAttempts"
-            New-AzSharedWorkerImage @Vars
-            if ($LASTEXITCODE -eq 0) {
-              break
-            }
-            if ($attempt -eq $maxAttempts) {
-              Write-Host "::error ::Packer failed after $maxAttempts attempts"
-              exit 1
-            }
-            Write-Host "::warning ::Packer failed (attempt $attempt, exit code $LASTEXITCODE). Retrying in 30 seconds..."
-            Start-Sleep -Seconds 30
-          }
-          "sharedimageversion=$ENV:PKR_VAR_sharedimage_version" >> $env:GITHUB_ENV
+        env:
+          CONFIG: ${{ github.event.inputs.config }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID_FXCI_TRUSTED }}
+          APPLICATION_ID: ${{ secrets.AZURE_APPLICATION_ID_FXCI_TRUSTED }}
+          SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID_TRUSTED }}
+          TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        run: ./ci/build-azure-shared-worker-image.ps1
       - name: Upload Release Notes Artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:

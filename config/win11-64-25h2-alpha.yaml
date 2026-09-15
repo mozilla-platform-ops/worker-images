@@ -10,16 +10,16 @@ sharedimage:
   image_version: 1.0.0
 azure:
   managed_image_resource_group_name: rg-packer-worker-images
-  managed_image_storage_account_type: Standard_LRS
   build_location: eastus
   locations:
-    - uksouth
-    - eastus
+    - centralus
     - eastus2
-    - westus2
+    - northeurope
+    - uksouth
     - westus
+    - westus2
+    - westus3
 vm:
-  puppet_version: 8.10.0
   git_version: 2.55.0
   openvox_version: 8.28.1
   size: Standard_D8ads_v5
@@ -29,7 +29,6 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: "master"
-    deploymentId: "default"
     managed_by: packer
 tests:
   - win11_sdk_tests.ps1

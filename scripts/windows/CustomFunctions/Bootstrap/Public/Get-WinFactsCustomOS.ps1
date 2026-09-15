@@ -9,15 +9,15 @@ function Get-WinFactsCustomOS {
     # From time to time we need to have the different releases of the same OS version
     $release_key = (Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion')
     $release_id = $release_key.ReleaseId
-    $win_os_build = [System.Environment]::OSVersion.Version.build
+
 
     # OS caption
     # Used to determine which KMS license for cloud workers
-    $caption = ((Get-WmiObject Win32_OperatingSystem).caption)
+    $caption = ((Get-CimInstance Win32_OperatingSystem).caption)
     $caption = $caption.ToLower()
     $os_caption = $caption -replace ' ', '_'
     # Windows activation status
-    $status = (Get-CimInstance -ClassName SoftwareLicensingProduct -Filter "Name like 'Windows%'" | where PartialProductKey).licensestatus
+    $status = (Get-CimInstance -ClassName SoftwareLicensingProduct -Filter "Name like 'Windows%'" | Where-Object PartialProductKey).licensestatus
 
     If ($status -eq '1') {
         $kms_status = "activated"
@@ -27,12 +27,12 @@ function Get-WinFactsCustomOS {
     }
 
     # Administrator SID
-    $administrator_info = Get-WmiObject win32_useraccount -Filter "name = 'Administrator'"
+    $administrator_info = Get-CimInstance win32_useraccount -Filter "name = 'Administrator'"
     $win_admin_sid = $administrator_info.sid
 
     # Network profile
     # https://bugzilla.mozilla.org/show_bug.cgi?id=1563287
-    $NetCategory = Get-NetConnectionProfile | select NetworkCategory
+    $NetCategory = Get-NetConnectionProfile | Select-Object NetworkCategory
 
     if ($NetCategory -like '*private*') {
         $NetworkCategory = "private"

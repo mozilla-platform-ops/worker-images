@@ -15,28 +15,6 @@ if [[ -z "${TASKCLUSTER_VERSION}" ]]; then
   exit 1
 fi
 
-function retry {
-  set +e
-  local n=0
-  local max=10
-  while true; do
-    "$@" && break || {
-      if [[ $n -lt $max ]]; then
-        ((n++))
-        echo "Command failed" >&2
-        sleep_time=$((2 ** n))
-        echo "Sleeping $sleep_time seconds..." >&2
-        sleep $sleep_time
-        echo "Attempt $n/$max:" >&2
-      else
-        echo "Failed after $n attempts." >&2
-        exit 1
-      fi
-    }
-  done
-  set -e
-}
-
 start_time="$(date '+%s')"
 
 case "$(uname -m)" in
@@ -52,22 +30,24 @@ case "$(uname -m)" in
     ;;
 esac
 
-retry apt-get update
-DEBIAN_FRONTEND=noninteractive retry apt-get upgrade -yq
-retry apt-get remove -y docker docker.io containerd runc
+apt-get -o Acquire::Retries=10 -o APT::Update::Error-Mode=any update
+DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 -o APT::Update::Error-Mode=any upgrade -yq
+apt-get -o Acquire::Retries=10 -o APT::Update::Error-Mode=any remove -y docker docker.io containerd runc
 # build-essential is needed for running `go test -race` with the -vet=off flag as of go1.19
-retry apt-get install -y apt-transport-https ca-certificates curl software-properties-common gzip python3-venv build-essential snapd crudini
+apt-get -o Acquire::Retries=10 -o APT::Update::Error-Mode=any install -y apt-transport-https ca-certificates curl software-properties-common gzip python3-venv build-essential snapd crudini
 
 # needed for kvm, see https://help.ubuntu.com/community/KVM/Installation
-retry apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
+apt-get -o Acquire::Retries=10 -o APT::Update::Error-Mode=any install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
 
 # install docker
-retry curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+curl --fail --retry 10 --retry-all-errors -fsSL https://download.docker.com/linux/ubuntu/gpg -o /tmp/docker.asc
+gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg /tmp/docker.asc
+rm /tmp/docker.asc
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
   $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
-retry apt-get update
-retry apt-get install -y docker-ce docker-ce-cli containerd.io
-retry docker run hello-world
+apt-get -o Acquire::Retries=10 -o APT::Update::Error-Mode=any update
+apt-get -o Acquire::Retries=10 -o APT::Update::Error-Mode=any install -y docker-ce docker-ce-cli containerd.io
+docker run --rm hello-world
 
 # configure kvm vmware backdoor
 # this enables a vmware compatible interface for kvm, and is needed for some fuzzing tasks
@@ -87,10 +67,10 @@ groupadd snap_sudo
 echo '%snap_sudo ALL=(ALL:ALL) NOPASSWD: /usr/bin/snap' | EDITOR='tee -a' visudo
 
 cd /usr/local/bin
-retry curl -fsSL "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/generic-worker-multiuser-linux-${ARCH}" > generic-worker
-retry curl -fsSL "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/start-worker-linux-${ARCH}" > start-worker
-retry curl -fsSL "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/livelog-linux-${ARCH}" > livelog
-retry curl -fsSL "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/taskcluster-proxy-linux-${ARCH}" > taskcluster-proxy
+curl --fail --retry 10 --retry-all-errors -fsSL "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/generic-worker-multiuser-linux-${ARCH}" -o generic-worker
+curl --fail --retry 10 --retry-all-errors -fsSL "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/start-worker-linux-${ARCH}" -o start-worker
+curl --fail --retry 10 --retry-all-errors -fsSL "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/livelog-linux-${ARCH}" -o livelog
+curl --fail --retry 10 --retry-all-errors -fsSL "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/taskcluster-proxy-linux-${ARCH}" -o taskcluster-proxy
 chmod a+x generic-worker start-worker taskcluster-proxy livelog
 
 mkdir -p /etc/generic-worker
@@ -134,7 +114,7 @@ EOF
 
 systemctl enable worker
 
-retry apt-get install -y ubuntu-desktop ubuntu-gnome-desktop podman gnome-initial-setup-
+apt-get -o Acquire::Retries=10 -o APT::Update::Error-Mode=any install -y ubuntu-desktop ubuntu-gnome-desktop podman gnome-initial-setup-
 
 if [ "${MY_CLOUD}" == 'google' ]; then
     # this is neccessary in GCP because after installing gnome desktop both NetworkManager and systemd-networkd are enabled
@@ -152,8 +132,8 @@ fi
 # Ubuntu's v4l2loopback-dkms package is too old to build against that
 # kernel, so install a current upstream release via DKMS.
 V4L2LOOPBACK_VERSION=0.15.4
-retry apt-get install -y dkms "linux-headers-$(uname -r)"
-retry curl -fsSL "https://github.com/v4l2loopback/v4l2loopback/archive/refs/tags/v${V4L2LOOPBACK_VERSION}.tar.gz" \
+apt-get -o Acquire::Retries=10 -o APT::Update::Error-Mode=any install -y dkms "linux-headers-$(uname -r)"
+curl --fail --retry 10 --retry-all-errors -fsSL "https://github.com/v4l2loopback/v4l2loopback/archive/refs/tags/v${V4L2LOOPBACK_VERSION}.tar.gz" \
   -o /tmp/v4l2loopback.tar.gz
 tar xz -C /usr/src -f /tmp/v4l2loopback.tar.gz
 rm -f /tmp/v4l2loopback.tar.gz

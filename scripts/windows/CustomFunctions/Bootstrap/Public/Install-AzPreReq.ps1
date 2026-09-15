@@ -2,62 +2,23 @@ function Install-AzPreReq {
     param (
         [string] $ext_src = "https://roninpuppetassets.blob.core.windows.net/binaries/prerequisites",
         [string] $local_dir = "$env:systemdrive\BootStrap",
-        [string] $work_dir = "$env:systemdrive\scratch",
         [string] $manifest = "nodes.pp"
     )
 
     begin {
-        $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-        Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
-        Write-Host "========== $($MyInvocation.MyCommand.Name) started at $((Get-Date).ToUniversalTime().ToString('o')) =========="
 
         Get-PackageProvider -Name Nuget -ForceBootstrap | Out-Null
         Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-        Install-Module powershell-yaml -ErrorAction Stop
     }
 
     process {
-        $configPath   = "C:\Config\$($env:Config).yaml"
-        $defaultsPath = "C:\Config\windows_production_defaults.yaml"
-
-        if (-Not (Test-Path $configPath)) {
-            Write-Host "Could not find config file: $configPath"
-            exit 1
-        }
-
-        if (-Not (Test-Path $defaultsPath)) {
-            Write-Host "Could not find default config: $defaultsPath"
-            exit 1
-        }
-
-        $data    = ConvertFrom-Yaml (Get-Content -Path $configPath -Raw)
-        $defaults = ConvertFrom-Yaml (Get-Content -Path $defaultsPath -Raw)
-
-        ## OpenVox Version
-        $openvox_version = $data.vm.openvox_version
-        if (-not $openvox_version -or $openvox_version -eq "default") {
-            $openvox_version = $defaults.vm.openvox_version
+        # Versions have already been resolved and validated on the runner.
+        $openvox_version = $env:openvox_version
+        $git_version = $env:git_version
+        if (-not $openvox_version -or -not $git_version) {
+            throw 'The runner must supply openvox_version and git_version.'
         }
         $puppet = "openvox-agent-$openvox_version-x64.msi"
-
-        # ## OpenVox Version
-        # $openvox_version = $data.vm.openvox_version
-        # if ($openvox_version) {
-        #     $puppet = "openvox-agent-$openvox_version-x64.msi"
-        # }
-        # else {
-        #     ## Puppet version
-        #     $puppet_version = $data.vm.puppet_version
-        #     if (-not $puppet_version -or $puppet_version -eq "default") {
-        #         $puppet_version = $defaults.vm.puppet_version
-        #     }
-        #     $puppet = "puppet-agent-$puppet_version-x64.msi"
-        # }
-        ## Git Version
-        $git_version = $data.vm.git_version
-        if (-not $git_version -or $git_version -eq "default") {
-            $git_version = $defaults.vm.git_version
-        }
 
         switch ($env:PROCESSOR_ARCHITECTURE) {
             "AMD64" {
@@ -113,11 +74,4 @@ node default {
         $env:PATH += ";C:\Program Files\Puppet Labs\Puppet\bin"
     }
 
-    end {
-        $stopwatch.Stop()
-        $elapsedMinutes = [int][math]::Floor($stopwatch.Elapsed.TotalMinutes)
-        $elapsedSeconds = $stopwatch.Elapsed.Seconds
-        Write-Log -message ('{0} :: completed in {1} minutes, {2} seconds' -f $($MyInvocation.MyCommand.Name), $elapsedMinutes, $elapsedSeconds) -severity 'DEBUG'
-        Write-Host "========== $($MyInvocation.MyCommand.Name) completed in $elapsedMinutes minutes, $elapsedSeconds seconds =========="
-    }
 }

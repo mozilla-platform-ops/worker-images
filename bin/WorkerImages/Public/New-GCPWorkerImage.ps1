@@ -1,18 +1,14 @@
-function New-GCPWorkerImage {
+﻿function New-GCPWorkerImage {
     [CmdletBinding()]
     param (
         [String] $Github_token,
+        [ValidatePattern('^[a-zA-Z0-9_-]+$')]
         [String] $Key,
-        [String] $Access_Token,
-        [String] $Account_File,
-        [String] $Worker_Env_Var_Key,
-        [String] $TC_worker_cert,
-        [String] $TC_worker_key,
         [String] $Team
     )
 
-    Set-PSRepository PSGallery -InstallationPolicy Trusted
-    Install-Module powershell-yaml -ErrorAction Stop
+    $ErrorActionPreference = 'Stop'
+    Import-WorkerImagesYaml
 
     if ($Team -and $Team -ieq "tceng") {
         $YamlPath      = "config/tceng/$Key.yaml"
@@ -72,13 +68,14 @@ function New-GCPWorkerImage {
         Write-Host "Using machine type from YAML: $($YAML.vm['machine_type'])"
     }
     else {
-        # leave unset → Packer will use its internal defaults
+        $ENV:PKR_VAR_machine_type = $null
         Write-Host "No machine_type specified in YAML; using default from builder"
     }
 
     ## Initialize and build
     Write-Host "packer init $PackerHCLPath"
     packer init $PackerHCLPath
+    if ($LASTEXITCODE -ne 0) { throw "packer init failed: $LASTEXITCODE" }
     if ($key -match "Trusted") {
         $ENV:PKR_VAR_use_keyvault = "true"
     }
@@ -94,4 +91,5 @@ function New-GCPWorkerImage {
         Write-Host "packer build --only $builder -force $PackerHCLPath"
         packer build --only $builder -force $PackerHCLPath
     }
+    if ($LASTEXITCODE -ne 0) { throw "packer build failed: $LASTEXITCODE" }
 }

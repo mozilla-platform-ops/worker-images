@@ -1,4 +1,4 @@
-# StressCPU.ps1
+﻿# StressCPU.ps1
 # SSH-based prime95 torture-mode CPU stress test + throttling probe across NUC13 nodes.
 #
 # Runs prime95 (-t torture mode) for $duration_secs on each node and captures:
@@ -25,6 +25,10 @@
 # Used in the RELOPS-2323 throttling investigation as the heavy multi-core
 # stress test, complementing the lighter Compare-NUCHealth/Scan-NUCHealth burner.
 
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'ssh_user', Justification = 'Consumed by nested helper functions in this script scope.')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'DurationSecs', Justification = 'Consumed by nested helper functions in this script scope.')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'SshUser', Justification = 'Consumed by nested helper functions in this script scope.')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'MsgQueue', Justification = 'Consumed by nested helper functions in this script scope.')]
 param(
     [switch]$single,
     [switch]$pool,
@@ -102,7 +106,7 @@ function Invoke-SSH {
     $outTask = $p.StandardOutput.ReadToEndAsync()
     $errTask = $p.StandardError.ReadToEndAsync()
     $exited  = $p.WaitForExit($TimeoutSec * 1000)
-    if (-not $exited) { try { $p.Kill() } catch {} }
+    if (-not $exited) { try { $p.Kill() } catch { Write-Verbose "Process cleanup failed: $_" } }
     $null = $outTask.Wait(10000)
     $null = $errTask.Wait(10000)
     $stdout   = if ($outTask.Status -eq 'RanToCompletion') { $outTask.Result } else { '' }
@@ -479,7 +483,7 @@ function Invoke-Parallel {
             $outTask = $p.StandardOutput.ReadToEndAsync()
             $errTask = $p.StandardError.ReadToEndAsync()
             $exited  = $p.WaitForExit($TimeoutSec * 1000)
-            if (-not $exited) { try { $p.Kill() } catch {} }
+            if (-not $exited) { try { $p.Kill() } catch { Write-Verbose "Process cleanup failed: $_" } }
             $null = $outTask.Wait(10000)
             $null = $errTask.Wait(10000)
             $stdout   = if ($outTask.Status -eq 'RanToCompletion') { $outTask.Result } else { '' }

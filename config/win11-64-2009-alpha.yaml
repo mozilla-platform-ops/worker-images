@@ -10,24 +10,19 @@ sharedimage:
   image_version: 1.0.0
 azure:
   managed_image_resource_group_name: rg-packer-worker-images
-  managed_image_storage_account_type: Standard_LRS
   build_location: eastus
   locations:
-    - uksouth
-    - eastus
     - eastus2
-    - westus2
     - westus
+    - westus2
+    - westus3
 vm:
-  puppet_version: 8.10.0
   git_version: 2.53.0
   openvox_version: 8.25.0
   size: Standard_F8s_v2
   tags:
     base_image: win11642009azure
     worker_pool_id: win11-64-2009
-    sourceOrganization: "default"
-    sourceRepository: "default"
     sourceBranch: "relops/remove-vac-azure-cloud-workers"
     deploymentId: "NA"
     managed_by: packer

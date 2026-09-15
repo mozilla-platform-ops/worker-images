@@ -5,16 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       config:
-        type: choice
-        description: Choose which pool to build
-        options:
-        - generic-worker-win2022-staging
-        - generic-worker-win2022
-        - generic-worker-win2022-gpu-staging
-        - generic-worker-win2022-gpu
-        - generic-worker-win11-24h2-staging
-        - generic-worker-win2025-staging
-        - image_development
+        type: string
+        required: true
+        description: YAML basename from config/ (without .yaml)
       TASKCLUSTER_REF:
         type: string
         description: Git reference (branch, tag, or commit) to use
@@ -24,34 +17,36 @@ permissions:
   id-token: write
   contents: read
 
+env:
+  CONFIG: ${{ inputs.config }}
+
 jobs:
   check-access:
     name: "Verify User Access"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Validate image config
+        shell: pwsh
+        run: ./ci/validate-image-config.ps1 -Family tceng
 
       - name: Load Authorized Users and Check Access
         shell: pwsh
-        run: |
-          $TCEngUsers   = Get-Content .github/tceng.json | ConvertFrom-Json
-          $RelsreUsers  = Get-Content .github/relsre.json | ConvertFrom-Json
-          $AUTHORIZED_USERS = $TCEngUsers + $RelsreUsers
-
-          if ($AUTHORIZED_USERS -contains "${{ github.actor }}") {
-            Write-Host "User ${{ github.actor }} is authorized."
-          } else {
-            Write-Host "User ${{ github.actor }} is unauthorized."
-            exit 1
-          }
+        run: ./ci/check-authorized-user.ps1 -IncludeTCEng
 
   config:
     needs: check-access
     name: "Create Image Tasks"
     runs-on: ubuntu-latest
     steps:
-      # TESTING ONLY: check out relops-1640 branch instead of trigger branch
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Validate image config
+        shell: pwsh
+        run: ./ci/validate-image-config.ps1 -Family tceng
 
       - id: set-matrix
         shell: pwsh
@@ -59,7 +54,7 @@ jobs:
           Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
           $Vars = @{
             team = "tceng"
-            Key  = '${{ github.event.inputs.config }}'
+            Key  = $env:CONFIG
           }
           Set-AzWorkerImageLocation @Vars
     outputs:
@@ -81,40 +76,45 @@ jobs:
         locations: ${{ fromJson(needs.config.outputs.LOCATIONS) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Validate image config
+        shell: pwsh
+        run: ./ci/validate-image-config.ps1 -Family tceng
 
-      - name: Azure Login
+      # The SKU preflight uses Azure CLI; do not initialize an unused Az PowerShell session.
+      - name: Azure CLI login for SKU preflight
         uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c
         with:
           client-id: ${{ secrets[needs.config.outputs.CLIENT_ID_SECRET] }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets[needs.config.outputs.SUBSCRIPTION_ID_SECRET] }}
-          enable-AzPSSession: true
 
-      - name: "Remove current images"
-        uses: azure/powershell@f5b8adcfff1904872c7b98d4012d4914d74b1a82
+      - name: Cache Packer plugins
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          inlineScript: |
-            Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
-            ## Comment out for now, each run of TC image creations contains a UUId
-            # Remove-AzWorkerImage -Key "${{ github.event.inputs.config }}" -Location "${{ matrix.LOCATIONS }}"
-          azPSVersion: "latest"
-
+          path: ~/.config/packer/plugins
+          key: packer-azure-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('azure.pkr.hcl', 'packer/tceng-azure.pkr.hcl') }}
       - name: 'Run Packer'
         shell: pwsh
         env:
-          TASKCLUSTER_REF:    ${{ github.event.inputs.TASKCLUSTER_REF }}
+          TASKCLUSTER_REF: ${{ inputs.TASKCLUSTER_REF }}
+          CLIENT_ID: ${{ secrets[needs.config.outputs.CLIENT_ID_SECRET] }}
+          SUBSCRIPTION_ID: ${{ secrets[needs.config.outputs.SUBSCRIPTION_ID_SECRET] }}
+          TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          APPLICATION_ID: ${{ secrets[needs.config.outputs.APPLICATION_ID_SECRET] }}
         run: |
           $ENV:PKR_VAR_taskcluster_ref = $ENV:TASKCLUSTER_REF
           Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
           $Vars = @{
             team               = "tceng"
             Location           = "${{ matrix.LOCATIONS }}"
-            Key                = '${{ github.event.inputs.config }}'
-            Client_ID          = "${{ secrets[needs.config.outputs.CLIENT_ID_SECRET] }}"
+            Key                = $env:CONFIG
+            Client_ID          = $env:CLIENT_ID
             oidc_request_url   = $env:ACTIONS_ID_TOKEN_REQUEST_URL
             oidc_request_token = $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN
-            Subscription_ID    = "${{ secrets[needs.config.outputs.SUBSCRIPTION_ID_SECRET] }}"
-            Tenant_ID          = "${{ secrets.AZURE_TENANT_ID }}"
-            Application_ID     = "${{ secrets[needs.config.outputs.APPLICATION_ID_SECRET] }}"
+            Subscription_ID    = $env:SUBSCRIPTION_ID
+            Tenant_ID          = $env:TENANT_ID
+            Application_ID     = $env:APPLICATION_ID
           }
           New-AzWorkerImage @Vars

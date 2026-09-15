@@ -95,26 +95,12 @@ hw_failure_summary = _load_by_path("hw_failure_summary", FAILURE_SUMMARY_MODULE)
 hw_baseline = _load_by_path("hw_baseline", BASELINE_MODULE)
 
 
-def _escape_github_command_message(message: str) -> str:
-    return message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+github_log = _load_by_path("github_log", Path(__file__).with_name("github_log.py"))
+format_duration = github_log.format_duration
 
 
 def log(level: str, message: str) -> None:
-    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    message = f"[{stamp}] {message}"
-
-    # Flush every line: stdout is block-buffered when piped, and without this
-    # errors on stderr overtake the stdout context that explains them.
-    if IN_GITHUB_ACTIONS and level in ("warning", "error"):
-        print(f"::{level}::{_escape_github_command_message(message)}", flush=True)
-        return
-    if level == "error":
-        sys.stdout.flush()
-        print(f"ERROR: {message}", file=sys.stderr, flush=True)
-    elif level == "warning":
-        print(f"WARNING: {message}", flush=True)
-    else:
-        print(message, flush=True)
+    github_log.log_message(level, message, include_datetimestamp=True)
 
 
 def notice(msg):
@@ -127,16 +113,6 @@ def warn(msg):
 
 def error(msg):
     log("error", msg)
-
-
-def format_duration(seconds: int) -> str:
-    if seconds < 0:
-        return "-"
-    if seconds < 60:
-        return f"{seconds}s"
-    if seconds < 3600:
-        return f"{seconds // 60}m {seconds % 60}s"
-    return f"{seconds // 3600}h {(seconds % 3600) // 60}m"
 
 
 def result_emoji(state: str) -> str:

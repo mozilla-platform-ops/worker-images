@@ -34,6 +34,8 @@
 #   .\UninstallFirefox.ps1 -range_start 1 -range_end 50       # range subset
 #   .\UninstallFirefox.ps1 -no_skip                           # disable skip list
 
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'ssh_user', Justification = 'Consumed by nested helper functions in this script scope.')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'MsgQueue', Justification = 'Consumed by nested helper functions in this script scope.')]
 param(
     [int]$range_start      = 1,
     [int]$range_end        = 160,
@@ -232,7 +234,7 @@ $rsScript = {
         $sp.StandardOutput.ReadToEnd() | Out-Null
         $scpErr = $sp.StandardError.ReadToEnd()
         $exited = $sp.WaitForExit(25000)
-        if (-not $exited) { try { $sp.Kill() } catch {}; return [pscustomobject]@{ _s='ssherr'; Fqdn=$Fqdn; Reason="scp timeout" } }
+        if (-not $exited) { try { $sp.Kill() } catch { Write-Verbose "Process cleanup failed: $_" }; return [pscustomobject]@{ _s='ssherr'; Fqdn=$Fqdn; Reason="scp timeout" } }
         $scpExit = $sp.ExitCode
         $sp.Dispose()
         if ($scpExit -ne 0) {
@@ -254,7 +256,7 @@ $rsScript = {
         $stderr = $sp2.StandardError.ReadToEnd()
         # choco uninstall can take 60-180s; allow up to 5 min
         $exited2 = $sp2.WaitForExit(300000)
-        if (-not $exited2) { try { $sp2.Kill() } catch {}; return [pscustomobject]@{ _s='ssherr'; Fqdn=$Fqdn; Reason="ssh timeout" } }
+        if (-not $exited2) { try { $sp2.Kill() } catch { Write-Verbose "Process cleanup failed: $_" }; return [pscustomobject]@{ _s='ssherr'; Fqdn=$Fqdn; Reason="ssh timeout" } }
         $sshExit = $sp2.ExitCode
         $sp2.Dispose()
         if ($sshExit -ne 0) {

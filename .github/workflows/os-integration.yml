@@ -5,23 +5,17 @@ on:
   workflow_dispatch:
     inputs:
       config:
-        type: choice
-        description: Choose which pool to build
-        options:
-        - win10-64-2009-alpha
-        - win11-64-2009-alpha
-        - win11-64-24h2-alpha
-        - win11-64-25h2-alpha
-        - win11-a64-25h2-tester-alpha
-        - win11-a64-25h2-builder-alpha
-        - win2022-64-2009-alpha
-        - gw-fxci-gcp-l1-2404-gui-alpha
-        - gw-fxci-gcp-l1-2404-headless-alpha
-        - gw-fxci-gcp-l1-2404-arm64-headless-alpha
+        type: string
+        required: true
+        description: YAML basename from config/ (without .yaml)
       image_name:
         type: string
         description: Optional shared image name override
         required: false
+      wait_for_results:
+        type: boolean
+        default: true
+        description: Wait for task results (false only submits and prints the task-group link)
   workflow_call:
     inputs:
       config:
@@ -32,11 +26,18 @@ on:
         type: string
         description: Optional shared image name override
         required: false
+      wait_for_results:
+        type: boolean
+        default: true
+        description: Wait for task results
     secrets:
       TASKCLUSTER_OS_INT_CLIENT_ID:
         required: true
       TASKCLUSTER_OS_INT_ACCESS_TOKEN:
         required: true
+
+env:
+  CONFIG: ${{ inputs.config }}
 
 jobs:
   integration-tests:
@@ -46,18 +47,16 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Validate image config
+        shell: pwsh
+        run: ./ci/validate-image-config.ps1 -Family all
       - name: Verify User Access
         if: github.event_name == 'workflow_dispatch'
         shell: pwsh
-        run: |
-          $AUTHORIZED_USERS=$(Get-Content .github/relsre.json | Convertfrom-Json)
-          if ($authorized_users -contains "${{ github.actor }}") {
-            Write-host "User ${{ github.actor }} is authorized."
-          }
-          else {
-            Write-Host "User ${{ github.actor }} is unauthorized."
-            exit 1
-          }
+        run: ./ci/check-authorized-user.ps1
+
       - name: Resolve shared image name
         id: resolve-image
         shell: pwsh
@@ -68,8 +67,7 @@ jobs:
           if ($env:IMAGE_NAME_INPUT) {
             $imageName = $env:IMAGE_NAME_INPUT
           } else {
-            Set-PSRepository PSGallery -InstallationPolicy Trusted
-            Install-Module powershell-yaml -ErrorAction Stop
+            ./ci/install-powershell-yaml.ps1
             $yaml = ConvertFrom-Yaml (Get-Content "config/$($env:CONFIG).yaml" -Raw)
             # Windows configs use sharedimage.image_name (Azure Shared Image Gallery name).
             # Linux GCP configs use image.image_name (GCP image name).
@@ -95,5 +93,8 @@ jobs:
           TASKCLUSTER_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
           TASKCLUSTER_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}
           PYTHONUNBUFFERED: "1"
+          WAIT_FOR_RESULTS: ${{ inputs.wait_for_results }}
         run: |
-          uv run ci/run-os-integration.py "$IMAGE_NAME"
+          args=("$IMAGE_NAME")
+          if [[ "$WAIT_FOR_RESULTS" != true ]]; then args+=(--no-wait); fi
+          uv run ci/run-os-integration.py "${args[@]}"

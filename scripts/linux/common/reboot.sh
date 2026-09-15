@@ -2,7 +2,6 @@
 
 set -exv
 
-#
-# reboot to use the new kernel
-#
+# Activate package, module and service changes before image validation.
+# A kernel upgrade is not required for this reboot.
 shutdown -r now

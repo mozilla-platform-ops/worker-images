@@ -12,7 +12,7 @@ function Get-WinFactsMozillaBuild {
     $mozbld_file = "$env:systemdrive\mozilla-build\VERSION"
     $hg_file = "$env:ProgramW6432\Mercurial\hg.exe"
     $python3_file = "$env:systemdrive\mozilla-build\python3\python3.exe"
-    $zstandard = "$env:systemdrive\mozilla-build\python3\lib\site-packages\zstandard"
+
 
     # Mozilla Build
     # Needed in roles_profiles::profiles::mozilla_build

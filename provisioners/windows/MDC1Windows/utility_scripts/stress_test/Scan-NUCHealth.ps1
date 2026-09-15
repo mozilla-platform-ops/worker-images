@@ -23,6 +23,7 @@
 #   .\Scan-NUCHealth.ps1 -max_parallel 4                           # less aggressive parallelism
 #   .\Scan-NUCHealth.ps1 -no_skip                                  # disable skip list
 
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'MsgQueue', Justification = 'Consumed by nested helper functions in this script scope.')]
 param(
     [int]$range_start      = 1,
     [int]$range_end        = 160,
@@ -227,7 +228,7 @@ $rsScript = {
         $sp.StandardOutput.ReadToEnd() | Out-Null
         $scpErr = $sp.StandardError.ReadToEnd()
         $exited = $sp.WaitForExit(25000)
-        if (-not $exited) { try { $sp.Kill() } catch {}; return [pscustomobject]@{ _s='ssherr'; Fqdn=$Fqdn; Reason="scp timeout" } }
+        if (-not $exited) { try { $sp.Kill() } catch { Write-Verbose "Process cleanup failed: $_" }; return [pscustomobject]@{ _s='ssherr'; Fqdn=$Fqdn; Reason="scp timeout" } }
         $scpExit = $sp.ExitCode
         $sp.Dispose()
         if ($scpExit -ne 0) {
@@ -254,7 +255,7 @@ $rsScript = {
         $stdout = $sp2.StandardOutput.ReadToEnd()
         $stderr = $sp2.StandardError.ReadToEnd()
         $exited2 = $sp2.WaitForExit(60000)
-        if (-not $exited2) { try { $sp2.Kill() } catch {}; return [pscustomobject]@{ _s='ssherr'; Fqdn=$Fqdn; Reason="ssh timeout" } }
+        if (-not $exited2) { try { $sp2.Kill() } catch { Write-Verbose "Process cleanup failed: $_" }; return [pscustomobject]@{ _s='ssherr'; Fqdn=$Fqdn; Reason="ssh timeout" } }
         $sshExit = $sp2.ExitCode
         $sp2.Dispose()
         if ($sshExit -ne 0) {

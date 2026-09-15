@@ -9,21 +9,15 @@ sharedimage:
   image_name: "win11_a64_25h2_builder"
   image_version: "1.0.7"
 azure:
-  managed_image_resource_group_name: "default"
-  managed_image_storage_account_type: "default"
+  locations:
+    - centralindia
+    - eastus2
+    - northcentralus
 vm:
-  puppet_version: "default"
-  git_version: "default"
-  openvox_version: "default"
   size: Standard_E8pds_v5
   tags:
     base_image: win11a6425h2azurebuilder
     worker_pool_id: win11-a64-25h2-builder
-    sourceOrganization: "default"
-    sourceRepository: "default"
-    sourceBranch: "default"
-    deploymentId: "default"
-    managed_by: "default"
 tests:
   - microsoft_binscope.tests.ps1
   - microsoft_vcc_2010_arm64.tests.ps1

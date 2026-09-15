@@ -5,12 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       config:
-        type: choice
-        description: Choose which pool to build
-        options:
-          - generic-worker-ubuntu-24-04
-          - generic-worker-ubuntu-24-04-arm64
-          - generic-worker-ubuntu-24-04-staging
+        type: string
+        required: true
+        description: YAML basename from config/ (without .yaml)
       aws_account:
         type: choice
         description: Choose which AWS account to build in
@@ -34,6 +31,7 @@ permissions:
   contents: read
 
 env:
+  CONFIG: ${{ inputs.config }}
   COMMUNITY_TC_WORKERS_AWS_ROLE_ARN: arn:aws:iam::885316786408:role/GitHubActionsRole
   TASKCLUSTER_AWS_ROLE_ARN: arn:aws:iam::692406183521:role/GitHubActionsRole
 
@@ -43,20 +41,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Validate image config
+        shell: pwsh
+        run: ./ci/validate-image-config.ps1 -Family tceng
 
       - name: Load Authorized Users and Check Access
         shell: pwsh
-        run: |
-          $TCEngUsers  = Get-Content .github/tceng.json  | ConvertFrom-Json
-          $RelsreUsers = Get-Content .github/relsre.json | ConvertFrom-Json
-          $AUTHORIZED_USERS = $TCEngUsers + $RelsreUsers
-
-          if ($AUTHORIZED_USERS -contains "${{ github.actor }}") {
-            Write-Host "User ${{ github.actor }} is authorized."
-          } else {
-            Write-Host "User ${{ github.actor }} is unauthorized."
-            exit 1
-          }
+        run: ./ci/check-authorized-user.ps1 -IncludeTCEng
 
   packer:
     needs: check-access
@@ -69,6 +62,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Validate image config
+        shell: pwsh
+        run: ./ci/validate-image-config.ps1 -Family tceng
 
       - name: Select AWS role
         id: aws-role
@@ -102,7 +100,7 @@ jobs:
         run: |
           Import-Module "${{ github.workspace }}/bin/WorkerImages/WorkerImages.psm1"
           $Vars = @{
-            Key     = '${{ github.event.inputs.config }}'
+            Key     = $env:CONFIG
             Region  = '${{ github.event.inputs.region }}'
           }
 

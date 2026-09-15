@@ -1,4 +1,4 @@
-function New-AzWorkerImage {
+﻿function New-AzWorkerImage {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)] [String] $Key,
@@ -13,8 +13,8 @@ function New-AzWorkerImage {
         [Switch] $PackerDebug
     )
 
-    Set-PSRepository PSGallery -InstallationPolicy Trusted
-    Install-Module powershell-yaml -ErrorAction Stop
+    if ($Team -ne 'tceng') { throw 'Use New-AzSharedWorkerImage for Firefox CI Azure images.' }
+    Import-WorkerImagesYaml
 
     switch ($Team) {
         "tceng" {
@@ -124,6 +124,7 @@ function New-AzWorkerImage {
     Write-Host "Temp RG name: $env:PKR_VAR_temp_resource_group_name"
     Write-Host "Using HCL: $PackerHCLPath"
 
+    Assert-AzVmSkuAvailable -SubscriptionId $Subscription_ID -Location $Location -VmSize $ENV:PKR_VAR_vm_size
     packer init $PackerHCLPath
     if ($PackerDebug) {
         packer build -debug --only azure-arm.nonsig -force $PackerHCLPath

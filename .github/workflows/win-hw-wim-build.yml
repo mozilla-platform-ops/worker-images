@@ -47,6 +47,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
       - name: Load Authorized Users and Check Access
         shell: pwsh
         run: ./ci/check-authorized-user.ps1
@@ -67,6 +69,7 @@ jobs:
       # (the build logic lives with the pipeline, not in this workflow's PR).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          persist-credentials: false
           ref: ${{ inputs.pipeline_ref }}
 
       - name: Azure Login

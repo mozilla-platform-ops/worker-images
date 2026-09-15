@@ -68,10 +68,8 @@ they build.
 | `FXCI - Azure Alpha Parallel Images` | `sig-FXCI-nontrusted-parallel-build-alpha.yml` | Windows alpha builds from `images.alpha` in `windows_production_defaults.yaml`. |
 | `FXCI - Azure` | `sig-nontrusted.yml` | One-off untrusted Windows Azure build. |
 | `FXCI - Azure - Trusted` | `sig-trusted.yml` | One-off trusted Windows Azure build. Do not use this in addition to the prod parallel workflow for a full rollout. |
-| `FXCI - GCP Alpha Parallel Images` | `gcp-fxci-parallel-alpha.yml` | Builds all Firefox CI Ubuntu alpha images in GCP. |
-| `FXCI - GCP Prod Parallel Images` | `gcp-deploy-parallel.yml` | Promotes all Firefox CI Ubuntu alpha images into date-stamped production GCP images. |
-| `FXCI - GCP` | `gcp-fxci.yml` | One-off Firefox CI Ubuntu alpha image build. |
-| `FXCI - GCP Production` | `gcp-deploy.yml` | One-off Firefox CI Ubuntu production promotion. |
+| `FXCI - GCP Alpha Parallel Images` | `gcp-fxci-parallel-alpha.yml` | Builds all Firefox CI Ubuntu alpha images in GCP, or one image with the optional `config` input. |
+| `FXCI - GCP Prod Parallel Images` | `gcp-deploy-parallel.yml` | Promotes all Firefox CI Ubuntu alpha images into date-stamped production GCP images, or one image with the optional `config` input. |
 | `OS Integration Tests - FXCI` | `os-integration.yml` | Triggers Taskcluster integration tests against a built image. |
 | TC Engineering workflows | `nonsig-tceng-azure.yml`, `gcp-tceng.yml`, `aws-tceng.yml` | Builds images owned by Taskcluster Engineering. |
 
@@ -83,14 +81,20 @@ name, gallery version, VM size, ronin_puppet role, and Pester tests.
 
 `config/windows_production_defaults.yaml` provides shared Windows defaults:
 
-- OpenVox, Puppet, and Git versions used during bootstrap.
+- OpenVox and Git versions used during bootstrap.
 - The default `ronin_puppet` organization, repository, branch, and
   `deploymentId`.
 - The production and alpha config lists used by the parallel Azure workflows.
 
-Most production configs inherit the default ronin_puppet pin by setting
-`vm.tags.deploymentId: "default"`. The gallery version is per config in
+Image configs override a recursive merge of the defaults. Omit inherited keys;
+there is no `"default"` sentinel. Arrays are replaced, not concatenated, and
+explicit false/empty values override defaults. Most production configs inherit
+the ronin_puppet pin by omitting `vm.tags.deploymentId`.
+The gallery version is per config in
 `sharedimage.image_version`; bump the configs you actually intend to rebuild.
+`azure.locations` lists replica targets, excluding the build region; `[]` means
+build-region only. CI compares each gallery with active fxci-config pool consumers
+using that repository's variant and image-alias resolver, including pool overrides.
 
 During the build, the Windows Bootstrap module installs prerequisites, clones
 ronin_puppet at the configured branch and commit, applies Puppet, runs the
@@ -137,12 +141,26 @@ The short version for Firefox CI production rollouts:
    `sharedimage.image_version` values and the default `deploymentId` if the
    ronin_puppet pin changed.
 3. Run the appropriate parallel build workflow.
-4. Verify the published images, release notes, and integration results.
+4. Verify the published images, release notes, and integration results. For
+   Windows production parallel builds, **all `Replicate` jobs must succeed** and
+   each image must have a matching `deployment-ready-*` artifact before changing
+   `fxci-config`. A successful Packer job alone means only the build-region image
+   exists. See [build changes and validation](docs/packer-build-changes.md).
 5. Open an `fxci-config` PR that points worker pools at the new versions or
    GCP image paths.
 6. Trigger `/taskcluster integration` on that PR.
 7. After merge, watch fresh worker-manager events and pool health to confirm
    new workers boot the expected image.
+
+Alpha workflows keep waiting for OS integration results by default. Set
+`wait_for_results: false` only to submit tests and collect their task-group links;
+a green submission job is not evidence that those tests passed.
+
+Azure builds use Azure CLI OIDC login for the pre-Packer SKU check, and Packer
+performs its own OIDC exchange. The SKU catalogue check cannot reserve capacity
+or guarantee quota. Dispatching a feature branch still requires a matching
+federated identity credential in Azure; arrange an approved subject with the
+identity owner before running branch builds.
 
 ## Local Development
 
@@ -152,6 +170,13 @@ Taskcluster taskgraph tests.
 
 ```bash
 pre-commit run --all-files
+python3 -m unittest discover -s ci -p 'test_*.py' -v
+pwsh -NoProfile -File ci/test-build-helpers.ps1
+bash tests/linux/test_generate_sbom.sh
+# Requires PSScriptAnalyzer 1.25.0.
+pwsh -NoProfile -File ci/check-powershell.ps1
+# Uses fxci-config's locked dependencies; no cloud API calls.
+uv run --frozen --no-dev --project ../fxci-config python ci/check-azure-regions.py ../fxci-config
 
 packer init azure.pkr.hcl
 packer validate azure.pkr.hcl

@@ -1,4 +1,5 @@
 function Write-Log {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidOverwritingBuiltInCmdlets', '', Justification = 'Repository logging API retained for existing provisioning callers.')]
     param (
         [string] $message,
         [string] $severity = 'INFO',

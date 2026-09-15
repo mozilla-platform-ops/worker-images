@@ -1,5 +1,5 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-Set-PSRepository PSGallery -InstallationPolicy Trusted
-Install-Module powershell-yaml -Force
+. "$PSScriptRoot/../bin/WorkerImages/Private/Import-WorkerImagesYaml.ps1"
+Import-WorkerImagesYaml
