@@ -1,39 +1,18 @@
 #!/bin/bash
+set -euo pipefail
 
-set -exv
+# Ubuntu's signed GCP kernel modules avoid compiling NVIDIA DKMS on a GPU-less VM.
+# Keep kernel modules and userspace on the same driver branch.
+apt-get -o Acquire::Retries=10 -o APT::Update::Error-Mode=any update
+apt-get -o Acquire::Retries=10 install -y --no-install-recommends \
+  linux-modules-nvidia-580-gcp nvidia-driver-580
 
-function retry {
-  set +e
-  local n=0
-  local max=10
-  while true; do
-    "$@" && break || {
-      if [[ $n -lt $max ]]; then
-        ((n++))
-        echo "Command failed" >&2
-        sleep_time=$((2 ** n))
-        echo "Sleeping $sleep_time seconds..." >&2
-        sleep $sleep_time
-        echo "Attempt $n/$max:" >&2
-      else
-        echo "Failed after $n attempts." >&2
-        exit 1
-      fi
-    }
-  done
-  set -e
-}
-
-## Install nvidia driver
-retry curl -sSO https://developer.download.nvidia.com/compute/nvidia-driver/570.148.08/local_installers/nvidia-driver-local-repo-ubuntu2404-570.148.08_1.0-1_amd64.deb
-dpkg -i nvidia-driver-local-repo-ubuntu2404-570.148.08_1.0-1_amd64.deb
-cp /var/nvidia-driver-local-repo-ubuntu2404-570.148.08/nvidia-driver-*-keyring.gpg /usr/share/keyrings/
-apt-get update
-apt-get install -y cuda-drivers-570
-
-# Install cudnn
-retry curl -sSO https://developer.download.nvidia.com/compute/cudnn/9.10.1/local_installers/cudnn-local-repo-ubuntu2404-9.10.1_1.0-1_amd64.deb
-dpkg -i cudnn-local-repo-ubuntu2404-9.10.1_1.0-1_amd64.deb
+# Tasks need the CUDA 12 runtime, not cuDNN headers, samples or static libraries.
+repo=cudnn-local-repo-ubuntu2404-9.10.1_1.0-1_amd64.deb
+curl -fsSL --retry 10 --retry-all-errors \
+  "https://developer.download.nvidia.com/compute/cudnn/9.10.1/local_installers/$repo" -o "/tmp/$repo"
+dpkg -i "/tmp/$repo"
+rm "/tmp/$repo"
 cp /var/cudnn-local-repo-ubuntu2404-9.10.1/cudnn-*-keyring.gpg /usr/share/keyrings/
-apt-get update
-apt-get -y install cudnn
+apt-get -o Acquire::Retries=10 -o APT::Update::Error-Mode=any update
+apt-get -o Acquire::Retries=10 install -y --no-install-recommends libcudnn9-cuda-12
