@@ -71,14 +71,14 @@ const { firefox } = require(process.argv[1] + '/node_modules/playwright');
 }
 
 # Stock Firefox lacks Playwright's protocol patches: smoke it directly instead.
-$profile = Join-Path $env:TEMP ('foofrix-browser-' + [guid]::NewGuid())
-$screenshot = Join-Path $profile 'smoke.png'
-New-Item -ItemType Directory $profile | Out-Null
+$browserProfilePath = Join-Path $env:TEMP ('foofrix-browser-' + [guid]::NewGuid())
+$screenshot = Join-Path $browserProfilePath 'smoke.png'
+New-Item -ItemType Directory $browserProfilePath | Out-Null
 try {
-    $browser = Start-Process $env:FIREFOX_BIN -ArgumentList "--headless --no-remote --profile `"$profile`" --screenshot `"$screenshot`" about:blank" -PassThru
+    $browser = Start-Process $env:FIREFOX_BIN -ArgumentList "--headless --no-remote --profile `"$browserProfilePath`" --screenshot `"$screenshot`" about:blank" -PassThru
     if (-not $browser.WaitForExit(60000)) {
         Stop-Process -Id $browser.Id -Force
         throw 'Prebuilt Firefox smoke test timed out'
     }
     if ($browser.ExitCode -ne 0 -or -not (Test-Path $screenshot)) { throw 'Prebuilt Firefox smoke test failed' }
-} finally { Remove-Item $profile -Recurse -Force }
+} finally { Remove-Item $browserProfilePath -Recurse -Force }
