@@ -92,16 +92,9 @@ jobs:
           aws-region: ${{ github.event.inputs.region }}
           role-session-name: github-actions-packer-build
 
-      - name: Setup Packer
-        uses: hashicorp/setup-packer@ce93c3c08a6c2ff2275bf4b54ff0d9a75f6c9789
-
       - name: Run Packer
-        shell: pwsh
-        run: |
-          Import-Module "${{ github.workspace }}/bin/WorkerImages/WorkerImages.psm1"
-          $Vars = @{
-            Key     = $env:CONFIG
-            Region  = '${{ github.event.inputs.region }}'
-          }
-
-          New-AWSWorkerImage @Vars
+        uses: ./.github/actions/packer-build
+        with:
+          builder: aws-tceng
+          config: ${{ inputs.config }}
+          location: ${{ inputs.region }}

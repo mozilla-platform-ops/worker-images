@@ -35,8 +35,10 @@ make CI boot a new image are managed in `mozilla-releng/fxci-config`.
 5. `tests/` runs image-level checks during the Packer build.
 6. `sboms/` stores generated release notes and software bill of materials for
    Windows image builds.
-7. `.github/workflows/` builds images, uploads release-note artifacts, and
-   starts integration validation.
+7. `.github/workflows/` handles cloud authentication and build matrices, then
+   calls `.github/actions/packer-build` for config validation, Packer setup,
+   plugin caching, and the existing WorkerImages helpers. Workflows retain
+   replication, artifact publishing, and integration validation.
 8. `taskcluster/` defines the Taskcluster task graph used by integration tests.
 
 ## Repository Layout
@@ -44,6 +46,7 @@ make CI boot a new image are managed in `mozilla-releng/fxci-config`.
 | Path | Purpose |
 | --- | --- |
 | `.github/workflows/` | GitHub Actions workflows for Azure, GCP, AWS, pre-commit, and OS integration jobs |
+| `.github/actions/packer-build/` | Shared composite build action for all eight Packer build workflows |
 | `bin/WorkerImages/` | PowerShell module used by workflows to translate YAML config into Packer environment variables |
 | `ci/` | Workflow helper scripts for matrix generation, authorization checks, image builds, and Taskcluster integration triggers |
 | `config/` | Firefox CI image definitions plus `windows_production_defaults.yaml` |
@@ -161,6 +164,20 @@ performs its own OIDC exchange. The SKU catalogue check cannot reserve capacity
 or guarantee quota. Dispatching a feature branch still requires a matching
 federated identity credential in Azure; arrange an approved subject with the
 identity owner before running branch builds.
+
+## Shared Packer Action
+
+After checkout and cloud authentication on an Ubuntu runner, call
+`./.github/actions/packer-build` with `builder` (`azure`, `gcp`, `azure-tceng`,
+`gcp-tceng`, or `aws-tceng`) and `config`. TC Engineering Azure/AWS also require
+`location`; `taskcluster-ref` is optional. Only FXCI Azure production supports
+`defer-replication: 'true'`.
+
+Pass credentials through the calling step's `env`, as the existing workflows do.
+The action preserves Azure's `sharedimageversion` environment value and replication
+manifest for downstream artifact steps. Authorization, OIDC permissions, secret
+selection, and deployment gates belong to the caller. Cloud-specific HCL templates
+remain separate; the action reuses their existing PowerShell entrypoints.
 
 ## Local Development
 

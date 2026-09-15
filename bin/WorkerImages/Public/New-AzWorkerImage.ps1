@@ -126,10 +126,12 @@
 
     Assert-AzVmSkuAvailable -SubscriptionId $Subscription_ID -Location $Location -VmSize $ENV:PKR_VAR_vm_size
     packer init $PackerHCLPath
+    if ($LASTEXITCODE -ne 0) { throw "packer init failed: $LASTEXITCODE" }
     if ($PackerDebug) {
         packer build -debug --only azure-arm.nonsig -force $PackerHCLPath
     }
     else {
         packer build --only azure-arm.nonsig -force $PackerHCLPath
     }
+    if ($LASTEXITCODE -ne 0) { throw "packer build failed: $LASTEXITCODE" }
 }

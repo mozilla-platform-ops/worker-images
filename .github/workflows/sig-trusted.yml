@@ -55,21 +55,17 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID_FXCI_TRUSTED }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_TRUSTED }}
-      - name: Cache Packer plugins
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.config/packer/plugins
-          key: packer-azure-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('azure.pkr.hcl', 'packer/tceng-azure.pkr.hcl') }}
       - name: Run Packer
-        shell: pwsh
+        uses: ./.github/actions/packer-build
+        with:
+          builder: azure
+          config: ${{ github.event.inputs.config }}
         env:
-          CONFIG: ${{ github.event.inputs.config }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID_FXCI_TRUSTED }}
           APPLICATION_ID: ${{ secrets.AZURE_APPLICATION_ID_FXCI_TRUSTED }}
           SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID_TRUSTED }}
           TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-        run: ./ci/build-azure-shared-worker-image.ps1
       - name: Upload Release Notes Artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:

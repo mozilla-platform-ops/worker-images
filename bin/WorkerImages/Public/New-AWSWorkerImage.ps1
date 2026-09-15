@@ -91,6 +91,7 @@
     ## Initialize Packer
     Write-Host "packer init $PackerHCLPath"
     packer init $PackerHCLPath
+    if ($LASTEXITCODE -ne 0) { throw "packer init failed: $LASTEXITCODE" }
 
     ## Build (tceng uses single generic build; no --only flag)
     Write-Host "packer build -force $PackerHCLPath"
@@ -111,7 +112,6 @@
         }
     }
     else {
-        Write-Error "❌ AMI build failed with exit code: $LASTEXITCODE"
-        exit $LASTEXITCODE
+        throw "AMI build failed with exit code: $LASTEXITCODE"
     }
 }

@@ -26,6 +26,13 @@ No production image versions or ronin_puppet pins are bumped here.
 
 ## Simplification changes
 
+All eight Packer build workflows now use `.github/actions/packer-build` for input
+validation, Packer setup, plugin caching, GCP SDK setup when needed, and invocation
+of existing WorkerImages helpers. Authentication, matrices, replication, and
+publishing remain in the calling workflows. Offline tests execute the composite's
+scripts for all five builder modes, reject invalid inputs, preserve artifact
+metadata, and check native failure propagation, including tceng Azure/AWS.
+
 - Delete the audited orphan Windows tests and Bootstrap functions, obsolete Linux
   scripts, old Windows bootstrap entrypoints,
   unused arm64 NVIDIA placeholder, and two unreferenced `-alpha-v6` configs.

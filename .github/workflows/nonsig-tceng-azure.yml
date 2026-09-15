@@ -90,31 +90,15 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets[needs.config.outputs.SUBSCRIPTION_ID_SECRET] }}
 
-      - name: Cache Packer plugins
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      - name: Run Packer
+        uses: ./.github/actions/packer-build
         with:
-          path: ~/.config/packer/plugins
-          key: packer-azure-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('azure.pkr.hcl', 'packer/tceng-azure.pkr.hcl') }}
-      - name: 'Run Packer'
-        shell: pwsh
+          builder: azure-tceng
+          config: ${{ inputs.config }}
+          location: ${{ matrix.LOCATIONS }}
+          taskcluster-ref: ${{ inputs.TASKCLUSTER_REF }}
         env:
-          TASKCLUSTER_REF: ${{ inputs.TASKCLUSTER_REF }}
           CLIENT_ID: ${{ secrets[needs.config.outputs.CLIENT_ID_SECRET] }}
           SUBSCRIPTION_ID: ${{ secrets[needs.config.outputs.SUBSCRIPTION_ID_SECRET] }}
           TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           APPLICATION_ID: ${{ secrets[needs.config.outputs.APPLICATION_ID_SECRET] }}
-        run: |
-          $ENV:PKR_VAR_taskcluster_ref = $ENV:TASKCLUSTER_REF
-          Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
-          $Vars = @{
-            team               = "tceng"
-            Location           = "${{ matrix.LOCATIONS }}"
-            Key                = $env:CONFIG
-            Client_ID          = $env:CLIENT_ID
-            oidc_request_url   = $env:ACTIONS_ID_TOKEN_REQUEST_URL
-            oidc_request_token = $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN
-            Subscription_ID    = $env:SUBSCRIPTION_ID
-            Tenant_ID          = $env:TENANT_ID
-            Application_ID     = $env:APPLICATION_ID
-          }
-          New-AzWorkerImage @Vars

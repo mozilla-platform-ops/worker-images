@@ -65,22 +65,18 @@ jobs:
           client-id: ${{ secrets[matrix.client_id_secret] }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets[matrix.subscription_id_secret] }}
-      - name: Cache Packer plugins
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      - name: Run Packer
+        uses: ./.github/actions/packer-build
         with:
-          path: ~/.config/packer/plugins
-          key: packer-azure-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('azure.pkr.hcl', 'packer/tceng-azure.pkr.hcl') }}
-      - name: 'Run Packer'
-        shell: pwsh
+          builder: azure
+          config: ${{ matrix.config }}
+          defer-replication: 'true'
         env:
           APPLICATION_ID: ${{ secrets[matrix.application_id_secret] }}
           CLIENT_ID: ${{ secrets[matrix.client_id_secret] }}
-          CONFIG: ${{ matrix.config }}
-          DEFER_REPLICATION: 'true'
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SUBSCRIPTION_ID: ${{ secrets[matrix.subscription_id_secret] }}
           TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-        run: ./ci/build-azure-shared-worker-image.ps1
       - name: Upload replication request
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:

@@ -106,25 +106,13 @@ jobs:
           workload_identity_provider: "projects/324168772199/locations/global/workloadIdentityPools/github-actions/providers/github-actions"
           service_account: "deploy-prod@${{ steps.set-gcp-vars.outputs.PROJECT }}.iam.gserviceaccount.com"
 
-      - name: Cache Packer plugins
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.config/packer/plugins
-          key: packer-gcp-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('gcp.pkr.hcl', 'packer/tceng-gcp.pkr.hcl') }}
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db
-
       - name: Run Packer
-        shell: pwsh
+        uses: ./.github/actions/packer-build
+        with:
+          builder: gcp
+          config: ${{ matrix.config }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
-          $Vars = @{
-            github_token = $env:GITHUB_TOKEN
-            Key = $env:CONFIG
-          }
-          New-GCPWorkerImage @Vars
 
       - name: Upload Release Notes Artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

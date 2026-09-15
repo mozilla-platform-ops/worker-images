@@ -1,0 +1,83 @@
+name: Build worker image with Packer
+description: Validate config, cache plugins, and invoke the existing WorkerImages helpers after cloud authentication.
+inputs:
+  builder:
+    description: azure, gcp, azure-tceng, gcp-tceng, or aws-tceng
+    required: true
+  config:
+    description: YAML basename without extension
+    required: true
+  location:
+    description: Build location for Azure tceng or region for AWS
+    default: ''
+  taskcluster-ref:
+    description: Optional Taskcluster ref (image YAML retains its existing precedence)
+    default: ''
+  defer-replication:
+    description: Build only in the source region and emit a replication request (FXCI Azure production only)
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Validate build inputs
+      id: config
+      shell: pwsh
+      env:
+        IMAGE_BUILDER: ${{ inputs.builder }}
+        CONFIG: ${{ inputs.config }}
+        BUILD_LOCATION: ${{ inputs.location }}
+        DEFER_REPLICATION: ${{ inputs.defer-replication }}
+      run: |
+        $ErrorActionPreference = 'Stop'
+        $templates = @{
+            azure = 'azure.pkr.hcl'; gcp = 'gcp.pkr.hcl'
+            'azure-tceng' = 'packer/tceng-azure.pkr.hcl'
+            'gcp-tceng' = 'packer/tceng-gcp.pkr.hcl'
+            'aws-tceng' = 'packer/tceng-aws.pkr.hcl'
+        }
+        if (-not $templates.ContainsKey($env:IMAGE_BUILDER)) { throw 'Unknown image builder.' }
+        if ($env:DEFER_REPLICATION -notin 'true', 'false') { throw 'defer-replication must be true or false.' }
+        if ($env:DEFER_REPLICATION -eq 'true' -and $env:IMAGE_BUILDER -ne 'azure') { throw 'Deferred replication is only supported for FXCI Azure.' }
+        if ($env:IMAGE_BUILDER -in 'azure-tceng', 'aws-tceng' -and $env:BUILD_LOCATION -notmatch '^[a-z0-9-]+$') { throw 'A valid build location is required.' }
+        $family = if ($env:IMAGE_BUILDER -like '*-tceng') { 'tceng' } else { $env:IMAGE_BUILDER }
+        if ($family -eq 'azure' -and $env:CONFIG -like 'trusted-*') { $family = 'azure-trusted' }
+        ./ci/validate-image-config.ps1 -Family $family
+        "template=$($templates[$env:IMAGE_BUILDER])" >> $env:GITHUB_OUTPUT
+
+    - name: Set up Packer
+      uses: hashicorp/setup-packer@ce93c3c08a6c2ff2275bf4b54ff0d9a75f6c9789
+    - name: Cache Packer plugins
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: ~/.config/packer/plugins
+        key: packer-${{ inputs.builder }}-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles(steps.config.outputs.template) }}
+    - name: Set up Cloud SDK
+      if: inputs.builder == 'gcp' || inputs.builder == 'gcp-tceng'
+      uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db
+
+    - name: Run Packer
+      id: build
+      shell: pwsh
+      env:
+        IMAGE_BUILDER: ${{ inputs.builder }}
+        CONFIG: ${{ inputs.config }}
+        BUILD_LOCATION: ${{ inputs.location }}
+        TASKCLUSTER_REF: ${{ inputs.taskcluster-ref }}
+        DEFER_REPLICATION: ${{ inputs.defer-replication }}
+      run: |
+        $ErrorActionPreference = 'Stop'
+        Import-Module ./bin/WorkerImages/WorkerImages.psm1
+        $env:PKR_VAR_taskcluster_ref = $env:TASKCLUSTER_REF
+        switch ($env:IMAGE_BUILDER) {
+            'azure' { ./ci/build-azure-shared-worker-image.ps1 }
+            'azure-tceng' {
+                New-AzWorkerImage -Team tceng -Key $env:CONFIG -Location $env:BUILD_LOCATION `
+                    -Client_ID $env:CLIENT_ID -Subscription_ID $env:SUBSCRIPTION_ID `
+                    -Tenant_ID $env:TENANT_ID -Application_ID $env:APPLICATION_ID `
+                    -oidc_request_url $env:ACTIONS_ID_TOKEN_REQUEST_URL -oidc_request_token $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN
+            }
+            'gcp' { New-GCPWorkerImage -Key $env:CONFIG -Github_token $env:GITHUB_TOKEN }
+            'gcp-tceng' { New-GCPWorkerImage -Key $env:CONFIG -Github_token $env:GITHUB_TOKEN -Team tceng }
+            'aws-tceng' { New-AWSWorkerImage -Key $env:CONFIG -Region $env:BUILD_LOCATION }
+            default { throw 'Unknown image builder.' }
+        }

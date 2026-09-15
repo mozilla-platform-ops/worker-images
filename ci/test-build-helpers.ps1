@@ -53,7 +53,7 @@ function global:az {
 function global:packer {
     $global:packerCalls += ,$args
     $global:LASTEXITCODE = if ($args[0] -eq $global:failCommand) { 7 } else { 0 }
-    if ($args[0] -eq 'build') {
+    if ($args[0] -eq 'build' -and $args[-1] -eq 'azure.pkr.hcl') {
         foreach ($archive in @($env:PKR_VAR_bootstrap_archive, $env:PKR_VAR_tests_archive)) {
             $zip = [IO.Compression.ZipFile]::OpenRead($archive)
             try {
@@ -85,6 +85,24 @@ try {
         try { New-AzSharedWorkerImage -Key win11-64-24h2 -Subscription_ID test-subscription } catch { $failed = $true }
         Assert $failed "Packer $command failure was hidden"
         if ($command -eq 'init') { Assert ($global:packerCalls.Count -eq 1) 'build ran after init failure' }
+    }
+    foreach ($command in @('init', 'build')) {
+        $global:failCommand = $command
+        foreach ($cloud in @('aws', 'azure')) {
+            $global:packerCalls = @()
+            $failed = $false
+            try {
+                if ($cloud -eq 'aws') {
+                    New-AWSWorkerImage -Key generic-worker-ubuntu-24-04 -Region us-west-2
+                } else {
+                    New-AzWorkerImage -Team tceng -Key generic-worker-win2022 -Location $env:PKR_VAR_build_location `
+                        -Client_ID test -Subscription_ID test -Tenant_ID test -Application_ID test `
+                        -oidc_request_url https://example.invalid -oidc_request_token test
+                }
+            } catch { $failed = $true }
+            Assert $failed "$cloud tceng $command failure was hidden"
+            Assert ($global:packerCalls.Count -eq $(if ($command -eq 'init') { 1 } else { 2 })) "$cloud did not stop at the failing Packer command"
+        }
     }
     $env:CONFIG = '../README'
     $rejected = $false
@@ -136,4 +154,87 @@ try {
         Assert ($passed -eq ($case -in 'supported', 'zone-only', 'other-region')) "Unexpected SKU preflight result: $case"
     }
 } finally { Remove-Item Function:/az }
+# Exercise the composite's actual scripts without cloud credentials or Packer.
+$action = ConvertFrom-Yaml (Get-Content .github/actions/packer-build/action.yml -Raw)
+$validate = [scriptblock]::Create(($action.runs.steps | Where-Object { $_['id'] -eq 'config' }).run)
+$build = [scriptblock]::Create(($action.runs.steps | Where-Object { $_['id'] -eq 'build' }).run)
+$env:GITHUB_OUTPUT = [IO.Path]::GetTempFileName()
+$env:GITHUB_ENV = [IO.Path]::GetTempFileName()
+foreach ($name in @('GITHUB_TOKEN', 'CLIENT_ID', 'SUBSCRIPTION_ID', 'TENANT_ID', 'APPLICATION_ID', 'ACTIONS_ID_TOKEN_REQUEST_URL', 'ACTIONS_ID_TOKEN_REQUEST_TOKEN')) {
+    [Environment]::SetEnvironmentVariable($name, 'test')
+}
+function global:Import-Module { param($Name) }
+function global:New-AzSharedWorkerImage {
+    param($Key, $github_token, $Client_ID, $Subscription_ID, $Tenant_ID, $Application_ID, $oidc_request_url, $oidc_request_token, [switch]$DeferReplication)
+    $global:actionCall = $PSBoundParameters
+    $global:actionCall['builder'] = 'azure'
+    $env:PKR_VAR_sharedimage_version = '1.2.3'
+}
+function global:New-AzWorkerImage {
+    param($Team, $Key, $Location, $Client_ID, $Subscription_ID, $Tenant_ID, $Application_ID, $oidc_request_url, $oidc_request_token)
+    $global:actionCall = $PSBoundParameters
+    $global:actionCall['builder'] = 'azure-tceng'
+}
+function global:New-GCPWorkerImage {
+    param($Key, $Github_token, $Team)
+    $global:actionCall = $PSBoundParameters
+    $global:actionCall['builder'] = if ($Team -eq 'tceng') { 'gcp-tceng' } else { 'gcp' }
+}
+function global:New-AWSWorkerImage {
+    param($Key, $Region)
+    if ($env:CONFIG -eq 'fail-build') { throw 'Simulated build failure' }
+    $global:actionCall = $PSBoundParameters
+    $global:actionCall['builder'] = 'aws-tceng'
+}
+try {
+    foreach ($mode in @('azure', 'gcp', 'azure-tceng', 'gcp-tceng', 'aws-tceng')) {
+        $env:IMAGE_BUILDER = $mode
+        $env:CONFIG = switch ($mode) {
+            'azure' { 'trusted-win2025-64-24h2' }
+            'gcp' { 'gw-fxci-gcp-l1-2404-headless-alpha' }
+            default { 'generic-worker-ubuntu-24-04' }
+        }
+        $env:BUILD_LOCATION = 'us-west-2'
+        $env:TASKCLUSTER_REF = 'test-ref'
+        $env:DEFER_REPLICATION = ($mode -eq 'azure').ToString().ToLowerInvariant()
+        Clear-Content $env:GITHUB_OUTPUT
+        & $validate
+        $template = (Get-Content $env:GITHUB_OUTPUT) -replace '^template=', ''
+        Assert (Test-Path $template) 'cache must hash an existing template'
+        $global:actionCall = $null
+        & $build
+        Assert ($global:actionCall.builder -eq $mode) "Wrong helper for $mode"
+        Assert ($global:actionCall.Key -eq $env:CONFIG) "Wrong config for $mode"
+        Assert ($env:PKR_VAR_taskcluster_ref -eq 'test-ref') 'Taskcluster ref lost'
+        if ($mode -in 'azure-tceng', 'gcp-tceng') { Assert ($global:actionCall.Team -eq 'tceng') 'tceng routing lost' }
+        if ($mode -eq 'aws-tceng') { Assert ($global:actionCall.Region -eq 'us-west-2') 'AWS region lost' }
+        if ($mode -eq 'azure-tceng') { Assert ($global:actionCall.Location -eq 'us-west-2') 'Azure location lost' }
+        if ($mode -eq 'azure') {
+            Assert $global:actionCall.DeferReplication 'deferred replication lost'
+            Assert ((Get-Content $env:GITHUB_ENV) -contains 'sharedimageversion=1.2.3') 'artifact version lost'
+        }
+    }
+    $env:CONFIG = 'fail-build'
+    $failed = $false
+    try { & $build } catch { $failed = $true }
+    Assert $failed 'composite swallowed a build failure'
+    foreach ($case in @('builder', 'config', 'location', 'defer')) {
+        $env:IMAGE_BUILDER = 'aws-tceng'; $env:CONFIG = 'generic-worker-ubuntu-24-04'
+        $env:BUILD_LOCATION = 'us-west-2'; $env:DEFER_REPLICATION = 'false'
+        switch ($case) {
+            'builder' { $env:IMAGE_BUILDER = 'invalid' }
+            'config' { $env:CONFIG = '../README' }
+            'location' { $env:BUILD_LOCATION = '' }
+            'defer' { $env:DEFER_REPLICATION = 'true' }
+        }
+        $rejected = $false
+        try { & $validate } catch { $rejected = $true }
+        Assert $rejected "Invalid composite $case accepted"
+    }
+} finally {
+    Remove-Item $env:GITHUB_OUTPUT, $env:GITHUB_ENV
+    foreach ($name in @('Import-Module', 'New-AzSharedWorkerImage', 'New-AzWorkerImage', 'New-GCPWorkerImage', 'New-AWSWorkerImage')) {
+        Remove-Item "Function:/$name"
+    }
+}
 Write-Host 'Build helper checks passed.'
