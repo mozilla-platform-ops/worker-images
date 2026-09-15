@@ -264,8 +264,13 @@ cat > /etc/xdg/monitors.xml << EOF
 </monitors>
 EOF
 
-# avoid unnecessary shutdowns during worker startups
+# Never upgrade packages on a running worker; workers are re-imaged, not patched.
+# Disabling unattended-upgrades.service is not enough: apt-daily-upgrade.timer still
+# runs unattended-upgrade, and Ubuntu's needrestart then restarts every service that
+# maps a replaced library, including worker.service, killing the running task.
+# https://github.com/taskcluster/community-tc-config/issues/1014
 systemctl disable unattended-upgrades
+systemctl mask apt-daily.timer apt-daily-upgrade.timer
 
 end_time="$(date '+%s')"
 echo "UserData execution took: $(($end_time - $start_time)) seconds"
