@@ -60,6 +60,26 @@ metadata, and check native failure propagation, including tceng Azure/AWS.
   one-off build/promotion workflows into optional `config` inputs on their parallel
   workflows. The old workflow filenames are intentionally removed.
 
+### Follow-up repository simplifications
+
+- Three Windows tceng entrypoints share provisioning while retaining their
+  release/source-build and development-tool differences. Two Linux entrypoints
+  share OS setup while retaining release downloads versus compilation. Packer
+  uploads the required sidecar scripts; existing config filenames do not change.
+- Scan-NUCHealth and UninstallFirefox share `Invoke-RemoteScriptBatch.ps1`.
+  Payloads, retry policies, timeout values, CSV fields, and per-result summaries
+  remain with their callers. Copy the helper alongside either standalone script.
+- Remove unreachable non-tceng branches from New-AzWorkerImage.
+- GCP uses one base source with native build-level overrides. All five source
+  names, ARM machine types, and GVNIC selections are retained.
+- The tceng GCP build job resolves metadata before authentication; the separate
+  metadata-only job is gone.
+
+`ci/test_provisioning_changes.py` checks Windows command-token parity against the
+pre-extraction scripts, entrypoint selection, guest-side file wiring, GCP source
+names, and batching against fake SSH/SCP executables (no network). These checks
+are not substitutes for Windows/Linux guest builds or a hardware smoke test.
+
 ## Other correctness/security findings
 
 - Secrets in the audited build workflows are passed through `env`, not embedded

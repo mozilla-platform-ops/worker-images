@@ -68,12 +68,11 @@ variable "machine_type" {
   default = "e2-standard-8"
 }
 
-source "googlecompute" "gw-fxci-gcp-l1-2404-gui-alpha" {
+source "googlecompute" "base" {
   disk_size           = var.disk_size
   disk_type           = "pd-ssd"
   image_licenses      = ["projects/vm-options/global/licenses/enable-vmx"]
   image_name          = var.image_name
-  machine_type        = var.machine_type
   project_id          = var.project_id
   source_image_family = var.source_image_family
   ssh_username        = "ubuntu"
@@ -81,70 +80,35 @@ source "googlecompute" "gw-fxci-gcp-l1-2404-gui-alpha" {
   use_iap             = true
 }
 
-source "googlecompute" "trusted-gw-fxci-gcp-l3-2404-headless-alpha" {
-  disk_size               = var.disk_size
-  disk_type               = "pd-ssd"
-  image_licenses          = ["projects/vm-options/global/licenses/enable-vmx"]
-  image_name              = var.image_name
-  machine_type            = var.machine_type
-  project_id              = var.project_id
-  source_image_family     = var.source_image_family
-  ssh_username            = "ubuntu"
-  zone                    = var.zone
-  use_iap                 = true
-  image_guest_os_features = ["GVNIC"]
-}
-
-source "googlecompute" "gw-fxci-gcp-l1-2404-headless-alpha" {
-  disk_size               = var.disk_size
-  disk_type               = "pd-ssd"
-  image_licenses          = ["projects/vm-options/global/licenses/enable-vmx"]
-  image_name              = var.image_name
-  machine_type            = var.machine_type
-  project_id              = var.project_id
-  source_image_family     = var.source_image_family
-  ssh_username            = "ubuntu"
-  zone                    = var.zone
-  use_iap                 = true
-  image_guest_os_features = ["GVNIC"]
-}
-
-source "googlecompute" "gw-fxci-gcp-l1-2404-arm64-headless-alpha" {
-  disk_size               = var.disk_size
-  disk_type               = "pd-ssd"
-  image_licenses          = ["projects/vm-options/global/licenses/enable-vmx"]
-  image_name              = var.image_name
-  machine_type            = "t2a-standard-4"
-  project_id              = var.project_id
-  source_image_family     = var.source_image_family
-  ssh_username            = "ubuntu"
-  zone                    = var.zone
-  use_iap                 = true
-  image_guest_os_features = ["GVNIC"]
-}
-
-source "googlecompute" "trusted-gw-fxci-gcp-l3-2404-arm64-headless-alpha" {
-  disk_size               = var.disk_size
-  disk_type               = "pd-ssd"
-  image_licenses          = ["projects/vm-options/global/licenses/enable-vmx"]
-  image_name              = var.image_name
-  machine_type            = "t2a-standard-4"
-  project_id              = var.project_id
-  source_image_family     = var.source_image_family
-  ssh_username            = "ubuntu"
-  zone                    = var.zone
-  use_iap                 = true
-  image_guest_os_features = ["GVNIC"]
-}
-
 build {
-  sources = [
-    "source.googlecompute.gw-fxci-gcp-l1-2404-headless-alpha",
-    "source.googlecompute.gw-fxci-gcp-l1-2404-gui-alpha",
-    "source.googlecompute.gw-fxci-gcp-l1-2404-arm64-headless-alpha",
-    "source.googlecompute.trusted-gw-fxci-gcp-l3-2404-headless-alpha",
-    "source.googlecompute.trusted-gw-fxci-gcp-l3-2404-arm64-headless-alpha"
-  ]
+  source "source.googlecompute.base" {
+    name         = "gw-fxci-gcp-l1-2404-gui-alpha"
+    machine_type = var.machine_type
+  }
+
+  source "source.googlecompute.base" {
+    name                    = "trusted-gw-fxci-gcp-l3-2404-headless-alpha"
+    machine_type            = var.machine_type
+    image_guest_os_features = ["GVNIC"]
+  }
+
+  source "source.googlecompute.base" {
+    name                    = "gw-fxci-gcp-l1-2404-headless-alpha"
+    machine_type            = var.machine_type
+    image_guest_os_features = ["GVNIC"]
+  }
+
+  source "source.googlecompute.base" {
+    name                    = "gw-fxci-gcp-l1-2404-arm64-headless-alpha"
+    machine_type            = "t2a-standard-4"
+    image_guest_os_features = ["GVNIC"]
+  }
+
+  source "source.googlecompute.base" {
+    name                    = "trusted-gw-fxci-gcp-l3-2404-arm64-headless-alpha"
+    machine_type            = "t2a-standard-4"
+    image_guest_os_features = ["GVNIC"]
+  }
 
   provisioner "shell" {
     only = [

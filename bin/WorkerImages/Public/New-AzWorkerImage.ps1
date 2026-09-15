@@ -16,23 +16,11 @@
     if ($Team -ne 'tceng') { throw 'Use New-AzSharedWorkerImage for Firefox CI Azure images.' }
     Import-WorkerImagesYaml
 
-    switch ($Team) {
-        "tceng" {
-            $YamlPath = "config/tceng/$Key.yaml"
-            $PackerHCLPath = "packer/tceng-azure.pkr.hcl"
-            $ENV:PKR_VAR_Team_key = $Team
-
-            $uuid = ([guid]::NewGuid().ToString('N')).Substring(0, 20)
-            $ENV:PKR_VAR_uuid = $uuid
-        }
-        default {
-            $YamlPath = "config/$Key.yaml"
-            $PackerHCLPath = "azure.pkr.hcl"
-            if ($Team) {
-                $ENV:PKR_VAR_Team_key = $Team
-            }
-        }
-    }
+    $YamlPath = "config/tceng/$Key.yaml"
+    $PackerHCLPath = "packer/tceng-azure.pkr.hcl"
+    $ENV:PKR_VAR_Team_key = $Team
+    $uuid = ([guid]::NewGuid().ToString('N')).Substring(0, 20)
+    $ENV:PKR_VAR_uuid = $uuid
 
     if (-not (Test-Path $YamlPath)) {
         throw "YAML file not found at: $YamlPath"
@@ -73,24 +61,7 @@
     if ($YAML.vm.tags["deploymentId"]) { $ENV:PKR_VAR_deployment_id = $YAML.vm.tags["deploymentId"] }
     if ($YAML.vm.tags["worker_pool_id"]) { $ENV:PKR_VAR_worker_pool_id = $YAML.vm.tags["worker_pool_id"] }
 
-    switch ($Team) {
-        "tceng" {
-            if (-not $ENV:PKR_VAR_uuid) {
-                throw "UUID not set — required for tceng temp resource group name"
-            }
-            $sanitizedUuid = $ENV:PKR_VAR_uuid -replace '[^a-z0-9]', ''
-            $tempRg = "imageset-$sanitizedUuid-rg"
-            $ENV:PKR_VAR_temp_resource_group_name = $tempRg.TrimEnd('-', '.')
-        }
-        default {
-            if ($YAML.vm.tags["worker_pool_id"] -and $YAML.vm.tags["deploymentId"]) {
-                $ENV:PKR_VAR_temp_resource_group_name = ('{0}-{1}-{2}-pkrtmp' -f $YAML.vm.tags["worker_pool_id"], $YAML.vm.tags["deploymentId"], (Get-Random -Maximum 999))
-            }
-            else {
-                throw "worker_pool_id and deploymentId are required for temp resource group naming"
-            }
-        }
-    }
+    $ENV:PKR_VAR_temp_resource_group_name = "imageset-$uuid-rg"
 
     $ENV:PKR_VAR_client_id = $Client_ID
     $ENV:PKR_VAR_tenant_id = $Tenant_ID
@@ -99,26 +70,11 @@
     $ENV:PKR_VAR_oidc_request_url = $oidc_request_url
     $ENV:PKR_VAR_oidc_request_token = $oidc_request_token
 
-    if ($Team -eq "tceng" -and $ENV:PKR_VAR_uuid) {
-        $managedImageName = "imageset-$($ENV:PKR_VAR_uuid)-$Location"
-        if ($YAML.azure["managed_image_name_suffix"]) {
-            $managedImageName = "$managedImageName-$($YAML.azure["managed_image_name_suffix"])"
-        }
-        $ENV:PKR_VAR_managed_image_name = $managedImageName
+    $managedImageName = "imageset-$uuid-$Location"
+    if ($YAML.azure["managed_image_name_suffix"]) {
+        $managedImageName = "$managedImageName-$($YAML.azure['managed_image_name_suffix'])"
     }
-    else {
-        switch -Wildcard ($Key) {
-            "*alpha2*" {
-                $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}-alpha2' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:PKR_VAR_image_sku)
-            }
-            "*alpha*" {
-                $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}-alpha' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:PKR_VAR_image_sku)
-            }
-            Default {
-                $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}-{3}' -f $YAML.vm.tags["worker_pool_id"], $Location, $ENV:PKR_VAR_image_sku, $YAML.vm.tags["deploymentId"])
-            }
-        }
-    }
+    $ENV:PKR_VAR_managed_image_name = $managedImageName
 
     Write-Host "Building $($ENV:PKR_VAR_managed_image_name) in $($ENV:PKR_VAR_temp_resource_group_name)"
     Write-Host "Temp RG name: $env:PKR_VAR_temp_resource_group_name"

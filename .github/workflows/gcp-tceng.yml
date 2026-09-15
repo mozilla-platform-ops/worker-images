@@ -36,28 +36,8 @@ jobs:
         shell: pwsh
         run: ./ci/check-authorized-user.ps1 -IncludeTCEng
 
-  setproject:
-    needs: check-access
-    name: "Get Project ID & ImageName from Config"
-    runs-on: ubuntu-latest
-    outputs:
-      IMAGENAME: ${{ steps.set-matrix.outputs.IMAGENAME }}
-      PROJECT:   ${{ steps.set-matrix.outputs.PROJECT }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
-      - name: Validate image config
-        shell: pwsh
-        run: ./ci/validate-image-config.ps1 -Family tceng
-      - id: set-matrix
-        shell: pwsh
-        run: |
-          Import-Module "${{ github.workspace }}/bin/WorkerImages/WorkerImages.psm1"
-          Set-GCPWorkerImageMetadata    -Key $env:CONFIG -Team 'tceng'
-
   packer:
-    needs: setproject
+    needs: check-access
     name: "GCP ${{ github.event.inputs.config }}"
     runs-on: ubuntu-latest
     environment: prod
@@ -72,11 +52,18 @@ jobs:
         shell: pwsh
         run: ./ci/validate-image-config.ps1 -Family tceng
 
+      - id: set-gcp-vars
+        name: Set project and image metadata
+        shell: pwsh
+        run: |
+          Import-Module ./bin/WorkerImages/WorkerImages.psm1
+          Set-GCPWorkerImageMetadata -Key $env:CONFIG -Team tceng
+
       - uses: 'google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093'
         id: auth
         with:
           workload_identity_provider: "projects/324168772199/locations/global/workloadIdentityPools/github-actions/providers/github-actions"
-          service_account: "deploy-prod@${{ needs.setproject.outputs.PROJECT }}.iam.gserviceaccount.com"
+          service_account: "deploy-prod@${{ steps.set-gcp-vars.outputs.PROJECT }}.iam.gserviceaccount.com"
 
       - name: Run Packer
         uses: ./.github/actions/packer-build
