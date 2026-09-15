@@ -113,8 +113,10 @@ sed '/platform-vkms/d' /lib/udev/rules.d/61-mutter.rules > /etc/udev/rules.d/61-
 # https://help.ubuntu.com/community/KVM/Installation
 apt-get -o Acquire::Retries=10 -o APT::Update::Error-Mode=any install -y qemu-kvm bridge-utils
 
-# avoid unnecessary shutdowns during worker startups
+# Prevent automatic package updates from restarting services during tasks.
+# Disabling unattended-upgrades alone does not stop the APT timers.
 systemctl disable unattended-upgrades
+systemctl mask apt-daily.timer apt-daily-upgrade.timer
 
 end_time="$(date '+%s')"
 echo "UserData execution took: $(($end_time - $start_time)) seconds"

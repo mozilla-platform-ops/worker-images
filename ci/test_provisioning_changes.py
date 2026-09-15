@@ -96,6 +96,14 @@ class ProvisioningChecks(unittest.TestCase):
         folder = ROOT / "scripts/linux/tceng"
         common = folder / "generic-worker-ubuntu-common.sh"
         subprocess.run(["bash", "-n", str(common)], check=True)
+        for script in (
+            common,
+            ROOT / "scripts/linux/ubuntu-2404-amd64-gui/fxci/bootstrap.sh",
+        ):
+            self.assertIn(
+                "systemctl mask apt-daily.timer apt-daily-upgrade.timer",
+                script.read_text(),
+            )
         invalid = subprocess.run(["bash", str(common), "invalid"], capture_output=True)
         self.assertEqual(invalid.returncode, 64)
         with tempfile.TemporaryDirectory() as tmp:

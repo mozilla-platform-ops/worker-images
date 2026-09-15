@@ -50,7 +50,7 @@ jobs:
         run: ./ci/validate-image-config.ps1 -Family azure
       # The SKU preflight uses Azure CLI; do not initialize an unused Az PowerShell session.
       - name: Azure CLI login for SKU preflight
-        uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID_FXCI }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
