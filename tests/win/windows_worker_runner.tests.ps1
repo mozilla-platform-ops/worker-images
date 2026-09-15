@@ -32,7 +32,16 @@ Describe "Taskcluster" {
         It "Generic Worker exists" {
             Test-Path "C:\generic-worker\generic-worker.exe" | Should -Be $true
         }
-        It "Generic Worker Version is correct" {
+        It "Generic Worker matches the configured build" {
+            $sourceBuild = $win.taskcluster.'generic-worker'.source_build
+            if ($sourceBuild) {
+                $receipt = Get-Content 'C:\generic-worker\generic-worker.exe.source-build.json' -Raw | ConvertFrom-Json
+                $receipt.repository | Should -BeExactly $sourceBuild.repository
+                $receipt.revision | Should -BeExactly $sourceBuild.revision
+                $receipt.go_version | Should -BeExactly $sourceBuild.go_version
+                $receipt.binary_hash | Should -Be (Get-FileHash 'C:\generic-worker\generic-worker.exe' -Algorithm SHA256).Hash
+                return
+            }
             Start-Process -FilePath "C:\generic-worker\generic-worker.exe" -ArgumentList "--short-version" -RedirectStandardOutput "Testdrive:\gwversion.txt" -Wait -NoNewWindow
             Get-Content "Testdrive:\gwversion.txt" | Should -be $taskcluster_ExpectedSoftwareVersion
         }
