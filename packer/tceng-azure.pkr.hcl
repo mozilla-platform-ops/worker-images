@@ -87,6 +87,11 @@ build {
   sources = ["source.azure-arm.nonsig"]
 
   provisioner "file" {
+    source      = "${path.root}/../scripts/windows/tceng/generic-worker-common.ps1"
+    destination = "C:/Windows/Temp/generic-worker-common.ps1"
+  }
+
+  provisioner "file" {
     source      = "${path.root}/../scripts/windows/tceng/${var.bootstrap_script}.ps1"
     destination = "C:/Windows/Temp/bootstrap.ps1"
   }

@@ -110,7 +110,13 @@ build {
   name    = "tceng"
   sources = ["source.amazon-ebs.tceng"]
 
+  provisioner "file" {
+    source      = "${path.cwd}/scripts/linux/tceng/generic-worker-ubuntu-common.sh"
+    destination = "/tmp/generic-worker-ubuntu-common.sh"
+  }
+
   provisioner "shell" {
+    remote_folder   = "/tmp"
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     environment_vars = [
       "MY_CLOUD=aws",
