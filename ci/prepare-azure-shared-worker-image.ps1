@@ -37,6 +37,7 @@ $vars = @{
     Subscription_ID = $env:SUBSCRIPTION_ID
     Tenant_ID = $env:TENANT_ID
     Application_ID = $env:APPLICATION_ID
+    DeferReplication = ($env:DEFER_REPLICATION -eq 'true')
 }
 
 Set-AzSharedWorkerImageVariables @vars

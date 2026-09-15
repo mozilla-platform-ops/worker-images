@@ -55,17 +55,6 @@ try {
     Remove-Item Function:/gh
     Remove-Item $output
 }
-$global:skuOverride = $null
-$global:skuExit = 0
-function global:az {
-    $global:LASTEXITCODE = $global:skuExit
-    if ($null -ne $global:skuOverride) { return $global:skuOverride }
-    ConvertTo-Json -Depth 10 -InputObject @(@{
-        resourceType = 'virtualMachines'; name = $env:PKR_VAR_vm_size
-        locations = @($env:PKR_VAR_build_location); restrictions = @()
-        capabilities = @(@{ name = 'LowPriorityCapable'; value = 'True' })
-    })
-}
 if (Test-Path win11-64-24h2-replication.json) { throw 'Move the existing replication request before running these checks.' }
 $temp = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString('N'))
 $null = New-Item -ItemType Directory -Path $temp
@@ -115,6 +104,27 @@ try {
     Assert ($env:PKR_VAR_location -eq 'eastus') 'Azure location lost'
     Set-AzSharedWorkerImageVariables -Key win11-64-24h2 -Subscription_ID test
     Assert ($env:PKR_VAR_config -eq 'win11-64-24h2') 'FXCI Azure config lost'
+
+    # Staged uploads remain available to the separate Packer step.
+    foreach ($config in Get-ChildItem config/*win*.yaml | Where-Object Name -ne 'windows_production_defaults.yaml') {
+        Set-AzSharedWorkerImageVariables -Key $config.BaseName -Subscription_ID test
+        Assert ($env:PKR_VAR_use_keyvault -eq ($config.BaseName.StartsWith('trusted-')).ToString().ToLowerInvariant()) 'trust selection failed'
+        foreach ($archive in @($env:PKR_VAR_bootstrap_archive, $env:PKR_VAR_tests_archive)) {
+            Assert ($archive.StartsWith($temp)) 'uploads must be under RUNNER_TEMP'
+            $zip = [IO.Compression.ZipFile]::OpenRead($archive)
+            try {
+                if ($archive.EndsWith('Bootstrap.zip')) {
+                    Assert ($zip.Entries.FullName -contains 'Bootstrap/Bootstrap.psm1') 'Bootstrap module root missing'
+                } else {
+                    Assert ($zip.Entries.FullName -contains 'git.tests.ps1') 'tests must be at archive root'
+                }
+            } finally { $zip.Dispose() }
+        }
+    }
+    Set-AzSharedWorkerImageVariables -Key win11-64-24h2 -Subscription_ID test -DeferReplication
+    $request = Get-Content win11-64-24h2-replication.json -Raw | ConvertFrom-Json
+    Assert ($request.regions.Count -eq 11 -and $request.regions -contains 'centralindia' -and $request.regions -contains 'westus3') 'production targets incomplete'
+    Assert ($env:PKR_VAR_replication_regions -eq '["centralus"]') 'deferred build must publish locally'
 
     # Environment handoff uses delimited values, never executable PowerShell.
     . ./bin/WorkerImages/Private/Export-WorkerImageEnvironment.ps1

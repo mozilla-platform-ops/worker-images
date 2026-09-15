@@ -11,6 +11,7 @@ sharedimage:
 azure:
   managed_image_resource_group_name: rg-packer-worker-images
   build_location: eastus2
+  shallow_replication: true
   locations: []
 vm:
   spot: true

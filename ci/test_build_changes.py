@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -15,6 +16,11 @@ from types import SimpleNamespace
 from github_log import format_duration, log_message
 
 ROOT = Path(__file__).resolve().parent.parent
+spec = importlib.util.spec_from_file_location(
+    "replication", ROOT / "ci/replicate-azure-image.py"
+)
+replication = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(replication)
 region_spec = importlib.util.spec_from_file_location(
     "region_check", ROOT / "ci/check-azure-regions.py"
 )
@@ -65,6 +71,67 @@ class BuildChecks(unittest.TestCase):
             required[("azure_trusted", "rg", "image", "image")], {"westus2"}
         )
         self.assertEqual(len(required), 2)
+
+    def test_replication_gate(self):
+        image = {
+            "provisioningState": "Succeeded",
+            "replicationStatus": {
+                "summary": [
+                    {"region": "East US", "state": "Completed"},
+                ]
+            },
+        }
+        self.assertTrue(replication.replication_complete(image, ["eastus"]))
+        self.assertFalse(
+            replication.replication_complete(image, ["eastus", "westeurope"])
+        )
+        self.assertFalse(replication.replication_complete({}, ["eastus"]))
+        self.assertFalse(
+            replication.replication_complete({"replicationStatus": None}, ["eastus"])
+        )
+        image["replicationStatus"]["summary"][0]["state"] = "InProgress"
+        self.assertFalse(replication.replication_complete(image, ["eastus"]))
+        image["replicationStatus"]["summary"][0]["state"] = "Failed"
+        with self.assertRaises(RuntimeError):
+            replication.replication_complete(image, ["eastus"])
+
+    def test_replication_artifact_on_success_only(self):
+        with tempfile.TemporaryDirectory() as temp:
+            request = Path(temp) / "image-replication.json"
+            ready = Path(temp) / "image-replication-ready.json"
+            request.write_text(
+                json.dumps(
+                    {
+                        "image_id": "/subscriptions/test/galleries/test/images/test/versions/1.0.0",
+                        "regions": ["eastus"],
+                    }
+                )
+            )
+            complete = {
+                "provisioningState": "Succeeded",
+                "replicationStatus": {
+                    "summary": [{"region": "eastus", "state": "Completed"}],
+                },
+            }
+            with (
+                patch.object(sys, "argv", ["replicate", str(request)]),
+                patch.object(replication.subprocess, "run") as update,
+                patch.object(replication, "az", return_value=complete),
+            ):
+                replication.main()
+                self.assertTrue(ready.exists())
+                self.assertIn("--no-wait", update.call_args.args[0])
+            with (
+                patch.object(
+                    sys, "argv", ["replicate", str(request), "--timeout", "0"]
+                ),
+                patch.object(replication.subprocess, "run"),
+            ):
+                with self.assertRaises(TimeoutError):
+                    replication.main()
+                self.assertFalse(
+                    ready.exists(), "a timed-out rerun must remove stale readiness"
+                )
 
     def test_log_escaping_and_duration(self):
         out = io.StringIO()

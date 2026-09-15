@@ -20,7 +20,7 @@ jobs:
         run: |
           python3 -m unittest discover -s ci -p 'test_*.py' -v
           bash tests/linux/test_generate_sbom.sh
-      - name: Check PowerShell helpers
+      - name: Check Windows config merge and Packer failure propagation
         shell: pwsh
         run: |
           & "${{ github.workspace }}/ci/install-powershell-yaml.ps1"
