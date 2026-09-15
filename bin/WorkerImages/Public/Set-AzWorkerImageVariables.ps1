@@ -120,5 +120,6 @@
     Write-Host "Prepared $($ENV:PKR_VAR_managed_image_name) in $($ENV:PKR_VAR_temp_resource_group_name)"
     Write-Host "Temp RG name: $env:PKR_VAR_temp_resource_group_name"
 
+    Assert-AzVmSkuAvailable -SubscriptionId $Subscription_ID -Location $Location -VmSize $ENV:PKR_VAR_vm_size
     Export-WorkerImageEnvironment
 }

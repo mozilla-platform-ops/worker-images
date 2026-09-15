@@ -163,5 +163,6 @@
         $ENV:PKR_VAR_use_keyvault = "false"
         $ENV:PKR_VAR_vault_name = "kv-central-us-key"
     }
+    Assert-AzVmSkuAvailable -SubscriptionId $Subscription_ID -Location $BuildLocation -VmSize $Y.vm['size'] -UseSpot ($Y.vm['spot'] -eq $true)
     Export-WorkerImageEnvironment
 }
