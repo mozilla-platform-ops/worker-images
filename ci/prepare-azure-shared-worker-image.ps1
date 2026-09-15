@@ -39,7 +39,7 @@ $vars = @{
     Application_ID = $env:APPLICATION_ID
 }
 
-New-AzSharedWorkerImage @vars
+Set-AzSharedWorkerImageVariables @vars
 
 if (-not $env:GITHUB_ENV) {
     throw "GITHUB_ENV is not set."

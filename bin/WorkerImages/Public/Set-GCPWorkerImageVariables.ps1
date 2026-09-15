@@ -1,4 +1,4 @@
-﻿function New-GCPWorkerImage {
+﻿function Set-GCPWorkerImageVariables {
     [CmdletBinding()]
     param (
         [String] $Github_token,
@@ -12,14 +12,12 @@
 
     if ($Team -and $Team -ieq "tceng") {
         $YamlPath      = "config/tceng/$Key.yaml"
-        $PackerHCLPath = "packer/tceng-gcp.pkr.hcl"
         $ENV:PKR_VAR_Team_key = $Team
 
         $uuid = ([guid]::NewGuid().ToString('N')).Substring(0, 20)
         $ENV:PKR_VAR_uuid = $uuid
     } else {
         $YamlPath      = "config/$Key.yaml"
-        $PackerHCLPath = "gcp.pkr.hcl"
         if ($Team) { $ENV:PKR_VAR_Team_key = $Team }
     }
 
@@ -72,24 +70,6 @@
         Write-Host "No machine_type specified in YAML; using default from builder"
     }
 
-    ## Initialize and build
-    Write-Host "packer init $PackerHCLPath"
-    packer init $PackerHCLPath
-    if ($LASTEXITCODE -ne 0) { throw "packer init failed: $LASTEXITCODE" }
-    if ($key -match "Trusted") {
-        $ENV:PKR_VAR_use_keyvault = "true"
-    }
-    else {
-        $ENV:PKR_VAR_use_keyvault = "false"
-    }
-    if ($Team -and $Team -ieq "tceng") {
-        # tceng uses single generic build; no --only flag
-        Write-Host "packer build -force $PackerHCLPath"
-        packer build -force $PackerHCLPath
-    } else {
-        $builder = "googlecompute.$Key"
-        Write-Host "packer build --only $builder -force $PackerHCLPath"
-        packer build --only $builder -force $PackerHCLPath
-    }
-    if ($LASTEXITCODE -ne 0) { throw "packer build failed: $LASTEXITCODE" }
+    $ENV:PKR_VAR_use_keyvault = ($Key -match 'Trusted').ToString().ToLowerInvariant()
+    Export-WorkerImageEnvironment
 }

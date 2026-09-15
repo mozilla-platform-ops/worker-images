@@ -43,32 +43,11 @@ from pathlib import Path
 import requests
 import taskcluster
 
-IN_GITHUB_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
+from github_log import format_duration, log_message
+
 DECISION_TASK_POLL_INTERVAL_SECONDS = 10
 TASK_GROUP_POLL_INTERVAL_SECONDS = 300
 TASK_GROUP_LOG_INTERVAL_SECONDS = 600
-
-
-def _escape_github_command_message(message: str) -> str:
-    return message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-
-
-def log_message(level: str, message: str, include_datetimestamp: bool = False) -> None:
-    if include_datetimestamp:
-        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        message = f"[{timestamp}] {message}"
-
-    if IN_GITHUB_ACTIONS and level in ("warning", "error"):
-        escaped_message = _escape_github_command_message(message)
-        print(f"::{level}::{escaped_message}")
-        return
-
-    if level == "error":
-        print(f"ERROR: {message}", file=sys.stderr)
-    elif level == "warning":
-        print(f"WARNING: {message}")
-    else:
-        print(message)
 
 
 def log_notice(message: str, include_datetimestamp: bool = False) -> None:
@@ -81,21 +60,6 @@ def log_warning(message: str, include_datetimestamp: bool = False) -> None:
 
 def log_error(message: str, include_datetimestamp: bool = False) -> None:
     log_message("error", message, include_datetimestamp)
-
-
-def format_duration(seconds: int) -> str:
-    """Format duration in seconds as human-readable string."""
-    if seconds < 0:
-        return "-"
-    if seconds < 60:
-        return f"{seconds}s"
-    if seconds < 3600:
-        minutes = seconds // 60
-        secs = seconds % 60
-        return f"{minutes}m {secs}s"
-    hours = seconds // 3600
-    minutes = (seconds % 3600) // 60
-    return f"{hours}h {minutes}m"
 
 
 def get_result_emoji(state: str, result: str | None) -> str:

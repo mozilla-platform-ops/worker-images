@@ -3,6 +3,12 @@ run-name: GCP Production Parallel - ${{ github.sha }}
 
 on:
   workflow_dispatch:
+    inputs:
+      config:
+        type: string
+        required: false
+        default: ''
+        description: Optional config basename; empty builds all GCP alpha configs
 
 permissions:
   id-token: write
@@ -17,8 +23,12 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
 
       - id: set-matrix
+        env:
+          CONFIG: ${{ inputs.config }}
         name: Extract GCP production configs
         shell: pwsh
         run: |
@@ -32,6 +42,11 @@ jobs:
             exit 1
           }
 
+          if ($env:CONFIG) {
+            if ($configs -notcontains $env:CONFIG) { throw "Unknown GCP alpha config: $env:CONFIG" }
+            $configs = @($env:CONFIG)
+          }
+
           $matrix = @{ config = @($configs) } | ConvertTo-Json -Compress
           Write-Host "Generated matrix: $matrix"
           "matrix=$matrix" >> $env:GITHUB_OUTPUT
@@ -41,23 +56,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
       - name: Load Authorized Users and Check Access
         shell: pwsh
         run: |
-          $AUTHORIZED_USERS=$(Get-Content .github/relsre.json | Convertfrom-Json)
-          if ($authorized_users -contains "${{ github.actor }}") {
-            Write-host "User ${{ github.actor }} is authorized."
-          }
-          else {
-            Write-Host "User ${{ github.actor }} is unauthorized."
-            exit 1
-          }
+          & "${{ github.workspace }}/ci/check-authorized-user.ps1"
 
   prodimage:
     needs: [check-access, prepare-matrix]
     name: GCP ${{ matrix.config }}
     runs-on: ubuntu-latest
     environment: prod
+    env:
+      CONFIG: ${{ matrix.config }}
     permissions:
       contents: write
       id-token: write
@@ -66,14 +78,15 @@ jobs:
       matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
 
       - id: set-gcp-vars
         name: Get Project ID and Image Name from Config
         shell: pwsh
         run: |
           Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
-          Set-GCPWorkerImageName -Key '${{ matrix.config }}'
-          Set-GCPWorkerImageProject -Key '${{ matrix.config }}'
+          Set-GCPWorkerImageMetadata -Key $env:CONFIG
 
       - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
         id: auth

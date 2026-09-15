@@ -1,11 +1,11 @@
-﻿function New-AWSWorkerImage {
+﻿function Set-AWSWorkerImageVariables {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
-        [String] $Key,
+        [ValidatePattern('^[a-zA-Z0-9_-]+$')] [String] $Key,
 
         [Parameter(Mandatory = $true)]
-        [String] $Region,
+        [ValidatePattern('^[a-z0-9-]+$')] [String] $Region,
 
         [Parameter(Mandatory = $false)]
         [String] $IamInstanceProfile,
@@ -18,7 +18,6 @@
 
     # AWS images are only for tceng
     $YamlPath = "config/tceng/$Key.yaml"
-    $PackerHCLPath = "packer/tceng-aws.pkr.hcl"
     $ENV:PKR_VAR_Team_key = "tceng"
 
     $uuid = ([guid]::NewGuid().ToString('N')).Substring(0, 20)
@@ -76,8 +75,7 @@
         Write-Host "AMI will be replicated to regions from YAML"
     }
 
-    Write-Host "Building AMI: $($ENV:PKR_VAR_ami_name) in region: $Region"
-    Write-Host "Using HCL: $PackerHCLPath"
+    Write-Host "Prepared AMI: $($ENV:PKR_VAR_ami_name) in region: $Region"
     Write-Host "Using AWS credentials from GitHub Actions environment"
 
     # Ensure AWS credentials from GitHub Actions are available to Packer
@@ -88,30 +86,5 @@
         Write-Warning "No AWS credentials found in environment - this may cause authentication issues"
     }
 
-    ## Initialize Packer
-    Write-Host "packer init $PackerHCLPath"
-    packer init $PackerHCLPath
-
-    ## Build (tceng uses single generic build; no --only flag)
-    Write-Host "packer build -force $PackerHCLPath"
-    packer build -force $PackerHCLPath
-
-    # Display result
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "✅ Successfully built AMI: $($ENV:PKR_VAR_ami_name)" -ForegroundColor Green
-
-        # Parse manifest if available
-        if (Test-Path "packer-artifacts.json") {
-            $manifest = Get-Content "packer-artifacts.json" | ConvertFrom-Json
-            Write-Host "`nAMI Details:" -ForegroundColor Cyan
-            foreach ($build in $manifest.builds) {
-                Write-Host "  AMI ID: $($build.artifact_id)" -ForegroundColor Yellow
-                Write-Host "  Region: $($build.custom_data.region)" -ForegroundColor Yellow
-            }
-        }
-    }
-    else {
-        Write-Error "❌ AMI build failed with exit code: $LASTEXITCODE"
-        exit $LASTEXITCODE
-    }
+    Export-WorkerImageEnvironment
 }

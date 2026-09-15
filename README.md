@@ -26,7 +26,7 @@ make CI boot a new image are managed in `mozilla-releng/fxci-config`.
 1. `config/*.yaml` describes an image: base OS, cloud project or gallery,
    machine type, image name, tags, and image-specific tests.
 2. `bin/WorkerImages/` reads that config, applies defaults where relevant, sets
-   Packer variables, and starts Packer.
+   Packer variables, and exports them for the separate Packer action.
 3. `azure.pkr.hcl`, `gcp.pkr.hcl`, and `packer/tceng-*.pkr.hcl` define the VM
    build steps.
 4. `scripts/` provisions the guest OS. Windows images use a PowerShell

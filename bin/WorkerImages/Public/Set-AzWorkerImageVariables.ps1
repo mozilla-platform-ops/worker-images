@@ -1,25 +1,23 @@
-﻿function New-AzWorkerImage {
+﻿function Set-AzWorkerImageVariables {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory = $true)] [String] $Key,
-        [Parameter(Mandatory = $true)] [String] $Location,
+        [Parameter(Mandatory = $true)] [ValidatePattern('^[a-zA-Z0-9_-]+$')] [String] $Key,
+        [Parameter(Mandatory = $true)] [ValidatePattern('^[a-z0-9-]+$')] [String] $Location,
         [Parameter(Mandatory = $true)] [String] $Client_ID,
         [Parameter(Mandatory = $true)] [String] $Subscription_ID,
         [Parameter(Mandatory = $true)] [String] $Tenant_ID,
         [Parameter(Mandatory = $true)] [String] $Application_ID,
         [Parameter(Mandatory = $true)] [String] $oidc_request_url,
         [Parameter(Mandatory = $true)] [String] $oidc_request_token,
-        [Parameter(Mandatory = $false)] [String] $Team,
-        [Switch] $PackerDebug
+        [Parameter(Mandatory = $false)] [String] $Team
     )
 
-    if ($Team -ne 'tceng') { throw 'Use New-AzSharedWorkerImage for Firefox CI Azure images.' }
+    if ($Team -ne 'tceng') { throw 'Use Set-AzSharedWorkerImageVariables for Firefox CI Azure images.' }
     Import-WorkerImagesYaml
 
     switch ($Team) {
         "tceng" {
             $YamlPath = "config/tceng/$Key.yaml"
-            $PackerHCLPath = "packer/tceng-azure.pkr.hcl"
             $ENV:PKR_VAR_Team_key = $Team
 
             $uuid = ([guid]::NewGuid().ToString('N')).Substring(0, 20)
@@ -27,7 +25,6 @@
         }
         default {
             $YamlPath = "config/$Key.yaml"
-            $PackerHCLPath = "azure.pkr.hcl"
             if ($Team) {
                 $ENV:PKR_VAR_Team_key = $Team
             }
@@ -120,15 +117,8 @@
         }
     }
 
-    Write-Host "Building $($ENV:PKR_VAR_managed_image_name) in $($ENV:PKR_VAR_temp_resource_group_name)"
+    Write-Host "Prepared $($ENV:PKR_VAR_managed_image_name) in $($ENV:PKR_VAR_temp_resource_group_name)"
     Write-Host "Temp RG name: $env:PKR_VAR_temp_resource_group_name"
-    Write-Host "Using HCL: $PackerHCLPath"
 
-    packer init $PackerHCLPath
-    if ($PackerDebug) {
-        packer build -debug --only azure-arm.nonsig -force $PackerHCLPath
-    }
-    else {
-        packer build --only azure-arm.nonsig -force $PackerHCLPath
-    }
+    Export-WorkerImageEnvironment
 }

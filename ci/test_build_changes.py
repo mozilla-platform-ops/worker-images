@@ -1,15 +1,65 @@
 """Offline regression checks: python3 -m unittest discover -s ci -p 'test_*.py'."""
 
+import contextlib
+import io
+import json
 import os
 from pathlib import Path
 import subprocess
+import tempfile
 import unittest
+from unittest.mock import patch
 
+from github_log import format_duration, log_message
 
 ROOT = Path(__file__).resolve().parent.parent
 
 
 class BuildChecks(unittest.TestCase):
+    def test_log_escaping_and_duration(self):
+        out = io.StringIO()
+        with (
+            patch.dict(os.environ, {"GITHUB_ACTIONS": "true"}),
+            contextlib.redirect_stdout(out),
+        ):
+            log_message("warning", "100%\r\n::error::text")
+        self.assertEqual(out.getvalue(), "::warning::100%25%0D%0A::error::text\n")
+        self.assertEqual(
+            [format_duration(x) for x in (-1, 0, 60, 3661)],
+            ["-", "0s", "1m 0s", "1h 1m"],
+        )
+
+    def test_workflow_authorization(self):
+        with tempfile.TemporaryDirectory() as temp:
+            github = Path(temp) / ".github"
+            github.mkdir()
+            (github / "relsre.json").write_text(json.dumps(["release"]))
+            (github / "tceng.json").write_text(json.dumps(["engineer"]))
+            for actor, tceng, expected in [
+                ("release", False, 0),
+                ("engineer", False, 1),
+                ("engineer", True, 0),
+                ("outsider", True, 1),
+                ("", True, 1),
+            ]:
+                command = [
+                    "pwsh",
+                    "-NoProfile",
+                    "-File",
+                    str(ROOT / "ci/check-authorized-user.ps1"),
+                ]
+                if tceng:
+                    command.append("-IncludeTCEng")
+                result = subprocess.run(
+                    command,
+                    cwd=temp,
+                    env=dict(os.environ, GITHUB_ACTOR=actor),
+                    capture_output=True,
+                )
+                self.assertEqual(
+                    result.returncode, expected, result.stdout + result.stderr
+                )
+
     def test_puppet_exit_and_trusted_security_handlers(self):
         # Execute real exit statements in child processes; no Windows/cloud side effects.
         prelude = r"""

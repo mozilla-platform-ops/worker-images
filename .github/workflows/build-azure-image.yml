@@ -1,0 +1,80 @@
+name: Build FXCI Azure image
+
+on:
+  workflow_call:
+    inputs:
+      config:
+        type: string
+        required: true
+      trusted:
+        type: boolean
+        default: false
+    secrets:
+      client-id:
+        required: true
+      application-id:
+        required: true
+      subscription-id:
+        required: true
+      tenant-id:
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build:
+    name: Packer # ci/find-successful-builds.ps1 recognizes "Build <config> / Packer".
+    runs-on: ubuntu-latest
+    env:
+      CONFIG: ${{ inputs.config }}
+      TRUSTED_IMAGE: ${{ inputs.trusted }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Verify user access
+        id: access
+        shell: pwsh
+        run: |
+          & "${{ github.workspace }}/ci/check-authorized-user.ps1"
+      - name: Validate image config and trust
+        id: config
+        shell: pwsh
+        run: |
+          $family = if ($env:TRUSTED_IMAGE -eq 'true') { 'azure-trusted' } else { 'azure' }
+          & "${{ github.workspace }}/ci/validate-image-config.ps1" -Family $family
+      - name: Log in to Azure
+        id: login
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906
+        with:
+          client-id: ${{ secrets.client-id }}
+          tenant-id: ${{ secrets.tenant-id }}
+          subscription-id: ${{ secrets.subscription-id }}
+      - name: Prepare Packer variables
+        shell: pwsh
+        env:
+          CLIENT_ID: ${{ secrets.client-id }}
+          APPLICATION_ID: ${{ secrets.application-id }}
+          SUBSCRIPTION_ID: ${{ secrets.subscription-id }}
+          TENANT_ID: ${{ secrets.tenant-id }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PKR_VAR_taskcluster_ref: ''
+        run: |
+          & "${{ github.workspace }}/ci/prepare-azure-shared-worker-image.ps1"
+      - name: Run Packer
+        id: packer
+        uses: ./.github/actions/packer-build
+        with:
+          template: azure.pkr.hcl
+          only: azure-arm.sig
+          force: ${{ contains(inputs.config, 'alpha') }}
+      - name: Upload release notes
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: release-notes-${{ inputs.config }}
+          path: ${{ inputs.config }}-${{ env.sharedimageversion }}.md
+          overwrite: true
+          retention-days: 1
+          if-no-files-found: error
