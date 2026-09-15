@@ -1,0 +1,168 @@
+name: HW Speedometer - FXCI
+run-name: HW Speedometer x${{ inputs.repeat }} - ${{ github.actor }}
+
+# Runs mozilla-central's Windows hardware speedometer3 tasks, repeatedly, on MDC1
+# staging pools (RELOPS-2503). Separate from hw-os-integration.yml, which runs
+# everything a pool's production counterpart runs once: a speedometer number on
+# one run says little, so the question here is always "the same test, N times,
+# what is the spread". Dispatch-only; hardware needs a PXE deploy first.
+#
+# Every pool here is a stand-in for a production worker type, and which one
+# decides what it runs: `-ref-alpha` stages win11-64-24h2-hw-ref, everything
+# else stages win11-64-24h2-hw. Those are different suites on different
+# hardware, so a spread from one pool is not comparable with a spread from the
+# other. The pairing is in each checkbox below and in the "Pool mapping" table
+# at the top of the summary.
+#
+# The build under test comes from mozilla-central, not from here. Tasks are
+# replicated from a floating index, and each keeps its own
+# EXTRA_MOZHARNESS_CONFIG.installer_url -- normally `public/build/target.zip`
+# off a `build-win64-shippable/opt` task, though a custom-car task carries a
+# plain `build-win64/opt` instead. That matters more here than anywhere: the
+# spread across N runs is only a property of the hardware if every run
+# installed the same build. The run records the gecko revision and the build
+# task per pool, in the log and under "Build under test" in the step summary.
+
+on:
+  workflow_dispatch:
+    inputs:
+      win11_64_24h2_hw_alpha:
+        description: "win11-64-24h2-hw-alpha - stages win11-64-24h2-hw (nuc13, large staging pool)"
+        type: boolean
+        default: false
+      win11_64_24h2_hw_relops1213:
+        description: "win11-64-24h2-hw-relops1213 - stages win11-64-24h2-hw (baked-WIM canary)"
+        type: boolean
+        default: false
+      win11_64_24h2_hw_ref_alpha:
+        description: "win11-64-24h2-hw-ref-alpha - stages win11-64-24h2-hw-ref (t-nuc12 reference)"
+        type: boolean
+        default: false
+      win11_64_24h2_hw_perf_debug:
+        description: "win11-64-24h2-hw-perf-debug - stages win11-64-24h2-hw"
+        type: boolean
+        default: false
+      win11_64_24h2_hw_perf_sheriff:
+        description: "win11-64-24h2-hw-perf-sheriff - stages win11-64-24h2-hw (single node - very slow)"
+        type: boolean
+        default: false
+      browser:
+        description: "Which speedometer3 tasks to run"
+        type: choice
+        default: firefox
+        options:
+          - firefox
+          - firefox-and-custom-car
+      baseline:
+        description: "Compare scores against"
+        type: choice
+        default: perfherder
+        options:
+          # mozilla-central's own 14-day series for the production counterpart
+          # platform: a spread, so a number can be called normal or outside the
+          # envelope. Not paired -- the series spans revisions.
+          - perfherder
+          # The single production task this run's tasks were copied from: same
+          # build, same revision, same day, but one node and no error bar.
+          - counterpart
+          - none
+      repeat:
+        description: "Runs of each selected task (1-100; past ~10 raise timeout_hours to match)"
+        type: string
+        default: "5"
+      timeout_hours:
+        description: "Hours to wait for completion before giving up"
+        type: string
+        default: "6"
+      no_wait:
+        description: "Trigger and exit without waiting for results"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  check-access:
+    name: "Verify User Access"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Load Authorized Users and Check Access
+        shell: pwsh
+        run: ./ci/check-authorized-user.ps1
+
+  hw-speedometer:
+    name: "Trigger HW Speedometer Runs"
+    needs: check-access
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Collect selected pools
+        id: pools
+        env:
+          SELECTED: >-
+            ${{ inputs.win11_64_24h2_hw_alpha && 'win11-64-24h2-hw-alpha,' || '' }}${{
+                inputs.win11_64_24h2_hw_relops1213 && 'win11-64-24h2-hw-relops1213,' || '' }}${{
+                inputs.win11_64_24h2_hw_ref_alpha && 'win11-64-24h2-hw-ref-alpha,' || '' }}${{
+                inputs.win11_64_24h2_hw_perf_debug && 'win11-64-24h2-hw-perf-debug,' || '' }}${{
+                inputs.win11_64_24h2_hw_perf_sheriff && 'win11-64-24h2-hw-perf-sheriff' || '' }}
+        run: |
+          pools="$(printf '%s' "$SELECTED" | tr -d '[:space:]' | sed 's/,*$//')"
+          if [ -z "$pools" ]; then
+            echo "::error ::No pool selected. Tick at least one pool checkbox."
+            exit 1
+          fi
+          echo "Selected pools: $pools"
+          echo "pools=$pools" >> "$GITHUB_OUTPUT"
+
+      # `speedometer` alone also matches the custom-car task, whose
+      # toolchain-win64-custom-car dependency is often red in mozilla-central;
+      # the decision skips a task it cannot schedule, so asking for it is not
+      # fatal, just usually a no-op.
+      - name: Resolve test filter
+        id: filter
+        env:
+          BROWSER: ${{ inputs.browser }}
+        run: |
+          case "$BROWSER" in
+            firefox) filter="firefox-speedometer" ;;
+            firefox-and-custom-car) filter="speedometer" ;;
+            *) echo "::error ::unknown browser '$BROWSER'"; exit 1 ;;
+          esac
+          echo "Test filter: $filter"
+          echo "filter=$filter" >> "$GITHUB_OUTPUT"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4
+
+      # Fails before any hardware time if a pool is unknown, production, or dead.
+      - name: Pre-flight
+        env:
+          POOLS: ${{ steps.pools.outputs.pools }}
+          TASKCLUSTER_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
+          TASKCLUSTER_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}
+          PYTHONUNBUFFERED: "1"
+        run: |
+          uv run ci/run-hw-os-integration.py "$POOLS" --preflight-only
+
+      - name: Run HW Speedometer
+        env:
+          POOLS: ${{ steps.pools.outputs.pools }}
+          BASELINE: ${{ inputs.baseline }}
+          TESTS: ${{ steps.filter.outputs.filter }}
+          REPEAT: ${{ inputs.repeat }}
+          TIMEOUT_HOURS: ${{ inputs.timeout_hours }}
+          NO_WAIT: ${{ inputs.no_wait }}
+          TASKCLUSTER_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
+          TASKCLUSTER_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}
+          PYTHONUNBUFFERED: "1"
+        run: |
+          args=(--tests "$TESTS" --repeat "$REPEAT")
+          args+=(--baseline "$BASELINE")
+          args+=(--timeout "$(( TIMEOUT_HOURS * 3600 ))")
+          if [ "$NO_WAIT" = "true" ]; then
+            args+=(--no-wait)
+          fi
+          uv run ci/run-hw-os-integration.py "$POOLS" "${args[@]}"

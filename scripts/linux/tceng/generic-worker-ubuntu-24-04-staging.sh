@@ -147,24 +147,6 @@ EOF
 
 systemctl enable worker
 
-# Installs the snd-aloop, v4l2loopback kernel modules
-# used for the audio/video devices, and vkms
-# required by Wayland
-#
-# Installs the extra kernel modules for the currently
-# running kernel version as well as the cloud-specific
-# meta-package in case we upgrade to a new kernel version
-# on reboot
-retry apt-get install -y "linux-modules-extra-$(uname -r)"
-case "${MY_CLOUD}" in
-  google)
-    retry apt-get install -y linux-modules-extra-gcp
-    ;;
-  aws)
-    retry apt-get install -y linux-modules-extra-aws
-    ;;
-esac
-
 retry apt-get install -y ubuntu-desktop ubuntu-gnome-desktop podman gnome-initial-setup-
 
 if [ "${MY_CLOUD}" == 'google' ]; then
@@ -178,6 +160,22 @@ fi
   echo '[registries.search]'
   echo 'registries=["docker.io"]'
 ) >> /etc/containers/registries.conf
+
+# v4l2loopback is out-of-tree and is not in linux-modules on kernel 7.0.
+# Ubuntu's v4l2loopback-dkms package is too old to build against that
+# kernel, so install a current upstream release via DKMS.
+V4L2LOOPBACK_VERSION=0.15.4
+retry apt-get install -y dkms "linux-headers-$(uname -r)"
+retry curl -fsSL "https://github.com/v4l2loopback/v4l2loopback/archive/refs/tags/v${V4L2LOOPBACK_VERSION}.tar.gz" \
+  -o /tmp/v4l2loopback.tar.gz
+tar xz -C /usr/src -f /tmp/v4l2loopback.tar.gz
+rm -f /tmp/v4l2loopback.tar.gz
+dkms add -m v4l2loopback -v "${V4L2LOOPBACK_VERSION}"
+dkms build -m v4l2loopback -v "${V4L2LOOPBACK_VERSION}" -k "$(uname -r)"
+dkms install -m v4l2loopback -v "${V4L2LOOPBACK_VERSION}" -k "$(uname -r)"
+modprobe v4l2loopback
+lsmod | grep v4l2loopback
+echo 'v4l2loopback' >> /etc/modules
 
 # needed for mutter to work with DRM rather than falling back to X11
 grep -Fx vkms /etc/modules || echo vkms >> /etc/modules
@@ -266,8 +264,13 @@ cat > /etc/xdg/monitors.xml << EOF
 </monitors>
 EOF
 
-# avoid unnecessary shutdowns during worker startups
+# Never upgrade packages on a running worker; workers are re-imaged, not patched.
+# Disabling unattended-upgrades.service is not enough: apt-daily-upgrade.timer still
+# runs unattended-upgrade, and Ubuntu's needrestart then restarts every service that
+# maps a replaced library, including worker.service, killing the running task.
+# https://github.com/taskcluster/community-tc-config/issues/1014
 systemctl disable unattended-upgrades
+systemctl mask apt-daily.timer apt-daily-upgrade.timer
 
 end_time="$(date '+%s')"
 echo "UserData execution took: $(($end_time - $start_time)) seconds"

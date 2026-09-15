@@ -1,0 +1,82 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+---
+loader: taskgraph.loader.transform:loader
+
+# No mozilla_taskgraph.transforms.replicate here: it discards releng-hardware
+# tasks, so hw_integration_test does the equivalent work itself.
+transforms:
+  - worker_images_taskgraph.transforms.hw_integration_test
+
+tasks:
+  gecko-hw:
+    description: "Run in-tree Firefox tests on MDC1 Windows hardware pools"
+    hw-replicate:
+      # Consulted in order; the first index scheduling tasks for a pool's
+      # production counterpart wins.
+      #
+      # os-integration is the curated set the cloud path also replicates from --
+      # ~11 win11-64-24h2-hw tasks, a few hours once a small pool serialises
+      # them. It schedules no `-hw-ref` tasks, so a `-hw-ref` pool falls through
+      # to the push decision, which is a full tier-1 run: ~16 `-hw-ref` tasks,
+      # but also ~200 `-hw` ones, which is why order matters.
+      targets:
+        - gecko.v2.mozilla-central.latest.taskgraph.decision-os-integration
+        - gecko.v2.mozilla-central.latest.taskgraph.decision
+      # Nothing in mozilla-central defines an os-integration set for `-hw-ref`:
+      # not the cron, and not `mach try --preset os-integration` either, since
+      # both match against test_configs/os-integration.yml and that file lists
+      # no ref platform. So the fall-back set is "everything the counterpart
+      # runs", which on 2026-08-19 was 16 tasks and 10.6h of maxRunTime across
+      # two nodes -- twelve of them the `ml-*` perftest suite. os-integration
+      # names two perftests for the whole tree, service-worker and
+      # startup-geckoview, and no ML ones, so an uncurated index is trimmed to
+      # the platform tests. The curated index above is never trimmed.
+      fallback-drop-kinds:
+        - perftest
+      # ...and then trimmed to the set this repo names for the worker type.
+      # mozilla-central's test_configs/os-integration.yml lists no ref platform
+      # and we do not change that tree, so the choice lives here. Without it the
+      # set is whatever a tier-1 push happens to run: 16 tasks on 2026-08-19, 21
+      # on 2026-08-24, chosen by nobody. These four are what that fall-back has
+      # in fact been running all week, made explicit so it stops moving.
+      #
+      # Entries are substrings, as the workflow's `tests` filter is, so
+      # `speedometer3` alone would also select `speedometer3-no-nv`. A curated
+      # index -- one mozilla-central has a set for -- is never trimmed.
+      fallback-tests:
+        win11-64-24h2-hw-ref:
+          - browsertime-benchmark-firefox-speedometer3
+          - browsertime-benchmark-firefox-speedometer3-no-nv
+          - browsertime-benchmark-firefox-speedometer-experimental
+          - mochitest-media-mda-gpu
+      # How many pushes back to look when every selected task has a dead
+      # upstream. `latest.taskgraph.decision` is the newest push, whose build may
+      # still be running, superseded or cancelled: run 32768047542 reached no
+      # verdict because its build-win64-shippable/opt was cancelled 23 minutes
+      # after its own decision, while the push before it had a completed build.
+      # Only the uncurated push path can walk -- a cron graph carries no
+      # pushlog-id, and an older cron graph would be a week older, not a push.
+      blocked-walkback: 3
+      # Where to look for a live copy of an expired fetch artifact. A replicated
+      # task keeps mozilla-central's concrete fetch task ids and MOZ_FETCHES can
+      # only name a task and an artifact, so re-pointing it at a fresher task is
+      # the only repair there is.
+      #
+      # It is needed because the Chrome-for-Testing fetches are `cached_task:
+      # false` in-tree: every graph builds its own and the artifact lives two
+      # days, against an os-integration cron that runs weekly. custom-car-perf-
+      # testing runs daily and carries the same canary fetches, which is what
+      # makes the substitution possible at all; the others are listed because
+      # they carry the rest of the perf fetch set, and the push decision last
+      # because it is the largest graph to read.
+      fetch-repair-targets:
+        - gecko.v2.mozilla-central.latest.taskgraph.decision-custom-car-perf-testing
+        - gecko.v2.mozilla-central.latest.taskgraph.decision-sp-perftests
+        - gecko.v2.mozilla-central.latest.taskgraph.decision-perftest
+        - gecko.v2.mozilla-central.latest.taskgraph.decision-general-perf-testing
+        - gecko.v2.mozilla-central.latest.taskgraph.decision
+      # Windows-only follows from matching each pool's own worker type; MDC1
+      # macOS shares this provisioner but never matches a win11 pool name.
+      provisioner: releng-hardware

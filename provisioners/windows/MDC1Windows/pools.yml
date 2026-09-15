@@ -9,7 +9,7 @@ pools:
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "master"
-    hash: "edef633"
+    hash: "cc3aed8"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -28,20 +28,18 @@ pools:
   - name: "win11-64-24h2-hw-ref-alpha"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
-    # Matched to perf-debug (was 2.50.1) so the two canary pools are identical on every
-    # deployment field. Inert either way: the WIM bakes Git 2.54.0 and the deploy-time
-    # install is version-guarded, so neither value ever triggers an install.
     git_version: "2.50.0"
     #dev: RELOPS-1470
     Description: "NUC12 Hardware Reference Staging/Testing Pool"
-    # RELOPS-2487 canary: same dev trigger perf-debug carries, so both canary
-    # pools run identically off the feature branches.
+    # RELOPS-2487 canary: run this pool's deploy from the feature branch. OS-deploy.ps1 on that
+    # branch refreshes pools.yml from it, so the baked-WIM + DISM /Apply-Image config
+    # (image/src_Branch/hash) lives on the branch; main only needs this `dev:` trigger.
     dev: "nuc-wim-pipeline"
-    image: "win11-24h2-hw-20260908-172915"
+    image: "win11-24H2-NUC-01-16-2025"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "wim-bake-role"
-    hash: "459102e1"
+    src_Branch: "RELOPS-2467-xperf-dynamic-trace"
+    hash: "a22e7ac"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -54,73 +52,83 @@ pools:
     openvox_version: "8.19.2"
     git_version: "2.50.0"
     Description: "NUC12 Hardware Performance Staging/Testing Pool"
-    # RELOPS-2487 canary: pre-baked install.wim + DISM /Apply-Image deploy path.
-    # dev -> pull the MDC1Windows deploy scripts (OS-deploy.ps1 etc.) from our
-    # worker-images feature branch; src_* -> our ronin branch; image -> the baked
-    # WIM staged on the deployment share at <name>/<name>.wim.
+    # RELOPS-2487 canary: run this pool's deploy from the feature branch. OS-deploy.ps1
+    # on that branch refreshes pools.yml from it, so image/src_Branch/hash for the
+    # baked-WIM + DISM /Apply-Image test live on the branch, not here.
     dev: "nuc-wim-pipeline"
-    image: "win11-24h2-hw-test-20260805-193514"
+    image: "win11-24h2-hw-test-20260730-223108"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "wim-bake-role"
-    hash: "5230f32"
+    src_Branch: "master"
+    hash: "edef633"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    # Known dead PSUs - present before the RELOPS-2514 PSU swap-out validation began.
-    # Originally moved here from alpha. These are not awaiting a swap like the nodes in
-    # win11-64-24h2-hw-alpha; their PSUs are known dead. They appear in none of the swap
-    # tickets (IO-3797, IO-3844, IO-3884).
-    - nuc13-035
-    - nuc13-060
-    - nuc13-068
-    - nuc13-075
-    - nuc13-124
-    - nuc13-150
+    # Under performing - moved out of win11-64-24h2-hw for investigation. Both have
+    # swapped PSUs and passed the RELOPS-2514 validation, so they are not here for a
+    # PSU fault. Tracked in RELOPS-2522.
+    - nuc13-085
+    - nuc13-103
+    # Under performing - scored 23.89 in the 2026-08-26 batch 1 Speedometer x100 run
+    # (GitHub run 33020421057) against a 24.76 mean for the other 18 nodes, roughly
+    # 3.5% low. Its own CV was 0.3% over 5 runs, so it is consistently slow rather
+    # than noisy, and it had been up 8 days, so this is not a settling artefact.
+    # Held back from promotion pending investigation. Tracked in RELOPS-2539.
+    - nuc13-005
+    # Down - 2026-08-31. Unreachable on TCP/22, so it could not be PXE-booted with the
+    # rest of the batch and manual recovery did not bring it back. Tracked in
+    # RELOPS-2539.
+    - nuc13-145
+    # No KVM - 2026-08-31. Cannot be re-imaged or inspected remotely until console
+    # access is fixed. Unreachable on TCP/22 and not recovered with the rest of the
+    # batch. Tracked in RELOPS-2539.
     - nuc13-155
-    - nuc13-157
-    # No KVM - cannot be re-imaged or inspected remotely until console access is fixed.
-    # Two cross-wired pairs are in here: nuc13-037's KVM port is swapped with
-    # nuc13-038's and nuc13-053's with nuc13-054's, so connecting to one reaches the
-    # other and KVM-derived status for any of the four is unreliable.
-    - nuc13-011
+    # Moved out of win11-64-24h2-hw-alpha 2026-09-09. The rest of that pool validated in
+    # the 2026-08-31 Speedometer x100 runs (33444951345 and 33444971840) and was promoted
+    # to win11-64-24h2-hw; these seven did not and are parked here. Tracked in RELOPS-2539.
+    # nuc13-037: unreachable on TCP/22 across the 2026-08-31 sweep and the follow-up
+    #   check. Was never recovered with the rest of the No KVM group. Its KVM port is
+    #   cross-wired with nuc13-038, so console-derived status for either is unreliable.
     - nuc13-037
-    - nuc13-053
-    - nuc13-078
-    - nuc13-132
-    - nuc13-143
-    # Down / no SSH - unresponsive on every SSH attempt. nuc13-119 PXE-booted once and
-    # never returned to the network.
-    - nuc13-022
-    - nuc13-023
-    - nuc13-028
-    - nuc13-069
-    - nuc13-119
-    # Other - individual cases, see the note above each node.
-    # nuc13-077: PXE does not take. It accepts the bootsequence change and reboots but comes
-    #   back on its original 05-01 image, confirmed across three checks over three
-    #   days. Needs a recovery route other than a repeat PXE.
+    # nuc13-064: answers SSH but rejects the audit key, which is the normal window
+    #   while puppet is still installing it. Recovered 2026-08-31; give it a cycle and
+    #   re-check before treating it as stuck.
+    - nuc13-064
+    # nuc13-077: PXE does not take. It accepts the bootsequence change and reboots but
+    #   comes back on its original image, confirmed repeatedly since 2026-08-17, most
+    #   recently in the 2026-08-31 sweep. Needs a recovery route other than a re-PXE.
     - nuc13-077
-    # nuc13-111: Unreachable with its display flashing. Did not come back after being
-    #   PXE-booted, so it could not be scored.
-    - nuc13-111
+    # nuc13-089: config is correct and bootstrap_stage is complete, but it produced no
+    #   score in any of the four Speedometer runs on 2026-08-27 and 2026-08-31 while
+    #   its pool peers scored. Last imaged 2026-08-28 and not re-imaged since.
+    #   Unexplained - this is not idleness.
+    - nuc13-089
+    # nuc13-124: no ronin_puppet key at all and OS build 26200 rather than the 26100
+    #   provisioned nodes report - the same state nuc13-086 and nuc13-119 were in, and
+    #   both recovered from it with a single re-PXE. Imaged 2026-08-29, untouched since.
+    - nuc13-124
+    # nuc13-132: answers SSH and reports its hostname, but claims no work and produced
+    #   no score in either 2026-08-31 run. Previously filed as No KVM, which no longer
+    #   fits.
+    - nuc13-132
+    # nuc13-150: bootstrap_stage=inprogress with last_run_exit=6, so puppet is failing.
+    #   bootstrap.ps1 treats exit 6 as a failure and arms Set-PXE, so it should self-
+    #   retry; leave it a cycle before intervening.
+    - nuc13-150
   - name: "win11-64-24h2-hw-perf-debug"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
     git_version: "2.50.0"
     Description: "NUC12 Hardware Performance Staging/Testing Pool"
-    # RELOPS-2487 canary: pre-baked install.wim + DISM /Apply-Image deploy path, on a pool with
-    # WORKING Taskcluster worker credentials (the relops1213 client is under-scoped: missing
-    # assume:worker-pool + assume:worker-id). Points at our worker-images + ronin feature branches
-    # and the drivers-baked WIM to validate the prebake worker end-to-end.
-    # *** REVERT before master: image win11-24H2-NUC-01-16-2025, dev (remove),
-    #     src_Branch RELOPS-2467-xperf-dynamic-trace, hash a22e7ac. ***
+    # RELOPS-2487 canary: run this pool's deploy from the feature branch. OS-deploy.ps1 on that
+    # branch refreshes pools.yml from it, so the baked-WIM + DISM /Apply-Image config
+    # (image/src_Branch/hash) lives on the branch; main only needs this `dev:` trigger.
     dev: "nuc-wim-pipeline"
-    image: "win11-24h2-hw-20260908-172915"
+    image: "win11-24H2-NUC-01-16-2025"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "wim-bake-role"
-    hash: "459102e1"
+    src_Branch: "RELOPS-2467-xperf-dynamic-trace"
+    hash: "a22e7ac"
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -143,55 +151,17 @@ pools:
     image: "win11-24H2-NUC-01-16-2025"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "RELOPS-2402-fleetbench"
-    hash: "74e8909"
+    src_Branch: "master"
+    hash: "cc3aed8"
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    # Original PSUs - these 39 nodes were never included in a PSU swap-out. They are
-    # not covered by IO-3797 (20 nodes, 2026-05-29), IO-3844 (nuc13-159 and nuc13-160,
-    # 2026-07-08) or IO-3884 (87 PSUs plus nuc13-101 and nuc13-046, 2026-08-07), and
-    # so have not been through the RELOPS-2514 validation either. Moved from
-    # win11-64-24h2-hw.
-    - nuc13-004
-    - nuc13-005
-    - nuc13-007
-    - nuc13-008
-    - nuc13-009
-    - nuc13-010
-    - nuc13-015
-    - nuc13-016
-    - nuc13-017
+    # Three nodes pulled from win11-64-24h2-hw at random 2026-09-09 to keep a working
+    # set in this pool after the previous membership moved to
+    # win11-64-24h2-hw-relops1213. Not here for a fault.
     - nuc13-018
-    - nuc13-033
-    - nuc13-040
-    - nuc13-041
-    - nuc13-048
-    - nuc13-049
-    - nuc13-056
-    - nuc13-057
-    - nuc13-064
-    - nuc13-066
-    - nuc13-081
-    - nuc13-083
-    - nuc13-086
-    - nuc13-088
-    - nuc13-089
-    - nuc13-090
-    - nuc13-097
-    - nuc13-104
-    - nuc13-108
-    - nuc13-109
-    - nuc13-110
-    - nuc13-113
-    - nuc13-118
-    - nuc13-121
-    - nuc13-123
-    - nuc13-127
-    - nuc13-128
-    - nuc13-135
-    - nuc13-145
-    - nuc13-153
+    - nuc13-071
+    - nuc13-134
   - name: "win11-64-24h2-hw-perf-sheriff"
     openvox_version: "8.19.2"
     puppet_version: "8.10.0"
@@ -215,86 +185,128 @@ pools:
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "master"
-    hash: "edef633"
+    hash: "cc3aed8"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
     - nuc13-001
     - nuc13-002
     - nuc13-003
+    - nuc13-004
     - nuc13-006
+    - nuc13-007
+    - nuc13-008
+    - nuc13-009
+    - nuc13-010
+    - nuc13-011
     - nuc13-012
     - nuc13-013
     - nuc13-014
+    - nuc13-015
+    - nuc13-016
+    - nuc13-017
     - nuc13-019
     - nuc13-020
+    - nuc13-022
+    - nuc13-023
     - nuc13-024
     - nuc13-025
     - nuc13-026
     - nuc13-027
+    - nuc13-028
     - nuc13-029
     - nuc13-030
     - nuc13-031
     - nuc13-032
+    - nuc13-033
     - nuc13-034
+    - nuc13-035
     - nuc13-036
     - nuc13-038
     - nuc13-039
+    - nuc13-040
+    - nuc13-041
     - nuc13-042
     - nuc13-043
     - nuc13-044
     - nuc13-045
     - nuc13-046
     - nuc13-047
+    - nuc13-048
+    - nuc13-049
     - nuc13-050
     - nuc13-051
     - nuc13-052
+    - nuc13-053
     - nuc13-054
     - nuc13-055
+    - nuc13-056
+    - nuc13-057
     - nuc13-058
     - nuc13-059
+    - nuc13-060
     - nuc13-061
     - nuc13-062
     - nuc13-063
     - nuc13-065
+    - nuc13-066
     - nuc13-067
+    - nuc13-068
+    - nuc13-069
     - nuc13-070
-    - nuc13-071
     - nuc13-072
     - nuc13-073
+    - nuc13-075
     - nuc13-076
+    - nuc13-078
     - nuc13-079
     - nuc13-080
+    - nuc13-081
     - nuc13-082
+    - nuc13-083
     - nuc13-084
-    - nuc13-085
+    - nuc13-086
     - nuc13-087
+    - nuc13-088
+    - nuc13-090
     - nuc13-091
     - nuc13-092
     - nuc13-093
     - nuc13-094
     - nuc13-095
     - nuc13-096
+    - nuc13-097
     - nuc13-098
     - nuc13-099
     - nuc13-100
     - nuc13-101
     - nuc13-102
-    - nuc13-103
+    - nuc13-104
     - nuc13-105
     - nuc13-106
+    - nuc13-108
+    - nuc13-109
+    - nuc13-110
+    - nuc13-111
+    - nuc13-113
     - nuc13-114
     - nuc13-116
     - nuc13-117
+    - nuc13-118
+    - nuc13-119
     - nuc13-120
+    - nuc13-121
     - nuc13-122
+    - nuc13-123
     - nuc13-125
     - nuc13-126
+    - nuc13-127
+    - nuc13-128
     - nuc13-129
     - nuc13-130
     - nuc13-131
     - nuc13-133
-    - nuc13-134
+    - nuc13-135
     - nuc13-136
     - nuc13-137
     - nuc13-138
@@ -302,6 +314,7 @@ pools:
     - nuc13-140
     - nuc13-141
     - nuc13-142
+    - nuc13-143
     - nuc13-144
     - nuc13-146
     - nuc13-147
@@ -309,8 +322,10 @@ pools:
     - nuc13-149
     - nuc13-151
     - nuc13-152
+    - nuc13-153
     - nuc13-154
     - nuc13-156
+    - nuc13-157
     - nuc13-159
     - nuc13-160
 defaults:

@@ -81,6 +81,7 @@ function New-AzSharedWorkerImage {
     Log-FinalValue "deploymentId"        $Y.vm.tags["deploymentId"]        $ImageYaml.vm.tags["deploymentId"]        $DefaultYaml.vm.tags["deploymentId"]
     Log-FinalValue "resource_group"      $Y.azure["managed_image_resource_group_name"] $ImageYaml.azure["managed_image_resource_group_name"] $DefaultYaml.azure["managed_image_resource_group_name"]
     Log-FinalValue "vmSize"              $Y.vm["size"]                     $ImageYaml.vm["size"]                    $DefaultYaml.vm["size"]
+    Log-FinalValue "spot"                $Y.vm["spot"]                     $ImageYaml.vm["spot"]                    $DefaultYaml.vm["spot"]
     Log-FinalValue "build_location"      $Y.azure["build_location"]        $ImageYaml.azure["build_location"]       $DefaultYaml.azure["build_location"]
 
     # Set environment variables
@@ -92,6 +93,7 @@ function New-AzSharedWorkerImage {
     $ENV:PKR_VAR_image_version = $Y.image["version"]
     $ENV:PKR_VAR_resource_group = $Y.azure["managed_image_resource_group_name"]
     $ENV:PKR_VAR_vm_size = $Y.vm["size"]
+    $ENV:PKR_VAR_use_spot = ($Y.vm["spot"] -eq $true).ToString().ToLowerInvariant()
     $BuildLocation = $Y.azure["build_location"]
     if ([string]::IsNullOrWhiteSpace($BuildLocation)) {
         $BuildLocation = "Central US"

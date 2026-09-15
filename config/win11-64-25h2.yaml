@@ -3,11 +3,11 @@ image:
   publisher: MicrosoftWindowsDesktop
   offer: Windows-11
   sku: win11-25h2-avd
-  version: 26200.8037.260306
+  version: latest
 sharedimage:
   gallery_name: "win11_64_25h2"
   image_name: "win11_64_25h2"
-  image_version: "1.0.5"
+  image_version: "1.0.8"
 azure:
   managed_image_resource_group_name: "default"
   managed_image_storage_account_type: "default"
@@ -27,10 +27,11 @@ azure:
     - westus2
     - westus3
 vm:
+  spot: true
   puppet_version: "default"
-  git_version: "default"
-  openvox_version: "default"
-  size: Standard_F8s_v2
+  git_version: 2.55.0
+  openvox_version: 8.28.1
+  size: Standard_D8ads_v5
   tags:
     base_image: win116425h2azure
     worker_pool_id: win11-64-25h2
@@ -60,6 +61,6 @@ tests:
   - mozilla_build.tests.ps1
   - mozilla_maintenance_service.tests.ps1
   - windows_worker_runner.tests.ps1
-  - gpu_drivers_a10.tests.ps1
+  - gpu_drivers.tests.ps1
   - mercurial.tests.ps1
   - microsoft_wptx64.tests.ps1

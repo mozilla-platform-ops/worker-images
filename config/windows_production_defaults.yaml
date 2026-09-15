@@ -3,6 +3,7 @@ azure:
   managed_image_resource_group_name: rg-packer-worker-images
   managed_image_storage_account_type: Standard_LRS
 vm:
+  spot: false
   puppet_version: 8.10.0
   git_version: 2.54.0
   openvox_version: 8.24.2
@@ -11,7 +12,7 @@ vm:
     sourceRepository: ronin_puppet
     sourceBranch: master
     managed_by: packer
-    deploymentId: "82415f4"
+    deploymentId: "cc3aed8"
 images:
   production:
     - win10-64-2009
@@ -20,10 +21,12 @@ images:
     - win11-a64-25h2-tester
     - win11-a64-25h2-builder
     - win2022-64-2009
+    - win2025-64-24h2
   alpha:
     - win10-64-2009-alpha
     - win11-64-24h2-alpha
     - win11-64-25h2-alpha
     - win11-a64-25h2-tester-alpha
-    #- win11-a64-25h2-builder-alpha
+    - win11-a64-25h2-builder-alpha
     - win2022-64-2009-alpha
+    - win2025-64-24h2-alpha

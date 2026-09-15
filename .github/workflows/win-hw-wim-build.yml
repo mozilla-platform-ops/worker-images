@@ -1,0 +1,122 @@
+name: Windows HW WIM Build
+run-name: "Windows HW WIM build - ${{ inputs.image }} @ ${{ inputs.pipeline_ref }}"
+
+# Builds a baked Windows HW install.wim. Spins up an EPHEMERAL nested-virt Azure VM
+# for the run, builds on it, and tears it down afterward (if: always()) — no idle cost,
+# no pre-provisioned host. The pipeline lives on a feature branch (default:
+# nuc-wim-pipeline) under provisioners/windows/win-hw-wim/; this points the build there.
+#
+# Prerequisites:
+#   - Reuses the existing FXCI (nontrusted) image-creation OIDC credentials — the same
+#     SP/secrets as sig-nontrusted.yml: AZURE_CLIENT_ID_FXCI, AZURE_SUBSCRIPTION_ID_UNTRUSTED,
+#     AZURE_TENANT_ID. That SP must be able to create/delete VMs + run-command in
+#     rg-central-us-hardware-imaging and assign the Storage Blob Data role (Contributor +
+#     Role Based Access Control Administrator/User Access Administrator there).
+
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: "Image config to build (config/<image>.yaml)"
+        type: choice
+        default: win11-24h2-hw
+        # Keep in sync with provisioners/windows/win-hw-wim/config/*.yaml on the pipeline branch.
+        # win11-25h2-iso builds a requirement-bypass Win11 ISO (its config sets iso.enabled: true);
+        # the others run the normal WIM bake. Selection is config-driven - just pick the image.
+        options:
+          - win11-24h2-hw
+          - win11-24h2-hw-test
+          - win11-25h2-hw
+          - win11-25h2-iso
+      pipeline_ref:
+        description: "worker-images branch holding provisioners/windows/win-hw-wim"
+        type: string
+        default: nuc-wim-pipeline
+      build_id:
+        description: "Optional build id (default: timestamp on the VM)"
+        type: string
+        default: ""
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  check-access:
+    name: Verify User Access
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Load Authorized Users and Check Access
+        shell: pwsh
+        run: ./ci/check-authorized-user.ps1
+
+  build:
+    name: Build on ephemeral Azure VM
+    needs: check-access
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      RESOURCE_GROUP: rg-central-us-hardware-imaging
+      # Run-scoped VM name so parallel runs don't collide and teardown is exact.
+      VM_NAME: win-hw-wim-build-${{ github.run_id }}
+    steps:
+      # Check out the pipeline branch — it carries the ci/ + provisioner scripts
+      # (the build logic lives with the pipeline, not in this workflow's PR).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.pipeline_ref }}
+
+      - name: Azure Login
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID_FXCI }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}
+
+      - name: Create ephemeral build VM
+        shell: pwsh
+        run: ./ci/win-hw-wim-vm.ps1 -Action create -VmName $env:VM_NAME -ResourceGroup $env:RESOURCE_GROUP
+
+      - name: Build (kick off + wait)
+        shell: pwsh
+        env:
+          IMAGE: ${{ inputs.image }}
+          PIPELINE_REF: ${{ inputs.pipeline_ref }}
+          BUILD_ID: ${{ inputs.build_id }}
+        run: ./ci/kickoff-win-hw-wim-build.ps1
+
+      # Same release-notes handoff the Azure gallery images use (see sig-trusted.yml):
+      # the kickoff downloads the markdown the bake generated and exports its name as
+      # sbom_file, mirroring how those workflows export sharedimageversion.
+      - name: Upload Release Notes Artifact
+        if: success() && env.sbom_file != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: release-notes-${{ inputs.image }}
+          path: ${{ env.sbom_file }}
+          overwrite: true
+          retention-days: 1
+          if-no-files-found: error
+
+      # Always tear the VM down — success, failure, or cancel — so there is no idle cost.
+      - name: Destroy ephemeral build VM
+        if: always()
+        shell: pwsh
+        run: ./ci/win-hw-wim-vm.ps1 -Action destroy -VmName $env:VM_NAME -ResourceGroup $env:RESOURCE_GROUP
+
+  # Commit the release notes to sboms/ on main — the same reusable workflow every other
+  # Windows image build calls, so baked WIMs land in the same place as gallery images.
+  # No `if: always()`: a failed bake produces no artifact, and the reusable workflow
+  # treats "nothing downloaded" as an error, which would just double-report the failure.
+  sbom:
+    needs: build
+    permissions:
+      actions: read
+      contents: write
+    uses: ./.github/workflows/upload-release-notes.yml
+    with:
+      artifact_pattern: release-notes-${{ inputs.image }}
+      commit_message: ${{ inputs.image }} - Release Notes

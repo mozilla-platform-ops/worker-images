@@ -1,0 +1,1862 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+"""Tests for ci/run-hw-os-integration.py.
+
+Loaded by path, as the script itself loads hw_pools, because `ci/` is not a
+package and the script's own dependencies (taskcluster, requests) are only
+installed where it runs.
+"""
+
+import datetime
+import importlib.util
+import json
+import os
+import sys
+import tempfile
+import types
+import unittest
+import unittest.mock
+from pathlib import Path
+
+RUNNER = (
+    Path(__file__).resolve().parent.parent.parent / "ci" / "run-hw-os-integration.py"
+)
+
+GROUP = "DECISIONGROUPID1234567"
+
+
+class FakeRestFailure(Exception):
+    pass
+
+
+def _load_runner():
+    taskcluster_module = types.ModuleType("taskcluster")
+    taskcluster_module.exceptions = types.SimpleNamespace(
+        TaskclusterRestFailure=FakeRestFailure
+    )
+    sys.modules["taskcluster"] = taskcluster_module
+
+    requests_module = types.ModuleType("requests")
+    requests_module.RequestException = Exception
+    sys.modules["requests"] = requests_module
+
+    spec = importlib.util.spec_from_file_location("hw_runner", RUNNER)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _task(task_id, state, name=None, worker=None):
+    status = {"taskId": task_id, "state": state}
+    if worker is not None:
+        status["runs"] = [{"runId": 0, "workerId": worker}]
+    return {"status": status, "task": {"metadata": {"name": name or task_id}}}
+
+
+def _perfherder(
+    value, replicates=(), name="speedometer3", application="firefox", version="156.0a1"
+):
+    """Shaped like the real public/test_info/perfherder-data.json.
+
+    `application` is what separates Firefox's speedometer3 from custom-car's;
+    both suites are named `speedometer3`. Pass None for a blob that omits it.
+    """
+    blob = {
+        "framework": {"name": "browsertime"},
+        "suites": [
+            {
+                "name": name,
+                "value": value,
+                "unit": "score",
+                "lowerIsBetter": False,
+                "replicates": list(replicates),
+                "subtests": [{"name": "Charts-chartjs/total", "value": 39.5}],
+            }
+        ],
+    }
+    if application:
+        blob["application"] = {"name": application, "version": version}
+    return blob
+
+
+class RunnerTestBase(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.mod = _load_runner()
+
+
+class TestTally(RunnerTestBase):
+    """The monitored group is rooted at the decision task, which is not a
+    result."""
+
+    def test_decision_task_excluded_and_tracked_separately(self):
+        counts = self.mod.tally([_task(GROUP, "failed")], GROUP)
+        self.assertEqual(counts["total"], 0)
+        self.assertEqual(counts["decision"], "failed")
+        self.assertEqual(counts["pending"], 0)
+
+    def test_green_run_counts_only_replicated_tasks(self):
+        tasks = [_task(GROUP, "completed")] + [
+            _task(f"task{i:018d}", "completed") for i in range(11)
+        ]
+        counts = self.mod.tally(tasks, GROUP)
+        self.assertEqual((counts["total"], counts["completed"]), (11, 11))
+        self.assertEqual(counts["decision"], "completed")
+
+    def test_states_are_bucketed(self):
+        tasks = [
+            _task(GROUP, "completed"),
+            _task("a" * 22, "completed"),
+            _task("b" * 22, "failed"),
+            _task("c" * 22, "exception"),
+            _task("d" * 22, "unscheduled"),
+        ]
+        counts = self.mod.tally(tasks, GROUP)
+        self.assertEqual(counts["total"], 4)
+        self.assertEqual(counts["completed"], 1)
+        self.assertEqual(counts["failed"], 1)
+        self.assertEqual(counts["exception"], 1)
+        self.assertEqual(counts["pending"], 1)
+
+    def test_running_decision_is_not_a_finished_empty_run(self):
+        counts = self.mod.tally([_task(GROUP, "running")], GROUP)
+        self.assertIn(counts["decision"], self.mod.PENDING_STATES)
+
+    def test_summary_table_skips_the_decision_task(self):
+        tasks = [_task(GROUP, "completed"), _task("a" * 22, "completed")]
+        self.assertEqual(len(self.mod.replicated_tasks(tasks, GROUP)), 1)
+
+
+class TestBlockedTasks(RunnerTestBase):
+    """Run 31516844982 sat 3.5h past its last result waiting on a task whose
+    upstream had failed, then reported a timeout. The decision now refuses to
+    create such a task, but an upstream still running at decision time can fail
+    afterwards, so the monitor has to notice too."""
+
+    def _queue(self, dep_states):
+        class Queue:
+            def status(_self, task_id):
+                if task_id not in dep_states:
+                    raise FakeRestFailure("404")
+                return {"status": {"state": dep_states[task_id]}}
+
+        return Queue()
+
+    def _unscheduled(self, task_id, deps):
+        task = _task(task_id, "unscheduled")
+        task["task"]["dependencies"] = deps
+        return task
+
+    def test_task_waiting_on_a_failed_upstream_is_blocked(self):
+        tasks = [self._unscheduled("stuck", ["build", "toolchain"])]
+        blocked = self.mod.find_blocked(
+            self._queue({"build": "completed", "toolchain": "failed"}), tasks, {}
+        )
+        self.assertEqual(blocked, {"stuck": {"toolchain": "failed"}})
+
+    def test_task_waiting_on_a_running_upstream_is_not_blocked(self):
+        tasks = [self._unscheduled("waiting", ["build"])]
+        self.assertEqual(
+            self.mod.find_blocked(self._queue({"build": "running"}), tasks, {}), {}
+        )
+
+    def test_only_unscheduled_tasks_are_checked(self):
+        running = _task("busy", "running")
+        running["task"]["dependencies"] = ["toolchain"]
+        self.assertEqual(
+            self.mod.find_blocked(self._queue({"toolchain": "failed"}), [running], {}),
+            {},
+        )
+
+    def test_a_blocked_task_is_not_rechecked(self):
+        calls = []
+
+        class CountingQueue:
+            def status(_self, task_id):
+                calls.append(task_id)
+                return {"status": {"state": "failed"}}
+
+        tasks = [self._unscheduled("stuck", ["toolchain"])]
+        known = self.mod.find_blocked(CountingQueue(), tasks, {})
+        self.mod.find_blocked(CountingQueue(), tasks, known)
+        self.assertEqual(calls, ["toolchain"], "status should be asked once")
+
+    def test_blocked_tasks_stop_counting_as_pending(self):
+        tasks = [
+            _task(GROUP, "completed"),
+            _task("done" + "0" * 18, "completed"),
+            self._unscheduled("stuck", ["toolchain"]),
+        ]
+        counts = self.mod.tally(tasks, GROUP, {"stuck"})
+        self.assertEqual(counts["pending"], 0, "waiting on it is waiting on nothing")
+        self.assertEqual(counts["blocked"], 1)
+        self.assertEqual(counts["completed"], 1)
+        self.assertEqual(counts["total"], 2)
+
+    def test_without_the_block_it_would_be_pending_forever(self):
+        tasks = [_task(GROUP, "completed"), self._unscheduled("stuck", ["toolchain"])]
+        self.assertEqual(self.mod.tally(tasks, GROUP)["pending"], 1)
+
+    def test_dependency_states_that_can_still_resolve(self):
+        for state in ("unscheduled", "pending", "running", "completed"):
+            self.assertNotIn(state, self.mod.DEPENDENCY_DEAD_STATES, state)
+
+
+class TestScores(RunnerTestBase):
+    """Reading the score out of the task, which is why this run needs no
+    Treeherder route."""
+
+    def _run_with(self, blobs, states=None, workers=None, nodes=None):
+        """`blobs` maps task id -> perfherder blob, or None for no artifact."""
+        states = states or {}
+        workers = workers or {}
+
+        class Queue:
+            def getLatestArtifact(_self, task_id, name):
+                assert name == self.mod.PERFHERDER_ARTIFACT
+                blob = blobs.get(task_id)
+                if blob is None:
+                    raise FakeRestFailure("404 no such artifact")
+                return blob
+
+        runs = [
+            {
+                "pool": "win11-64-24h2-hw-perf-debug",
+                "task_group_id": GROUP,
+                "nodes": nodes or [],
+                "tasks": [_task(GROUP, "completed", worker="cloud-decision")]
+                + [
+                    _task(
+                        task_id,
+                        states.get(task_id, "completed"),
+                        worker=workers.get(task_id, "nuc13-024"),
+                    )
+                    for task_id in blobs
+                ],
+            }
+        ]
+        self.mod.collect_scores(Queue(), runs)
+        return runs
+
+    def _values(self, runs, suite="firefox speedometer3"):
+        return self.mod.sample_values(runs[0]["scores"][suite]["samples"])
+
+    def test_one_value_per_completed_task(self):
+        runs = self._run_with(
+            {
+                "run1": _perfherder(24.5, [24.3, 24.6]),
+                "run2": _perfherder(25.5, [25.4, 25.6]),
+                "run3": _perfherder(23.5),
+            }
+        )
+        entry = runs[0]["scores"]["firefox speedometer3"]
+        self.assertEqual(sorted(self._values(runs)), [23.5, 24.5, 25.5])
+        self.assertEqual(entry["unit"], "score")
+        self.assertFalse(entry["lower_is_better"])
+        replicates = [r for s in entry["samples"] for r in s["replicates"]]
+        self.assertEqual(len(replicates), 4)
+
+    def test_failed_tasks_and_tasks_without_data_contribute_nothing(self):
+        runs = self._run_with(
+            {
+                "run1": _perfherder(24.5),
+                "noperf": None,
+                "broken": _perfherder(99.9),
+            },
+            states={"broken": "failed"},
+        )
+        self.assertEqual(self._values(runs), [24.5])
+
+    def test_no_scores_leaves_the_key_off_and_the_section_out(self):
+        runs = self._run_with({"noperf": None})
+        self.assertNotIn("scores", runs[0])
+        self.assertEqual(self.mod.score_summary_lines(runs), [])
+
+    def test_several_suites_are_kept_apart(self):
+        runs = self._run_with(
+            {
+                "run1": _perfherder(24.5),
+                "run2": _perfherder(120.0, name="jetstream2"),
+            }
+        )
+        self.assertEqual(
+            sorted(runs[0]["scores"]),
+            ["firefox jetstream2", "firefox speedometer3"],
+        )
+
+    def test_two_browsers_on_one_suite_are_kept_apart(self):
+        # Run 32743362153: both blobs name the suite `speedometer3`, so keying
+        # on that alone averaged 26.7 with 32.9 into 29.8 and called the 23%
+        # gap between two browsers this pool's noise.
+        runs = self._run_with(
+            {
+                "firefox1": _perfherder(26.74),
+                "firefox2": _perfherder(26.65),
+                "car1": _perfherder(
+                    32.94, application="custom-car", version="154.0.8022.0"
+                ),
+            }
+        )
+        self.assertEqual(
+            sorted(runs[0]["scores"]),
+            ["custom-car speedometer3", "firefox speedometer3"],
+        )
+        self.assertEqual(self._values(runs, "firefox speedometer3"), [26.74, 26.65])
+        self.assertEqual(self._values(runs, "custom-car speedometer3"), [32.94])
+        # The pool's Firefox noise, no longer polluted by the other browser.
+        firefox = self.mod.summarize(self._values(runs, "firefox speedometer3"))
+        self.assertLess(firefox["cv"], 1.0)
+
+    def test_each_browsers_version_is_kept(self):
+        runs = self._run_with(
+            {
+                "firefox1": _perfherder(26.74),
+                "car1": _perfherder(
+                    32.94, application="custom-car", version="154.0.8022.0"
+                ),
+            }
+        )
+        self.assertEqual(
+            runs[0]["scores"]["firefox speedometer3"]["version"], "156.0a1"
+        )
+        self.assertEqual(
+            runs[0]["scores"]["custom-car speedometer3"]["version"], "154.0.8022.0"
+        )
+        table = "\n".join(self.mod.score_summary_lines(runs))
+        self.assertIn("| custom-car speedometer3 ↑ | `154.0.8022.0` |", table)
+        self.assertIn("| firefox speedometer3 ↑ | `156.0a1` |", table)
+
+    def test_a_blob_without_an_application_keeps_the_bare_suite_name(self):
+        runs = self._run_with({"run1": _perfherder(24.5, application=None)})
+        self.assertEqual(sorted(runs[0]["scores"]), ["speedometer3"])
+        self.assertEqual(self.mod.score_key({}, "talos-other"), "talos-other")
+
+    def test_summarize_reports_spread_not_just_a_mean(self):
+        stats = self.mod.summarize([24.5, 25.5, 23.0, 26.0])
+        self.assertEqual(stats["n"], 4)
+        self.assertAlmostEqual(stats["mean"], 24.75)
+        self.assertAlmostEqual(stats["median"], 25.0)
+        self.assertEqual((stats["min"], stats["max"]), (23.0, 26.0))
+        self.assertGreater(stats["stdev"], 0)
+        self.assertAlmostEqual(stats["cv"], 100 * stats["stdev"] / stats["mean"])
+
+    def test_summarize_of_a_single_run_has_no_stdev(self):
+        stats = self.mod.summarize([24.5])
+        self.assertEqual(stats["stdev"], 0.0)
+        self.assertEqual(stats["cv"], 0.0)
+
+    def test_summary_table_renders_the_pool_and_direction(self):
+        runs = self._run_with({"run1": _perfherder(24.5), "run2": _perfherder(25.5)})
+        table = "\n".join(self.mod.score_summary_lines(runs))
+        self.assertIn("### Scores", table)
+        self.assertIn("win11-64-24h2-hw-perf-debug", table)
+        self.assertIn("speedometer3 ↑", table)
+        self.assertIn("25.00", table)
+        # The headline table only: per-run values are detail and moved down.
+        self.assertNotIn("per run:", table)
+
+    def test_the_per_run_values_are_in_the_detail_section(self):
+        runs = self._run_with({"run1": _perfherder(24.5), "run2": _perfherder(25.5)})
+        detail = "\n".join(self.mod.score_detail_lines(runs))
+        self.assertIn("### Score detail", detail)
+        self.assertIn("per run: 24.50 (nuc13-024), 25.50 (nuc13-024)", detail)
+
+    def test_in_task_replicates_are_reported_when_the_task_carried_them(self):
+        runs = self._run_with({"run1": _perfherder(24.5, replicates=(24.0, 25.0))})
+        detail = "\n".join(self.mod.score_detail_lines(runs))
+        self.assertIn("2 in-task replicates, mean 24.50", detail)
+
+
+class TestWorkerBreakdown(RunnerTestBase):
+    """A pool mean of three NUCs hides the one that is slow."""
+
+    def _scored(self, samples, nodes=None, suite="speedometer3"):
+        """A run whose scores are already collected, so a test can state the
+        (worker, value) pairs directly."""
+        return [
+            {
+                "pool": "win11-64-24h2-hw-perf-debug",
+                "task_group_id": GROUP,
+                "nodes": nodes or [],
+                "scores": {
+                    suite: {
+                        "unit": "score",
+                        "lower_is_better": False,
+                        "samples": [
+                            {
+                                "worker": worker,
+                                "value": value,
+                                "task_id": f"task{i}",
+                                "replicates": [],
+                            }
+                            for i, (worker, value) in enumerate(samples)
+                        ],
+                    }
+                },
+            }
+        ]
+
+    def test_worker_is_read_from_the_last_run(self):
+        task = _task("a" * 22, "completed", worker="nuc13-024")
+        task["status"]["runs"].append({"runId": 1, "workerId": "nuc13-059"})
+        self.assertEqual(self.mod.task_worker(task), "nuc13-059")
+
+    def test_worker_missing_is_not_a_crash(self):
+        self.assertEqual(self.mod.task_worker(_task("a" * 22, "completed")), "unknown")
+
+    def test_samples_group_by_worker(self):
+        grouped = self.mod.by_worker(
+            [
+                {"worker": "nuc13-059", "value": 1.0},
+                {"worker": "nuc13-024", "value": 2.0},
+                {"worker": "nuc13-059", "value": 3.0},
+            ]
+        )
+        self.assertEqual(list(grouped), ["nuc13-024", "nuc13-059"])
+        self.assertEqual([s["value"] for s in grouped["nuc13-059"]], [1.0, 3.0])
+
+    def test_collect_scores_records_the_node_that_produced_each_value(self):
+        blobs = {"run1": _perfherder(24.5), "run2": _perfherder(20.0)}
+        runs = TestScores._run_with(
+            self,
+            blobs,
+            workers={"run1": "nuc13-024", "run2": "nuc13-119"},
+        )
+        samples = runs[0]["scores"]["firefox speedometer3"]["samples"]
+        self.assertEqual(
+            {s["worker"]: s["value"] for s in samples},
+            {"nuc13-024": 24.5, "nuc13-119": 20.0},
+        )
+
+    def test_table_has_a_row_per_worker(self):
+        runs = self._scored(
+            [("nuc13-024", 25.0), ("nuc13-024", 25.0), ("nuc13-059", 25.0)]
+        )
+        table = "\n".join(self.mod.worker_summary_lines(runs))
+        self.assertIn("#### By worker", table)
+        self.assertIn("`nuc13-024`", table)
+        self.assertIn("`nuc13-059`", table)
+
+    def test_nodes_are_not_compared_against_each_other(self):
+        # Two nodes that disagree by 20%. The median of two node means is the
+        # midpoint, so a delta column would put both of them equally far from
+        # it and mark both -- which is arithmetic, not a finding.
+        runs = self._scored([("nuc13-024", 25.0), ("nuc13-119", 20.0)])
+        table = "\n".join(self.mod.worker_summary_lines(runs))
+        self.assertNotIn("⚠️", table)
+        self.assertNotIn("vs peers", table)
+        self.assertNotIn("%", table.splitlines()[2], "no delta column in the header")
+        self.assertIn("25.00", table)
+        self.assertIn("20.00", table)
+
+    def test_near_zero_scores_produce_no_flag(self):
+        # Run 32743362153: a node scoring 0.00 dropped frames against one
+        # scoring 0.48 was marked -100%, on a suite where 0.00 is the best
+        # possible result.
+        runs = self._scored([("nuc13-074", 0.0), ("nuc13-115", 0.48)])
+        table = "\n".join(self.mod.worker_summary_lines(runs))
+        self.assertNotIn("⚠️", table)
+        self.assertNotIn("100.0%", table)
+
+    def test_each_node_still_reports_its_own_spread(self):
+        # CV is what replaces the delta: it means the same thing whether the
+        # pool has two nodes or ten.
+        runs = self._scored([("nuc13-024", 20.0), ("nuc13-024", 30.0)])
+        row = next(
+            line
+            for line in self.mod.worker_summary_lines(runs)
+            if "`nuc13-024`" in line
+        )
+        self.assertIn("| 2 |", row)
+        self.assertIn("25.00", row)
+        self.assertIn("28.3%", row, "sample stdev 7.07 over a mean of 25")
+
+    def test_only_nodes_that_produced_a_result_get_a_row(self):
+        # What this replaced: idle nodes were worked out per suite, so a pool of
+        # 41 nodes running each test once rendered one row and forty "no result"
+        # rows per suite -- eleven suites of that in run 32180165353.
+        runs = self._scored(
+            [("nuc13-024", 25.0)], nodes=["nuc13-024", "nuc13-059", "nuc13-119"]
+        )
+        table = "\n".join(self.mod.worker_summary_lines(runs))
+        rows = [line for line in table.splitlines() if line.startswith("| win11")]
+        self.assertEqual(len(rows), 1)
+        self.assertIn("`nuc13-024`", rows[0])
+        for node in ("nuc13-059", "nuc13-119"):
+            self.assertNotIn(f"`{node}`", table)
+
+    def test_a_node_missing_from_one_suite_is_not_idle(self):
+        runs = self._scored([("nuc13-024", 25.0)], nodes=["nuc13-024", "nuc13-059"])
+        runs[0]["scores"]["youtube-playback-hfr"] = {
+            "unit": "score",
+            "lower_is_better": True,
+            "samples": [
+                {
+                    "worker": "nuc13-059",
+                    "value": 0.5,
+                    "task_id": "task9",
+                    "replicates": [],
+                }
+            ],
+        }
+        self.assertEqual(self.mod.idle_nodes(runs[0]), [])
+        self.assertEqual(self.mod.idle_note(runs[0]), "")
+
+    def test_idle_nodes_are_named_when_the_run_had_work_for_all_of_them(self):
+        runs = self._scored(
+            [("nuc13-024", 25.0), ("nuc13-024", 25.0), ("nuc13-059", 25.0)],
+            nodes=["nuc13-024", "nuc13-059", "nuc13-119"],
+        )
+        note = self.mod.idle_note(runs[0])
+        self.assertIn("1 of 3", note)
+        self.assertIn("nuc13-119", note)
+        self.assertIn(f"- {note}", "\n".join(self.mod.worker_summary_lines(runs)))
+
+    def test_an_uneven_split_is_counted_rather_than_named(self):
+        # One result across three nodes: the idle two are arithmetic, not a fault.
+        runs = self._scored(
+            [("nuc13-024", 25.0)], nodes=["nuc13-024", "nuc13-059", "nuc13-119"]
+        )
+        note = self.mod.idle_note(runs[0])
+        self.assertIn("2 of 3", note)
+        self.assertIn("uneven split", note)
+        self.assertNotIn("nuc13-119", note)
+
+    def test_a_run_without_a_node_list_gets_no_note(self):
+        runs = self._scored([("nuc13-024", 25.0)])
+        self.assertEqual(self.mod.idle_note(runs[0]), "")
+
+    def test_the_comparison_helpers_are_gone(self):
+        for name in ("peer_baseline", "percent_delta", "is_outlier"):
+            self.assertFalse(hasattr(self.mod, name), name)
+
+    def test_breakdown_is_part_of_the_score_detail_section(self):
+        runs = self._scored([("nuc13-024", 25.0), ("nuc13-119", 25.0)])
+        section = "\n".join(self.mod.score_detail_lines(runs))
+        self.assertIn("### Score detail", section)
+        self.assertIn("#### By worker", section)
+        self.assertIn("25.00 (nuc13-024)", section)
+        # The headline table stays above; this section is only the breakdown.
+        self.assertNotIn("### Scores", section)
+
+
+POOLS_YAML = """
+pools:
+  - name: "win11-64-24h2-hw-alpha"
+    Description: "NUC13 staging"
+    image: "{image}"
+    src_Organisation: "mozilla-platform-ops"
+    src_Repository: "ronin_puppet"
+    src_Branch: "master"
+    hash: "{hash}"
+    puppet_version: "8.10.0"
+    openvox_version: "8.19.2"
+    git_version: "2.50.0"
+    secret_date: "02-24-2026"
+    domain_suffix: "wintest2.releng.mdc1.mozilla.com"
+    nodes:
+{nodes}
+"""
+
+
+def _pools_yaml(
+    image="win11-24H2-NUC-01-16-2025", hash="74e8909", nodes=("nuc13-024",)
+):
+    return POOLS_YAML.format(
+        image=image, hash=hash, nodes="\n".join(f"    - {n}" for n in nodes)
+    )
+
+
+class _FakePool:
+    """Enough of HwPool for the deployment-record code, which only reads these."""
+
+    def __init__(self, name, dev_branch=None, deployment=None):
+        self.name = name
+        self.dev_branch = dev_branch
+        self.nodes = ("nuc13-024",)
+        self.deployment = deployment or {
+            "image": "checkout-image",
+            "src_branch": "master",
+            "revision": "74e8909",
+            "dev_branch": dev_branch,
+        }
+        self.identity = {
+            key: self.deployment.get(key) for key in ("image", "src_branch", "revision")
+        }
+        self.config_url = "https://example/tree/74e8909"
+
+
+class TestDeploymentDetails(RunnerTestBase):
+    """pools.yml is the only record of what a hardware pool is running, so the
+    run has to say which configuration produced its numbers."""
+
+    POOL = "win11-64-24h2-hw-alpha"
+
+    def _run(self, **overrides):
+        deployment = {
+            "description": "NUC13 staging",
+            "image": "win11-24H2-NUC-01-16-2025",
+            "src_organisation": "mozilla-platform-ops",
+            "src_repository": "ronin_puppet",
+            "src_branch": "master",
+            "revision": "74e8909",
+            "dev_branch": None,
+            "puppet_version": "8.10.0",
+            "openvox_version": "8.19.2",
+            "git_version": "2.50.0",
+            "secret_date": "02-24-2026",
+            "domain_suffix": "wintest2.releng.mdc1.mozilla.com",
+        }
+        deployment.update(overrides)
+        return [
+            {
+                "pool": self.POOL,
+                "deployment": deployment,
+                "config_url": (
+                    "https://github.com/mozilla-platform-ops/ronin_puppet/tree/74e8909"
+                ),
+                "nodes": ["nuc13-024", "nuc13-059"],
+            }
+        ]
+
+    def test_block_names_the_config_the_tasks_ran_on(self):
+        block = "\n".join(self.mod.deployment_summary_lines(self._run()))
+        self.assertIn("### Pool deployment", block)
+        self.assertIn("| Pool | NUC13 staging |", block)
+        self.assertIn("| WIM image | `win11-24H2-NUC-01-16-2025` |", block)
+        # org, repo, branch and revision are one row, linking the tree that ran
+        self.assertIn(
+            "| Config | [mozilla-platform-ops/ronin_puppet @ master (74e8909)]"
+            "(https://github.com/mozilla-platform-ops/ronin_puppet/tree/74e8909) |",
+            block,
+        )
+        self.assertIn("| Nodes | 2 (`nuc13-024` … `nuc13-059`) |", block)
+
+    def test_what_the_config_link_already_carries_is_not_a_row(self):
+        """Four rows naming one tree, and five more of what that tree sets, is a
+        table nobody reads. The link and the pre-flight log carry them."""
+        runs = self._run(dev_branch="nuc-wim-pipeline")
+        runs[0]["deployment_source"] = "nuc-wim-pipeline"
+        block = "\n".join(self.mod.deployment_summary_lines(runs))
+        for dropped in (
+            "Config org",
+            "Config repo",
+            "Config branch",
+            "Config revision",
+            "Deploy branch (dev)",
+            "Puppet",
+            "OpenVox",
+            "Git",
+            "Secrets",
+            "Domain",
+        ):
+            self.assertNotIn(f"| {dropped} |", block)
+        # ...but the pre-flight log still says all of it, key=value
+        logged = self.mod.deployment_log_lines(runs[0]["deployment"])
+        self.assertIn("puppet_version=8.10.0", logged)
+        self.assertIn("secret_date=02-24-2026", logged)
+        self.assertIn("domain_suffix=wintest2.releng.mdc1.mozilla.com", logged)
+        # and drift can still name any of them
+        self.assertEqual(self.mod.DRIFT_LABELS["puppet_version"], "Puppet")
+        self.assertEqual(self.mod.DRIFT_LABELS["dev_branch"], "Deploy branch (dev)")
+
+    def test_the_config_row_survives_a_pin_it_cannot_link(self):
+        # No revision means no tree URL; the branch is still worth printing.
+        runs = self._run(revision=None)
+        runs[0]["config_url"] = None
+        block = "\n".join(self.mod.deployment_summary_lines(runs))
+        self.assertIn(
+            "| Config | `mozilla-platform-ops/ronin_puppet @ master` |", block
+        )
+
+    def test_a_field_pools_yaml_omits_is_left_out(self):
+        block = "\n".join(
+            self.mod.deployment_summary_lines(self._run(description=None))
+        )
+        self.assertNotIn("| Pool |", block)
+
+    def test_a_dev_branch_pool_notes_that_the_details_came_from_the_branch(self):
+        runs = self._run(dev_branch="nuc-wim-pipeline")
+        runs[0]["deployment_source"] = "nuc-wim-pipeline"
+        block = "\n".join(self.mod.deployment_summary_lines(runs))
+        self.assertIn("[!NOTE]", block)
+        self.assertIn("is on the dev option: `dev: nuc-wim-pipeline`", block)
+        # the branch's pools.yml is a link, so the record can actually be read
+        self.assertIn(
+            "read from [that branch's `pools.yml`](https://github.com/"
+            "mozilla-platform-ops/worker-images/blob/nuc-wim-pipeline/",
+            block,
+        )
+
+    def test_the_dev_link_follows_the_repo_the_workflow_runs_in(self):
+        with unittest.mock.patch.dict(
+            os.environ, {"GITHUB_REPOSITORY": "someone/fork"}
+        ):
+            runs = self._run(dev_branch="wip")
+            runs[0]["deployment_source"] = "wip"
+            block = "\n".join(self.mod.deployment_summary_lines(runs))
+        self.assertIn("https://github.com/someone/fork/blob/wip/", block)
+
+    def test_an_unreadable_dev_branch_says_the_details_may_lag(self):
+        runs = self._run(dev_branch="nuc-wim-pipeline")
+        runs[0]["deployment_source"] = "main"
+        block = "\n".join(self.mod.deployment_summary_lines(runs))
+        self.assertIn("is on the dev option: `dev: nuc-wim-pipeline`", block)
+        self.assertIn("could not be read", block)
+        self.assertIn("may lag the hardware", block)
+
+    def test_a_pool_without_a_dev_branch_says_nothing_about_branches(self):
+        block = "\n".join(self.mod.deployment_summary_lines(self._run()))
+        self.assertNotIn("[!NOTE]", block)
+        self.assertNotIn("dev option", block)
+
+    def test_a_dev_pool_reports_the_branch_record_not_the_checkout(self):
+        # The live case on 2026-08-19: ref-alpha's deploy branch records a baked
+        # WIM and a different ronin pin, and the branch is what is on the metal.
+        checkout = _FakePool(
+            "win11-64-24h2-hw-ref-alpha",
+            dev_branch="nuc-wim-pipeline",
+            deployment={
+                "image": "win11-24H2-NUC-01-16-2025",
+                "src_branch": "RELOPS-2467-xperf-dynamic-trace",
+                "revision": "a22e7ac",
+                "dev_branch": "nuc-wim-pipeline",
+            },
+        )
+        snapshot = {
+            "nuc-wim-pipeline": {
+                checkout.name: {
+                    "deployment": {
+                        "image": "win11-24h2-hw-20260811-202701",
+                        "src_branch": "wim-bake-role",
+                        "revision": "48a8b9d4",
+                        "dev_branch": None,
+                    },
+                    "config_url": "https://example/tree/48a8b9d4",
+                    "nodes": ("t-nuc12-002",),
+                }
+            }
+        }
+        records = self.mod.deployment_records([checkout], "main", snapshot)
+        record = records[checkout.name]
+        self.assertEqual(record["source"], "nuc-wim-pipeline")
+        self.assertEqual(record["deployment"]["image"], "win11-24h2-hw-20260811-202701")
+        self.assertEqual(record["identity"]["revision"], "48a8b9d4")
+        self.assertEqual(record["config_url"], "https://example/tree/48a8b9d4")
+        # the branch's own copy has no `dev:` key; keep the flag that pointed here
+        self.assertEqual(record["deployment"]["dev_branch"], "nuc-wim-pipeline")
+
+    def test_a_pool_without_dev_is_read_from_the_checkout(self):
+        pool = _FakePool("win11-64-24h2-hw-alpha")
+        records = self.mod.deployment_records([pool], "main", {})
+        self.assertEqual(records[pool.name]["source"], "main")
+        self.assertEqual(records[pool.name]["deployment"]["image"], "checkout-image")
+
+    def test_an_unreadable_dev_branch_falls_back_to_the_checkout(self):
+        pool = _FakePool("win11-64-24h2-hw-ref-alpha", dev_branch="gone")
+        records = self.mod.deployment_records([pool], "main", {})
+        self.assertEqual(records[pool.name]["source"], "main")
+        self.assertEqual(records[pool.name]["deployment"]["image"], "checkout-image")
+
+    def test_refs_cover_the_checkout_and_every_dev_branch_once(self):
+        pools = [
+            _FakePool("a", dev_branch="feature"),
+            _FakePool("b"),
+            _FakePool("c", dev_branch="feature"),
+        ]
+        self.assertEqual(self.mod.deployment_refs(pools, "main"), ["main", "feature"])
+
+    def test_no_deployment_means_no_section(self):
+        self.assertEqual(self.mod.deployment_summary_lines([{"pool": self.POOL}]), [])
+
+    def test_log_lines_skip_what_is_unset(self):
+        lines = self.mod.deployment_log_lines(
+            {"image": "win11", "dev_branch": None, "git_version": ""}
+        )
+        self.assertEqual(lines, ["image=win11"])
+
+
+class TestDeploymentDrift(RunnerTestBase):
+    """A pools.yml edit that lands mid-run splits the results across two
+    configurations, which is worth shouting about."""
+
+    POOL = "win11-64-24h2-hw-alpha"
+
+    def _snapshot(self, image="win11-24H2-NUC-01-16-2025", nodes=("nuc13-024",)):
+        return {
+            "main": {
+                self.POOL: {
+                    "deployment": {"image": image, "revision": "74e8909"},
+                    "nodes": tuple(nodes),
+                }
+            }
+        }
+
+    def test_a_changed_field_is_reported_with_both_values(self):
+        changes = self.mod.compare_deployments(
+            self._snapshot(), self._snapshot(image="win11-24H2-NUC-08-18-2026")
+        )
+        self.assertEqual(len(changes), 1)
+        self.assertEqual(changes[0]["field"], "image")
+        self.assertEqual(changes[0]["before"], "win11-24H2-NUC-01-16-2025")
+        self.assertEqual(changes[0]["after"], "win11-24H2-NUC-08-18-2026")
+        self.assertEqual(changes[0]["ref"], "main")
+
+    def test_an_unchanged_snapshot_is_quiet(self):
+        self.assertEqual(
+            self.mod.compare_deployments(self._snapshot(), self._snapshot()), []
+        )
+        self.assertEqual(self.mod.drift_summary_lines([]), [])
+
+    def test_nodes_joining_or_leaving_the_pool_are_reported(self):
+        changes = self.mod.compare_deployments(
+            self._snapshot(nodes=("nuc13-024", "nuc13-059")),
+            self._snapshot(nodes=("nuc13-024", "nuc13-119")),
+        )
+        self.assertEqual([c["field"] for c in changes], ["nodes"])
+        self.assertIn("added nuc13-119", changes[0]["after"])
+        self.assertIn("removed nuc13-059", changes[0]["after"])
+
+    def test_a_pool_deleted_mid_run_is_a_change(self):
+        changes = self.mod.compare_deployments(self._snapshot(), {"main": {}})
+        self.assertEqual(changes[0]["after"], "removed from pools.yml")
+
+    def test_a_ref_that_could_not_be_reread_is_not_called_drift(self):
+        # fetch_registry returning None must not read as "everything changed"
+        self.assertEqual(self.mod.compare_deployments(self._snapshot(), {}), [])
+
+    def test_the_caution_block_leads_the_summary(self):
+        changes = self.mod.compare_deployments(
+            self._snapshot(), self._snapshot(image="other")
+        )
+        lines = self.mod.drift_summary_lines(changes)
+        self.assertEqual(lines[0], "> [!CAUTION]")
+        self.assertIn("changed while this run was in flight", lines[1])
+        table = "\n".join(lines)
+        self.assertIn("| win11-64-24h2-hw-alpha | WIM image | `main` |", table)
+
+    def test_summary_puts_the_caution_above_everything(self):
+        changes = self.mod.compare_deployments(
+            self._snapshot(), self._snapshot(image="other")
+        )
+        runs = [
+            {
+                "pool": self.POOL,
+                "identity": {"image": "i", "src_branch": "b", "revision": "r"},
+                "verdict": "✅ passed",
+                "task_group_id": GROUP,
+            }
+        ]
+        with tempfile.NamedTemporaryFile("r+", suffix=".md") as handle:
+            os.environ["GITHUB_STEP_SUMMARY"] = handle.name
+            try:
+                self.mod.write_github_summary(runs, "https://tc.example", "", changes)
+            finally:
+                del os.environ["GITHUB_STEP_SUMMARY"]
+            written = Path(handle.name).read_text()
+        self.assertLess(written.index("[!CAUTION]"), written.index("| Pool | Image |"))
+        self.assertTrue(written.startswith("## HW OS Integration Tests"))
+
+    def test_snapshot_reads_each_ref_and_survives_a_failure(self):
+        served = {
+            self.mod.pools_yaml_url("owner/repo", "main"): _pools_yaml(),
+            self.mod.pools_yaml_url("owner/repo", "dev-branch"): _pools_yaml(
+                image="branch-image", nodes=("nuc13-024", "nuc13-059")
+            ),
+        }
+
+        class Response:
+            def __init__(self, text):
+                self.text = text
+
+            def raise_for_status(self):
+                return None
+
+        def fake_get(url, timeout=None):
+            if url not in served:
+                raise self.mod.requests.RequestException(f"404 {url}")
+            return Response(served[url])
+
+        original = getattr(self.mod.requests, "get", None)
+        self.mod.requests.get = fake_get
+        try:
+            pools = [_FakePool(self.POOL, dev_branch="dev-branch")]
+            refs = self.mod.deployment_refs(pools, "main")
+            self.assertEqual(refs, ["main", "dev-branch"])
+            snapshot = self.mod.snapshot_deployments(
+                [self.POOL], "owner/repo", refs + ["gone"]
+            )
+            self.assertEqual(sorted(snapshot), ["dev-branch", "main"])
+            self.assertEqual(
+                snapshot["main"][self.POOL]["deployment"]["image"],
+                "win11-24H2-NUC-01-16-2025",
+            )
+            # the dev branch's copy is a different record of the same pool, which
+            # is the point of reading it separately
+            self.assertEqual(
+                snapshot["dev-branch"][self.POOL]["deployment"]["image"],
+                "branch-image",
+            )
+            self.assertEqual(len(snapshot["dev-branch"][self.POOL]["nodes"]), 2)
+        finally:
+            if original is None:
+                del self.mod.requests.get
+            else:
+                self.mod.requests.get = original
+
+
+class _FakeQueue:
+    """listTaskGroup over a script of responses, and a cancelTask nothing calls."""
+
+    def __init__(self, responses):
+        self.responses = list(responses)
+        self.cancelled = []
+        self.listed = 0
+
+    def listTaskGroup(self, group):
+        self.listed += 1
+        return self.responses[min(self.listed - 1, len(self.responses) - 1)]
+
+    def cancelTask(self, task_id):
+        self.cancelled.append(task_id)
+
+
+class TestWaitCeiling(RunnerTestBase):
+    """GitHub cancels the job at 6h and the step summary dies with it -- run
+    31516844982 did, at 6h00m34s. Waiting stops before that, with results."""
+
+    def test_the_ceiling_leaves_time_to_write_the_summary(self):
+        self.assertLessEqual(self.mod.WAIT_CEILING_SECONDS, int(5.75 * 3600))
+        self.assertGreaterEqual(6 * 3600 - self.mod.WAIT_CEILING_SECONDS, 600)
+
+    def test_a_wait_that_fits_is_left_alone(self):
+        self.assertEqual(self.mod.wait_budget(3600, 0, in_actions=True), 3600)
+
+    def test_a_six_hour_wait_is_trimmed_to_the_ceiling(self):
+        self.assertEqual(
+            self.mod.wait_budget(6 * 3600, 0, in_actions=True),
+            self.mod.WAIT_CEILING_SECONDS,
+        )
+
+    def test_time_the_run_already_burned_comes_off_the_budget(self):
+        # checkout, uv and pre-flight happen before the wait starts
+        self.assertEqual(
+            self.mod.wait_budget(6 * 3600, 900, in_actions=True),
+            self.mod.WAIT_CEILING_SECONDS - 900,
+        )
+
+    def test_a_run_already_past_the_ceiling_waits_no_longer(self):
+        self.assertEqual(self.mod.wait_budget(3600, 10 * 3600, in_actions=True), 0)
+
+    def test_off_ci_there_is_nothing_to_be_cancelled_by(self):
+        self.assertEqual(self.mod.wait_budget(8 * 3600, 0, in_actions=False), 8 * 3600)
+
+    def test_the_budget_is_measured_from_the_start_of_the_run(self):
+        started = "2026-08-19T12:00:00Z"
+        now = datetime.datetime(2026, 8, 19, 12, 20, tzinfo=datetime.timezone.utc)
+        with unittest.mock.patch.dict(os.environ, {"GITHUB_RUN_STARTED_AT": started}):
+            self.assertEqual(self.mod.elapsed_since_run_start(now), 1200.0)
+
+    def test_an_unusable_run_start_budgets_from_now_instead(self):
+        for stamp in ("", "yesterday"):
+            with unittest.mock.patch.dict(os.environ, {"GITHUB_RUN_STARTED_AT": stamp}):
+                self.assertEqual(self.mod.elapsed_since_run_start(), 0.0)
+
+    def test_running_out_of_wait_reads_the_group_once_more_and_leaves_it(self):
+        # The last poll can be five minutes stale, so the tasks that landed in
+        # that window are collected before the run gives up on them.
+        queue = _FakeQueue(
+            [{"tasks": [_task(GROUP, "completed"), _task("a" * 22, "running")]}]
+        )
+        run = {"pool": "win11-64-24h2-hw-alpha", "task_group_id": GROUP}
+        self.mod.monitor(queue, [run], 0, "https://tc.example")
+        self.assertEqual(queue.listed, 1, "the final reading is taken")
+        self.assertTrue(run["timed_out"])
+        self.assertEqual(run["counts"]["completed"], 0)
+        self.assertEqual(run["counts"]["pending"], 1)
+        self.assertEqual(queue.cancelled, [], "the tasks are Taskcluster's to finish")
+
+    def test_tasks_that_landed_in_the_last_poll_gap_are_not_a_timeout(self):
+        queue = _FakeQueue(
+            [{"tasks": [_task(GROUP, "completed"), _task("a" * 22, "completed")]}]
+        )
+        run = {"pool": "win11-64-24h2-hw-alpha", "task_group_id": GROUP}
+        self.mod.monitor(queue, [run], 0, "https://tc.example")
+        self.assertTrue(run["done"])
+        self.assertNotIn("timed_out", run)
+
+    def test_the_summary_says_they_outran_the_wait_and_links_the_group(self):
+        runs = [
+            {
+                "pool": "win11-64-24h2-hw-alpha",
+                "task_group_id": GROUP,
+                "timed_out": True,
+                "waited": int(5.75 * 3600),
+                "counts": {"completed": 34, "total": 110, "pending": 76},
+            }
+        ]
+        block = "\n".join(self.mod.outran_wait_lines(runs, "https://tc.example"))
+        self.assertIn("[!WARNING]", block)
+        self.assertIn("ran longer than the 5h 45m this run waited", block)
+        self.assertIn("Nothing was cancelled", block)
+        self.assertIn("34/110 completed, 76 still running", block)
+        self.assertIn(f"https://tc.example/tasks/groups/{GROUP}", block)
+
+    def test_a_run_that_finished_in_time_says_nothing(self):
+        runs = [{"pool": "win11-64-24h2-hw-alpha", "task_group_id": GROUP}]
+        self.assertEqual(self.mod.outran_wait_lines(runs, "https://tc.example"), [])
+
+
+class TestVerdictPolicy(RunnerTestBase):
+    """Which outcomes are the image's fault, and which only look like it."""
+
+    def _counts(self, **overrides):
+        counts = {
+            "completed": 10,
+            "failed": 0,
+            "exception": 0,
+            "blocked": 0,
+            "pending": 0,
+            "total": 10,
+            "decision": "completed",
+        }
+        counts.update(overrides)
+        return counts
+
+    def test_a_task_that_ran_and_failed_is_the_only_red(self):
+        verdict, reason, failed = self.mod.classify_run(
+            {"pool": "p", "counts": self._counts(failed=1, completed=9)}
+        )
+        self.assertTrue(failed)
+        self.assertIsNone(reason)
+        self.assertEqual(verdict, "❌ failed")
+
+    def test_an_exception_counts_as_a_hardware_failure_too(self):
+        _, _, failed = self.mod.classify_run(
+            {"pool": "p", "counts": self._counts(exception=1, completed=9)}
+        )
+        self.assertTrue(failed)
+
+    def test_everything_that_never_reached_the_hardware_is_inconclusive(self):
+        cases = {
+            "outran the wait": {
+                "pool": "p",
+                "timed_out": True,
+                "counts": self._counts(pending=3),
+            },
+            "decision failed": {
+                "pool": "p",
+                "counts": self._counts(decision="failed", total=0, completed=0),
+            },
+            "empty graph": {"pool": "p", "counts": self._counts(total=0, completed=0)},
+            "no counts at all": {"pool": "p"},
+            "blocked upstream": {
+                "pool": "p",
+                "counts": self._counts(blocked=2, completed=8, total=10),
+            },
+            "no task group": {"pool": "p", "verdict": "⚠️ decision failed"},
+        }
+        for label, run in cases.items():
+            verdict, reason, failed = self.mod.classify_run(run)
+            self.assertFalse(failed, f"{label} must not be red")
+            self.assertTrue(reason, f"{label} must give the reader a reason")
+            self.assertNotIn("❌", verdict, label)
+
+    def test_a_clean_run_passes(self):
+        verdict, reason, failed = self.mod.classify_run(
+            {"pool": "p", "counts": self._counts()}
+        )
+        self.assertEqual(verdict, "✅ passed")
+        self.assertFalse(failed)
+        self.assertIsNone(reason)
+
+    def test_a_failure_outranks_a_blocked_task_in_the_same_pool(self):
+        # A pool that both failed a test and lost one upstream is red: the
+        # failure is the finding, the block is noise beside it.
+        _, _, failed = self.mod.classify_run(
+            {"pool": "p", "counts": self._counts(failed=1, blocked=2, completed=7)}
+        )
+        self.assertTrue(failed)
+
+
+class TestInconclusiveBlock(RunnerTestBase):
+    """A green run that proved nothing has to say so where the green is.
+
+    Red is reserved for a task that ran on the hardware and did not pass. On
+    2026-08-19 the perf-debug run went red because an artifact had expired and
+    the ref-alpha run went red because the baked image had no hardware video
+    decode; a reader trained by the first learns to skim the second.
+    """
+
+    def test_a_pass_says_nothing_extra(self):
+        self.assertEqual(self.mod.inconclusive_lines([]), [])
+
+    def test_each_pool_that_reached_no_verdict_is_named_with_its_reason(self):
+        block = "\n".join(
+            self.mod.inconclusive_lines(
+                [
+                    ("win11-64-24h2-hw-alpha", "nothing was replicated onto the pool"),
+                    (
+                        "win11-64-24h2-hw-ref-alpha",
+                        "the wait ran out while tasks were still running",
+                    ),
+                ]
+            )
+        )
+        self.assertIn("[!IMPORTANT]", block)
+        self.assertIn("green because nothing failed on the hardware", block)
+        self.assertIn("`win11-64-24h2-hw-alpha` — nothing was replicated", block)
+        self.assertIn("the wait ran out", block)
+        # the reader must not take it as a pass
+        self.assertIn("not because the image passed", block)
+
+
+class TestResultsTable(unittest.TestCase):
+    """One table for every pool's tasks, worst first, without the boilerplate
+    each pool already fixes."""
+
+    REF = "win11-64-24h2-hw-ref-alpha"
+    PERF = "win11-64-24h2-hw-perf-debug"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.mod = _load_runner()
+
+    def _task(self, pool, platform, suite, state, worker, seconds=60):
+        started = datetime.datetime(2026, 8, 21, 18, 0, 0, tzinfo=datetime.timezone.utc)
+        resolved = started + datetime.timedelta(seconds=seconds)
+        return {
+            "status": {
+                "taskId": f"{suite[:22]:x<22}",
+                "state": state,
+                "runs": [
+                    {
+                        "runId": 0,
+                        "workerId": worker,
+                        "started": started.isoformat().replace("+00:00", "Z"),
+                        "resolved": resolved.isoformat().replace("+00:00", "Z"),
+                    }
+                ],
+            },
+            "task": {
+                "metadata": {"name": f"gecko-hw-{pool}-test-{platform}/opt-{suite}"}
+            },
+        }
+
+    def _runs(self):
+        return [
+            {
+                "pool": self.REF,
+                "task_group_id": GROUP,
+                "identity": {"image": "i", "src_branch": "b", "revision": "r"},
+                "verdict": "✅ passed",
+                "tasks": [
+                    self._task(
+                        self.REF,
+                        "windows11-64-24h2-hw-ref-shippable",
+                        "mochitest-media-mda-gpu",
+                        "completed",
+                        "t-nuc12-003",
+                        seconds=1664,
+                    ),
+                    self._task(
+                        self.REF,
+                        "windows11-64-24h2-hw-ref-shippable",
+                        "browsertime-benchmark-firefox-speedometer3",
+                        "completed",
+                        "t-nuc12-002",
+                        seconds=815,
+                    ),
+                ],
+            },
+            {
+                "pool": self.PERF,
+                "task_group_id": "PERFGROUPID1234567890",
+                "identity": {"image": "i", "src_branch": "b", "revision": "r"},
+                "verdict": "❌ failed",
+                "tasks": [
+                    self._task(
+                        self.PERF,
+                        "windows11-64-24h2-shippable",
+                        "talos-other",
+                        "failed",
+                        "nuc13-074",
+                        seconds=1502,
+                    )
+                ],
+            },
+        ]
+
+    def _rendered(self, runs=None):
+        with tempfile.NamedTemporaryFile("r+", suffix=".md") as handle:
+            os.environ["GITHUB_STEP_SUMMARY"] = handle.name
+            try:
+                self.mod.write_github_summary(
+                    runs or self._runs(), "https://tc.example"
+                )
+            finally:
+                del os.environ["GITHUB_STEP_SUMMARY"]
+            return Path(handle.name).read_text()
+
+    def test_every_pool_shares_one_table(self):
+        written = self._rendered()
+        self.assertEqual(written.count("### Results"), 1)
+        # ...and the pool headings the per-pool tables used are gone with them.
+        self.assertNotIn(f"### {self.REF}", written)
+        self.assertNotIn(f"### {self.PERF}", written)
+
+    def test_a_task_row_drops_what_its_pool_already_says(self):
+        row = next(
+            line
+            for line in self._rendered().splitlines()
+            if "mochitest-media-mda-gpu" in line
+        )
+        self.assertIn("| [mochitest-media-mda-gpu](", row)
+        self.assertIn("| ref-alpha |", row)
+        self.assertNotIn("gecko-hw-", row)
+        self.assertNotIn("hw-ref-shippable", row)
+
+    def test_the_failure_is_the_first_row(self):
+        lines = self._rendered().splitlines()
+        start = lines.index("|:---:|---|---|---|---:|")
+        self.assertIn("talos-other", lines[start + 1])
+        # Then longest-running first among the green ones, across both pools.
+        self.assertIn("mochitest-media-mda-gpu", lines[start + 2])
+        self.assertIn("speedometer3", lines[start + 3])
+
+    def test_the_state_column_is_gone_but_a_strange_state_is_not(self):
+        written = self._rendered()
+        self.assertNotIn("| Status | Task | Worker | State | Duration |", written)
+        self.assertNotIn("| completed |", written)
+
+        runs = self._runs()
+        runs[1]["tasks"][0]["status"]["state"] = "wedged"
+        row = next(
+            line for line in self._rendered(runs).splitlines() if "talos-other" in line
+        )
+        self.assertIn("talos-other (wedged)", row)
+        self.assertIn("❓", row)
+
+    def test_the_platform_is_reported_once_per_pool(self):
+        written = self._rendered()
+        self.assertIn("| `windows11-64-24h2-hw-ref-shippable/opt` |", written)
+        self.assertIn("| `windows11-64-24h2-shippable/opt` |", written)
+        # The distinction that matters is ref against non-ref, and it is stated
+        # once rather than on all three task rows.
+        self.assertEqual(written.count("windows11-64-24h2-hw-ref-shippable"), 1)
+
+    def test_results_sit_between_the_verdict_and_the_deployment(self):
+        runs = self._runs()
+        runs[0]["deployment"] = {"image": "win11-24h2-hw-20260820-235936"}
+        written = self._rendered(runs)
+        self.assertLess(written.index("| Pool | Image |"), written.index("### Results"))
+        self.assertLess(
+            written.index("### Results"), written.index("### Pool deployment")
+        )
+
+    def test_an_unresolved_task_has_no_duration_and_sorts_above_green(self):
+        runs = self._runs()
+        pending = self._task(
+            self.REF, "windows11-64-24h2-hw-ref-shippable", "xpcshell", "pending", None
+        )
+        pending["status"]["runs"] = []
+        runs[0]["tasks"].append(pending)
+        lines = self._rendered(runs).splitlines()
+        start = lines.index("|:---:|---|---|---|---:|")
+        self.assertIn("talos-other", lines[start + 1])
+        self.assertIn("xpcshell", lines[start + 2])
+        self.assertTrue(lines[start + 2].endswith("| - |"))
+        self.assertIn("`unknown`", lines[start + 2])
+
+    def test_a_name_that_does_not_fit_the_pattern_survives_whole(self):
+        # perftest tasks carry no `/opt-`, and a pool name may carry no `-hw-`.
+        self.assertEqual(
+            self.mod.short_task("gecko-hw-pool-a-perftest-ml-perf-wasm", "pool-a"),
+            "perftest-ml-perf-wasm",
+        )
+        self.assertEqual(self.mod.short_pool("some-other-pool"), "some-other-pool")
+        self.assertEqual(self.mod.task_platform([], self.REF), "-")
+
+    def test_a_debug_build_keeps_its_suite_name(self):
+        self.assertEqual(
+            self.mod.short_task(
+                f"gecko-hw-{self.REF}-test-windows11-64-24h2/debug-xpcshell", self.REF
+            ),
+            "xpcshell",
+        )
+
+    def test_the_summary_reads_results_then_scores_then_detail(self):
+        runs = self._runs()
+        runs[0]["deployment"] = {"image": "win11-24h2-hw-20260820-235936"}
+        runs[0]["nodes"] = ["t-nuc12-002", "t-nuc12-003"]
+        runs[0]["scores"] = {
+            "speedometer3": {
+                "unit": "score",
+                "lower_is_better": False,
+                "samples": [
+                    {
+                        "worker": "t-nuc12-003",
+                        "value": 22.70,
+                        "task_id": "t1",
+                        "replicates": [22.6, 22.8],
+                    }
+                ],
+            }
+        }
+        written = self._rendered(runs)
+        order = [
+            written.index("| Pool | Image |"),
+            written.index("### Results"),
+            written.index("### Scores"),
+            written.index("### Pool deployment"),
+            written.index("### Score detail"),
+        ]
+        self.assertEqual(order, sorted(order), written)
+        # The idle-node accounting and the replicates go with the detail, not
+        # between the reader and the verdict.
+        self.assertLess(written.index("### Results"), written.index("#### By worker"))
+        self.assertLess(
+            written.index("### Results"), written.index("in-task replicates")
+        )
+        self.assertLess(
+            written.index("### Results"), written.index("produced no score")
+        )
+
+    def test_the_pool_mapping_leads_the_summary(self):
+        runs = self._runs()
+        runs[0]["stages"] = "win11-64-24h2-hw-ref"
+        runs[0]["nodes"] = ["t-nuc12-002", "t-nuc12-003"]
+        runs[1]["stages"] = "win11-64-24h2-hw"
+        runs[1]["nodes"] = ["nuc13-074", "nuc13-115", "nuc13-158"]
+        written = self._rendered(runs)
+        self.assertTrue(
+            written.startswith("## HW OS Integration Tests\n\n### Pool mapping"),
+            written,
+        )
+        self.assertLess(
+            written.index("### Pool mapping"), written.index("| Pool | Image |")
+        )
+        self.assertIn(
+            f"| `{self.REF}` | `win11-64-24h2-hw-ref` | "
+            "`windows11-64-24h2-hw-ref-shippable/opt` | 2 |",
+            written,
+        )
+        self.assertIn(
+            f"| `{self.PERF}` | `win11-64-24h2-hw` | "
+            "`windows11-64-24h2-shippable/opt` | 3 |",
+            written,
+        )
+
+    def test_the_platform_is_not_repeated_in_the_verdict_table(self):
+        # It says what the pool is a stand-in for, so it belongs to the mapping.
+        runs = self._runs()
+        runs[0]["stages"] = "win11-64-24h2-hw-ref"
+        written = self._rendered(runs)
+        self.assertEqual(written.count("windows11-64-24h2-hw-ref-shippable/opt"), 1)
+        header = next(
+            line for line in written.splitlines() if line.startswith("| Pool | Image |")
+        )
+        self.assertNotIn("Platform", header)
+
+    def test_a_pool_that_stages_nothing_still_gets_a_row(self):
+        runs = self._runs()[:1]
+        runs[0].pop("stages", None)
+        runs[0]["nodes"] = []
+        line = next(
+            row
+            for row in self.mod.pool_mapping_lines(runs)
+            if row.startswith(f"| `{self.REF}`")
+        )
+        self.assertIn("| `-` |", line)
+        self.assertTrue(line.endswith("| - |"))
+
+    def test_no_runs_means_no_mapping(self):
+        self.assertEqual(self.mod.pool_mapping_lines([]), [])
+
+    def test_no_tasks_means_no_table(self):
+        runs = self._runs()
+        for run in runs:
+            run["tasks"] = []
+        self.assertEqual(self.mod.results_table_lines(runs, "https://tc.example"), [])
+
+
+class TestBuildUnderTest(unittest.TestCase):
+    """Which Firefox build a replicated task installed, which is the half of a
+    red run this repo did not produce."""
+
+    POOL = "win11-64-24h2-hw-perf-debug"
+    SHIPPABLE = "Dqt4vebYTveKE-nU2_M_GQ"
+    PLAIN = "JVUDzESdTUqMrEQQQVGSBw"
+    REV = "a33c90571e92de766016d68eb74994cec1c0a75e"
+    URL = (
+        "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/"
+        "Dqt4vebYTveKE-nU2_M_GQ/artifacts/public/build/target.zip"
+    )
+
+    @classmethod
+    def setUpClass(cls):
+        cls.mod = _load_runner()
+
+    def _task(self, task_id, build_task, rev=None, repo=None, config=None):
+        url = (
+            "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/"
+            f"{build_task}/artifacts/public/build/target.zip"
+        )
+        env = {
+            "GECKO_HEAD_REPOSITORY": repo or "https://hg.mozilla.org/mozilla-central",
+            "GECKO_HEAD_REV": rev or self.REV,
+            "EXTRA_MOZHARNESS_CONFIG": json.dumps({"installer_url": url})
+            if config is None
+            else config,
+        }
+        return {
+            "status": {"taskId": task_id, "state": "completed"},
+            "task": {"metadata": {"name": task_id}, "payload": {"env": env}},
+        }
+
+    def test_one_build_shared_by_every_task_is_one_row(self):
+        tasks = [self._task(f"t{i}", self.SHIPPABLE) for i in range(4)]
+        builds = self.mod.builds_under_test(tasks)
+        self.assertEqual(len(builds), 1)
+        self.assertEqual(builds[0]["task_id"], self.SHIPPABLE)
+        self.assertEqual(builds[0]["artifact"], "public/build/target.zip")
+        self.assertEqual(builds[0]["revision"], self.REV)
+        self.assertEqual(builds[0]["tasks"], 4)
+
+    def test_a_pool_can_install_more_than_one_build(self):
+        # Run 32408143910: custom-car carried build-win64/opt while the other
+        # nine tasks used build-win64-shippable/opt, at the same revision.
+        tasks = [self._task(f"t{i}", self.SHIPPABLE) for i in range(9)]
+        tasks.append(self._task("custom-car", self.PLAIN))
+        builds = self.mod.builds_under_test(tasks)
+        self.assertEqual([b["tasks"] for b in builds], [9, 1], "most-used first")
+        self.assertEqual({b["task_id"] for b in builds}, {self.SHIPPABLE, self.PLAIN})
+
+    def test_a_task_with_no_installer_is_skipped_not_fatal(self):
+        tasks = [
+            self._task("good", self.SHIPPABLE),
+            self._task("no-config", self.SHIPPABLE, config=""),
+            self._task("bad-json", self.SHIPPABLE, config="{not json"),
+            {"status": {"taskId": "bare", "state": "completed"}, "task": {}},
+        ]
+        builds = self.mod.builds_under_test(tasks)
+        self.assertEqual(len(builds), 1)
+        self.assertEqual(builds[0]["tasks"], 1)
+
+    class _Queue:
+        """Shaped like the three queue calls build_metadata makes."""
+
+        def __init__(self):
+            self.asked = []
+
+        def task(self, task_id):
+            self.asked.append(("task", task_id))
+            return {"metadata": {"name": "build-win64-shippable/opt"}}
+
+        def status(self, task_id):
+            self.asked.append(("status", task_id))
+            return {"status": {"runs": [{"resolved": "2026-08-21T17:35:25.163Z"}]}}
+
+        def listLatestArtifacts(self, task_id):  # queue's own spelling
+            self.asked.append(("artifacts", task_id))
+            return {
+                "artifacts": [
+                    {"name": "public/build/other.zip", "expires": "2000-01-01T00:00Z"},
+                    {
+                        "name": "public/build/target.zip",
+                        "expires": "2027-08-21T15:38:08.163Z",
+                        "contentLength": 140084144,
+                    },
+                ]
+            }
+
+    def test_the_build_is_described_once_per_task_id(self):
+        queue = self._Queue()
+        runs = [
+            {
+                "pool": self.POOL,
+                "task_group_id": GROUP,
+                "tasks": [self._task(f"t{i}", self.SHIPPABLE) for i in range(3)],
+            }
+        ]
+        self.mod.collect_builds(queue, runs)
+        self.assertEqual(
+            queue.asked,
+            [
+                ("task", self.SHIPPABLE),
+                ("status", self.SHIPPABLE),
+                ("artifacts", self.SHIPPABLE),
+            ],
+            "one lookup each, not one per task",
+        )
+        build = runs[0]["builds"][0]
+        self.assertEqual(build["name"], "build-win64-shippable/opt")
+        self.assertEqual(build["built"], "2026-08-21T17:35:25.163Z")
+        self.assertEqual(build["expires"], "2027-08-21T15:38:08.163Z")
+        self.assertEqual(build["size"], 140084144)
+        self.assertEqual(build["url"], self.URL)
+
+    def test_each_lookup_fails_independently(self):
+        # A queue that will not give a name should still give a date.
+        class Queue(TestBuildUnderTest._Queue):
+            def task(self, task_id):
+                raise FakeRestFailure("500")
+
+        runs = [
+            {
+                "pool": self.POOL,
+                "task_group_id": GROUP,
+                "tasks": [self._task("t0", self.SHIPPABLE)],
+            }
+        ]
+        self.mod.collect_builds(Queue(), runs)
+        build = runs[0]["builds"][0]
+        self.assertEqual(build["name"], "")
+        self.assertEqual(build["task_id"], self.SHIPPABLE)
+        self.assertEqual(build["built"], "2026-08-21T17:35:25.163Z")
+
+    def test_a_queue_that_will_say_nothing_is_survivable(self):
+        class Queue:
+            def task(self, task_id):
+                raise FakeRestFailure("500")
+
+            def status(self, task_id):
+                raise FakeRestFailure("500")
+
+            def listLatestArtifacts(self, task_id):
+                raise FakeRestFailure("500")
+
+        runs = [
+            {
+                "pool": self.POOL,
+                "task_group_id": GROUP,
+                "tasks": [self._task("t0", self.SHIPPABLE)],
+            }
+        ]
+        self.mod.collect_builds(Queue(), runs)
+        build = runs[0]["builds"][0]
+        self.assertEqual(
+            (build["name"], build["built"], build["expires"]), ("", "", "")
+        )
+        self.assertEqual(build["task_id"], self.SHIPPABLE)
+        self.assertEqual(build["url"], self.URL, "the URL never needed the queue")
+
+    def test_the_table_links_the_revision_and_the_build(self):
+        runs = [
+            {
+                "pool": self.POOL,
+                "builds": [
+                    {
+                        "repository": "https://hg.mozilla.org/mozilla-central",
+                        "revision": self.REV,
+                        "task_id": self.SHIPPABLE,
+                        "artifact": "public/build/target.zip",
+                        "url": self.URL,
+                        "tasks": 4,
+                        "name": "build-win64-shippable/opt",
+                        "built": "2026-08-21T17:35:25.163Z",
+                        "expires": "2027-08-21T15:38:08.163Z",
+                        "size": 140084144,
+                    }
+                ],
+            }
+        ]
+        table = "\n".join(self.mod.build_summary_lines(runs, "https://tc.example"))
+        self.assertIn("### Build under test", table)
+        self.assertIn(f"[`{self.REV[:12]}`](https://hg.mozilla.org/", table)
+        self.assertIn(f"/rev/{self.REV})", table)
+        self.assertIn("[build-win64-shippable/opt](https://tc.example/tasks/", table)
+        # Shortened where it is read, full where it is followed.
+        self.assertNotIn(f"`{self.REV}`", table)
+
+    def test_the_artifact_url_is_given_in_full_and_dated(self):
+        runs = [
+            {
+                "pool": self.POOL,
+                "builds": [
+                    {
+                        "repository": "https://hg.mozilla.org/mozilla-central",
+                        "revision": self.REV,
+                        "task_id": self.SHIPPABLE,
+                        "artifact": "public/build/target.zip",
+                        "url": self.URL,
+                        "tasks": 4,
+                        "name": "build-win64-shippable/opt",
+                        "built": "2026-08-21T17:35:25.163Z",
+                        "expires": "2027-08-21T15:38:08.163Z",
+                        "size": 140084144,
+                    }
+                ],
+            }
+        ]
+        table = "\n".join(self.mod.build_summary_lines(runs, "https://tc.example"))
+        # Verbatim and on its own line: this is the thing you would curl.
+        self.assertIn(f"\n  {self.URL}\n", table)
+        self.assertIn("2026-08-21 17:35Z", table)
+        self.assertIn("2027-08-21 15:38Z", table)
+        self.assertIn("(140 MB)", table)
+
+    def test_a_build_the_queue_would_not_describe_still_renders(self):
+        runs = [
+            {
+                "pool": self.POOL,
+                "builds": [
+                    {
+                        "repository": "",
+                        "revision": "",
+                        "task_id": self.SHIPPABLE,
+                        "artifact": "public/build/target.zip",
+                        "url": "",
+                        "tasks": 1,
+                    }
+                ],
+            }
+        ]
+        table = "\n".join(self.mod.build_summary_lines(runs, "https://tc.example"))
+        self.assertIn(f"[{self.SHIPPABLE}](https://tc.example/tasks/", table)
+        self.assertIn("`unknown`", table)
+        self.assertIn("| - | - | 1 |", table)
+        self.assertIn("(no installer_url)", table)
+
+    def test_a_timestamp_is_trimmed_to_the_minute(self):
+        self.assertEqual(
+            self.mod.stamp("2026-08-21T17:35:25.163Z"), "2026-08-21 17:35Z"
+        )
+        self.assertEqual(self.mod.stamp(""), "")
+        self.assertEqual(self.mod.stamp(None), "")
+        self.assertEqual(self.mod.stamp("not-a-timestamp"), "")
+
+    def test_a_github_repository_links_to_a_commit_not_a_rev(self):
+        self.assertEqual(
+            self.mod.revision_url("https://github.com/mozilla-firefox/firefox", "abc"),
+            "https://github.com/mozilla-firefox/firefox/commit/abc",
+        )
+        self.assertEqual(self.mod.revision_url("", "abc"), "")
+
+    def test_no_builds_means_no_section(self):
+        self.assertEqual(
+            self.mod.build_summary_lines([{"pool": self.POOL}], "https://tc.example"),
+            [],
+        )
+
+
+class TestProductionBaseline(unittest.TestCase):
+    """Only a result worse than production, by more than production's own
+    scatter explains, is worth a word."""
+
+    POOL = "win11-64-24h2-hw-perf-debug"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.mod = _load_runner()
+        cls.baseline = cls.mod.hw_baseline
+
+    def _production(self, mean, stdev=0.44, n=40):
+        return {
+            "source": "perfherder",
+            "detail": "14d of mozilla-central",
+            "n": n,
+            "mean": mean,
+            "median": mean,
+            "min": mean - stdev,
+            "max": mean + stdev,
+            "stdev": stdev,
+        }
+
+    def test_faster_than_production_is_never_a_regression(self):
+        # Run 32743362153: 26.76 against production's 24.65, 4.8 sigma out and
+        # every bit of it good news.
+        higher = self.baseline.compare(26.76, self._production(24.65), False)
+        self.assertFalse(higher["worse"])
+        self.assertFalse(higher["flag"])
+        self.assertGreater(higher["sigmas"], 4)
+        # And the same on a lower-is-better suite, where faster is a smaller
+        # number: a11yr came out 11.3% below production.
+        lower = self.baseline.compare(66.97, self._production(75.5, stdev=2.8), True)
+        self.assertFalse(lower["worse"])
+        self.assertFalse(lower["flag"])
+
+    def test_slower_than_production_past_the_spread_is_flagged(self):
+        higher = self.baseline.compare(22.0, self._production(24.65), False)
+        self.assertTrue(higher["worse"])
+        self.assertTrue(higher["flag"])
+        lower = self.baseline.compare(30.0, self._production(24.65), True)
+        self.assertTrue(lower["worse"])
+        self.assertTrue(lower["flag"])
+
+    def test_slower_but_inside_the_spread_is_not_flagged(self):
+        comparison = self.baseline.compare(24.0, self._production(24.65), False)
+        self.assertTrue(comparison["worse"])
+        self.assertFalse(comparison["flag"], "1.5 sigma is production's own noise")
+
+    def test_a_thin_series_flags_nothing(self):
+        comparison = self.baseline.compare(
+            10.0,
+            self._production(24.65, n=self.baseline.MIN_BASELINE_POINTS - 1),
+            False,
+        )
+        self.assertTrue(comparison["worse"])
+        self.assertFalse(comparison["flag"])
+
+    def test_a_baseline_with_no_spread_flags_nothing(self):
+        # A counterpart baseline is one task, so it has no stdev to beat.
+        comparison = self.baseline.compare(
+            10.0, self._production(24.65, stdev=0), False
+        )
+        self.assertIsNone(comparison["sigmas"])
+        self.assertFalse(comparison["flag"])
+
+    def test_the_platform_loses_its_build_type(self):
+        self.assertEqual(
+            self.baseline.production_platform("windows11-64-24h2-hw-ref-shippable/opt"),
+            "windows11-64-24h2-hw-ref-shippable",
+        )
+
+    def test_frameworks_are_looked_up_and_fall_back(self):
+        cache = {}
+        with unittest.mock.patch.object(
+            self.baseline, "_get", return_value=[{"id": 13, "name": "browsertime"}]
+        ):
+            self.assertEqual(self.baseline.framework_id("browsertime", cache), 13)
+        # Our suites span two harnesses; talos comes from the fallback here.
+        self.assertEqual(self.baseline.framework_id("talos", {}), 1)
+        with unittest.mock.patch.object(
+            self.baseline, "_get", side_effect=self.baseline.BaselineError("down")
+        ):
+            self.assertEqual(self.baseline.framework_id("talos", {}), 1)
+        self.assertIsNone(self.baseline.framework_id("not-a-harness", {}))
+
+    def _entry(self, comparison=None, **kwargs):
+        entry = {
+            "suite": "speedometer3",
+            "application": "firefox",
+            "lower_is_better": False,
+            "samples": [
+                {"worker": "n", "value": 22.0, "task_id": "t", "replicates": []}
+            ],
+        }
+        entry.update(kwargs)
+        if comparison:
+            entry["baseline"] = comparison
+        return entry
+
+    def test_the_cell_is_a_dash_with_nothing_to_compare(self):
+        self.assertEqual(self.mod.production_cell(self._entry()), "-")
+
+    def test_the_cell_marks_only_a_regression(self):
+        good = self.mod.production_cell(
+            self._entry(self.baseline.compare(26.76, self._production(24.65), False))
+        )
+        self.assertIn("+8.6%", good)
+        self.assertIn("4.8σ", good)
+        self.assertNotIn("⚠️", good)
+
+        bad = self.mod.production_cell(
+            self._entry(self.baseline.compare(22.0, self._production(24.65), False))
+        )
+        self.assertIn("⚠️", bad)
+
+    def test_a_silent_run_gets_no_block(self):
+        runs = [
+            {
+                "pool": self.POOL,
+                "scores": {
+                    "firefox speedometer3": self._entry(
+                        self.baseline.compare(26.76, self._production(24.65), False)
+                    )
+                },
+            }
+        ]
+        self.assertEqual(self.mod.regression_lines(runs), [])
+
+    def test_the_block_names_the_pool_the_suite_and_the_gap(self):
+        runs = [
+            {
+                "pool": self.POOL,
+                "scores": {
+                    "firefox speedometer3": self._entry(
+                        self.baseline.compare(22.0, self._production(24.65), False)
+                    )
+                },
+            }
+        ]
+        block = "\n".join(self.mod.regression_lines(runs))
+        self.assertIn("[!WARNING]", block)
+        self.assertIn(self.POOL, block)
+        self.assertIn("firefox speedometer3", block)
+        self.assertIn("-10.8%", block)
+        self.assertIn("image or ronin configuration", block)
+        self.assertIn("Check the build row", block)
+
+    def test_baseline_none_asks_nothing_and_attaches_nothing(self):
+        called = []
+
+        class Queue:
+            def getLatestArtifact(_self, *args):
+                called.append(args)
+                return {}
+
+        runs = [{"pool": self.POOL, "scores": {"firefox speedometer3": self._entry()}}]
+        self.mod.collect_baselines(Queue(), runs, "none")
+        self.assertEqual(called, [])
+        self.assertNotIn("baseline", runs[0]["scores"]["firefox speedometer3"])
+
+    def test_a_baseline_that_cannot_be_read_is_not_fatal(self):
+        runs = [
+            {
+                "pool": self.POOL,
+                "scores": {"firefox speedometer3": self._entry(test_platform="p/opt")},
+            }
+        ]
+        with unittest.mock.patch.object(
+            self.baseline,
+            "perfherder_baseline",
+            side_effect=self.baseline.BaselineError("treeherder down"),
+        ):
+            self.mod.collect_baselines(None, runs, "perfherder")
+        self.assertNotIn("baseline", runs[0]["scores"]["firefox speedometer3"])
+
+    def test_the_counterpart_reads_the_production_task_it_was_copied_from(self):
+        blob = {
+            "application": {"name": "firefox", "version": "156.0a1"},
+            "suites": [{"name": "speedometer3", "value": 24.811}],
+        }
+        got = self.baseline.counterpart_baseline(
+            lambda task_id: blob, "PRODTASKID1234567890AB", "speedometer3", "firefox"
+        )
+        self.assertEqual(got["mean"], 24.811)
+        self.assertEqual(got["n"], 1)
+        self.assertIn("PRODTASKID1234567890AB", got["detail"])
+
+    def test_the_counterpart_refuses_a_different_browser(self):
+        blob = {
+            "application": {"name": "custom-car"},
+            "suites": [{"name": "speedometer3", "value": 31.479}],
+        }
+        self.assertIsNone(
+            self.baseline.counterpart_baseline(
+                lambda task_id: blob,
+                "PRODTASKID1234567890AB",
+                "speedometer3",
+                "firefox",
+            )
+        )
+
+    def test_the_counterpart_needs_a_source_task(self):
+        self.assertIsNone(
+            self.baseline.counterpart_baseline(
+                lambda task_id: {}, "", "speedometer3", "firefox"
+            )
+        )
+
+    def test_perfherder_is_the_default_mode(self):
+        self.assertEqual(self.baseline.DEFAULT_BASELINE_MODE, "perfherder")
+        self.assertEqual(
+            sorted(self.baseline.BASELINE_MODES), ["counterpart", "none", "perfherder"]
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

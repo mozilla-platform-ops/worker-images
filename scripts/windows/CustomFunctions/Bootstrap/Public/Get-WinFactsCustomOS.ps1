@@ -77,6 +77,9 @@ function Get-WinFactsCustomOS {
     elseif ($os_caption -like "*2022*") {
         $os_version = ( -join ( "win_2022_", $release_id))
     }
+    elseif ($os_caption -like "*2025*") {
+        $os_version = ( -join ( "win_2025_", $release_id))
+    }
     else {
         $os_version = $null
     }
@@ -91,7 +94,7 @@ function Get-WinFactsCustomOS {
     elseif ($os_caption -like "*windows_10*" -or $os_caption -like "*windows_11*") {
         $purpose = "tester"
     }
-    elseif ($os_caption -like "*2012*" -or $os_caption -like "*2022*") {
+    elseif ($os_caption -like "*2012*" -or $os_caption -like "*2022*" -or $os_caption -like "*2025*") {
         $purpose = 'builder'
     }
     else {

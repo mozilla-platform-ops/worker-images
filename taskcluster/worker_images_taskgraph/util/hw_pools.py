@@ -1,0 +1,274 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+"""Registry for the MDC1 Windows hardware worker pools.
+
+Hardware pools are static workers with no worker-manager entry, so pools.yml is
+the only record of what each one is running. Imported by both the decision task
+and ci/run-hw-os-integration.py, so PyYAML is the only dependency.
+"""
+
+import re
+from dataclasses import dataclass, field
+from pathlib import Path
+
+import yaml
+
+PROVISIONER_ID = "releng-hardware"
+
+POOLS_YAML_RELPATH = Path("provisioners/windows/MDC1Windows/pools.yml")
+
+# A staging pool is named after the production pool it stages: everything up to
+# and including `-hw` / `-hw-ref` is the worker type mozilla-central schedules
+# to, and any remaining suffix is ours. Parsed rather than enumerated, so a pool
+# added to pools.yml tomorrow is classified without a code change.
+_POOL_NAME_RE = re.compile(
+    r"^(?P<counterpart>win11-(?:64|a64)-[0-9a-z]+-hw(?:-ref)?)(?:-(?P<variant>.+))?$"
+)
+
+LOW_CAPACITY_THRESHOLD = 4
+
+# A backstop against a typo booking a pool for a week, not a recommendation: 100
+# runs of a 35-minute task is ~58h of hardware, so anything near this needs
+# `timeout_hours` raised to match. Lives here so the trigger script can refuse a
+# bad value before any hook is fired.
+MAX_REPEAT = 100
+
+
+class HwPoolError(Exception):
+    """Raised when a requested hardware pool is unknown or not targetable."""
+
+
+@dataclass(frozen=True)
+class HwPool:
+    """One entry from the ``pools`` list in ``pools.yml``."""
+
+    name: str
+    image: str | None = None
+    src_organisation: str | None = None
+    src_repository: str | None = None
+    src_branch: str | None = None
+    revision: str | None = None
+    secret_date: str | None = None
+    domain_suffix: str | None = None
+    description: str | None = None
+    dev_branch: str | None = None
+    puppet_version: str | None = None
+    openvox_version: str | None = None
+    git_version: str | None = None
+    nodes: tuple[str, ...] = field(default_factory=tuple)
+
+    @property
+    def task_queue_id(self) -> str:
+        return f"{PROVISIONER_ID}/{self.name}"
+
+    @property
+    def source_worker_type(self) -> str | None:
+        """The mozilla-central worker type whose tasks belong on this pool.
+
+        ``win11-64-24h2-hw-alpha`` stages ``win11-64-24h2-hw``, and
+        ``win11-64-24h2-hw-ref-alpha`` stages ``win11-64-24h2-hw-ref``. The two
+        run different suites on different hardware, so a run must not cross
+        them. ``None`` if the pool name does not follow the convention.
+        """
+        match = _POOL_NAME_RE.match(self.name)
+        return match["counterpart"] if match else None
+
+    @property
+    def is_production(self) -> bool:
+        """A pool that *is* its counterpart, rather than staging for it."""
+        match = _POOL_NAME_RE.match(self.name)
+        return bool(match) and not match["variant"]
+
+    @property
+    def node_count(self) -> int:
+        return len(self.nodes)
+
+    @property
+    def is_low_capacity(self) -> bool:
+        return self.node_count < LOW_CAPACITY_THRESHOLD
+
+    @property
+    def identity(self) -> dict[str, str | None]:
+        """The WIM + ronin triple a test result has to be attributed to."""
+        return {
+            "image": self.image,
+            "src_branch": self.src_branch,
+            "revision": self.revision,
+        }
+
+    @property
+    def deployment(self) -> dict[str, str | None]:
+        """Every pools.yml field that decides what the tasks actually ran on.
+
+        The identity triple is the short answer; this is the whole configuration,
+        so a result can be reproduced or blamed without going back to pools.yml
+        as it was on the day. Ordered for display, and every key is always
+        present so two snapshots can be compared field by field.
+        """
+        return {
+            "description": self.description,
+            "image": self.image,
+            "src_organisation": self.src_organisation,
+            "src_repository": self.src_repository,
+            "src_branch": self.src_branch,
+            "revision": self.revision,
+            "dev_branch": self.dev_branch,
+            "puppet_version": self.puppet_version,
+            "openvox_version": self.openvox_version,
+            "git_version": self.git_version,
+            "secret_date": self.secret_date,
+            "domain_suffix": self.domain_suffix,
+        }
+
+    @property
+    def config_url(self) -> str | None:
+        """The ronin_puppet tree the pool is pinned to, so it can be read."""
+        if not (self.src_organisation and self.src_repository and self.revision):
+            return None
+        return (
+            f"https://github.com/{self.src_organisation}/"
+            f"{self.src_repository}/tree/{self.revision}"
+        )
+
+    def fqdn(self, node: str) -> str:
+        if not self.domain_suffix:
+            return node
+        return f"{node}.{self.domain_suffix}"
+
+
+@dataclass(frozen=True)
+class HwPoolRegistry:
+    pools: dict[str, HwPool]
+    known_bad_nodes: frozenset[str]
+
+    def __contains__(self, name: object) -> bool:
+        return name in self.pools
+
+    def __getitem__(self, name: str) -> HwPool:
+        return self.pools[name]
+
+    @property
+    def targetable(self) -> dict[str, HwPool]:
+        return {n: p for n, p in self.pools.items() if not p.is_production}
+
+    def healthy_nodes(self, name: str) -> tuple[str, ...]:
+        return tuple(n for n in self[name].nodes if n not in self.known_bad_nodes)
+
+    def resolve(self, names) -> list[HwPool]:
+        """Validate requested pool names, returning them in pools.yml order."""
+        requested = list(dict.fromkeys(names))
+        if not requested:
+            raise HwPoolError("no hardware pools requested")
+
+        unknown = [n for n in requested if n not in self.pools]
+        if unknown:
+            raise HwPoolError(
+                "unknown hardware pool(s): {}. Known pools: {}".format(
+                    ", ".join(sorted(unknown)),
+                    ", ".join(sorted(self.pools)),
+                )
+            )
+
+        # Last line of defence if the hook is triggered by hand.
+        production = [n for n in requested if self[n].is_production]
+        if production:
+            raise HwPoolError(
+                "refusing to target production hardware pool(s): {}. "
+                "These pools run production Firefox CI.".format(
+                    ", ".join(sorted(production))
+                )
+            )
+
+        # Without a counterpart there is no way to know which of mozilla-central's
+        # hardware tasks belong on the pool, and guessing would run the wrong
+        # suites on the wrong hardware.
+        unaddressable = [n for n in requested if not self[n].source_worker_type]
+        if unaddressable:
+            raise HwPoolError(
+                "cannot tell which mozilla-central tasks belong on {}: pool "
+                "name does not follow win11-<64|a64>-<os>-hw[-ref][-<variant>]".format(
+                    ", ".join(sorted(unaddressable))
+                )
+            )
+
+        return [p for n, p in self.pools.items() if n in requested]
+
+
+def find_repo_root(start: Path | str | None = None) -> Path:
+    """Walk up from ``start`` looking for the checkout containing pools.yml."""
+    here = Path(start).resolve() if start else Path(__file__).resolve()
+    for candidate in (here, *here.parents):
+        if (candidate / POOLS_YAML_RELPATH).is_file():
+            return candidate
+    raise HwPoolError(
+        f"could not locate {POOLS_YAML_RELPATH} above {here}; "
+        "is this a worker-images checkout?"
+    )
+
+
+def _coerce_nodes(raw) -> tuple[str, ...]:
+    if not raw:
+        return ()
+    return tuple(str(n).strip() for n in raw if str(n).strip())
+
+
+def _parse_known_bad(raw) -> frozenset[str]:
+    """Flatten the ``Known-BAD`` mapping of hw-class -> node list."""
+    if not isinstance(raw, dict):
+        return frozenset()
+    nodes: set[str] = set()
+    for entries in raw.values():
+        nodes.update(_coerce_nodes(entries))
+    return frozenset(nodes)
+
+
+def load_registry(repo_root: Path | str | None = None) -> HwPoolRegistry:
+    """Parse ``pools.yml`` into an :class:`HwPoolRegistry`."""
+    root = Path(repo_root) if repo_root else find_repo_root()
+    pools_yaml = root / POOLS_YAML_RELPATH
+    if not pools_yaml.is_file():
+        raise HwPoolError(f"{pools_yaml} does not exist")
+
+    return parse_registry(pools_yaml.read_text(), source=str(pools_yaml))
+
+
+def parse_registry(text: str, source: str = "pools.yml") -> HwPoolRegistry:
+    """Parse pools.yml content. Split out from load_registry so a copy fetched
+    from another ref can be read the same way, for the after-the-run check that
+    the pool's configuration did not move under a live run."""
+    data = yaml.safe_load(text) or {}
+
+    pools: dict[str, HwPool] = {}
+    for entry in data.get("pools") or []:
+        if not isinstance(entry, dict):
+            continue
+        name = str(entry.get("name") or "").strip()
+        if not name:
+            continue
+        pools[name] = HwPool(
+            name=name,
+            image=entry.get("image"),
+            src_organisation=entry.get("src_Organisation"),
+            src_repository=entry.get("src_Repository"),
+            src_branch=entry.get("src_Branch"),
+            # pools.yml `hash` is the ronin_puppet pin; renamed to avoid the builtin.
+            revision=entry.get("hash"),
+            secret_date=entry.get("secret_date"),
+            domain_suffix=entry.get("domain_suffix"),
+            description=entry.get("Description"),
+            dev_branch=entry.get("dev"),
+            puppet_version=entry.get("puppet_version"),
+            openvox_version=entry.get("openvox_version"),
+            git_version=entry.get("git_version"),
+            nodes=_coerce_nodes(entry.get("nodes")),
+        )
+
+    if not pools:
+        raise HwPoolError(f"no pools found in {source}")
+
+    return HwPoolRegistry(
+        pools=pools,
+        known_bad_nodes=_parse_known_bad(data.get("Known-BAD")),
+    )

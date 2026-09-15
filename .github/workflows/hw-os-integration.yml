@@ -1,0 +1,199 @@
+name: HW OS Integration Tests - FXCI
+run-name: HW OS Integration Tests ${{ inputs.repeat != '1' && format('x{0} ', inputs.repeat) || '' }}- ${{ github.actor }}
+
+# Validates a WIM or ronin_puppet change without a try push (RELOPS-2503).
+# Dispatch-only: hardware needs a PXE deploy first. One checkbox per pool.
+#
+# Every pool here is a stand-in for a production worker type, and which one
+# decides what it runs: `-ref-alpha` stages win11-64-24h2-hw-ref, everything
+# else stages win11-64-24h2-hw. Those are different suites on different
+# hardware, so results from the two are not comparable. The pairing is in each
+# checkbox below and in the "Pool mapping" table at the top of the summary.
+#
+# The build under test comes from mozilla-central, not from here. Tasks are
+# replicated from a floating index, and each keeps its own
+# EXTRA_MOZHARNESS_CONFIG.installer_url -- normally
+# `public/build/target.zip` off a `build-win64-shippable/opt` task, though a
+# custom-car task carries a plain `build-win64/opt` instead. Two runs a day
+# apart can therefore test different revisions, so the run records the gecko
+# revision and the build task per pool, in the log and under
+# "Build under test" in the step summary. A red run is only the image's fault
+# if that row held still.
+#
+# Each task runs once by default. Repeating the whole set is for intermittents --
+# a task that fails one run in five is the interesting kind of broken. For one
+# test many times, which is a different question, use hw-speedometer.yml.
+#
+# The run always waits for its results, and repeat is capped at 10 so that it
+# can. 11 tasks once has taken 31-66min and 100 tasks 1-4h, so 10 runs of the
+# set is roughly 110 tasks and fits inside 6h with room spare. Anything needing
+# more repetition than that is a speedometer-shaped question: one test, many
+# runs, in hw-speedometer.yml.
+#
+# GitHub cancels a hosted job at 6h and takes the step summary with it -- run
+# 31516844982 died that way at 6h00m34s. So the script stops waiting 5.75h into
+# the run, collects what has landed, writes the summary, and says which pools
+# outran the wait, with a link to their task group. The Taskcluster tasks are
+# left running: they finish, and the group keeps every result.
+#
+# Red means one thing only: a task ran on the hardware and did not pass. A run
+# that never got that far -- an empty task group, a failed decision, an upstream
+# mozilla-central task that could never resolve, the wait running out -- is
+# green with warnings and an IMPORTANT block at the top of the summary saying no
+# verdict was reached. GitHub has no third conclusion to give a job, and failing
+# these teaches people that red means "mozilla-central had a bad day", which is
+# the habit that makes a real image regression easy to skim past.
+
+on:
+  workflow_dispatch:
+    inputs:
+      win11_64_24h2_hw_alpha:
+        description: "win11-64-24h2-hw-alpha - stages win11-64-24h2-hw (nuc13, large staging pool)"
+        type: boolean
+        default: false
+      win11_64_24h2_hw_relops1213:
+        description: "win11-64-24h2-hw-relops1213 - stages win11-64-24h2-hw (baked-WIM canary)"
+        type: boolean
+        default: false
+      win11_64_24h2_hw_ref_alpha:
+        description: "win11-64-24h2-hw-ref-alpha - stages win11-64-24h2-hw-ref (t-nuc12 reference)"
+        type: boolean
+        default: false
+      win11_64_24h2_hw_perf_debug:
+        description: "win11-64-24h2-hw-perf-debug - stages win11-64-24h2-hw"
+        type: boolean
+        default: false
+      win11_64_24h2_hw_perf_sheriff:
+        description: "win11-64-24h2-hw-perf-sheriff - stages win11-64-24h2-hw (single node - very slow)"
+        type: boolean
+        default: false
+      repeat:
+        description: "Runs of each task, 1-10 (every run repeats the whole test set)"
+        type: string
+        default: "1"
+      baseline:
+        description: "Compare scores against"
+        type: choice
+        default: perfherder
+        options:
+          # mozilla-central's own 14-day series for the production counterpart
+          # platform: a spread, so a number can be called normal or outside the
+          # envelope. Not paired -- the series spans revisions.
+          - perfherder
+          # The single production task this run's tasks were copied from: same
+          # build, same revision, same day, but one node and no error bar.
+          - counterpart
+          - none
+      timeout_hours:
+        description: "Hours to wait for results, 1-6 (waiting stops at 5.75h)"
+        type: string
+        default: "6"
+
+permissions:
+  contents: read
+
+jobs:
+  check-access:
+    name: "Verify User Access"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Load Authorized Users and Check Access
+        shell: pwsh
+        run: ./ci/check-authorized-user.ps1
+
+  hw-integration-tests:
+    name: "Trigger HW Integration Tests"
+    needs: check-access
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Collect selected pools
+        id: pools
+        env:
+          SELECTED: >-
+            ${{ inputs.win11_64_24h2_hw_alpha && 'win11-64-24h2-hw-alpha,' || '' }}${{
+                inputs.win11_64_24h2_hw_relops1213 && 'win11-64-24h2-hw-relops1213,' || '' }}${{
+                inputs.win11_64_24h2_hw_ref_alpha && 'win11-64-24h2-hw-ref-alpha,' || '' }}${{
+                inputs.win11_64_24h2_hw_perf_debug && 'win11-64-24h2-hw-perf-debug,' || '' }}${{
+                inputs.win11_64_24h2_hw_perf_sheriff && 'win11-64-24h2-hw-perf-sheriff' || '' }}
+        run: |
+          pools="$(printf '%s' "$SELECTED" | tr -d '[:space:]' | sed 's/,*$//')"
+          if [ -z "$pools" ]; then
+            echo "::error ::No pool selected. Tick at least one pool checkbox."
+            exit 1
+          fi
+          echo "Selected pools: $pools"
+          echo "pools=$pools" >> "$GITHUB_OUTPUT"
+
+      # 10, not the script's 100: a repeat here multiplies every task the pool's
+      # production counterpart runs, and the whole set has to resolve before
+      # GitHub cancels the job at 6h.
+      - name: Check repeat count
+        env:
+          REPEAT: ${{ inputs.repeat }}
+        run: |
+          case "$REPEAT" in
+            ''|*[!0-9]*)
+              echo "::error ::repeat must be a whole number between 1 and 10"
+              exit 1
+              ;;
+          esac
+          if [ "$REPEAT" -lt 1 ] || [ "$REPEAT" -gt 10 ]; then
+            echo "::error ::repeat must be between 1 and 10, got $REPEAT"
+            exit 1
+          fi
+          echo "Runs of each task: $REPEAT"
+
+      # Whatever is asked for, the script stops waiting at 5.75h; anything above
+      # 6 would only be a lie about what this job can do.
+      - name: Check wait
+        env:
+          TIMEOUT_HOURS: ${{ inputs.timeout_hours }}
+        run: |
+          case "$TIMEOUT_HOURS" in
+            ''|*[!0-9]*)
+              echo "::error ::timeout_hours must be a whole number, 1 to 6"
+              exit 1
+              ;;
+          esac
+          if [ "$TIMEOUT_HOURS" -lt 1 ] || [ "$TIMEOUT_HOURS" -gt 6 ]; then
+            echo "::error ::timeout_hours must be 1 to 6, got $TIMEOUT_HOURS"
+            exit 1
+          fi
+          echo "Waiting up to ${TIMEOUT_HOURS}h, and no later than 5.75h into the run"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4
+
+      # Fails before any hardware time if a pool is unknown, production, or dead.
+      - name: Pre-flight
+        env:
+          POOLS: ${{ steps.pools.outputs.pools }}
+          TASKCLUSTER_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
+          TASKCLUSTER_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}
+          PYTHONUNBUFFERED: "1"
+        run: |
+          uv run ci/run-hw-os-integration.py "$POOLS" --preflight-only
+
+      - name: Run HW OS Integration Tests
+        env:
+          POOLS: ${{ steps.pools.outputs.pools }}
+          BASELINE: ${{ inputs.baseline }}
+          REPEAT: ${{ inputs.repeat }}
+          TIMEOUT_HOURS: ${{ inputs.timeout_hours }}
+          # The 6h cancellation clock started here, not when this step did, so the
+          # script budgets its wait from the run rather than from itself.
+          GITHUB_RUN_STARTED_AT: ${{ github.run_started_at }}
+          TASKCLUSTER_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
+          TASKCLUSTER_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}
+          # Only read on a red run, to say whether the failures are the image or
+          # the infrastructure. Absent, the summary is written without that block.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PYTHONUNBUFFERED: "1"
+        run: |
+          uv run ci/run-hw-os-integration.py "$POOLS" \
+            --repeat "$REPEAT" \
+            --baseline "$BASELINE" \
+            --timeout "$(( TIMEOUT_HOURS * 3600 ))"
