@@ -63,9 +63,9 @@ The following files and directories are shared infrastructure and require a **PR
   `.github/tceng.json`
   Defines which GitHub users are authorized to trigger the workflow.
 
-- **Image Build Script**
-  [`New-AzWorkerImage.ps1`](https://github.com/mozilla-platform-ops/worker-images/blob/main/bin/WorkerImages/Public/New-AzWorkerImage.ps1)
-  PowerShell module function used to parse image YAMLs and launch a Packer build.
+- **Image Preparation Function**
+  [`Set-AzWorkerImageVariables.ps1`](https://github.com/mozilla-platform-ops/worker-images/blob/main/bin/WorkerImages/Public/Set-AzWorkerImageVariables.ps1)
+  PowerShell module function used to parse image YAMLs and prepare variables for the separate Packer action.
 
 - **Packer HCL Template**
   [`tceng-azure.pkr.hcl`](https://github.com/mozilla-platform-ops/worker-images/blob/main/packer/tceng-azure.pkr.hcl)
@@ -145,7 +145,7 @@ If `fxci-config` references the image with `version: NA` and a `deployment_id`, 
 
 ## 🆔 UUID Handling
 
-To ensure image names and resource group names are globally unique, the [`New-AzWorkerImage.ps1`](https://github.com/mozilla-platform-ops/worker-images/blob/main/bin/WorkerImages/Public/New-AzWorkerImage.ps1) script dynamically generates a **20-character lowercase alphanumeric UUID** at runtime for each invocation.
+To ensure image names and resource group names are globally unique, the [`Set-AzWorkerImageVariables.ps1`](https://github.com/mozilla-platform-ops/worker-images/blob/main/bin/WorkerImages/Public/Set-AzWorkerImageVariables.ps1) script dynamically generates a **20-character lowercase alphanumeric UUID** at runtime for each invocation.
 
 This UUID is injected into:
 

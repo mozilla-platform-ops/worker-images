@@ -47,9 +47,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
       - name: Load Authorized Users and Check Access
         shell: pwsh
-        run: ./ci/check-authorized-user.ps1
+        run: |
+          & "${{ github.workspace }}/ci/check-authorized-user.ps1"
 
   build:
     name: Build on ephemeral Azure VM
@@ -67,6 +70,7 @@ jobs:
       # (the build logic lives with the pipeline, not in this workflow's PR).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          persist-credentials: false
           ref: ${{ inputs.pipeline_ref }}
 
       - name: Azure Login
@@ -78,7 +82,8 @@ jobs:
 
       - name: Create ephemeral build VM
         shell: pwsh
-        run: ./ci/win-hw-wim-vm.ps1 -Action create -VmName $env:VM_NAME -ResourceGroup $env:RESOURCE_GROUP
+        run: |
+          & "${{ github.workspace }}/ci/win-hw-wim-vm.ps1" -Action create -VmName $env:VM_NAME -ResourceGroup $env:RESOURCE_GROUP
 
       - name: Build (kick off + wait)
         shell: pwsh
@@ -86,7 +91,8 @@ jobs:
           IMAGE: ${{ inputs.image }}
           PIPELINE_REF: ${{ inputs.pipeline_ref }}
           BUILD_ID: ${{ inputs.build_id }}
-        run: ./ci/kickoff-win-hw-wim-build.ps1
+        run: |
+          & "${{ github.workspace }}/ci/kickoff-win-hw-wim-build.ps1"
 
       # Same release-notes handoff the Azure gallery images use (see sig-trusted.yml):
       # the kickoff downloads the markdown the bake generated and exports its name as
@@ -105,7 +111,8 @@ jobs:
       - name: Destroy ephemeral build VM
         if: always()
         shell: pwsh
-        run: ./ci/win-hw-wim-vm.ps1 -Action destroy -VmName $env:VM_NAME -ResourceGroup $env:RESOURCE_GROUP
+        run: |
+          & "${{ github.workspace }}/ci/win-hw-wim-vm.ps1" -Action destroy -VmName $env:VM_NAME -ResourceGroup $env:RESOURCE_GROUP
 
   # Commit the release notes to sboms/ on main — the same reusable workflow every other
   # Windows image build calls, so baked WIMs land in the same place as gallery images.

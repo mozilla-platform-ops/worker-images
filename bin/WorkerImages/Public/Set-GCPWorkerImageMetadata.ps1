@@ -1,12 +1,11 @@
-function Set-GCPWorkerImageName {
+function Set-GCPWorkerImageMetadata {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)] [String] $Key,
         [Parameter(Mandatory = $false)] [String] $Team
     )
 
-    Set-PSRepository PSGallery -InstallationPolicy Trusted
-    Install-Module powershell-yaml -ErrorAction Stop
+    Import-WorkerImagesYaml
 
     if ($Team -and $Team -ieq "tceng") {
         $YamlPath = "config/tceng/$Key.yaml"
@@ -34,8 +33,8 @@ function Set-GCPWorkerImageName {
 
     Write-Host "Setting $ImageName as the name for the worker image"
     if ($env:GITHUB_OUTPUT) {
-        "IMAGENAME=$ImageName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+        "IMAGENAME=$ImageName", "PROJECT=$($YAML.image['project_id'])" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
     } else {
-        Write-Output "IMAGENAME=$ImageName"
+        Write-Output "IMAGENAME=$ImageName" "PROJECT=$($YAML.image['project_id'])"
     }
 }

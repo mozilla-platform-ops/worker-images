@@ -7,13 +7,12 @@
     Copyright         = '(c) Release SRE @ Mozilla. All rights reserved.'
     Description       = 'Powershell module to build Release SRE Images'
     FunctionsToExport = @(
-        'New-AWSWorkerImage',
-        'New-AzSharedWorkerImage',
-        'New-AzWorkerImage',
-        'New-GCPWorkerImage',
+        'Set-AWSWorkerImageVariables',
+        'Set-AzSharedWorkerImageVariables',
+        'Set-AzWorkerImageVariables',
+        'Set-GCPWorkerImageVariables',
         'Set-AzWorkerImageLocation',
-        'Set-GCPWorkerImageName',
-        'Set-GCPWorkerImageProject'
+        'Set-GCPWorkerImageMetadata'
     )
     CmdletsToExport   = @()
     VariablesToExport = @()

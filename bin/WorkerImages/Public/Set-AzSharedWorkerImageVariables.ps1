@@ -1,4 +1,4 @@
-﻿function New-AzSharedWorkerImage {
+﻿function Set-AzSharedWorkerImageVariables {
     [CmdletBinding()]
     param (
         [String] $github_token,
@@ -11,8 +11,7 @@
         [String] $Tenant_ID
     )
 
-    Set-PSRepository PSGallery -InstallationPolicy Trusted
-    Install-Module powershell-yaml -ErrorAction Stop
+    Import-WorkerImagesYaml
 
     $DefaultYaml = ConvertFrom-Yaml (Get-Content "config/windows_production_defaults.yaml" -Raw)
     $ImageYaml   = ConvertFrom-Yaml (Get-Content "config/$Key.yaml" -Raw)
@@ -136,29 +135,24 @@
 
     switch -Wildcard ($Key) {
         "*alpha2*" {
-            $PackerForceBuild = $true
             $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-alpha2' -f $ENV:PKR_VAR_worker_pool_id, $ENV:PKR_VAR_image_sku)
         }
         "*alpha*" {
-            $PackerForceBuild = $true
             $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-alpha' -f $ENV:PKR_VAR_worker_pool_id, $ENV:PKR_VAR_image_sku)
         }
         "*beta*" {
-            $PackerForceBuild = $true
             $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-beta' -f $ENV:PKR_VAR_worker_pool_id, $ENV:PKR_VAR_image_sku)
         }
         "*next*" {
-            $PackerForceBuild = $true
             $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-next' -f $ENV:PKR_VAR_worker_pool_id, $ENV:PKR_VAR_image_sku)
         }
         Default {
-            $PackerForceBuild = $false
             $ENV:PKR_VAR_managed_image_name = ('{0}-{1}-{2}' -f `
                 $ENV:PKR_VAR_worker_pool_id, $ENV:PKR_VAR_image_sku, $ENV:PKR_VAR_deployment_id)
         }
     }
 
-    Write-Host "Building $($ENV:PKR_VAR_managed_image_name) in $($ENV:PKR_VAR_temp_resource_group_name)"
+    Write-Host "Prepared $($ENV:PKR_VAR_managed_image_name) in $($ENV:PKR_VAR_temp_resource_group_name)"
     ## Set the github token for packer to use to install plugin from github
     $ENV:PACKER_GITHUB_API_TOKEN = $github_token
     if ($key -match "Trusted") {
@@ -169,10 +163,5 @@
         $ENV:PKR_VAR_use_keyvault = "false"
         $ENV:PKR_VAR_vault_name = "kv-central-us-key"
     }
-    packer init azure.pkr.hcl
-    if ($PackerForceBuild) {
-        packer build --only azure-arm.sig -force azure.pkr.hcl
-    } else {
-        packer build --only azure-arm.sig azure.pkr.hcl
-    }
+    Export-WorkerImageEnvironment
 }

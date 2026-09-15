@@ -98,9 +98,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
       - name: Load Authorized Users and Check Access
         shell: pwsh
-        run: ./ci/check-authorized-user.ps1
+        run: |
+          & "${{ github.workspace }}/ci/check-authorized-user.ps1"
 
   hw-integration-tests:
     name: "Trigger HW Integration Tests"
@@ -108,6 +111,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
 
       - name: Collect selected pools
         id: pools

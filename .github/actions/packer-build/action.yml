@@ -1,0 +1,46 @@
+name: Build image with Packer
+description: Initialize plugins, validate a Packer template, and build it using the caller's credentials and PKR_VAR environment.
+inputs:
+  template:
+    description: Packer template file or directory, relative to the workspace
+    required: true
+  only:
+    description: Optional Packer build/source selector
+    default: ''
+  force:
+    description: Allow Packer to replace an existing image
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Set up Packer
+      uses: hashicorp/setup-packer@ce93c3c08a6c2ff2275bf4b54ff0d9a75f6c9789
+    - name: Cache Packer plugins
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: ~/.config/packer/plugins
+        key: packer-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles(inputs.template, format('{0}/**/*.pkr.hcl', inputs.template)) }}
+    - name: Validate and build
+      id: packer
+      shell: pwsh
+      working-directory: ${{ github.workspace }}
+      env:
+        PACKER_TEMPLATE: ${{ inputs.template }}
+        PACKER_ONLY: ${{ inputs.only }}
+        PACKER_FORCE: ${{ inputs.force }}
+      run: |
+        $ErrorActionPreference = 'Stop'
+        if ([string]::IsNullOrWhiteSpace($env:PACKER_TEMPLATE)) { throw 'A Packer template is required.' }
+        $template = (Resolve-Path -LiteralPath $env:PACKER_TEMPLATE -ErrorAction Stop).Path
+        if ($env:PACKER_FORCE -notin 'true', 'false') { throw 'force must be true or false.' }
+        $selection = @()
+        if ($env:PACKER_ONLY) { $selection += "-only=$env:PACKER_ONLY" }
+
+        packer init $template
+        if ($LASTEXITCODE -ne 0) { throw "packer init failed: $LASTEXITCODE" }
+        packer validate @selection $template
+        if ($LASTEXITCODE -ne 0) { throw "packer validate failed: $LASTEXITCODE" }
+        $buildArgs = @($selection)
+        if ($env:PACKER_FORCE -eq 'true') { $buildArgs += '-force' }
+        packer build @buildArgs $template
+        if ($LASTEXITCODE -ne 0) { throw "packer build failed: $LASTEXITCODE" }

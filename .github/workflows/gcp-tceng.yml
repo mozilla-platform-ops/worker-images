@@ -5,12 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       config:
-        type: choice
-        description: Choose which pool to build
-        options:
-          - generic-worker-ubuntu-24-04-staging
-          - generic-worker-ubuntu-24-04
-          - generic-worker-ubuntu-24-04-arm64
+        type: string
+        required: true
+        description: YAML basename from config/ (without .yaml)
       TASKCLUSTER_REF:
         type: string
         description: Git reference (branch, tag, or commit) to use
@@ -20,47 +17,29 @@ permissions:
   id-token: write
   contents: read
 
+env:
+  CONFIG: ${{ inputs.config }}
+
 jobs:
   check-access:
     name: "Verify User Access"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Validate image config
+        shell: pwsh
+        run: |
+          & "${{ github.workspace }}/ci/validate-image-config.ps1" -Family tceng
 
       - name: Load Authorized Users and Check Access
         shell: pwsh
         run: |
-          $TCEngUsers  = Get-Content .github/tceng.json  | ConvertFrom-Json
-          $RelsreUsers = Get-Content .github/relsre.json | ConvertFrom-Json
-          $AUTHORIZED_USERS = $TCEngUsers + $RelsreUsers
-
-          if ($AUTHORIZED_USERS -contains "${{ github.actor }}") {
-            Write-Host "User ${{ github.actor }} is authorized."
-          } else {
-            Write-Host "User ${{ github.actor }} is unauthorized."
-            exit 1
-          }
-
-  setproject:
-    needs: check-access
-    name: "Get Project ID & ImageName from Config"
-    runs-on: ubuntu-latest
-    outputs:
-      IMAGENAME: ${{ steps.set-matrix.outputs.IMAGENAME }}
-      PROJECT:   ${{ steps.set-matrix.outputs.PROJECT }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ env.TARGET_BRANCH }}
-      - id: set-matrix
-        shell: pwsh
-        run: |
-          Import-Module "${{ github.workspace }}/bin/WorkerImages/WorkerImages.psm1"
-          Set-GCPWorkerImageName    -Key '${{ github.event.inputs.config }}' -Team 'tceng'
-          Set-GCPWorkerImageProject -Key '${{ github.event.inputs.config }}' -Team 'tceng'
+          & "${{ github.workspace }}/ci/check-authorized-user.ps1" -IncludeTCEng
 
   packer:
-    needs: setproject
+    needs: check-access
     name: "GCP ${{ github.event.inputs.config }}"
     runs-on: ubuntu-latest
     environment: prod
@@ -70,31 +49,39 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ env.TARGET_BRANCH }}
+          persist-credentials: false
+      - name: Validate image config
+        shell: pwsh
+        run: |
+          & "${{ github.workspace }}/ci/validate-image-config.ps1" -Family tceng
+
+      - id: set-gcp-vars
+        name: Set project and image metadata
+        shell: pwsh
+        run: |
+          Import-Module ./bin/WorkerImages/WorkerImages.psm1
+          Set-GCPWorkerImageMetadata -Key $env:CONFIG -Team tceng
 
       - uses: 'google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093'
         id: auth
         with:
           workload_identity_provider: "projects/324168772199/locations/global/workloadIdentityPools/github-actions/providers/github-actions"
-          service_account: "deploy-prod@${{ needs.setproject.outputs.PROJECT }}.iam.gserviceaccount.com"
+          service_account: "deploy-prod@${{ steps.set-gcp-vars.outputs.PROJECT }}.iam.gserviceaccount.com"
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db
-
-      - name: Setup Packer
-        uses: hashicorp/setup-packer@ce93c3c08a6c2ff2275bf4b54ff0d9a75f6c9789
-
-      - name: Run Packer
+      - name: Prepare Packer variables
         shell: pwsh
         env:
-          GITHUB_TOKEN:       ${{ secrets.GITHUB_TOKEN }}
-          TASKCLUSTER_REF:    ${{ github.event.inputs.TASKCLUSTER_REF }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CONFIG: ${{ inputs.config }}
+          PKR_VAR_taskcluster_ref: ${{ inputs.TASKCLUSTER_REF }}
         run: |
-          $ENV:PKR_VAR_taskcluster_ref = $ENV:TASKCLUSTER_REF
           Import-Module "${{ github.workspace }}/bin/WorkerImages/WorkerImages.psm1"
-          $Vars = @{
-            github_token       = "${{ secrets.GITHUB_TOKEN }}"
-            Key                = '${{ github.event.inputs.config }}'
-            Team               = "tceng"   # ensure tceng HCL/YAML paths
-          }
-          New-GCPWorkerImage @Vars
+          & "${{ github.workspace }}/ci/validate-image-config.ps1" -Family tceng
+          Set-GCPWorkerImageVariables -Key $env:CONFIG -Github_token $env:GITHUB_TOKEN -Team tceng
+      - name: Run Packer
+        uses: ./.github/actions/packer-build
+        with:
+          template: packer/tceng-gcp.pkr.hcl
+          force: 'true'

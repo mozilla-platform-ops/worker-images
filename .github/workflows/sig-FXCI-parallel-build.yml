@@ -18,62 +18,35 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
 
       - name: Install PowerShell-YAML module
         shell: pwsh
-        run: ./ci/install-powershell-yaml.ps1
+        run: |
+          & "${{ github.workspace }}/ci/install-powershell-yaml.ps1"
 
       - id: set-matrix
         name: Extract Azure production configs
         shell: pwsh
-        run: ./ci/get-azure-production-parallel-matrix.ps1
-
-  check-access:
-    name: "Verify User Access"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - name: Load Authorized Users and Check Access
-        shell: pwsh
-        run: ./ci/check-authorized-user.ps1
+        run: |
+          & "${{ github.workspace }}/ci/get-azure-production-parallel-matrix.ps1"
 
   packer:
-    needs: [check-access, prepare-matrix]
+    needs: [prepare-matrix]
     name: "Build ${{ matrix.config }}"
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: write
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - name: Azure Login
-        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906
-        with:
-          client-id: ${{ secrets[matrix.client_id_secret] }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets[matrix.subscription_id_secret] }}
-          enable-AzPSSession: true
-      - name: 'Run Packer'
-        shell: pwsh
-        env:
-          APPLICATION_ID: ${{ secrets[matrix.application_id_secret] }}
-          CLIENT_ID: ${{ secrets[matrix.client_id_secret] }}
-          CONFIG: ${{ matrix.config }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SUBSCRIPTION_ID: ${{ secrets[matrix.subscription_id_secret] }}
-          TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-        run: ./ci/build-azure-shared-worker-image.ps1
-      - name: Upload Release Notes Artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: release-notes-${{ matrix.config }}
-          path: ${{ matrix.config }}-${{ env.sharedimageversion }}.md
-          overwrite: true
-          retention-days: 1
-          if-no-files-found: error
+    uses: ./.github/workflows/build-azure-image.yml
+    with:
+      config: ${{ matrix.config }}
+      trusted: ${{ startsWith(matrix.config, 'trusted-') }}
+    secrets:
+      client-id: ${{ secrets[matrix.client_id_secret] }}
+      application-id: ${{ secrets[matrix.application_id_secret] }}
+      subscription-id: ${{ secrets[matrix.subscription_id_secret] }}
+      tenant-id: ${{ secrets.AZURE_TENANT_ID }}
 
   sbom:
     if: ${{ always() }}

@@ -1,7 +1,12 @@
+param ([switch] $IncludeTCEng)
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$authorizedUsers = Get-Content ".github/relsre.json" | ConvertFrom-Json
+$authorizedUsers = @(Get-Content ".github/relsre.json" | ConvertFrom-Json)
+if ($IncludeTCEng) {
+    $authorizedUsers += @(Get-Content ".github/tceng.json" | ConvertFrom-Json)
+}
 $actor = $env:GITHUB_ACTOR
 
 if (-not $actor) {

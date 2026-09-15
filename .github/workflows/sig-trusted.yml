@@ -5,87 +5,27 @@ on:
   workflow_dispatch:
     inputs:
       config:
-        type: choice
-        description: Choose which pool to build
-        options:
-        - trusted-win11-a64-25h2-builder
-        - trusted-win2022-64-2009
-        - trusted-win2025-64-24h2
+        type: string
+        required: true
+        description: YAML basename from config/ (without .yaml)
 
 permissions:
   id-token: write
   contents: read
 
 jobs:
-  check-access:
-    name: "Verify User Access"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - name: Load Authorized Users and Check Access
-        shell: pwsh
-        run: |
-          $AUTHORIZED_USERS=$(Get-Content .github/relsre.json | Convertfrom-Json)
-          if ($authorized_users -contains "${{ github.actor }}") {
-            Write-host "User ${{ github.actor }} is authorized."
-          }
-          else {
-            Write-Host "User ${{ github.actor }} is unauthorized."
-            exit 1
-          }
   packer:
-    needs: check-access
     name: "Build ${{ github.event.inputs.config }}"
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: write
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - name: Azure Login
-        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID_FXCI_TRUSTED }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_TRUSTED }}
-          enable-AzPSSession: true
-      - name: 'Run Packer'
-        shell: pwsh
-        run: |
-          Import-Module .\bin\WorkerImages\WorkerImages.psm1
-          $Vars = @{
-            github_token = "${{ secrets.GITHUB_TOKEN }}"
-            Key = '${{ github.event.inputs.config }}'
-            Client_ID = "${{ secrets.AZURE_CLIENT_ID_FXCI_TRUSTED }}"
-            oidc_request_url = $env:ACTIONS_ID_TOKEN_REQUEST_URL
-            oidc_request_token = $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN
-            Subscription_ID = "${{ secrets.AZURE_SUBSCRIPTION_ID_TRUSTED }}"
-            Tenant_ID = "${{ secrets.AZURE_TENANT_ID }}"
-            Application_ID = "${{ secrets.AZURE_APPLICATION_ID_FXCI_TRUSTED }}"
-          }
-          $maxAttempts = 10
-          for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
-            Write-Host "Packer attempt $attempt of $maxAttempts"
-            New-AzSharedWorkerImage @Vars
-            if ($LASTEXITCODE -eq 0) {
-              break
-            }
-            if ($attempt -eq $maxAttempts) {
-              Write-Host "::error ::Packer failed after $maxAttempts attempts"
-              exit 1
-            }
-            Write-Host "::warning ::Packer failed (attempt $attempt, exit code $LASTEXITCODE). Retrying in 30 seconds..."
-            Start-Sleep -Seconds 30
-          }
-          "sharedimageversion=$ENV:PKR_VAR_sharedimage_version" >> $env:GITHUB_ENV
-      - name: Upload Release Notes Artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: release-notes-${{ github.event.inputs.config }}
-          path: ${{ github.event.inputs.config }}-${{ env.sharedimageversion }}.md
-          overwrite: true
-          retention-days: 1
-          if-no-files-found: error
+    uses: ./.github/workflows/build-azure-image.yml
+    with:
+      config: ${{ github.event.inputs.config }}
+      trusted: true
+    secrets:
+      client-id: ${{ secrets.AZURE_CLIENT_ID_FXCI_TRUSTED }}
+      application-id: ${{ secrets.AZURE_APPLICATION_ID_FXCI_TRUSTED }}
+      subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_TRUSTED }}
+      tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+
   sbom:
     needs: packer
     permissions:

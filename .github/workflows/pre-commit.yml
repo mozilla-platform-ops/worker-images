@@ -25,6 +25,8 @@ jobs:
         run: |
           & "${{ github.workspace }}/ci/install-powershell-yaml.ps1"
           & "${{ github.workspace }}/ci/test-build-helpers.ps1"
+          & "${{ github.workspace }}/ci/test-packer-action.ps1"
+          & "${{ github.workspace }}/ci/test-azure-workflow.ps1"
 
   pre-commit:
     runs-on: ubuntu-latest
