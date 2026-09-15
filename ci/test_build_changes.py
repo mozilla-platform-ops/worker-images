@@ -1,6 +1,7 @@
 """Offline regression checks: python3 -m unittest discover -s ci -p 'test_*.py'."""
 
 import contextlib
+import importlib.util
 import io
 import json
 import os
@@ -9,13 +10,62 @@ import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
+from types import SimpleNamespace
 
 from github_log import format_duration, log_message
 
 ROOT = Path(__file__).resolve().parent.parent
+region_spec = importlib.util.spec_from_file_location(
+    "region_check", ROOT / "ci/check-azure-regions.py"
+)
+region_check = importlib.util.module_from_spec(region_spec)
+region_spec.loader.exec_module(region_check)
 
 
 class BuildChecks(unittest.TestCase):
+    def test_region_coverage(self):
+        expected, actual, missing, extra = region_check.coverage_difference(
+            {"eastus", "westeurope"}, ["East US", "west-us"], "Central US"
+        )
+        self.assertEqual(missing, ["westeurope"])
+        self.assertEqual(extra, ["westus"])
+        self.assertIn("centralus", expected)
+        self.assertIn("centralus", actual)
+        self.assertEqual(
+            region_check.coverage_difference({"eastus"}, [], "East US")[2:], ([], [])
+        )
+        with self.assertRaises(ValueError):
+            region_check.normalize_region("")
+
+    def test_pool_specific_region_and_trust_mapping(self):
+        image = {
+            "azure2": {"resource_group": "RG", "name": "image"},
+            "azure_trusted": {"resource_group": "RG", "name": "image"},
+        }
+        images = {"resolved-alias": image}
+        pools = [
+            SimpleNamespace(
+                provider_id=provider,
+                config={
+                    "image": "resolved-alias",
+                    "locations": locations,
+                    "maxCapacity": capacity,
+                },
+            )
+            for provider, locations, capacity in [
+                ("azure2", ["Central India"], 10),
+                ("azure_trusted", ["west-us-2"], 10),
+                ("azure2", ["east-us"], 0),
+                ("fxci-level1-gcp", ["us-west1"], 10),
+            ]
+        ]
+        required = region_check.pool_regions(pools, images)
+        self.assertEqual(required[("azure2", "rg", "image", "image")], {"centralindia"})
+        self.assertEqual(
+            required[("azure_trusted", "rg", "image", "image")], {"westus2"}
+        )
+        self.assertEqual(len(required), 2)
+
     def test_log_escaping_and_duration(self):
         out = io.StringIO()
         with (

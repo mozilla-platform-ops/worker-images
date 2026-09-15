@@ -16,70 +16,7 @@
     $DefaultYaml = ConvertFrom-Yaml (Get-Content "config/windows_production_defaults.yaml" -Raw)
     $ImageYaml   = ConvertFrom-Yaml (Get-Content "config/$Key.yaml" -Raw)
 
-    function Merge-YamlWithDefaults {
-        param (
-            [hashtable] $ImageData,
-            [hashtable] $DefaultData
-        )
-        $merged = @{}
-        $allKeys = $ImageData.Keys + $DefaultData.Keys | Select-Object -Unique
-        foreach ($key in $allKeys) {
-            $imageVal = $ImageData[$key]
-            $defaultVal = $DefaultData[$key]
-
-            if ($imageVal -is [hashtable] -and $defaultVal -is [hashtable]) {
-                $merged[$key] = Merge-YamlWithDefaults -ImageData $imageVal -DefaultData $defaultVal
-            }
-            elseif ($imageVal -is [System.Collections.IEnumerable] -and
-                    -not ($imageVal -is [string]) -and
-                    $imageVal.Count -gt 0) {
-                $merged[$key] = $imageVal
-            }
-            elseif ($imageVal -is [string] -and $imageVal -eq 'default' -and $null -ne $defaultVal -and $defaultVal -ne 'default') {
-                $merged[$key] = $defaultVal
-            }
-            elseif ($null -ne $imageVal -and ($imageVal -isnot [string] -or ($imageVal -ne '' -and $imageVal -ne 'default'))) {
-                $merged[$key] = $imageVal
-            }
-            elseif ($null -ne $defaultVal -and $defaultVal -ne 'default') {
-                $merged[$key] = $defaultVal
-            }
-        }
-        return $merged
-    }
-
-    function Log-FinalValue {
-        param (
-            [string] $Label,
-            [string] $Final,
-            [string] $Image
-        )
-        if ($Image -eq $Final) {
-            Write-Host "$Label = $Final (from image YAML)"
-        }
-        elseif ($Final -eq 'default') {
-            Write-Host "$Label = default ⚠️  (not overridden!)"
-        }
-        else {
-            Write-Host "$Label = $Final (overridden by default YAML)"
-        }
-    }
-
-    $Y = Merge-YamlWithDefaults -ImageData $ImageYaml -DefaultData $DefaultYaml
-
-    # Debug logging
-    Log-FinalValue "openvox_version"    $Y.vm["openvox_version"] $ImageYaml.vm["openvox_version"]
-    Log-FinalValue "puppet_version"     $Y.vm["puppet_version"] $ImageYaml.vm["puppet_version"]
-    Log-FinalValue "git_version"        $Y.vm["git_version"]    $ImageYaml.vm["git_version"]
-    #Log-FinalValue "clone_mozilla_unified" $Y.vm["clone_mozilla_unified"] $ImageYaml.vm["clone_mozilla_unified"] $DefaultYaml.vm["clone_mozilla_unified"]
-    Log-FinalValue "sourceBranch"        $Y.vm.tags["sourceBranch"]        $ImageYaml.vm.tags["sourceBranch"]
-    Log-FinalValue "sourceRepository"    $Y.vm.tags["sourceRepository"]    $ImageYaml.vm.tags["sourceRepository"]
-    Log-FinalValue "sourceOrganization"  $Y.vm.tags["sourceOrganization"]  $ImageYaml.vm.tags["sourceOrganization"]
-    Log-FinalValue "deploymentId"        $Y.vm.tags["deploymentId"]        $ImageYaml.vm.tags["deploymentId"]
-    Log-FinalValue "resource_group"      $Y.azure["managed_image_resource_group_name"] $ImageYaml.azure["managed_image_resource_group_name"]
-    Log-FinalValue "vmSize"              $Y.vm["size"]                     $ImageYaml.vm["size"]
-    Log-FinalValue "spot"                $Y.vm["spot"]                     $ImageYaml.vm["spot"]
-    Log-FinalValue "build_location"      $Y.azure["build_location"]        $ImageYaml.azure["build_location"]
+    $Y = Merge-ImageDefaults $DefaultYaml $ImageYaml
 
     # Set environment variables
     $ENV:PKR_VAR_config = $Key
@@ -118,15 +55,11 @@
     $ENV:PKR_VAR_oidc_request_url = $oidc_request_url
     $ENV:PKR_VAR_oidc_request_token = $oidc_request_token
 
-    # Set replication regions from config locations (HCL list format for Packer)
-    $Locations = $Y.azure["locations"]
-    if ($Locations -and $Locations.Count -gt 0) {
-        $RegionsHcl = '["' + ($Locations -join '", "') + '"]'
-        $ENV:PKR_VAR_replication_regions = $RegionsHcl
-        Write-Host "Replication regions: $RegionsHcl"
-    } else {
-        Write-Host "WARNING: No locations specified in config, using Packer default"
-    }
+    # Include the build region even when the replica list is explicitly empty.
+    $Locations = @(@($BuildLocation) + @($Y.azure['locations']) | ForEach-Object {
+        ($_ -replace '[\s-]', '').ToLowerInvariant()
+    } | Sort-Object -Unique)
+    $ENV:PKR_VAR_replication_regions = ConvertTo-Json -InputObject $Locations -Compress
 
     $ENV:PKR_VAR_temp_resource_group_name = ('{0}-{1}-{2}-pkrtmp' -f `
         $ENV:PKR_VAR_worker_pool_id, `

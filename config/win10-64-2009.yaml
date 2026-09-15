@@ -9,21 +9,22 @@ sharedimage:
   image_name: "win10_64_2009"
   image_version: "1.3.8"
 azure:
-  managed_image_resource_group_name: "default"
-  managed_image_storage_account_type: "default"
+  locations:
+    - canadacentral
+    - centralindia
+    - eastus
+    - eastus2
+    - northcentralus
+    - northeurope
+    - southindia
+    - westus
+    - westus2
+    - westus3
 vm:
-  puppet_version: "default"
-  git_version: "default"
-  openvox_version: "default"
   size: Standard_F8s_v2
   tags:
     base_image: win10642009azure
     worker_pool_id: win10-64-2009
-    sourceOrganization: "default"
-    sourceRepository: "default"
-    sourceBranch: "default"
-    deploymentId: "default"
-    managed_by: "default"
 tests:
   - microsoft_vcc_win10_win11_x64.tests.ps1
   - disable_services.tests.ps1

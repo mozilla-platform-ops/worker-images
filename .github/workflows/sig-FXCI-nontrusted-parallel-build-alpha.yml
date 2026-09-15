@@ -14,6 +14,9 @@ permissions:
   contents: read
 
 jobs:
+  region-check:
+    uses: ./.github/workflows/check-azure-regions.yml
+
   prepare-matrix:
     name: Prepare Alpha Image Matrix
     runs-on: ubuntu-latest
@@ -53,7 +56,7 @@ jobs:
           "os_integration_matrix=$osIntMatrix" >> $env:GITHUB_OUTPUT
 
   packer:
-    needs: [prepare-matrix]
+    needs: [prepare-matrix, region-check]
     name: "Build ${{ matrix.config }}"
     strategy:
       fail-fast: false

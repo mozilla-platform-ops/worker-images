@@ -9,6 +9,9 @@ permissions:
   contents: read
 
 jobs:
+  region-check:
+    uses: ./.github/workflows/check-azure-regions.yml
+
   prepare-matrix:
     name: Prepare Production Image Matrix
     runs-on: ubuntu-latest
@@ -33,7 +36,7 @@ jobs:
           & "${{ github.workspace }}/ci/get-azure-production-parallel-matrix.ps1"
 
   packer:
-    needs: [prepare-matrix]
+    needs: [prepare-matrix, region-check]
     name: "Build ${{ matrix.config }}"
     strategy:
       fail-fast: false
