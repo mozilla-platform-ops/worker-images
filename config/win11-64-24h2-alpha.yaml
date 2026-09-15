@@ -28,8 +28,8 @@ vm:
     worker_pool_id: win11-64-24h2
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "master"
-    deploymentId: "default"
+    sourceBranch: "remove-dead-code-windows"
+    deploymentId: "d615cede91260c1e4074c5201dabbafc4319cdb6"
     managed_by: packer
 tests:
   - win11_sdk_tests.ps1
