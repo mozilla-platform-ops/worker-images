@@ -262,6 +262,38 @@ function puppet { $global:LASTEXITCODE = [int]$env:TEST_EXIT }
                 if code in (1, 4, 6):
                     self.assertIn("safe-warning", result.stdout)
 
+    def test_linux_worker_version(self):
+        # The fixed /usr/local/bin existence check is covered structurally; exercise
+        # the version/exit comparison with an isolated command path.
+        script = (
+            (ROOT / "tests/linux/test_taskcluster.sh")
+            .read_text()
+            .replace(
+                "test -x /usr/local/bin/generic-worker",
+                "command -v generic-worker >/dev/null",
+            )
+        )
+        with tempfile.TemporaryDirectory() as temp:
+            worker = Path(temp) / "generic-worker"
+            env = dict(
+                os.environ,
+                PATH=temp + os.pathsep + os.environ["PATH"],
+                TASKCLUSTER_VERSION="1.2.3",
+            )
+            for output, code, expected in (
+                ("1.2.3", 0, 0),
+                ("1.2.4", 0, 1),
+                ("1.2.3", 2, 2),
+            ):
+                worker.write_text(
+                    f"#!/bin/sh\nprintf '%s\\n' '{output}'\nexit {code}\n"
+                )
+                worker.chmod(0o755)
+                result = subprocess.run(
+                    ["bash", "-c", script], env=env, capture_output=True
+                )
+                self.assertEqual(result.returncode, expected)
+
 
 if __name__ == "__main__":
     unittest.main()
