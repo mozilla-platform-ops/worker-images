@@ -8,7 +8,7 @@ on:
         type: choice
         description: Image configuration
         options:
-          - win11-25h2
+          - win11-24h2
         required: true
       image_version:
         type: string
@@ -38,7 +38,7 @@ jobs:
   build:
     needs: check-access
     runs-on: ubuntu-latest
-    environment: foofrix-images
+    environment: foofrix-image-build
     timeout-minutes: 360
     permissions:
       contents: read
@@ -49,6 +49,7 @@ jobs:
       PKR_VAR_client_id: ${{ vars.AZURE_CLIENT_ID_FOOFRIX_IMAGES }}
       PKR_VAR_tenant_id: ${{ vars.AZURE_TENANT_ID }}
       PKR_VAR_subscription_id: ${{ vars.AZURE_SUBSCRIPTION_ID_FOOFRIX }}
+      PKR_VAR_build_identity_id: ${{ vars.AZURE_IDENTITY_ID_FOOFRIX_IMAGES }}
       PKR_VAR_artifacts_directory: ${{ runner.temp }}/foofrix-artifacts
       ARTIFACT_STORAGE_ACCOUNT: ${{ vars.AZURE_STORAGE_ACCOUNT_FOOFRIX }}
       ARTIFACT_PREFIX: ${{ inputs.artifact_prefix }}
@@ -61,6 +62,7 @@ jobs:
           : "${PKR_VAR_client_id:?Set AZURE_CLIENT_ID_FOOFRIX_IMAGES}"
           : "${PKR_VAR_tenant_id:?Set AZURE_TENANT_ID}"
           : "${PKR_VAR_subscription_id:?Set AZURE_SUBSCRIPTION_ID_FOOFRIX}"
+          : "${PKR_VAR_build_identity_id:?Set AZURE_IDENTITY_ID_FOOFRIX_IMAGES from image_build_identity_id}"
           [[ "$PKR_VAR_image_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
           mkdir -p "$PKR_VAR_artifacts_directory"
       - name: Azure login with FooFrix image-build identity

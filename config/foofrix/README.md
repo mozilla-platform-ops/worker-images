@@ -1,7 +1,7 @@
 # FooFrix Windows images
 
 RELOPS-2570 adds a standalone image build path for Perf. The initial config is
-Windows 11 25H2 x64 with Git, Node.js 24, Python, C++ Build Tools, 7-Zip,
+Windows 11 24H2 x64 with Git, Node.js 24, Python, C++ Build Tools, 7-Zip,
 Rust/Cargo, Samply, Searchfox CLI, and Google Cloud CLI. The payload stage adds
 MozillaBuild, a full Firefox source build, FooFrix, run-speedometer, profiler-cli,
 Codex, the statistical comparison environment, and Playwright Firefox downloads. This is a base image draft;
@@ -14,34 +14,42 @@ isolated FooFrix gallery; they do not update FXCI or TCEng images or worker pool
 ## Azure and GitHub prerequisites
 
 The infrastructure is tracked by RELOPS-2548 and relops_infra_as_code PR #339.
-Terraform must create the gallery and the `foofrix_win11_25h2` image definition
+Terraform must create the gallery and the `win11_64_24h2` image definition
 (Windows, x64, generalized, Hyper-V V2) before the first build. Confirm that
 definition's security/disk settings match the selected Marketplace source.
 
-Configure the GitHub environment `foofrix-images` with these variables:
+Configure the GitHub environment `foofrix-image-build` with these variables:
 
 | Variable | Value |
 | --- | --- |
 | `AZURE_CLIENT_ID_FOOFRIX_IMAGES` | Dedicated image-build application client ID |
+| `AZURE_IDENTITY_ID_FOOFRIX_IMAGES` | Terraform `image_build_identity_id` output (full resource ID) |
 | `AZURE_TENANT_ID` | Mozilla tenant ID |
 | `AZURE_SUBSCRIPTION_ID_FOOFRIX` | Dedicated FooFrix subscription ID |
 | `AZURE_STORAGE_ACCOUNT_FOOFRIX` | FooFrix storage account name |
 
 The build application's federated credential must trust issuer
 `https://token.actions.githubusercontent.com`, audience `api://AzureADTokenExchange`,
-and subject `repo:mozilla-platform-ops/worker-images:environment:foofrix-images`.
+and subject `repo:mozilla-platform-ops/worker-images:environment:foofrix-image-build`.
 Restrict the environment's deployment branches to reviewed branches and configure
 its approval rules before enabling builds. The workflow also checks the actor
 against `.github/foofrix.json` and `.github/relsre.json`.
 
-The build identity needs permissions in FooFrix to create/delete temporary Packer
-resource groups and their VM/network/Key Vault resources, publish gallery versions,
-and read the `artifacts` container. It must not reuse the VM-provisioning identity
-or the FXCI/TCEng build applications. No Azure password is required by this workflow.
+The build identity needs Contributor on the existing `rg-foofrix-image-build`
+resource group and the `foofrix` gallery, Blob Data Reader on `artifacts`, and
+Managed Identity Operator on `id-foofrix-image-build`, matching PR #339. Packer
+creates temporary resources inside that group and derives its location from the
+group. It must not create or delete the group itself. Failed builds can leave
+resources there; inspect and remove only that build's leftovers.
+The build managed identity is attached to the temporary VM. Artifacts currently
+download in Actions and arrive through Packer, so guest blob authentication is
+not used; the identity is available if that download strategy changes. Build
+credentials must remain separate from the VM-provisioning identity and FXCI/TCEng
+build applications. No Azure password is required by this workflow.
 
 ## Build and use
 
-Dispatch **FooFrix Azure Images**, selecting `win11-25h2` and a new numeric
+Dispatch **FooFrix Azure Images**, selecting `win11-24h2` and a new numeric
 `major.minor.patch` gallery version. The workflow never forces replacement of an
 existing version. The Packer build size is independent of Perf's eventual VM size.
 

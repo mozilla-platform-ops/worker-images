@@ -9,7 +9,7 @@ packer {
 
 variable "config" {
   type    = string
-  default = "win11-25h2"
+  default = "win11-24h2"
   validation {
     condition     = can(regex("^[a-z0-9-]+$", var.config))
     error_message = "Use a config name from config/foofrix without a path or extension."
@@ -33,6 +33,10 @@ variable "tenant_id" {
 }
 
 variable "client_id" {
+  type = string
+}
+
+variable "build_identity_id" {
   type = string
 }
 
@@ -68,9 +72,10 @@ source "azure-arm" "foofrix" {
   image_sku       = local.config.image.sku
   image_version   = local.config.image.version
 
-  location        = local.config.azure.location
-  vm_size         = local.config.vm.size
-  os_disk_size_gb = local.config.vm.os_disk_size_gb
+  build_resource_group_name        = local.config.azure.build_resource_group
+  user_assigned_managed_identities = [var.build_identity_id]
+  vm_size                          = local.config.vm.size
+  os_disk_size_gb                  = local.config.vm.os_disk_size_gb
 
   communicator   = "winrm"
   winrm_use_ssl  = true
