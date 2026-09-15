@@ -1,4 +1,5 @@
 function Write-Log {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidOverwritingBuiltInCmdlets', '', Justification = 'Repository logging API retained for existing provisioning callers.')]
     param (
         [string] $message,
         [string] $severity = 'INFO',
@@ -103,7 +104,7 @@ function Get-WinDisplayVersion { (Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microso
 
 function Set-SSH {
     [CmdletBinding()]
-    param([Switch]$DownloadKeys)
+    param()
     $sshdService = Get-Service -Name sshd -ErrorAction SilentlyContinue
     if ($null -eq $sshdService) {
         Write-Log -message ('{0} :: Enabling OpenSSH.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'

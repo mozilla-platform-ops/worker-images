@@ -1,4 +1,4 @@
-# StressSP3.ps1
+﻿# StressSP3.ps1
 # SSH-driven Speedometer 3.1 replication harness for the wintest2 NUC13 fleet,
 # built for RELOPS-2323 throttling investigation 2026-05-07.
 #
@@ -28,6 +28,10 @@
 #
 # Output: CSV + transcript log in C:\logs.
 
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'ssh_user', Justification = 'Consumed by nested helper functions in this script scope.')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'SshTimeoutSecs', Justification = 'Consumed by nested helper functions in this script scope.')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'SshUser', Justification = 'Consumed by nested helper functions in this script scope.')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'MsgQueue', Justification = 'Consumed by nested helper functions in this script scope.')]
 param(
     [int]$duration_secs    = 600,
     [int]$retry_sleep_secs = 120,
@@ -110,7 +114,7 @@ function Invoke-SSH {
     if ($StdinText) { $p.StandardInput.Write($StdinText) }
     $p.StandardInput.Close()
     $exited  = $p.WaitForExit($TimeoutSec * 1000)
-    if (-not $exited) { try { $p.Kill() } catch {} }
+    if (-not $exited) { try { $p.Kill() } catch { Write-Verbose "Process cleanup failed: $_" } }
     $null = $outTask.Wait(10000)
     $null = $errTask.Wait(10000)
     $stdout   = if ($outTask.Status -eq 'RanToCompletion') { $outTask.Result } else { '' }
@@ -871,7 +875,6 @@ function Invoke-Parallel {
         param(
             [string]$Fqdn,
             [string]$StressPayload,
-            [int]$DurationSecs,
             [int]$SshTimeoutSecs,
             [bool]$DryRun,
             [string]$SshUser,
@@ -896,7 +899,7 @@ function Invoke-Parallel {
             if ($StdinText) { $p.StandardInput.Write($StdinText) }
             $p.StandardInput.Close()
             $exited  = $p.WaitForExit($TimeoutSec * 1000)
-            if (-not $exited) { try { $p.Kill() } catch {} }
+            if (-not $exited) { try { $p.Kill() } catch { Write-Verbose "Process cleanup failed: $_" } }
             $null = $outTask.Wait(10000)
             $null = $errTask.Wait(10000)
             $stdout   = if ($outTask.Status -eq 'RanToCompletion') { $outTask.Result } else { '' }
@@ -1003,7 +1006,6 @@ function Invoke-Parallel {
             [void]$ps.AddParameters(@{
                 Fqdn           = $fqdn
                 StressPayload  = $stressPayload
-                DurationSecs   = $duration_secs
                 SshTimeoutSecs = $ssh_timeout_secs
                 DryRun         = [bool]$dry_run
                 SshUser        = $ssh_user

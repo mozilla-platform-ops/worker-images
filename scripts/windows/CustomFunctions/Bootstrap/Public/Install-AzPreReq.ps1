@@ -2,7 +2,6 @@ function Install-AzPreReq {
     param (
         [string] $ext_src = "https://roninpuppetassets.blob.core.windows.net/binaries/prerequisites",
         [string] $local_dir = "$env:systemdrive\BootStrap",
-        [string] $work_dir = "$env:systemdrive\scratch",
         [string] $manifest = "nodes.pp"
     )
 

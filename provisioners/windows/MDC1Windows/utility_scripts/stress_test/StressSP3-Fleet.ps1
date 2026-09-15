@@ -95,7 +95,7 @@ else {
 
 # Apply skip list
 if (-not $no_skip -and -not $single) {
-    $before = $target_shorts.Count
+
     $hit = @($target_shorts | Where-Object { $skip_nodes -contains $_ })
     $target_shorts = @($target_shorts | Where-Object { $skip_nodes -notcontains $_ })
     if ($hit.Count -gt 0) {

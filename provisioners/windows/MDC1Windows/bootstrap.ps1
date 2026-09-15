@@ -230,23 +230,23 @@ function Get-WindowsUpdateStates {
     }
     $events = Get-WinEvent -FilterHashtable $filter -ErrorAction SilentlyContinue | Sort-Object Id
 
-    foreach ( $event in $events ) {
-        switch ( $event.Id ) {
+    foreach ( $updateEvent in $events ) {
+        switch ( $updateEvent.Id ) {
             19 {
                 $state = "Installed"
-                $title = $event.Properties[0].Value
+                $title = $updateEvent.Properties[0].Value
                 $completedUpdates[$title] = ""
                 break
             }
             20 {
                 $state = "Failed"
-                $title = $event.Properties[1].Value
+                $title = $updateEvent.Properties[1].Value
                 $completedUpdates[$title] = ""
                 break
             }
             43 {
                 $state = "Running"
-                $title = $event.Properties[0].Value
+                $title = $updateEvent.Properties[0].Value
                 break
             }
         }
@@ -264,6 +264,7 @@ function Get-WindowsUpdateStates {
 }
 
 function Write-Log {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidOverwritingBuiltInCmdlets', '', Justification = 'Repository logging API retained for existing provisioning callers.')]
     param (
         [string] $message,
         [string] $severity = 'INFO',
@@ -304,10 +305,7 @@ function Write-Log {
 
 function Set-SSH {
     [CmdletBinding()]
-    param (
-        [Switch]
-        $DownloadKeys
-    )
+    param ()
 
     ## OpenSSH
     $sshdService = Get-Service -Name sshd -ErrorAction SilentlyContinue
@@ -947,7 +945,7 @@ foreach ($kv in $__ParamMap.GetEnumerator()) {
 if ($__badParams.Count -gt 0) {
     try {
         Write-Log -message ("Parameter validation failed. Null/empty: {0}" -f ($__badParams -join ', ')) -severity 'ERROR'
-    } catch { }  # logging might not be ready yet; ignore
+    } catch { Write-Verbose "Event logging unavailable: $_" }
 
     Write-Warning ("Parameter validation failed. Null/empty: {0}" -f ($__badParams -join ', '))
     # Immediately PXE boot

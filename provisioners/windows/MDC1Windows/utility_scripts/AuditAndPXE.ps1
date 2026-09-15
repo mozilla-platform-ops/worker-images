@@ -1,3 +1,4 @@
+﻿[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'pxe_script', Justification = 'Consumed by nested helper functions in this script scope.')]
 param(
     [switch]$single,
     [switch]$pool,
@@ -183,8 +184,8 @@ New-Item -ItemType Directory -Force -Path '$folder' | Out-Null
 
 function Invoke-RemotePXE {
     param([Parameter(Mandatory)][string]$NodeName,[Parameter(Mandatory)][string]$RemotePath,[bool]$WipeD=$false)
-    $args = if ($WipeD) { @('-WipeD','True') } else { @('-WipeD','False') }
-    $run  = Invoke-SSHPSFile -NodeName $NodeName -ScriptPath $RemotePath -Arguments $args
+    $commandArgs = if ($WipeD) { @('-WipeD','True') } else { @('-WipeD','False') }
+    $run  = Invoke-SSHPSFile -NodeName $NodeName -ScriptPath $RemotePath -Arguments $commandArgs
     $out  = ($run.Output | Out-String)
     if ($run.ExitCode -eq 0 -and $out -match 'PXE_TRIGGERED') { return @{Ok=$true; Out=$out} }
     if ($run.ExitCode -eq 255) { return @{Ok=$false; Out=$out; Msg='ssh failed'} }
@@ -332,9 +333,9 @@ function Invoke-AuditScript {
     }
 
     # Run audit script
-    $args = @('-git_hash',$GitHash,'-worker_pool_id',$WorkerPool,'-image_name',$Image_Name)
+    $commandArgs = @('-git_hash',$GitHash,'-worker_pool_id',$WorkerPool,'-image_name',$Image_Name)
     try {
-        $run = Invoke-SSHPSFile -NodeName $NodeName -ScriptPath $AuditScript -Arguments $args
+        $run = Invoke-SSHPSFile -NodeName $NodeName -ScriptPath $AuditScript -Arguments $commandArgs
         $result = ($run.Output | Out-String)
 
         switch ($run.ExitCode) {

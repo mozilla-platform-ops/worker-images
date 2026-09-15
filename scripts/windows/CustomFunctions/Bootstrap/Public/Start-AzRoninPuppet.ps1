@@ -1,245 +1,132 @@
 function Start-AzRoninPuppet {
     param (
-        [int] $exit,
         [int] $last_exit = (Get-ItemProperty "HKLM:\SOFTWARE\Mozilla\ronin_puppet").last_run_exit,
-        [string] $nodes_def = "$env:systemdrive\ronin\manifests\nodes\nodes.pp",
-        [string] $puppetfile = "$env:systemdrive\ronin\Puppetfile",
         [string] $logdir = "$env:systemdrive\logs",
         [string] $ed_key = "$env:systemdrive\generic-worker\ed25519-private.key",
-        [string] $datetime = (get-date -format yyyyMMdd-HHmm),
         [string] $mozilla_key = "HKLM:\SOFTWARE\Mozilla\",
         [string] $ronnin_key = "$mozilla_key\ronin_puppet",
         [string] $worker_pool = (Get-ItemProperty "HKLM:\SOFTWARE\Mozilla\ronin_puppet").worker_pool_id,
-        [string] $stage = (Get-ItemProperty -path "HKLM:\SOFTWARE\Mozilla\ronin_puppet").bootstrap_stage,
-        [string] $deploymentId = $ENV:deploymentId,
-        [string] $cotkey = $ENV:cotkey
+        [string] $deploymentId = $ENV:deploymentId
     )
 
-    begin {
-        $functionStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-        Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
-        Write-Host "========== $($MyInvocation.MyCommand.Name) started at $((Get-Date).ToUniversalTime().ToString('o')) =========="
+    Set-Location $env:systemdrive\ronin
+    If ( -Not (test-path $logdir\old)) {
+        $null = New-Item -ItemType Directory -Force -Path $logdir\old
     }
-    process {
-        Set-Location $env:systemdrive\ronin
-        If ( -Not (test-path $logdir\old)) {
-            $null = New-Item -ItemType Directory -Force -Path $logdir\old
-        }
-        Write-Log -message ('{0} :: Ronin Puppet HEAD is set to {1}' -f $($MyInvocation.MyCommand.Name), $deploymentID) -severity 'DEBUG'
-        Write-host ('{0} :: Ronin Puppet HEAD is set to {1}' -f $($MyInvocation.MyCommand.Name), $deploymentID)
+    Write-Log -message ('{0} :: Ronin Puppet HEAD is set to {1}' -f $($MyInvocation.MyCommand.Name), $deploymentID) -severity 'DEBUG'
+    Write-host ('{0} :: Ronin Puppet HEAD is set to {1}' -f $($MyInvocation.MyCommand.Name), $deploymentID)
 
-        Set-ItemProperty -Path "HKLM:\SOFTWARE\Mozilla\ronin_puppet" -Name 'bootstrap_stage' -Value 'inprogress'
+    Set-ItemProperty -Path "HKLM:\SOFTWARE\Mozilla\ronin_puppet" -Name 'bootstrap_stage' -Value 'inprogress'
 
-        # Setting Env variabes for PuppetFile install and Puppet run
-        # The ssl variables are needed for R10k
-        Write-Log -message ('{0} :: Setting Puppet enviroment.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-        Write-host ('{0} :: Setting Puppet enviroment.' -f $($MyInvocation.MyCommand.Name))
+    # Setting Env variabes for PuppetFile install and Puppet run
+    # The ssl variables are needed for R10k
+    Write-Log -message ('{0} :: Setting Puppet enviroment.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
+    Write-host ('{0} :: Setting Puppet enviroment.' -f $($MyInvocation.MyCommand.Name))
 
-        $env:path = "$env:programfiles\Puppet Labs\Puppet\bin;$env:path"
-        $env:SSL_CERT_FILE = "$env:programfiles\Puppet Labs\Puppet\puppet\ssl\cert.pem"
-        $env:SSL_CERT_DIR = "$env:programfiles\Puppet Labs\Puppet\puppet\ssl"
-        $env:FACTER_env_windows_installdir = "$env:programfiles\Puppet Labs\Puppet"
-        $env:HOMEPATH = "\Users\Administrator"
-        $env:HOMEDRIVE = "C:"
-        $env:PL_BASEDIR = "$env:programfiles\Puppet Labs\Puppet"
-        $env:PUPPET_DIR = "$env:programfiles\Puppet Labs\Puppet"
-        $env:RUBYLIB = "$env:programfiles\Puppet Labs\Puppet\lib"
-        $env:USERNAME = "Administrator"
-        $env:USERPROFILE = "$env:systemdrive\Users\Administrator"
+    $env:path = "$env:programfiles\Puppet Labs\Puppet\bin;$env:path"
+    $env:SSL_CERT_FILE = "$env:programfiles\Puppet Labs\Puppet\puppet\ssl\cert.pem"
+    $env:SSL_CERT_DIR = "$env:programfiles\Puppet Labs\Puppet\puppet\ssl"
+    $env:FACTER_env_windows_installdir = "$env:programfiles\Puppet Labs\Puppet"
+    $env:HOMEPATH = "\Users\Administrator"
+    $env:HOMEDRIVE = "C:"
+    $env:PL_BASEDIR = "$env:programfiles\Puppet Labs\Puppet"
+    $env:PUPPET_DIR = "$env:programfiles\Puppet Labs\Puppet"
+    $env:RUBYLIB = "$env:programfiles\Puppet Labs\Puppet\lib"
+    $env:USERNAME = "Administrator"
+    $env:USERPROFILE = "$env:systemdrive\Users\Administrator"
 
-        Write-Log -message ('{0} :: Moving old logs.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-        Write-host ('{0} :: Moving old logs.' -f $($MyInvocation.MyCommand.Name))
-        Get-ChildItem -Path $logdir\*.json -Recurse -ErrorAction SilentlyContinue | Move-Item -Destination $logdir\old -ErrorAction SilentlyContinue
-        $logDate = $(get-date -format yyyyMMdd-HHmm)
-        $LogDestination = ("$env:systemdrive\logs\{0}-{1}-bootstrap-puppet.json" -f $ENV:COMPUTERNAME,$logdate)
-        ## create a step where we're recording the time it takes to run puppet apply
-        $stopWatch = New-Object -TypeName System.Diagnostics.Stopwatch
-        ## start the timer
-        $stopWatch.Start()
-        Write-host ('{0} :: Beginning Puppet apply' -f $($MyInvocation.MyCommand.Name))
-        Write-Log -message ('{0} :: Beginning Puppet apply' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-        puppet apply manifests\nodes.pp --onetime --verbose --no-daemonize --no-usecacheonfailure --detailed-exitcodes --no-splay --show_diff --modulepath=modules`;r10k_modules --hiera_config=hiera.yaml --logdest $LogDestination --debug
-        [int]$puppet_exit = $LastExitCode
-        ## stop the timer
-        $stopWatch.Stop()
-        ## get the time it took to run puppet apply
-        $time = $stopWatch.Elapsed
-        Write-host ('{0} :: Puppet apply took - {1} minutes, {2} seconds to complete' -f $($MyInvocation.MyCommand.Name),$time.Minutes, $time.Seconds)
-        Write-Log -message  ('{0} :: Puppet apply took - {1} minutes, {2} seconds to complete' -f $($MyInvocation.MyCommand.Name),$time.Minutes, $time.Seconds) -severity 'DEBUG'
-        ## https://www.puppet.com/docs/puppet/6/man/apply.html#options
+    Write-Log -message ('{0} :: Moving old logs.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
+    Write-host ('{0} :: Moving old logs.' -f $($MyInvocation.MyCommand.Name))
+    Get-ChildItem -Path $logdir\*.json -Recurse -ErrorAction SilentlyContinue | Move-Item -Destination $logdir\old -ErrorAction SilentlyContinue
+    $logDate = $(get-date -format yyyyMMdd-HHmm)
+    $LogDestination = ("$env:systemdrive\logs\{0}-{1}-bootstrap-puppet.json" -f $ENV:COMPUTERNAME,$logdate)
+    ## create a step where we're recording the time it takes to run puppet apply
+    $stopWatch = New-Object -TypeName System.Diagnostics.Stopwatch
+    ## start the timer
+    $stopWatch.Start()
+    Write-host ('{0} :: Beginning Puppet apply' -f $($MyInvocation.MyCommand.Name))
+    Write-Log -message ('{0} :: Beginning Puppet apply' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
+    puppet apply manifests\nodes.pp --onetime --verbose --no-daemonize --no-usecacheonfailure --detailed-exitcodes --no-splay --show_diff --modulepath=modules`;r10k_modules --hiera_config=hiera.yaml --logdest $LogDestination --debug
+    [int]$puppet_exit = $LastExitCode
+    ## stop the timer
+    $stopWatch.Stop()
+    ## get the time it took to run puppet apply
+    $time = $stopWatch.Elapsed
+    Write-host ('{0} :: Puppet apply took - {1} minutes, {2} seconds to complete' -f $($MyInvocation.MyCommand.Name),$time.Minutes, $time.Seconds)
+    Write-Log -message  ('{0} :: Puppet apply took - {1} minutes, {2} seconds to complete' -f $($MyInvocation.MyCommand.Name),$time.Minutes, $time.Seconds) -severity 'DEBUG'
+    ## https://www.puppet.com/docs/puppet/6/man/apply.html#options
 
-        switch ($puppet_exit) {
-            0 {
-                Set-ItemProperty -Path $ronnin_key -name last_run_exit -value $puppet_exit
-                Set-ItemProperty -Path $ronnin_key -Name 'bootstrap_stage' -Value 'complete'
-                if ($worker_pool -like "trusted*") {
-                    if (Test-Path -Path $ed_key) {
-                        Remove-Item $ed_key -Force -Confirm:$false
+    switch ($puppet_exit) {
+        { $_ -in 0, 2 } {
+            Set-ItemProperty -Path $ronnin_key -name last_run_exit -value $puppet_exit
+            Set-ItemProperty -Path $ronnin_key -Name 'bootstrap_stage' -Value 'complete'
+            if ($worker_pool -like "trusted*") {
+                if (Test-Path -Path $ed_key) {
+                    Remove-Item $ed_key -Force -Confirm:$false
+                }
+                if ($null -ne $ENV:COTKEY) {
+                    try {
+                        New-Item -Path $ed_key -ItemType File -Force -ErrorAction Stop
+                        Write-Log -message  ('{0} :: Created {1}' -f $($MyInvocation.MyCommand.Name),$ed_key) -severity 'DEBUG'
                     }
-                    if ($null -ne $ENV:COTKEY) {
-                        try {
-                            New-Item -Path $ed_key -ItemType File -Force -ErrorAction Stop
-                            Write-Log -message  ('{0} :: Created {1}' -f $($MyInvocation.MyCommand.Name),$ed_key) -severity 'DEBUG'
-                        }
-                        catch {
-                            Write-Log -message  ('{0} :: Unable to create {1}. Error {2}' -f $($MyInvocation.MyCommand.Name), $ed_key, $_.Exception.Message) -severity 'ERROR'
-                            exit 1
-                        }
-                        try {
-                            Set-Content -Path $ed_key -Value $ENV:COTKEY -ErrorAction Stop
-                            Write-Log -message  ('{0} :: Wrote CoT key to {1}' -f $($MyInvocation.MyCommand.Name),$ed_key) -severity 'DEBUG'
-                        }
-                        catch {
-                            Write-Log -message  ('{0} :: Unable to write CoT key to {1}. Error {2}' -f $($MyInvocation.MyCommand.Name), $ed_key, $_.Exception.Message) -severity 'ERROR'
-                            exit 1
-                        }
-
-                        Write-Log -message  ('{0} :: Trusted image. Blocking livelog outbound access.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-                        New-NetFirewallRule -DisplayName "Block LiveLog" -Direction Outbound -Program "c:\generic-worker\livelog.exe" -Action block
-                        Exit 0
-                    }
-                    else {
-                        Write-Log -message  ('{0} :: Trusted image. CoT key not found in environment. Human intervention needed.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-                        Start-Sleep -Seconds 3
+                    catch {
+                        Write-Log -message  ('{0} :: Unable to create {1}. Error {2}' -f $($MyInvocation.MyCommand.Name), $ed_key, $_.Exception.Message) -severity 'ERROR'
                         exit 1
                     }
-                }
-                else {
-                    Exit 0
-                }
-            }
-            1 {
-                Write-Log -message ('{0} :: Puppet apply failed :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit) -severity 'DEBUG'
-                Write-Host ('{0} :: Puppet apply failed :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit)
-                Set-ItemProperty -Path $ronnin_key -name "last_run_exit" -value $puppet_exit
-                ## The JSON file isn't formatted correctly, so add a ] to complete the json formatting and then output warnings or errors
-                Add-Content $LogDestination "`n]"
-                $log = Get-Content $LogDestination | ConvertFrom-Json
-                $log | Where-Object {
-                    $psitem.Level -match "warning|err" -and $_.message -notmatch "Client Certificate|Private Key"
-                } | ForEach-Object {
-                    $data = $psitem
-                    Write-Log -message ('{0} :: Puppet File {1}' -f $($MyInvocation.MyCommand.Name), $data.file) -severity 'DEBUG'
-                    Write-Log -message ('{0} :: Puppet Message {1}' -f $($MyInvocation.MyCommand.Name), $data.message) -severity 'DEBUG'
-                    Write-Log -message ('{0} :: Puppet Level {1}' -f $($MyInvocation.MyCommand.Name), $data.level) -severity 'DEBUG'
-                    Write-Log -message ('{0} :: Puppet Line {1}' -f $($MyInvocation.MyCommand.Name), $data.line) -severity 'DEBUG'
-                    Write-Log -message ('{0} :: Puppet Source {1}' -f $($MyInvocation.MyCommand.Name), $data.source) -severity 'DEBUG'
-                    Write-Host ('{0} :: Puppet File {1}' -f $($MyInvocation.MyCommand.Name), $data.file)
-                    Write-Host ('{0} :: Puppet Message {1}' -f $($MyInvocation.MyCommand.Name), $data.message)
-                    Write-Host ('{0} :: Puppet Level {1}' -f $($MyInvocation.MyCommand.Name), $data.level)
-                    Write-Host ('{0} :: Puppet Line {1}' -f $($MyInvocation.MyCommand.Name), $data.line)
-                    Write-Host ('{0} :: Puppet Source {1}' -f $($MyInvocation.MyCommand.Name), $data.source)
-                }
-                Move-StrapPuppetLogs
-                exit 1
-            }
-            2 {
-                Write-Log -message ('{0} :: Puppet apply succeeded, and some resources were changed :: Error code {1} :: {2:o}' -f $($MyInvocation.MyCommand.Name), $puppet_exit,(Get-Date).ToUniversalTime()) -severity 'DEBUG'
-                Write-Host ('{0} :: Puppet apply succeeded, and some resources were changed :: Error code {1} :: {2:o}' -f $($MyInvocation.MyCommand.Name), $puppet_exit,(Get-Date).ToUniversalTime())
-                Set-ItemProperty -Path $ronnin_key -name last_run_exit -value $puppet_exit
-                Set-ItemProperty -Path $ronnin_key -Name 'bootstrap_stage' -Value 'complete'
-                if ($worker_pool -like "trusted*") {
-                    if (Test-Path -Path $ed_key) {
-                        Remove-Item $ed_key -Force -Confirm:$false
+                    try {
+                        Set-Content -Path $ed_key -Value $ENV:COTKEY -ErrorAction Stop
+                        Write-Log -message  ('{0} :: Wrote CoT key to {1}' -f $($MyInvocation.MyCommand.Name),$ed_key) -severity 'DEBUG'
                     }
-                    if ($null -ne $ENV:COTKEY) {
-                        try {
-                            New-Item -Path $ed_key -ItemType File -Force -ErrorAction Stop
-                            Write-Log -message  ('{0} :: Created {1}' -f $($MyInvocation.MyCommand.Name),$ed_key) -severity 'DEBUG'
-                        }
-                        catch {
-                            Write-Log -message  ('{0} :: Unable to create {1}. Error {2}' -f $($MyInvocation.MyCommand.Name), $ed_key, $_.Exception.Message) -severity 'ERROR'
-                            exit 1
-                        }
-                        try {
-                            Set-Content -Path $ed_key -Value $ENV:COTKEY -ErrorAction Stop
-                            Write-Log -message  ('{0} :: Wrote CoT key to {1}' -f $($MyInvocation.MyCommand.Name),$ed_key) -severity 'DEBUG'
-                        }
-                        catch {
-                            Write-Log -message  ('{0} :: Unable to write CoT key to {1}. Error {2}' -f $($MyInvocation.MyCommand.Name), $ed_key, $_.Exception.Message) -severity 'ERROR'
-                            exit 1
-                        }
-
-                        Write-Log -message  ('{0} :: Trusted image. Blocking livelog outbound access.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-                        New-NetFirewallRule -DisplayName "Block LiveLog" -Direction Outbound -Program "c:\generic-worker\livelog.exe" -Action block
-                        Exit 2
-                    }
-                    else {
-                        Write-Log -message  ('{0} :: Trusted image. CoT key not found in environment. Human intervention needed.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-                        Start-Sleep -Seconds 3
+                    catch {
+                        Write-Log -message  ('{0} :: Unable to write CoT key to {1}. Error {2}' -f $($MyInvocation.MyCommand.Name), $ed_key, $_.Exception.Message) -severity 'ERROR'
                         exit 1
                     }
+
+                    Write-Log -message  ('{0} :: Trusted image. Blocking livelog outbound access.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
+                    New-NetFirewallRule -DisplayName "Block LiveLog" -Direction Outbound -Program "c:\generic-worker\livelog.exe" -Action block
+                    Exit $puppet_exit
                 }
                 else {
-                    Exit 2
+                    Write-Log -message  ('{0} :: Trusted image. CoT key not found in environment. Human intervention needed.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
+                    Start-Sleep -Seconds 3
+                    exit 1
                 }
             }
-            4 {
-                Write-Log -message ('{0} :: Puppet apply succeeded, but some resources failed :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit) -severity 'DEBUG'
-                Write-Host ('{0} :: Puppet apply succeeded, but some resources failed :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit)
-                Set-ItemProperty -Path $ronnin_key -name last_run_exit -value $puppet_exit
-                ## The JSON file isn't formatted correctly, so add a ] to complete the json formatting and then output warnings or errors
-                Add-Content $LogDestination "`n]"
-                $log = Get-Content $LogDestination | ConvertFrom-Json
-                $log | Where-Object {
-                    $psitem.Level -match "warning|err" -and $_.message -notmatch "Client Certificate|Private Key"
-                } | ForEach-Object {
-                    $data = $psitem
-                    Write-Log -message ('{0} :: Puppet File {1}' -f $($MyInvocation.MyCommand.Name), $data.file) -severity 'DEBUG'
-                    Write-Log -message ('{0} :: Puppet Message {1}' -f $($MyInvocation.MyCommand.Name), $data.message) -severity 'DEBUG'
-                    Write-Log -message ('{0} :: Puppet Level {1}' -f $($MyInvocation.MyCommand.Name), $data.level) -severity 'DEBUG'
-                    Write-Log -message ('{0} :: Puppet Line {1}' -f $($MyInvocation.MyCommand.Name), $data.line) -severity 'DEBUG'
-                    Write-Log -message ('{0} :: Puppet Source {1}' -f $($MyInvocation.MyCommand.Name), $data.source) -severity 'DEBUG'
-                    Write-Host ('{0} :: Puppet File {1}' -f $($MyInvocation.MyCommand.Name), $data.file)
-                    Write-Host ('{0} :: Puppet Message {1}' -f $($MyInvocation.MyCommand.Name), $data.message)
-                    Write-Host ('{0} :: Puppet Level {1}' -f $($MyInvocation.MyCommand.Name), $data.level)
-                    Write-Host ('{0} :: Puppet Line {1}' -f $($MyInvocation.MyCommand.Name), $data.line)
-                    Write-Host ('{0} :: Puppet Source {1}' -f $($MyInvocation.MyCommand.Name), $data.source)
-                }
-
-                Move-StrapPuppetLogs
-                exit 4
-            }
-            6 {
-                Write-Log -message ('{0} :: Puppet apply succeeded, but included changes and failures :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit) -severity 'DEBUG'
-                Write-Host ('{0} :: Puppet apply succeeded, but included changes and failures :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit)
-                Set-ItemProperty -Path $ronnin_key -name last_run_exit -value $puppet_exit
-                ## The JSON file isn't formatted correctly, so add a ] to complete the json formatting and then output warnings or errors
-                Add-Content $LogDestination "`n]"
-                $log = Get-Content $LogDestination | ConvertFrom-Json
-                $log | Where-Object {
-                    $psitem.Level -match "warning|err" -and $_.message -notmatch "Client Certificate|Private Key"
-                } | ForEach-Object {
-                    $data = $psitem
-                    Write-Log -message ('{0} :: Puppet File {1}' -f $($MyInvocation.MyCommand.Name), $data.file) -severity 'DEBUG'
-                    Write-Log -message ('{0} :: Puppet Message {1}' -f $($MyInvocation.MyCommand.Name), $data.message) -severity 'DEBUG'
-                    Write-Log -message ('{0} :: Puppet Level {1}' -f $($MyInvocation.MyCommand.Name), $data.level) -severity 'DEBUG'
-                    Write-Log -message ('{0} :: Puppet Line {1}' -f $($MyInvocation.MyCommand.Name), $data.line) -severity 'DEBUG'
-                    Write-Log -message ('{0} :: Puppet Source {1}' -f $($MyInvocation.MyCommand.Name), $data.source) -severity 'DEBUG'
-                    Write-Host ('{0} :: Puppet File {1}' -f $($MyInvocation.MyCommand.Name), $data.file)
-                    Write-Host ('{0} :: Puppet Message {1}' -f $($MyInvocation.MyCommand.Name), $data.message)
-                    Write-Host ('{0} :: Puppet Level {1}' -f $($MyInvocation.MyCommand.Name), $data.level)
-                    Write-Host ('{0} :: Puppet Line {1}' -f $($MyInvocation.MyCommand.Name), $data.line)
-                    Write-Host ('{0} :: Puppet Source {1}' -f $($MyInvocation.MyCommand.Name), $data.source)
-                }
-
-                Move-StrapPuppetLogs
-                exit 6
-            }
-            Default {
-                Write-Log -message  ('{0} :: Unable to determine state post Puppet apply :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit) -severity 'DEBUG'
-                Set-ItemProperty -Path $ronnin_key -name last_run_exit -value $last_exit
-                #Start-sleep -s 300
-                #Move-StrapPuppetLogs
-                exit 1
+            else {
+                Exit $puppet_exit
             }
         }
-    }
-    end {
-        $functionStopwatch.Stop()
-        $elapsedMinutes = [int][math]::Floor($functionStopwatch.Elapsed.TotalMinutes)
-        $elapsedSeconds = $functionStopwatch.Elapsed.Seconds
-        Write-Log -message ('{0} :: completed in {1} minutes, {2} seconds' -f $($MyInvocation.MyCommand.Name), $elapsedMinutes, $elapsedSeconds) -severity 'DEBUG'
-        Write-Host "========== $($MyInvocation.MyCommand.Name) completed in $elapsedMinutes minutes, $elapsedSeconds seconds =========="
+        { $_ -in 1, 4, 6 } {
+            Write-Log -message ('{0} :: Puppet apply failed :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit) -severity 'DEBUG'
+            Write-Host ('{0} :: Puppet apply failed :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit)
+            Set-ItemProperty -Path $ronnin_key -name "last_run_exit" -value $puppet_exit
+            ## The JSON file isn't formatted correctly, so add a ] to complete the json formatting and then output warnings or errors
+            Add-Content $LogDestination "`n]"
+            $log = Get-Content $LogDestination | ConvertFrom-Json
+            $log | Where-Object {
+                $psitem.Level -match "warning|err" -and $_.message -notmatch "Client Certificate|Private Key"
+            } | ForEach-Object {
+                $data = $psitem
+                Write-Log -message ('{0} :: Puppet File {1}' -f $($MyInvocation.MyCommand.Name), $data.file) -severity 'DEBUG'
+                Write-Log -message ('{0} :: Puppet Message {1}' -f $($MyInvocation.MyCommand.Name), $data.message) -severity 'DEBUG'
+                Write-Log -message ('{0} :: Puppet Level {1}' -f $($MyInvocation.MyCommand.Name), $data.level) -severity 'DEBUG'
+                Write-Log -message ('{0} :: Puppet Line {1}' -f $($MyInvocation.MyCommand.Name), $data.line) -severity 'DEBUG'
+                Write-Log -message ('{0} :: Puppet Source {1}' -f $($MyInvocation.MyCommand.Name), $data.source) -severity 'DEBUG'
+                Write-Host ('{0} :: Puppet File {1}' -f $($MyInvocation.MyCommand.Name), $data.file)
+                Write-Host ('{0} :: Puppet Message {1}' -f $($MyInvocation.MyCommand.Name), $data.message)
+                Write-Host ('{0} :: Puppet Level {1}' -f $($MyInvocation.MyCommand.Name), $data.level)
+                Write-Host ('{0} :: Puppet Line {1}' -f $($MyInvocation.MyCommand.Name), $data.line)
+                Write-Host ('{0} :: Puppet Source {1}' -f $($MyInvocation.MyCommand.Name), $data.source)
+            }
+            Move-StrapPuppetLogs
+            exit $puppet_exit
+        }
+        Default {
+            Write-Log -message  ('{0} :: Unable to determine state post Puppet apply :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit) -severity 'DEBUG'
+            Set-ItemProperty -Path $ronnin_key -name last_run_exit -value $last_exit
+            #Start-sleep -s 300
+            #Move-StrapPuppetLogs
+            exit 1
+        }
     }
 }
