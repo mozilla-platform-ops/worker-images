@@ -1,7 +1,14 @@
+param (
+    [string] $AdditionalUsersFile
+)
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $authorizedUsers = Get-Content ".github/relsre.json" | ConvertFrom-Json
+if ($AdditionalUsersFile) {
+    $authorizedUsers = @($authorizedUsers) + @(Get-Content $AdditionalUsersFile | ConvertFrom-Json)
+}
 $actor = $env:GITHUB_ACTOR
 
 if (-not $actor) {
