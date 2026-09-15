@@ -9,21 +9,16 @@ sharedimage:
   image_name: "win11_a64_25h2_tester"
   image_version: "1.0.7"
 azure:
-  managed_image_resource_group_name: "default"
-  managed_image_storage_account_type: "default"
+  locations:
+    - centralindia
+    - eastus2
+    - northcentralus
+    - uksouth
 vm:
-  puppet_version: "default"
-  git_version: "default"
-  openvox_version: "default"
   size: Standard_E8pds_v5
   tags:
     base_image: win11a6425h2azuretester
     worker_pool_id: win11-a64-25h2-tester
-    sourceOrganization: "default"
-    sourceRepository: "default"
-    sourceBranch: "default"
-    deploymentId: "default"
-    managed_by: "default"
 tests:
   - error_reporting.tests.ps1
   - suppress_dialog_boxes.tests.ps1

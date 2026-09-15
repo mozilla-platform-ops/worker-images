@@ -9,23 +9,15 @@ sharedimage:
   image_name: "trusted_win2025_64_24h2"
   image_version: 1.0.0
 azure:
-  managed_image_resource_group_name: "default"
-  managed_image_storage_account_type: "default"
+  locations: []
   build_location: eastus2
 vm:
   spot: true
-  puppet_version: "default"
-  git_version: "default"
-  openvox_version: "default"
   size: Standard_D32ads_v7
   tags:
     base_image: win20256424h2azure
     worker_pool_id: trusted-win2025-64-24h2
-    sourceOrganization: "default"
-    sourceRepository: "default"
     sourceBranch: master
-    deploymentId: "default"
-    managed_by: "default"
 tests:
   - microsoft_binscope.tests.ps1
   - microsoft_vcc.tests.ps1

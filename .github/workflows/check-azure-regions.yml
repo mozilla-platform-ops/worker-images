@@ -1,0 +1,45 @@
+name: Azure region coverage
+
+on:
+  pull_request:
+    paths:
+      - 'config/**'
+      - 'azure.pkr.hcl'
+      - 'ci/check-azure-regions.py'
+      - '.github/workflows/check-azure-regions.yml'
+  schedule:
+    - cron: '17 8 * * *'
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  regions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Check out the region source of truth
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: mozilla-releng/fxci-config
+          ref: main
+          path: .fxci-config
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4
+      - name: Compare resolved active pool regions with Packer targets
+        run: >-
+          uv run --frozen --no-dev --project .fxci-config python
+          ci/check-azure-regions.py .fxci-config
+          --report "$RUNNER_TEMP/azure-region-coverage.json"
+      - name: Upload region comparison and source revision
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: azure-region-coverage
+          path: ${{ runner.temp }}/azure-region-coverage.json
+          if-no-files-found: ignore
+          retention-days: 14

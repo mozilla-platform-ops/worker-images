@@ -14,7 +14,11 @@ permissions:
   contents: read
 
 jobs:
+  region-check:
+    uses: ./.github/workflows/check-azure-regions.yml
+
   packer:
+    needs: [region-check]
     name: "Build ${{ github.event.inputs.config }}"
     uses: ./.github/workflows/build-azure-image.yml
     with:
