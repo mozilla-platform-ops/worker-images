@@ -2,7 +2,7 @@ packer {
   required_plugins {
     googlecompute = {
       source  = "github.com/hashicorp/googlecompute"
-      version = "~> 1"
+      version = "= 1.2.4"
     }
   }
 }
@@ -63,14 +63,14 @@ variable "zone" {
   default = "${env("ZONE")}"
 }
 
-variable "access_token" {
-  type      = string
-  default   = "${env("ACCESS_TOKEN")}"
-  sensitive = true
+variable "machine_type" {
+  type    = string
+  default = "e2-standard-8"
 }
 
 source "googlecompute" "base" {
   disk_size           = var.disk_size
+  disk_type           = "pd-ssd"
   image_licenses      = ["projects/vm-options/global/licenses/enable-vmx"]
   image_name          = var.image_name
   project_id          = var.project_id
@@ -83,20 +83,18 @@ source "googlecompute" "base" {
 build {
   source "source.googlecompute.base" {
     name         = "gw-fxci-gcp-l1-2404-gui-alpha"
-    machine_type = null
+    machine_type = var.machine_type
   }
 
   source "source.googlecompute.base" {
     name                    = "trusted-gw-fxci-gcp-l3-2404-headless-alpha"
-    disk_type               = "pd-ssd"
-    machine_type            = null
+    machine_type            = var.machine_type
     image_guest_os_features = ["GVNIC"]
   }
 
   source "source.googlecompute.base" {
     name                    = "gw-fxci-gcp-l1-2404-headless-alpha"
-    disk_type               = "pd-ssd"
-    machine_type            = null
+    machine_type            = var.machine_type
     image_guest_os_features = ["GVNIC"]
   }
 
@@ -110,21 +108,6 @@ build {
     name                    = "trusted-gw-fxci-gcp-l3-2404-arm64-headless-alpha"
     machine_type            = "t2a-standard-4"
     image_guest_os_features = ["GVNIC"]
-  }
-
-  ## Every image has tests, so create the tests directory
-  provisioner "shell" {
-    execute_command = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
-    inline = [
-      "mkdir -p /workerimages/tests",
-      "chmod -R 777 /workerimages/tests",
-    ]
-  }
-
-  ## Every image has taskcluster, so upload the taskcluster tests fle
-  provisioner "file" {
-    source      = "${path.cwd}/tests/linux/taskcluster.tests.ps1"
-    destination = "/workerimages/tests/taskcluster.tests.ps1"
   }
 
   provisioner "shell" {
@@ -206,17 +189,6 @@ build {
   }
 
   provisioner "shell" {
-    execute_command     = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
-    expect_disconnect   = true
-    pause_before        = "30s"
-    pause_after         = "90s"
-    start_retry_timeout = "30m"
-    scripts = [
-      "${path.cwd}/scripts/linux/common/reboot.sh"
-    ]
-  }
-
-  provisioner "shell" {
     only = [
       "googlecompute.gw-fxci-gcp-l1-2404-headless-alpha",
       "googlecompute.gw-fxci-gcp-l1-2404-arm64-headless-alpha"
@@ -227,15 +199,12 @@ build {
     ]
   }
 
+  # Reboot once, after all package and container-runtime changes.
   provisioner "shell" {
-    only = [
-      "googlecompute.gw-fxci-gcp-l1-2404-headless-alpha",
-      "googlecompute.gw-fxci-gcp-l1-2404-arm64-headless-alpha"
-    ]
     execute_command     = "sudo -S sh -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect   = true
-    pause_before        = "30s"
-    pause_after         = "90s"
+    pause_before        = "0s"
+    pause_after         = "30s"
     start_retry_timeout = "30m"
     scripts = [
       "${path.cwd}/scripts/linux/common/reboot.sh"
@@ -248,7 +217,6 @@ build {
       "googlecompute.trusted-gw-fxci-gcp-l3-2404-arm64-headless-alpha"
     ]
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-    pause_before    = "90s"
     environment_vars = [
       "cotkey=${local.cotkey}",
       "use_keyvault=${var.use_keyvault}"
@@ -264,17 +232,14 @@ build {
   ## Run all tests
   provisioner "shell" {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-    pause_before    = "90s"
     environment_vars = [
       "CLOUD=google",
       "TC_ARCH=${var.tc_arch}",
       "TASKCLUSTER_VERSION=${var.taskcluster_version}",
     ]
     scripts = [
-      "${path.cwd}/tests/linux/prep.sh",
-      "${path.cwd}/tests/linux/install_pester.sh",
-      "${path.cwd}/tests/linux/test_docker.sh",
-      "${path.cwd}/tests/linux/run_all_tests.sh"
+      "${path.cwd}/tests/linux/test_taskcluster.sh",
+      "${path.cwd}/tests/linux/test_docker.sh"
     ]
     valid_exit_codes = [
       0

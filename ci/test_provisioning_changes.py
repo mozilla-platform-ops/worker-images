@@ -140,7 +140,7 @@ class ProvisioningChecks(unittest.TestCase):
         for variant in variants:
             name = re.search(r'name\s*=\s*"([^"]+)"', variant)[1]
             names.add(name)
-            machine = '"t2a-standard-4"' if "arm64" in name else "null"
+            machine = '"t2a-standard-4"' if "arm64" in name else "var.machine_type"
             self.assertRegex(variant, rf"machine_type\s*=\s*{re.escape(machine)}")
             self.assertEqual("GVNIC" in variant, "-gui-" not in name)
         self.assertEqual(

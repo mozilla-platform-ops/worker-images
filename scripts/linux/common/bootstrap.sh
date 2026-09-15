@@ -2,60 +2,33 @@
 
 set -exv
 
-function retry {
-  set +e
-  local n=0
-  local max=10
-  while true; do
-    "$@" && break || {
-      if [[ $n -lt $max ]]; then
-        ((n++))
-        echo "Command failed" >&2
-        sleep_time=$((2 ** n))
-        echo "Sleeping $sleep_time seconds..." >&2
-        sleep $sleep_time
-        echo "Attempt $n/$max:" >&2
-      else
-        echo "Failed after $n attempts." >&2
-        exit 1
-      fi
-    }
-  done
-  set -e
-}
-
 start_time="$(date '+%s')"
 
 
-retry apt-get update
-DEBIAN_FRONTEND=noninteractive retry apt-get upgrade -yq
-retry apt-get -y remove docker docker.io containerd runc
+apt-get -o Acquire::Retries=10 -o APT::Update::Error-Mode=any update
+DEBIAN_FRONTEND=noninteractive apt-get -o Acquire::Retries=10 -o APT::Update::Error-Mode=any upgrade -yq
+apt-get -o Acquire::Retries=10 -o APT::Update::Error-Mode=any -y remove docker docker.io containerd runc
 # build-essential is needed for running `go test -race` with the -vet=off flag as of go1.19
-retry apt-get install -y apt-transport-https ca-certificates curl software-properties-common gzip python3-venv build-essential
+apt-get -o Acquire::Retries=10 -o APT::Update::Error-Mode=any install -y apt-transport-https ca-certificates curl software-properties-common gzip python3-venv build-essential
 
-# needed for kvm, see https://help.ubuntu.com/community/KVM/Installation
-#retry apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
+#apt-get -o Acquire::Retries=10 -o APT::Update::Error-Mode=any install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
 
 # install docker
-retry curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+curl --fail --retry 10 --retry-all-errors -fsSL https://download.docker.com/linux/ubuntu/gpg -o /tmp/docker.asc
+gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg /tmp/docker.asc
+rm /tmp/docker.asc
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
   $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
-retry apt-get update
+apt-get -o Acquire::Retries=10 -o APT::Update::Error-Mode=any update
 # Docker 29.7.x cannot load Kaniko-built Firefox task images containing
 # absolute hardlink targets. Keep this pinned until moby/go-archive#100 ships
 # in a Docker release: https://github.com/moby/go-archive/issues/99
 DOCKER_VERSION='5:29.5.3-1~ubuntu.24.04~noble'
-retry apt-get install -y \
+apt-get -o Acquire::Retries=10 -o APT::Update::Error-Mode=any install -y \
   "docker-ce=${DOCKER_VERSION}" \
   "docker-ce-cli=${DOCKER_VERSION}" \
   containerd.io
-retry docker run hello-world
-
-# configure kvm vmware backdoor
-# this enables a vmware compatible interface for kvm, and is needed for some fuzzing tasks
-#cat > /etc/modprobe.d/kvm-backdoor.conf << "EOF"
-#options kvm enable_vmware_backdoor=y
-#EOF
+docker run --rm hello-world
 
 # configure core dumps to be in the process' current directory with filename 'core'
 # (required for 3 legacy JS engine fuzzers)
@@ -70,10 +43,10 @@ echo '%snap_sudo ALL=(ALL:ALL) NOPASSWD: /usr/bin/snap' | EDITOR='tee -a' visudo
 
 # instead of building from source, we can install the pre-built binary
 cd /usr/local/bin
-retry curl -fsSL "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/generic-worker-multiuser-linux-${TC_ARCH}" > generic-worker
-retry curl -fsSL "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/start-worker-linux-${TC_ARCH}" > start-worker
-retry curl -fsSL "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/livelog-linux-${TC_ARCH}" > livelog
-retry curl -fsSL "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/taskcluster-proxy-linux-${TC_ARCH}" > taskcluster-proxy
+curl --fail --retry 10 --retry-all-errors -fsSL "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/generic-worker-multiuser-linux-${TC_ARCH}" -o generic-worker
+curl --fail --retry 10 --retry-all-errors -fsSL "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/start-worker-linux-${TC_ARCH}" -o start-worker
+curl --fail --retry 10 --retry-all-errors -fsSL "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/livelog-linux-${TC_ARCH}" -o livelog
+curl --fail --retry 10 --retry-all-errors -fsSL "https://github.com/taskcluster/taskcluster/releases/download/v${TASKCLUSTER_VERSION}/taskcluster-proxy-linux-${TC_ARCH}" -o taskcluster-proxy
 chmod a+x generic-worker start-worker taskcluster-proxy livelog
 
 mkdir -p /etc/generic-worker
@@ -117,35 +90,12 @@ EOF
 
 systemctl enable worker
 
-# Don't install ubuntu-desktop ubuntu-gnome-desktop on headless image but install podman
-#retry apt-get install -y podman
-#retry apt-get install -y ubuntu-desktop ubuntu-gnome-desktop podman
+#apt-get -o Acquire::Retries=10 -o APT::Update::Error-Mode=any install -y podman
+#apt-get -o Acquire::Retries=10 -o APT::Update::Error-Mode=any install -y ubuntu-desktop ubuntu-gnome-desktop podman
 
 # this is neccessary in GCP because after installing gnome desktop both NetworkManager and systemd-networkd are enabled
 # which leads to https://bugs.launchpad.net/ubuntu/jammy/+source/systemd/+bug/2036358
 systemctl disable systemd-networkd-wait-online.service
-
-# set podman registries conf
-#(
-#  echo '[registries.search]'
-#  echo 'registries=["docker.io"]'
-#) >> /etc/containers/registries.conf
-
-# needed for mutter to work with DRM rather than falling back to X11
-#grep -Fx vkms /etc/modules || echo vkms >> /etc/modules
-# disable udev rule that tags platform-vkms with "mutter-device-ignore"
-# ENV{ID_PATH}=="platform-vkms", TAG+="mutter-device-ignore"
-#sed '/platform-vkms/d' /lib/udev/rules.d/61-mutter.rules > /etc/udev/rules.d/61-mutter.rules
-
-# install necessary packages for KVM
-# https://help.ubuntu.com/community/KVM/Installation
-#retry apt-get install -y qemu-kvm bridge-utils
-
-# snd-aloop currently supported in aws kernel, but not in gcp kernel
-#if [ '%MY_CLOUD%' == 'aws' ]; then
-#  echo 'options snd-aloop enable=1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 index=0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31' > /etc/modprobe.d/snd-aloop.conf
-#  echo 'snd-aloop' >> /etc/modules
-#fi
 
 # avoid unnecessary shutdowns during worker startups
 systemctl disable unattended-upgrades
@@ -153,6 +103,3 @@ systemctl disable apt-daily-upgrade.timer
 
 end_time="$(date '+%s')"
 echo "UserData execution took: $(($end_time - $start_time)) seconds"
-
-# shutdown so that instance can be snapshotted
-#shutdown -h now
