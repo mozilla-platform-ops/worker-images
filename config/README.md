@@ -8,6 +8,19 @@ The software bill of materials are dyanmically generated markdown files stored w
 
 ## YAML Definition
 
+Windows configs recursively override `windows_production_defaults.yaml`.
+Omit inherited keys rather than setting them to `"default"`. Explicit values,
+including `false` and empty arrays, take precedence. `azure.locations` lists
+replica targets in addition to `azure.build_location`; `[]` means build-region
+only. CI compares each alpha/production image against its active fxci-config pool
+consumers, including region overrides and aliases. Do not replace these lists
+with a blanket environment-wide list. The temporary builder uses Premium SSD.
+
+`azure.shallow_replication: true` is only suitable for alpha images whose sole
+pool region equals the build region. Shallow images cannot later acquire more
+replicas. If its pool gains another region, disable shallow replication before
+building the replacement image.
+
 `image`: This contains information about the cloud image itself, along with some optional parameters for supporting shared image gallery.
 
 ```
@@ -26,20 +39,10 @@ image:
 ```
 azure:
   managed_image_resource_group_name: rg-packer-through-cib
-  managed_image_storage_account_type: Standard_LRS
   build_location: eastus
-  locations:
-    - canadacentral
-    - centralindia
+  locations: # Example only: derive the actual list with ci/check-azure-regions.py.
     - centralus
-    - eastus
     - eastus2
-    - northcentralus
-    - northeurope
-    - southindia
-    - westus
-    - westus2
-    - westus3
 ```
 
 `vm`: This contains some key value pairs used within packer and some packer powershell provisioners
@@ -47,7 +50,8 @@ azure:
 ```
 vm:
   spot: false # optional: use a Spot VM for the temporary Packer builder
-  puppet_version: 8.5.1
+  openvox_version: 8.24.2
+  git_version: 2.54.0
   size: Standard_F8s_v2
   tags:
     base_image: win11642009azure
@@ -76,10 +80,9 @@ tests:
   - azure_vm_agent.tests.ps1
   - virtual_drivers.tests.ps1
   - logging.tests.ps1
-  - common_tools.tests.ps1
   - git.tests.ps1
   - mozilla_build.tests.ps1
   - mozilla_maintenance_service.tests.ps1
   - windows_worker_runner.tests.ps1
-  - gpu_drivers_latest.tests.ps1
+  - gpu_drivers.tests.ps1
 ```

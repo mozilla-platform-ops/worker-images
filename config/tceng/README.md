@@ -15,6 +15,13 @@ This directory contains configuration, provisioning, and metadata related to bui
 - `scripts/linux/tceng/`
   Shell bootstrap scripts for Linux-based image builds.
 
+The existing bootstrap filenames are thin entrypoints. Windows variants call
+`generic-worker-common.ps1`; Linux variants call `generic-worker-ubuntu-common.sh`.
+Packer uploads the shared file beside the selected entrypoint. For manual use,
+copy both files together. Release variants download pinned Taskcluster binaries;
+staging variants compile from the configured ref. The Windows 2025 variant still
+omits the development-tool/GPU block omitted by its previous script.
+
 ---
 
 ## ✏️ Ownership and Access
