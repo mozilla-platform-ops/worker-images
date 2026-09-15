@@ -1,4 +1,4 @@
-function New-AzWorkerImage {
+﻿function New-AzWorkerImage {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)] [String] $Key,
@@ -13,8 +13,8 @@ function New-AzWorkerImage {
         [Switch] $PackerDebug
     )
 
-    Set-PSRepository PSGallery -InstallationPolicy Trusted
-    Install-Module powershell-yaml -ErrorAction Stop
+    if ($Team -ne 'tceng') { throw 'Use New-AzSharedWorkerImage for Firefox CI Azure images.' }
+    Import-WorkerImagesYaml
 
     switch ($Team) {
         "tceng" {

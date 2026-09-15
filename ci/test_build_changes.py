@@ -1,0 +1,100 @@
+"""Offline regression checks: python3 -m unittest discover -s ci -p 'test_*.py'."""
+
+import os
+from pathlib import Path
+import subprocess
+import unittest
+
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+class BuildChecks(unittest.TestCase):
+    def test_puppet_exit_and_trusted_security_handlers(self):
+        # Execute real exit statements in child processes; no Windows/cloud side effects.
+        prelude = r"""
+$ErrorActionPreference = 'Stop'
+function Get-ItemProperty { @{ last_run_exit=42; worker_pool_id=$env:TEST_POOL; bootstrap_stage='initial' } }
+function Set-ItemProperty { param($Path, $Name, $Value) Write-Output "PROPERTY:$Name=$Value" }
+function Set-Location {}
+function Get-ChildItem { @() }
+function Test-Path { $true }
+function Remove-Item { Write-Output 'REMOVED_OLD_KEY' }
+function New-Item {
+    if ($env:TEST_KEY_FAILURE -eq 'create') { throw 'create failed' }
+    Write-Output 'CREATED_KEY'
+}
+function Set-Content {
+    param($Path, $Value)
+    if ($env:TEST_KEY_FAILURE -eq 'write') { throw 'write failed' }
+    if ($Value -ne 'test-key') { throw 'wrong key' }
+    Write-Output 'WROTE_KEY'
+}
+function New-NetFirewallRule {
+    param($DisplayName, $Direction, $Program, $Action)
+    if ($DisplayName -ne 'Block LiveLog' -or $Direction -ne 'Outbound' -or
+        $Program -ne 'c:\generic-worker\livelog.exe' -or $Action -ne 'block') { throw 'wrong firewall rule' }
+    Write-Output 'BLOCKED_LIVELOG'
+}
+function Write-Log {}
+function Start-Sleep {}
+function Add-Content {}
+function Get-Content {
+    '[{"level":"warning","message":"safe-warning"},{"level":"err","message":"Private Key redacted-secret"}]'
+}
+function Move-StrapPuppetLogs { Write-Output 'MOVED_LOGS' }
+function puppet { $global:LASTEXITCODE = [int]$env:TEST_EXIT }
+"""
+        source = (
+            ROOT
+            / "scripts/windows/CustomFunctions/Bootstrap/Public/Start-AzRoninPuppet.ps1"
+        )
+        script = prelude + f"\n. '{source}'\nStart-AzRoninPuppet\n"
+        cases = [
+            (code, pool, "test-key", "")
+            for code in (0, 1, 2, 4, 6, 99)
+            for pool in ("win-test", "trusted-win-test")
+        ]
+        cases += [
+            (code, "trusted-win-test", key, failure)
+            for code in (0, 2)
+            for key, failure in (
+                ("", ""),
+                ("test-key", "create"),
+                ("test-key", "write"),
+            )
+        ]
+        for code, pool, key, failure in cases:
+            with self.subTest(code=code, pool=pool, key=key, failure=failure):
+                env = dict(
+                    os.environ,
+                    TEST_EXIT=str(code),
+                    TEST_POOL=pool,
+                    COTKEY=key,
+                    TEST_KEY_FAILURE=failure,
+                )
+                result = subprocess.run(
+                    ["pwsh", "-NoProfile", "-Command", script],
+                    env=env,
+                    text=True,
+                    capture_output=True,
+                )
+                success = code in (0, 2)
+                trusted = pool.startswith("trusted")
+                expected = code if code in (0, 1, 2, 4, 6) else 1
+                if success and trusted and (not key or failure):
+                    expected = 1
+                self.assertEqual(
+                    result.returncode, expected, result.stdout + result.stderr
+                )
+                blocked = success and trusted and bool(key) and not failure
+                self.assertEqual("BLOCKED_LIVELOG" in result.stdout, blocked)
+                self.assertEqual("WROTE_KEY" in result.stdout, blocked)
+                self.assertEqual("MOVED_LOGS" in result.stdout, code in (1, 4, 6))
+                self.assertNotIn("redacted-secret", result.stdout)
+                if code in (1, 4, 6):
+                    self.assertIn("safe-warning", result.stdout)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,3 +1,5 @@
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'deployuser', Justification = 'Consumed by Mount-ZDrive and development-script forwarding in nested scopes.')]
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'deploymentaccess', Justification = 'Consumed by nested helper functions in this script scope.')]
 param(
     [string]$deployuser,
     [string]$deploymentaccess,
@@ -7,8 +9,7 @@ param(
 )
 function Deploy-OS-Dev {
     param (
-        [string]$branch,
-        [string]$Password
+        [string]$branch
     )
     $local_dir = "X:\working"
     $source = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/${branch}/provisioners/windows/MDC1Windows"
@@ -50,8 +51,8 @@ function Deploy-OS-Dev {
     }
 
     Write-Host "Running DEV deployment script..."
-    $branch = "$($pool.dev)"
-    powershell $deploy_script -deployuser "deployment" -deploymentaccess "$Password" -devlopment_script -branch "$branch"
+    # Stay in-process so the credential is not copied into another powershell.exe command line.
+    & $deploy_script -deployuser $deployuser -deploymentaccess $deploymentaccess -devlopment_script -branch $branch
 }
 
 function Mount-ZDrive {
@@ -60,9 +61,6 @@ function Mount-ZDrive {
     ## Mount Deployment share
     ## PSDrive is will unmount when the Powershell sessions ends. Ultimately maybe OK.
     ## net use will presist
-    $deploypw = ConvertTo-SecureString -String $deploymentaccess -AsPlainText -Force
-    $credential = New-Object System.Management.Automation.PSCredential($deployuser, $deploypw)
-
     $maxRetries = 20
     $retryInterval = 30
 
@@ -70,6 +68,7 @@ function Mount-ZDrive {
     for ($retryCount = 1; $retryCount -le $maxRetries; $retryCount++) {
         try {
             net use Z: \\mdt2022.ad.mozilla.com\deployments /user:$deployuser $deploymentaccess /persistent:yes
+            if ($LASTEXITCODE -ne 0) { throw "Deployment share mount failed with exit code $LASTEXITCODE" }
             break
         }
         catch {
@@ -565,8 +564,6 @@ $shortname = $ResolvedName.Substring(0, $index)
 
 write-host checking name
 
-$DomainSuffix = $ResolvedName -replace '^[^.]*\.', ''
-
 Write-Host "Host name set to be $ResolvedName"
 
 ## Get data
@@ -590,7 +587,7 @@ foreach ($pool in $YAML.pools) {
             Write-Output "The associated image for $shortname is: $neededImage"
             if ($pool.dev -and (-not $devlopment_script)) {
                 Write-Host "Dev mode is enabled."
-                Deploy-OS-Dev -Password $deploymentaccess -branch $pool.dev
+                Deploy-OS-Dev -branch $pool.dev
                 exit
             }
             $found = $true
@@ -819,7 +816,7 @@ elseif (!(Test-Path $secret_file)) {
 else {
     Write-Host "Local installation files are good. No further action needed."
 }
-if ((Get-ChildItem -Path C:\ -Force) -ne $null) {
+if ($null -ne (Get-ChildItem -Path C:\ -Force)) {
     write-host "Previous installation detected. Formatting OS disk."
     Format-Volume -DriveLetter C -FileSystem NTFS -Force -ErrorAction Inquire | Out-Null
 }

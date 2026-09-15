@@ -1,5 +1,6 @@
 # Write-Log function for logging with RFC3339 format timestamps
 function Write-Log {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidOverwritingBuiltInCmdlets', '', Justification = 'Repository logging API retained for existing provisioning callers.')]
     param (
         [string]$message
     )
@@ -26,8 +27,8 @@ function Run-Executable {
     # each one. Therefore escape double quotes and quote each argument if it
     # contains spaces or quotes.
     $escapedArguments = $arguments | ForEach-Object {
-        $_ = $_ -replace '"', '""'  # Escape literal double quotes by doubling them
-        if ($_ -match '\s' -or $_ -match '"') { "`"$_`"" } else { $_ }
+        $argument = $_ -replace '"', '""'  # Escape literal double quotes by doubling them
+        if ($argument -match '\s' -or $argument -match '"') { "`"$argument`"" } else { $argument }
     }
 
     # Log the command being run
@@ -72,7 +73,7 @@ function Run-Executable {
     }
 
     # Bizarrely, if stdout.txt is 0 bytes, $stdout will not be empty string, but null instead.
-    if ($stdout -eq $null) {
+    if ($null -eq $stdout) {
         return $null
     } else {
         return $stdout.TrimEnd()
@@ -124,8 +125,8 @@ Set-ExecutionPolicy Unrestricted -Force -Scope Process
 # use TLS 1.2 (see bug 1443595)
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-md "C:\Install Logs"
-md "C:\Downloads"
+New-Item -ItemType Directory -Path "C:\Install Logs"
+New-Item -ItemType Directory -Path "C:\Downloads"
 
 # Redirect the output (stdout and stderr) from the current powershell script to a log file
 # There is a Stop-Transcript command later on in this script.
@@ -233,7 +234,11 @@ foreach ($service in $servicesToDisable) {
 } | Out-Null
 
 # install chocolatey package manager
-Invoke-RestMethod -Uri 'https://community.chocolatey.org/install.ps1' | Invoke-Expression
+# Execute the official HTTPS installer as a script, not as interpolated source text.
+$chocolateyInstaller = Join-Path $env:TEMP 'install-chocolatey.ps1'
+Invoke-WebRequest -Uri 'https://community.chocolatey.org/install.ps1' -OutFile $chocolateyInstaller -ErrorAction Stop
+& $chocolateyInstaller
+Remove-Item $chocolateyInstaller -Force
 
 # install nssm
 Run-Executable "choco" @("install", "-y", "nssm", "--version", "2.24.101.20180116")
@@ -269,8 +274,8 @@ Run-Executable "choco" @("install", "-y", "python", "--version", "3.13.12")
 Import-Module $env:ChocolateyInstall\helpers\chocolateyProfile.psm1
 refreshenv
 
-md "C:\generic-worker"
-md "C:\worker-runner"
+New-Item -ItemType Directory -Path "C:\generic-worker"
+New-Item -ItemType Directory -Path "C:\worker-runner"
 
 # build generic-worker/livelog/start-worker/taskcluster-proxy from ${TASKCLUSTER_REF} commit / branch / tag etc
 Run-Executable "git" @("clone", $TASKCLUSTER_REPO)

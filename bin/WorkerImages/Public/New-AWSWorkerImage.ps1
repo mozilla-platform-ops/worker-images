@@ -1,4 +1,4 @@
-function New-AWSWorkerImage {
+﻿function New-AWSWorkerImage {
     [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
@@ -11,13 +11,10 @@ function New-AWSWorkerImage {
         [String] $IamInstanceProfile,
 
         [Parameter(Mandatory = $false)]
-        [String[]] $AmiRegions,
-
-        [Switch] $PackerDebug
+        [String[]] $AmiRegions
     )
 
-    Set-PSRepository PSGallery -InstallationPolicy Trusted
-    Install-Module powershell-yaml -ErrorAction Stop
+    Import-WorkerImagesYaml
 
     # AWS images are only for tceng
     $YamlPath = "config/tceng/$Key.yaml"

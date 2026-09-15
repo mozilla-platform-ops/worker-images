@@ -6,12 +6,33 @@ on:
     branches: [ main ]
 
 jobs:
+  build-helpers:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Check build helpers and Linux SBOM generation
+        if: runner.os == 'Linux'
+        run: |
+          python3 -m unittest discover -s ci -p 'test_*.py' -v
+          bash tests/linux/test_generate_sbom.sh
+      - name: Check PowerShell helpers
+        shell: pwsh
+        run: |
+          & "${{ github.workspace }}/ci/install-powershell-yaml.ps1"
+          & "${{ github.workspace }}/ci/test-build-helpers.ps1"
+
   pre-commit:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
+        persist-credentials: false
         fetch-depth: 0
 
     - name: Set up Python
@@ -38,6 +59,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
 
     - name: Get changed shell files
       id: changed-shell-files
@@ -68,28 +91,16 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-    - name: Get changed PowerShell test files
-      id: changed-ps-files
-      uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
       with:
-        files: |
-          tests/**/*.ps1
+        persist-credentials: false
 
-    - name: Run PSScriptAnalyzer
-      if: steps.changed-ps-files.outputs.any_changed == 'true'
+    - name: Check production and test PowerShell
       shell: pwsh
       run: |
-        Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser
+        Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Force -Scope CurrentUser
+        & "${{ github.workspace }}/ci/check-powershell.ps1"
         $results = Invoke-ScriptAnalyzer -Path tests/ -Settings tests/PSScriptAnalyzerSettings.psd1 -Recurse
         if ($results) {
             $results | Format-Table -AutoSize
-            Write-Error "PSScriptAnalyzer found $($results.Count) issue(s)"
-            exit 1
+            throw "PSScriptAnalyzer found $($results.Count) test issue(s)."
         }
-        Write-Host "PSScriptAnalyzer: no issues found"
-
-    - name: Skip PSScriptAnalyzer if no test files changed
-      if: steps.changed-ps-files.outputs.any_changed == 'false'
-      run: |
-        echo "No PowerShell test files changed, skipping PSScriptAnalyzer"
