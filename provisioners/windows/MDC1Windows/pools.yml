@@ -151,8 +151,8 @@ pools:
     image: "win11-24H2-NUC-01-16-2025"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "master"
-    hash: "cc3aed8"
+    src_Branch: "remove-dead-code-windows"
+    hash: "d615cede91260c1e4074c5201dabbafc4319cdb6"
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
