@@ -1,0 +1,70 @@
+---
+# Shared defaults for the Windows HW baked-WIM pipeline. Any field set to the literal
+# string "default" in a per-image config (config/<image>.yaml) resolves to the
+# value here. Mirrors worker-images config/windows_production_defaults.yaml.
+#
+# Source of truth for tool versions is worker-images
+# config/windows_production_defaults.yaml — keep these in sync.
+
+storage:
+  # Blob layout (folders are prefixes within each container):
+  #   resources/  WIMs/ (BYO base WIMs)  ISOs/ (source Win11 ISOs)  drivers/  tools/
+  #   captured/   WIMs/ (<image>/<image>-<buildid>.wim)  ISOs/ (<image>/<image>-<buildid>.iso)
+  #   legacy-images/  (old, previously-built images)
+  account: hardwareimaging
+  base_container: resources     # SOURCES: base WIMs (WIMs/), ISOs (ISOs/), drivers/, tools/
+  captured_container: captured  # OUTPUTS: golden WIMs (WIMs/) + nocheck ISOs (ISOs/)
+
+ronin:
+  org: mozilla-platform-ops
+  repo: ronin_puppet
+  # Public assets blob with the pinned prerequisite installers (openvox/puppet/git).
+  ext_src: https://roninpuppetassets.blob.core.windows.net/binaries/prerequisites
+
+vm:
+  puppet_version: "8.10.0"
+  git_version: "2.54.0"
+  openvox_version: "8.24.2"
+  # The build host is a dedicated single-purpose nested-virt VM (Standard_D64ads_v5:
+  # 64 vCPU / 256 GiB), so give the bake guest as much as we can. NOTE: the Packer
+  # hyperv builder hard-caps memory at 32768 MB (32 GiB) — that's the ceiling here,
+  # not the host. CPUs aren't capped by the plugin, so take 56 (leave 8 for root).
+  cpus: 56
+  memory_mb: 32768
+  # Hyper-V switch on the build host. The bootstrap creates an internal NAT switch
+  # 'wim-nat' (Windows Server has no client "Default Switch"); the bake guest gets a
+  # matching static IP via the injected unattend. Override per host if needed.
+  switch_name: "wim-nat"
+  # Run a full online Windows Update pass during the bake. Default OFF (fast bakes /
+  # pipeline iteration); production images opt IN per config (windows_update: true).
+  # A full pass pulls the latest non-Preview cumulative/SSU/.NET/Defender KBs but is
+  # slow (large download over the NAT link) and a single pass (see win-hw-wim.pkr.hcl).
+  windows_update: false
+
+# Offline driver injection defaults (per-image config may override). OFF by default.
+# 'cabs' is a list of driver .cab URLs; per-image configs add entries as needed.
+drivers:
+  inject: false
+  cabs: []
+
+# Payloads copied verbatim into the image at C:\extras\ for the DEPLOY-time puppet apply
+# to run. Not drivers: never expanded, never DISM-injected. Unlike C:\bake (which sysprep
+# deletes before capture) these SHIP in the golden WIM, so each entry costs its own size in
+# every WIM. Off by default; set per image.
+extras:
+  files: []
+
+# Windows 11 ISO builder (SEPARATE from the ronin base WIMs). Enabled per-config via iso.enabled.
+# Source media is base.iso; provisioning is the config's scripts: list (inject-library scripts run
+# against the media before repackaging with oscdimg). e.g. scripts: [nocheck] writes the
+# HKLM\SYSTEM\Setup\LabConfig + MoSetup requirement bypass. See scripts/create-iso.ps1 and
+# scripts/inject/. The built ISO is a captured OUTPUT: uploaded to
+# captured/<image>/<image>-<buildid>.iso (+ .sha256), same naming as the golden WIMs.
+iso:
+  enabled: false        # set true in a config to build the ISO instead of the WIM bake
+  label: "WIN11_NOCHK"  # volume label of the built ISO
+
+tags:
+  sourceOrganization: mozilla-platform-ops
+  sourceRepository: ronin_puppet
+  managed_by: wim-packer

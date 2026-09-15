@@ -400,6 +400,13 @@ function Set-Logging {
         Write-Host ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime())
     }
     process {
+        # --- nxlog: skip when it is already present (consume the prebake) ---
+        # Version doesn't matter here - if nxlog is installed at all (service present or the binary
+        # is on disk), move on without reinstalling. Its conf + papertrail cert are baked alongside it.
+        if ((Get-Service -Name nxlog -ErrorAction SilentlyContinue) -or (Test-Path "$nxlog_dir\nxlog.exe")) {
+            Write-Host ('{0} :: nxlog already installed; skipping install' -f $($MyInvocation.MyCommand.Name))
+            return
+        }
         $null = New-Item -ItemType Directory -Force -Path $local_dir -ErrorAction SilentlyContinue
         Invoke-DownloadWithRetry $ext_src/$nxlog_msi -Path $local_dir\$nxlog_msi
         #Invoke-WebRequest $ext_src/$nxlog_msi -outfile $local_dir\$nxlog_msi -UseBasicParsing
@@ -432,44 +439,27 @@ function Get-PSModules {
         ## https://github.com/PowerShell/PowerShellGallery/issues/328
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-        $maxAttempts  = 10
-        $attemptDelay = 60
-
-        $nugetProvider = $null
-        for ($i = 1; $i -le $maxAttempts; $i++) {
-            Write-Log -message ('{0} :: Checking for NuGet provider (attempt {1}/{2})' -f $MyInvocation.MyCommand.Name, $i, $maxAttempts) -severity 'DEBUG'
-            $nugetProvider = Get-PackageProvider -Name NuGet -ListAvailable -ForceBootstrap -ErrorAction SilentlyContinue
-
-            if ($null -ne $nugetProvider) {
-                Write-Log -message ('{0} :: NuGet provider is present.' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'
-                break
-            }
-
-            if ($i -lt $maxAttempts) {
-                Write-Log -message ('{0} :: NuGet provider not found. Sleeping {1}s before retry.' -f $MyInvocation.MyCommand.Name, $attemptDelay) -severity 'DEBUG'
-                Start-Sleep -Seconds $attemptDelay
-            }
-        }
-
+        # NuGet provider: check ONCE, then install directly if missing. The old loop polled
+        # 10x with 60s sleeps (~9 min) for a provider that never appears on its own, THEN
+        # installed it anyway - pure dead time. On the baked WIM the provider is pre-installed
+        # (bake-bootstrap), so this check passes immediately.
+        $nugetProvider = Get-PackageProvider -Name NuGet -ListAvailable -ForceBootstrap -ErrorAction SilentlyContinue
         if ($null -eq $nugetProvider) {
-            Write-Log -message ('{0} :: Installing NuGet Package Provider after {1} failed checks' -f $MyInvocation.MyCommand.Name, $maxAttempts) -severity 'DEBUG'
+            Write-Log -message ('{0} :: NuGet provider absent; installing.' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'
             try {
                 Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.208 -Force -Confirm:$false -ForceBootstrap -ErrorAction Stop
             }
             catch {
                 Write-Log -message ('{0} :: Failed to install NuGet Package Provider: {1}' -f $MyInvocation.MyCommand.Name, $_.Exception.Message) -severity 'ERROR'
             }
-
-            # Verify installation
             $nugetProvider = Get-PackageProvider -Name NuGet -ListAvailable -ForceBootstrap -ErrorAction SilentlyContinue
             if ($null -eq $nugetProvider) {
                 Write-Log -message ('{0} :: NuGet provider still not available after install attempt; exiting 3' -f $MyInvocation.MyCommand.Name) -severity 'ERROR'
                 Write-Host exit 3
                 return
-            } else {
-                Write-Log -message ('{0} :: NuGet provider installed successfully.' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'
             }
         }
+        Write-Log -message ('{0} :: NuGet provider present.' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'
 
         foreach ($module in $modules) {
             $hit = Get-Module -Name $module
@@ -509,6 +499,47 @@ function Get-PSModules {
     }
 }
 
+# Return the highest installed version (as [version]) matching any of the given
+# Uninstall-registry DisplayName patterns, or $null if not installed.
+function Get-InstalledVersion {
+    param (
+        [Parameter(Mandatory)]
+        [string[]] $NameLike
+    )
+    $uninstallKeys = @(
+        'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
+        'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
+    )
+    $found = $null
+    $entries = Get-ItemProperty $uninstallKeys -ErrorAction SilentlyContinue
+    foreach ($pattern in $NameLike) {
+        foreach ($e in ($entries | Where-Object { $_.DisplayName -like $pattern -and $_.DisplayVersion })) {
+            # Normalise e.g. "2.54.0.windows.1" / "8.19.2" -> a comparable [version].
+            $m = [regex]::Match([string]$e.DisplayVersion, '\d+(\.\d+){1,3}')
+            if ($m.Success) {
+                try {
+                    $v = [version]$m.Value
+                    if ($null -eq $found -or $v -gt $found) { $found = $v }
+                }
+                catch { }
+            }
+        }
+    }
+    return $found
+}
+
+# True when $Installed is present and >= the $Minimum version string.
+function Test-VersionAtLeast {
+    param (
+        [version] $Installed,
+        [string]  $Minimum
+    )
+    if ($null -eq $Installed) { return $false }
+    $m = [regex]::Match([string]$Minimum, '\d+(\.\d+){1,3}')
+    if (-not $m.Success) { return $false }
+    try { return ($Installed -ge [version]$m.Value) } catch { return $false }
+}
+
 function Get-PreRequ {
     param (
         [string]
@@ -524,11 +555,21 @@ function Get-PreRequ {
         Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
     }
     process {
+        # The versions passed in (from pools.yml) are treated as a MINIMUM. With the
+        # pre-baked install.wim these tools are already present at the win defaults, so
+        # we detect the installed version and only download/install when the box is
+        # missing the tool or is below the pools.yml minimum.
         if ($openvox_version) {
-            $puppet = "openvox-agent-$openvox_version-x64.msi"
+            $puppet     = "openvox-agent-$openvox_version-x64.msi"
+            $agentMin   = $openvox_version
+            $agentNames = @('OpenVox Agent*', 'Openvox*', '*openvox-agent*')
+            $agentLabel = 'OpenVox agent'
         }
         else {
-            $puppet = ("puppet-agent-{0}-x64.msi") -f $puppet_version
+            $puppet     = ("puppet-agent-{0}-x64.msi") -f $puppet_version
+            $agentMin   = $puppet_version
+            $agentNames = @('Puppet Agent*', '*puppet-agent*')
+            $agentLabel = 'Puppet agent'
         }
 
         switch ($env:PROCESSOR_ARCHITECTURE) {
@@ -544,45 +585,135 @@ function Get-PreRequ {
         }
         $git_url = "https://github.com/git-for-windows/git/releases/download/v$($git_version).windows.1/$($git)"
 
-        if (-Not (Test-Path "$env:systemdrive\$puppet")) {
-            Write-Log -Message ('{0} :: Downloading Puppet' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-            Invoke-DownloadWithRetry "$ext_src/$puppet" -Path "$env:systemdrive\$puppet"
+        # --- Agent (Puppet/OpenVox): skip when baked WIM already meets the minimum ---
+        $agentInstalled = Get-InstalledVersion -NameLike $agentNames
+        if (Test-VersionAtLeast -Installed $agentInstalled -Minimum $agentMin) {
+            Write-Log -Message ('{0} :: {1} {2} already present (>= min {3}); skipping install' -f $($MyInvocation.MyCommand.Name), $agentLabel, $agentInstalled, $agentMin) -severity 'DEBUG'
+            Write-Host ('{0} :: {1} {2} satisfies minimum {3}; skipping install' -f $($MyInvocation.MyCommand.Name), $agentLabel, $agentInstalled, $agentMin)
+        }
+        else {
+            Write-Log -Message ('{0} :: {1} install needed (installed={2}, min={3})' -f $($MyInvocation.MyCommand.Name), $agentLabel, $agentInstalled, $agentMin) -severity 'DEBUG'
             if (-Not (Test-Path "$env:systemdrive\$puppet")) {
-                Write-Log -Message ('{0} :: Puppet failed to download' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
+                Invoke-DownloadWithRetry "$ext_src/$puppet" -Path "$env:systemdrive\$puppet"
             }
-        }
-
-        if (-Not (Test-Path "$env:systemdrive\$git")) {
-            Write-Log -Message ('{0} :: Downloading Git from {1}' -f $($MyInvocation.MyCommand.Name), $git_url) -severity 'DEBUG'
-            Invoke-DownloadWithRetryGithub -Url $git_url -Path "$env:systemdrive\$git" -PAT (Get-Content "D:\Secrets\pat.txt")
-            if (-Not (Test-Path "$env:systemdrive\$git")) {
-                Write-Log -Message ('{0} :: Git failed to download' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
+            if (-Not (Test-Path "$env:systemdrive\$puppet")) {
+                Write-Log -Message ('{0} :: {1} failed to download' -f $($MyInvocation.MyCommand.Name), $agentLabel) -severity 'ERROR'
+                exit 1
             }
-        }
-
-        Start-Process "$env:systemdrive\$git" -ArgumentList "/verysilent" -Wait -NoNewWindow
-        if (-Not (Test-Path "C:\Program Files\Git\bin")) {
-            Write-Host "Git not installed"
-            Write-Log -message  ('{0} :: Git not installed' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-            exit 1
-        }
-        Write-Log -message  ('{0} :: Git installed :: {1}' -f $($MyInvocation.MyCommand.Name), $git) -severity 'DEBUG'
-        $env:PATH += ";C:\Program Files\git\bin"
-        Write-Host ('{0} :: Git installed :: {1}' -f $($MyInvocation.MyCommand.Name), $git)
-
-        if (-Not (Test-Path "C:\Program Files\Puppet Labs\Puppet\bin")) {
-            Write-Log -Message ('{0} :: Installing puppet' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
             Start-Process msiexec -ArgumentList @("/qn", "/norestart", "/i", "$env:systemdrive\$puppet") -Wait
-            Write-Log -message  ('{0} :: Puppet installed :: {1}' -f $($MyInvocation.MyCommand.Name), $puppet) -severity 'DEBUG'
-            Write-Host ('{0} :: Puppet installed :: {1}' -f $($MyInvocation.MyCommand.Name), $puppet)
-            if (-Not (Test-Path "C:\Program Files\Puppet Labs\Puppet\bin")) {
-                Write-Host "Did not install puppet"
-                write-host exit 1
+            $agentInstalled = Get-InstalledVersion -NameLike $agentNames
+            # Fall back to the bin-dir check (original behavior) so a registry
+            # DisplayName miss can't fail a deploy where the agent installed fine.
+            $agentOk = (Test-VersionAtLeast -Installed $agentInstalled -Minimum $agentMin) -or
+                       (Test-Path 'C:\Program Files\Puppet Labs\Puppet\bin') -or
+                       (Test-Path 'C:\Program Files\OpenVox\Puppet\bin')
+            if (-Not $agentOk) {
+                Write-Host ('Did not install {0} to minimum {1} (got {2})' -f $agentLabel, $agentMin, $agentInstalled)
+                Write-Log -message  ('{0} :: {1} did not meet minimum {2} (got {3})' -f $($MyInvocation.MyCommand.Name), $agentLabel, $agentMin, $agentInstalled) -severity 'ERROR'
+                exit 1
             }
-            $env:PATH += ";C:\Program Files\Puppet Labs\Puppet\bin"
-            [Environment]::SetEnvironmentVariable("PATH", $env:PATH, [System.EnvironmentVariableTarget]::Machine)
+            Write-Log -message  ('{0} :: {1} installed :: {2}' -f $($MyInvocation.MyCommand.Name), $agentLabel, $agentInstalled) -severity 'DEBUG'
+            Write-Host ('{0} :: {1} installed :: {2}' -f $($MyInvocation.MyCommand.Name), $agentLabel, $agentInstalled)
+        }
+
+        # --- Git: skip when baked WIM already meets the minimum ---
+        $gitInstalled = Get-InstalledVersion -NameLike @('Git version*', 'Git')
+        if (Test-VersionAtLeast -Installed $gitInstalled -Minimum $git_version) {
+            Write-Log -Message ('{0} :: Git {1} already present (>= min {2}); skipping install' -f $($MyInvocation.MyCommand.Name), $gitInstalled, $git_version) -severity 'DEBUG'
+            Write-Host ('{0} :: Git {1} satisfies minimum {2}; skipping install' -f $($MyInvocation.MyCommand.Name), $gitInstalled, $git_version)
+        }
+        else {
+            Write-Log -Message ('{0} :: Git install needed (installed={1}, min={2}) from {3}' -f $($MyInvocation.MyCommand.Name), $gitInstalled, $git_version, $git_url) -severity 'DEBUG'
+            if (-Not (Test-Path "$env:systemdrive\$git")) {
+                Invoke-DownloadWithRetryGithub -Url $git_url -Path "$env:systemdrive\$git" -PAT (Get-Content "D:\Secrets\pat.txt")
+            }
+            if (-Not (Test-Path "$env:systemdrive\$git")) {
+                Write-Log -Message ('{0} :: Git failed to download' -f $($MyInvocation.MyCommand.Name)) -severity 'ERROR'
+                exit 1
+            }
+            Start-Process "$env:systemdrive\$git" -ArgumentList "/verysilent" -Wait -NoNewWindow
+            $gitInstalled = Get-InstalledVersion -NameLike @('Git version*', 'Git')
+            # Bin-dir fallback (original behavior) guards against a registry detection miss.
+            $gitOk = (Test-VersionAtLeast -Installed $gitInstalled -Minimum $git_version) -or (Test-Path 'C:\Program Files\Git\bin')
+            if (-Not $gitOk) {
+                Write-Host "Git not installed to minimum $git_version (got $gitInstalled)"
+                Write-Log -message  ('{0} :: Git did not meet minimum {1} (got {2})' -f $($MyInvocation.MyCommand.Name), $git_version, $gitInstalled) -severity 'ERROR'
+                exit 1
+            }
+            Write-Log -message  ('{0} :: Git installed :: {1}' -f $($MyInvocation.MyCommand.Name), $gitInstalled) -severity 'DEBUG'
+            Write-Host ('{0} :: Git installed :: {1}' -f $($MyInvocation.MyCommand.Name), $gitInstalled)
+        }
+
+        # Ensure tool bin dirs are on PATH whether we just installed them or inherited
+        # them from the baked WIM.
+        foreach ($bin in @(
+                'C:\Program Files\Git\bin',
+                'C:\Program Files\Git\cmd',
+                'C:\Program Files\Puppet Labs\Puppet\bin',
+                'C:\Program Files\OpenVox\Puppet\bin')) {
+            if ((Test-Path $bin) -and ($env:PATH -notlike "*$bin*")) { $env:PATH += ";$bin" }
         }
         [Environment]::SetEnvironmentVariable("PATH", $env:PATH, [System.EnvironmentVariableTarget]::Machine)
+    }
+    end {
+        Write-Log -message ('{0} :: end - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+    }
+}
+function Install-Drivers {
+    <#
+    .SYNOPSIS
+        On-host driver install for the pre-baked (DISM /Apply-Image) deploy path (RELOPS-2487).
+    .DESCRIPTION
+        The pre-baked WIM may not carry every NUC hardware driver (e.g. the Intel GPU), which
+        leaves the node on the Microsoft Basic Display Adapter. Windows Update is disabled so
+        nothing fetches the missing driver on its own. This actively installs a driver pack from
+        the RelOps blob mirror on the host (pnputil /add-driver /install + /scan-devices):
+          - installs from local files, no WU needed (proven: baked NIC drivers bind with WU off);
+          - iterates without a full ~2h WIM re-bake (just refresh the pack on the mirror).
+        Idempotent: skips when a real (non-generic) display adapter is already in use, so it is a
+        no-op on normally-imaged nodes and on re-runs once the GPU driver is bound.
+    #>
+    param(
+        [string] $ext_src = "https://roninpuppetassets.blob.core.windows.net/binaries/drivers/nuc13",
+        [string[]] $packs = @("nuc13-24h2-nuc_driver.zip"),
+        [string] $work = "$env:systemdrive\drivers"
+    )
+    begin {
+        Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+    }
+    process {
+        try {
+            # Idempotent guard: real GPU already bound -> nothing to do (consume the prebake).
+            $vc = @(Get-CimInstance Win32_VideoController | Select-Object -ExpandProperty Name)
+            $real = $vc | Where-Object { $_ -notmatch 'Basic Display Adapter|Basic Render|Hyper-V Video' }
+            if ($real) {
+                Write-Log -message ('{0} :: real display driver already present ({1}); skipping driver install' -f $($MyInvocation.MyCommand.Name), ($real -join ', ')) -severity 'DEBUG'
+                return
+            }
+            if (Test-Path $work) { Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue }
+            New-Item -ItemType Directory -Path $work -Force | Out-Null
+            foreach ($p in $packs) {
+                $url = "$ext_src/$p"
+                $dst = Join-Path $work $p
+                $sub = Join-Path $work ([System.IO.Path]::GetFileNameWithoutExtension($p))
+                New-Item -ItemType Directory -Path $sub -Force | Out-Null
+                Write-Log -message ('{0} :: downloading driver pack {1}' -f $($MyInvocation.MyCommand.Name), $url) -severity 'DEBUG'
+                Invoke-DownloadWithRetry -Url $url -Path $dst
+                $ext = [System.IO.Path]::GetExtension($p).ToLowerInvariant()
+                if ($ext -eq '.zip') { Expand-Archive -LiteralPath $dst -DestinationPath $sub -Force }
+                elseif ($ext -eq '.cab') { & expand.exe -F:* "$dst" "$sub" | Out-Null }
+                else { Write-Log -message ('{0} :: unsupported pack type {1}, skipping' -f $($MyInvocation.MyCommand.Name), $ext) -severity 'WARN'; continue }
+                Write-Log -message ('{0} :: pnputil /add-driver {1}\*.inf /subdirs /install' -f $($MyInvocation.MyCommand.Name), $sub) -severity 'DEBUG'
+                & pnputil.exe /add-driver "$sub\*.inf" /subdirs /install | Out-Null
+            }
+            & pnputil.exe /scan-devices | Out-Null
+            $vc2 = @(Get-CimInstance Win32_VideoController | Select-Object -ExpandProperty Name)
+            Write-Log -message ('{0} :: display adapters after install: {1}' -f $($MyInvocation.MyCommand.Name), ($vc2 -join ', ')) -severity 'DEBUG'
+        }
+        catch {
+            # Best-effort: a missing/incomplete pack must not brick the deploy.
+            Write-Log -message ('{0} :: driver install failed (continuing): {1}' -f $($MyInvocation.MyCommand.Name), $_.Exception.Message) -severity 'WARN'
+        }
     }
     end {
         Write-Log -message ('{0} :: end - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
@@ -595,15 +726,23 @@ function Set-Ronin-Registry {
         Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
     }
     process {
+        # Prefer the params passed by Get-Bootstrap; only fall back to a value already in the
+        # registry when the corresponding param is empty (a genuine no-param resume). This lets
+        # us CONSUME the prebaked image's leftover HKLM\...\ronin_puppet key WITHOUT an empty/
+        # stale value there clobbering the correct deploy params. The stock read-everything logic
+        # did clobber them on the baked WIM (empty Organisation/Repository/GITHASH) -> git clone
+        # https://github.com// -> invalid C:\ronin -> "cannot find nodes.pp" -> puppet exit 1 ->
+        # Set-PXE re-image loop. (RELOPS-2487 prebake canary.)
         If ((test-path "HKLM:\SOFTWARE\Mozilla\ronin_puppet")) {
-            $worker_pool_id = (Get-ItemProperty -path "HKLM:\SOFTWARE\Mozilla\ronin_puppet").worker_pool_id
-            $role = (Get-ItemProperty -path "HKLM:\SOFTWARE\Mozilla\ronin_puppet").role
-            $src_Organisation = (Get-ItemProperty -path "HKLM:\SOFTWARE\Mozilla\ronin_puppet").Organisation
-            $src_Repository = (Get-ItemProperty -path "HKLM:\SOFTWARE\Mozilla\ronin_puppet").Repository
-            $src_Branch = (Get-ItemProperty -path "HKLM:\SOFTWARE\Mozilla\ronin_puppet").Branch
-            $image_provisioner = (Get-ItemProperty -path "HKLM:\SOFTWARE\Mozilla\ronin_puppet").image_provisioner
-            $secret_date = (Get-ItemProperty -path "HKLM:\SOFTWARE\Mozilla\ronin_puppet").secret_date
-            $hash = (Get-ItemProperty -path "HKLM:\SOFTWARE\Mozilla\ronin_puppet").GITHASH
+            $r = Get-ItemProperty -path "HKLM:\SOFTWARE\Mozilla\ronin_puppet"
+            if ([string]::IsNullOrWhiteSpace($worker_pool_id))    { $worker_pool_id    = $r.worker_pool_id }
+            if ([string]::IsNullOrWhiteSpace($role))              { $role              = $r.role }
+            if ([string]::IsNullOrWhiteSpace($src_Organisation))  { $src_Organisation  = $r.Organisation }
+            if ([string]::IsNullOrWhiteSpace($src_Repository))    { $src_Repository    = $r.Repository }
+            if ([string]::IsNullOrWhiteSpace($src_Branch))        { $src_Branch        = $r.Branch }
+            if ([string]::IsNullOrWhiteSpace($image_provisioner)) { $image_provisioner = $r.image_provisioner }
+            if ([string]::IsNullOrWhiteSpace($secret_date))       { $secret_date       = $r.secret_date }
+            if ([string]::IsNullOrWhiteSpace($hash))              { $hash              = $r.GITHASH }
         }
         Write-Log -Message ('{0} :: Creating HKLM:\SOFTWARE\Mozilla\ronin_puppet' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
         New-Item -Path HKLM:\SOFTWARE -Name Mozilla -force
@@ -965,10 +1104,12 @@ Set-ExecutionPolicy Unrestricted -Force -ErrorAction SilentlyContinue
 powercfg.exe -x -standby-timeout-ac 0
 powercfg.exe -x -monitor-timeout-ac 0
 
-## Enable OpenSSH and WinRM
-## Installation through Puppet is intermittent.
-## It works here, but ultimately should be done through Puppet.
-Set-WinRM
+## Enable OpenSSH (WinRM disabled for the pre-baked NUC deploy).
+## RELOPS-2487: Set-WinRM is skipped here - Enable-PSRemoting can't publish a listener on the
+## NUC's Public/workgroup network (failed every deploy: "Listener=False ... continuing anyway")
+## and nothing in the bootstrap path needs WinRM; SSH (baked) is the access path. If WinRM is
+## ever actually required, let Puppet configure it.
+# Set-WinRM
 Set-SSH
 
 ## This is not being set yet, so it won't find the ronin_puppet registry entry
@@ -1027,6 +1168,10 @@ If ($stage -ne 'complete') {
         git_version = $git_version
     }
     Get-PreRequ @preReq
+    ## RELOPS-2487: temporarily disabled while we test a PXE boot with the KVM display
+    ## disconnected (isolating whether the Raritan CIM EDID drives the display result).
+    ## Re-enable once we resume on-host driver installs. Install-Drivers is idempotent/best-effort.
+    # Install-Drivers
     Set-Ronin-Registry
     Get-Ronin
     Run-Ronin-Run

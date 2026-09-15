@@ -54,6 +54,27 @@ function Deploy-OS-Dev {
     powershell $deploy_script -deployuser "deployment" -deploymentaccess "$Password" -devlopment_script -branch "$branch"
 }
 
+function Get-DeploySendoff {
+    param(
+    )
+    ## Sign-off line printed just before we hand the node over to Setup / reboot into the
+    ## deployed OS. Cosmetic only - nothing parses this.
+    $lines = @(
+        'This is probably fine in every timeline.'
+        'Please keep all limbs inside the deployment.'
+        'Here be undocumented behavior.'
+        'The wizard responsible has been notified.'
+        'Success is now statistically possible.'
+        'Do not feed the production environment.'
+        'We have angered the dependency gods.'
+        'Something ancient just returned exit code 1.'
+        'The deployment must flow.'
+        'Good luck. The machines are watching.'
+        'The machine spirit is willing.'
+    )
+    return (Get-Random -InputObject $lines)
+}
+
 function Mount-ZDrive {
     param(
     )
@@ -570,7 +591,16 @@ $DomainSuffix = $ResolvedName -replace '^[^.]*\.', ''
 Write-Host "Host name set to be $ResolvedName"
 
 ## Get data
-## Assumes files is in the same dir
+## Assumes files is in the same dir.
+## In dev mode the initial (default-branch) run staged pools.yml, but Deploy-OS-Dev only
+## re-downloads OS-deploy.ps1 - so refresh pools.yml from the dev branch here too. That
+## lets the WHOLE canary config (image / src_Branch / hash, not just the scripts) live on
+## the feature branch; the default branch only needs the `dev:` trigger on the pool.
+if ($devlopment_script) {
+    $poolsUrl = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$branch/provisioners/windows/MDC1Windows/pools.yml"
+    Write-Host "DEV: refreshing pools.yml from branch '$branch'"
+    Invoke-WebRequest -Uri $poolsUrl -OutFile "pools.yml"
+}
 $YAML = Convertfrom-Yaml (Get-Content "pools.yml" -raw)
 
 foreach ($pool in $YAML.pools) {
@@ -740,7 +770,15 @@ $source_app = $source_dir + "applications"
 $local_app = $local_install + "applications"
 
 
-if (!(Test-Path $setup)) {
+# Resync the local deploy files from the share only when they're actually missing. The
+# sentinel for setup-media deploys is setup.exe; for baked-WIM deploys it's the WIM itself.
+# D: PERSISTS across (re)deploys when partitioning is skipped, so keying only on setup.exe made
+# the WIM path ALWAYS wipe D:\* and recopy the ~6 GB WIM every single deploy. Also require the
+# needed WIM to be absent, so a same-image redeploy reuses the cached WIM. (Get-Bootstrap +
+# pools.yml are refreshed separately from GitHub, so skipping the resync doesn't stale those;
+# on an image change the new WIM name is absent -> resync runs and wipes the old one.)
+$needWim = Join-Path $OS_files "$neededImage.wim"
+if ((!(Test-Path $setup)) -and (!(Test-Path $needWim))) {
     Write-Host "Install files wrong or missing."
     Write-Host "Will resync files."
     if ((Get-ChildItem -Path $local_install -Force).Count -gt 0) {
@@ -831,6 +869,170 @@ Copy-Item -Path pools.yml  $local_yaml -Force
 
 Set-Location -Path $OS_files
 Write-Host "Initializing OS installation."
-Write-Host Running: Start-Process -FilePath $setup -ArgumentList "/unattend:$unattend"
-Write-Host "Have a nice day! :)"
-Start-Process -FilePath $setup -ArgumentList "/unattend:$unattend"
+
+if (Test-Path $setup) {
+    ## Standard path: Windows Setup applies sources\install.wim per the unattend.
+    Write-Host Running: Start-Process -FilePath $setup -ArgumentList "/unattend:$unattend"
+    Write-Host (Get-DeploySendoff)
+    Start-Process -FilePath $setup -ArgumentList "/unattend:$unattend"
+}
+else {
+    ## RELOPS-2487 baked-WIM path (DISM /Apply-Image). The image folder holds no
+    ## setup.exe - just a bare, already-sysprep/generalize'd <name>.wim. Apply it
+    ## directly, make the disk bootable with bcdboot, and drop the (already edited)
+    ## unattend where a generalized image processes it on first boot
+    ## (\Windows\Panther\unattend.xml -> specialize + oobeSystem -> FirstLogonCommands
+    ## -> D:\scripts\Get-Bootstrap.ps1), i.e. the same first-boot chain as the setup path.
+    $wim = Join-Path $OS_files "$neededImage.wim"
+    if (-not (Test-Path $wim)) {
+        throw "No setup.exe and no baked WIM at '$wim' - nothing to deploy for image '$neededImage'."
+    }
+
+    $winVol = "C:"   # Windows target (primary NTFS; diskpart 'assign letter=C')
+
+    # Clean the Windows volume before applying. DISM /Apply-Image writes into the target AS-IS
+    # (it does NOT format), and on a redeploy partitioning is skipped (C:/D: already labeled), so
+    # C: would otherwise still hold the PREVIOUS OS and we'd layer the new image over stale files.
+    # Quick-format just C: in place - keeps its drive letter (so the skip-partitioning check still
+    # passes) and leaves the ESP and the persistent D: (cached WIM) untouched - for a clean apply
+    # every deploy. Done AFTER the WIM existence check above so we never wipe C: then find no WIM.
+    Write-Host "== Quick-formatting $winVol before apply (clean DISM target) =="
+    Format-Volume -DriveLetter C -FileSystem NTFS -Force -Confirm:$false -ErrorAction Stop | Out-Null
+
+    Write-Host "== DISM /Apply-Image '$wim' (index 1) -> $winVol\ =="
+    dism.exe /Apply-Image /ImageFile:"$wim" /Index:1 /ApplyDir:"$winVol\"
+    if ($LASTEXITCODE -ne 0) { throw "DISM /Apply-Image failed rc=$LASTEXITCODE" }
+
+    ## --- Deterministically set the node name in the OFFLINE image registry ---
+    ## Do it HERE in WinPE (before the OS ever boots) so the very first boot already comes up
+    ## as $shortname - i.e. BEFORE the baked nxlog service starts shipping logs, so every log
+    ## line reports the node name from the start. On the DISM-applied generalized image the
+    ## specialize-pass <ComputerName> from the unattend was NOT taking effect, so the baked
+    ## 'nuc-bake' name persisted and all logs shipped as nuc-bake (verified in SolarWinds).
+    ## A post-boot Rename-Computer would need a reboot to go active and would leak nuc-bake-
+    ## labelled logs until then; the offline edit avoids that. $shortname = node reverse-DNS
+    ## short name (e.g. nuc13-160), the same value substituted into the unattend ComputerName.
+    if ($shortname) {
+        $sysHive = "$winVol\Windows\System32\config\SYSTEM"
+        Write-Host "== Offline-setting ComputerName -> $shortname in $sysHive =="
+        reg load "HKLM\OFFSYS" "$sysHive" | Out-Null
+        try {
+            reg add "HKLM\OFFSYS\ControlSet001\Control\ComputerName\ComputerName"       /v ComputerName  /t REG_SZ /d $shortname /f | Out-Null
+            reg add "HKLM\OFFSYS\ControlSet001\Control\ComputerName\ActiveComputerName" /v ComputerName  /t REG_SZ /d $shortname /f | Out-Null
+            reg add "HKLM\OFFSYS\ControlSet001\Services\Tcpip\Parameters"               /v Hostname      /t REG_SZ /d $shortname /f | Out-Null
+            reg add "HKLM\OFFSYS\ControlSet001\Services\Tcpip\Parameters"               /v "NV Hostname" /t REG_SZ /d $shortname /f | Out-Null
+        }
+        finally {
+            [gc]::Collect(); Start-Sleep -Seconds 1
+            reg unload "HKLM\OFFSYS" | Out-Null
+        }
+        Write-Host "== Offline ComputerName set to $shortname =="
+    }
+    else {
+        Write-Warning "shortname is empty - skipping offline rename; node would keep the baked name."
+    }
+
+    ## bcdboot writes the UEFI boot files (\EFI\Microsoft\Boot + BCD) to the EFI System
+    ## Partition, and /s can only address it by drive letter. diskpart does 'assign
+    ## letter=S' at partition time, but that letter does NOT reliably persist on a GPT
+    ## system partition (observed: list volume shows the ESP with no letter -> bcdboot
+    ## /s S: fails rc=87). So locate the ESP on the SAME disk as C: and give it a letter
+    ## right here. Targeting C:'s disk explicitly means a leftover/stale ESP on another
+    ## disk can't be picked. (TODO/disk-clutter: diskpart may not be fully cleaning the
+    ## disk - a ~644 MB leftover partition was seen on nuc13-160; see WORKLOG follow-up.)
+    $espGuid = '{c12a7328-f81f-11d2-ba4b-00a0c93ec93b}'
+    $cDisk = (Get-Partition -DriveLetter C).DiskNumber
+    $esp = Get-Partition -DiskNumber $cDisk |
+        Where-Object { $_.GptType -eq $espGuid } | Select-Object -First 1
+    if (-not $esp) { throw "No EFI System Partition on disk $cDisk - cannot run bcdboot." }
+    if ($esp.DriveLetter) {
+        $efiVol = "$($esp.DriveLetter):"
+    }
+    else {
+        $espDp = "select disk $cDisk`r`nselect partition $($esp.PartitionNumber)`r`nassign letter=S`r`nexit"
+        $espDp | Out-File -FilePath "$env:TEMP\assign_esp.txt" -Encoding ASCII
+        Start-Process "diskpart.exe" -ArgumentList "/s $env:TEMP\assign_esp.txt" -Wait
+        $efiVol = "S:"
+    }
+    Write-Host "== ESP = disk $cDisk / partition $($esp.PartitionNumber) -> $efiVol =="
+
+    Write-Host "== bcdboot $winVol\Windows /s $efiVol /f UEFI =="
+    bcdboot.exe "$winVol\Windows" /s $efiVol /f UEFI
+    if ($LASTEXITCODE -ne 0) { throw "bcdboot failed rc=$LASTEXITCODE" }
+
+    ## Reuse the unattend the resync block already fetched + edited (ComputerName,
+    ## admin password). A generalized image runs specialize + oobeSystem from
+    ## \Windows\Panther\unattend.xml on first boot; the windowsPE/ImageInstall pass in
+    ## it is simply ignored (the image is already applied).
+    $panther = Join-Path "$winVol\" "Windows\Panther"
+    New-Item -ItemType Directory -Path $panther -Force | Out-Null
+    Copy-Item -Path $unattend -Destination (Join-Path $panther "unattend.xml") -Force
+    Write-Host "== Placed unattend at $panther\unattend.xml =="
+
+    ## --- Re-assert the node name AFTER specialize (RELOPS-2487) ---
+    ## The offline rename above is necessary but NOT sufficient: it runs in WinPE, and the
+    ## first-boot SPECIALIZE pass runs AFTER it and regenerates a random WIN-xxxxxxxx into
+    ## ActiveComputerName (the unattend's <ComputerName> does not take effect on this image).
+    ## Observed 2026-08-20 on nuc13-158: ComputerName=NUC13-158 but ActiveComputerName=
+    ## WIN-D81J5HC82S0, with Tcpip Hostname/NV Hostname still correct. That mismatch is not
+    ## cosmetic - maintainsystem-hw looked the node up under the WIN- name, missed, and
+    ## Set-PXE'd into an unbreakable re-image loop, and generic-worker's workerId reads the
+    ## same value.
+    ##
+    ## SetupComplete.cmd is the first hook that runs AFTER specialize/oobeSystem and before
+    ## any logon, so it is the earliest point where the name can be made authoritative.
+    ## Deliberately NOT a Rename-Computer: that cmdlet compares against the PERSISTENT name,
+    ## which is already correct, so it refuses with "the new name is the same as the current
+    ## name". Writing ActiveComputerName directly is the only thing that works (verified on
+    ## all five canary nodes, 2026-08-20).
+    $setupScripts = Join-Path "$winVol\" "Windows\Setup\Scripts"
+    New-Item -ItemType Directory -Path $setupScripts -Force | Out-Null
+
+    $nameFixPs1 = @'
+# Set-ActiveComputerName.ps1 - re-assert the node name after the specialize pass.
+# Reads nothing from the deploy; the authoritative value is the persistent ComputerName
+# that OS-deploy.ps1 set offline, so this is safe to run unconditionally on first boot.
+$log = 'C:\Windows\Temp\setupcomplete-name.log'
+function W([string]$m) { "$([DateTime]::UtcNow.ToString('o')) $m" | Out-File -FilePath $log -Append -Encoding utf8 }
+
+$cnKey  = 'HKLM:\SYSTEM\CurrentControlSet\Control\ComputerName\ComputerName'
+$acnKey = 'HKLM:\SYSTEM\CurrentControlSet\Control\ComputerName\ActiveComputerName'
+$tcpip  = 'HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters'
+
+try {
+    $persistent = "$((Get-ItemProperty -Path $cnKey -ErrorAction Stop).ComputerName)".Trim()
+    $active     = "$((Get-ItemProperty -Path $acnKey -ErrorAction SilentlyContinue).ComputerName)".Trim()
+    W "persistent=$persistent active=$active"
+
+    if (-not $persistent) { W 'persistent ComputerName empty - nothing to assert'; exit 0 }
+    if ($active -eq $persistent) { W 'already in sync - no action'; exit 0 }
+
+    New-ItemProperty -Path $acnKey -Name ComputerName   -Value $persistent -PropertyType String -Force | Out-Null
+    New-ItemProperty -Path $tcpip  -Name Hostname       -Value $persistent -PropertyType String -Force | Out-Null
+    New-ItemProperty -Path $tcpip  -Name 'NV Hostname'  -Value $persistent -PropertyType String -Force | Out-Null
+    W "wrote ActiveComputerName/Hostname/NV Hostname = $persistent; restarting"
+    Restart-Computer -Force
+}
+catch {
+    W "FAILED: $($_.Exception.Message)"
+    exit 1
+}
+'@
+
+    $setupCompleteCmd = @'
+@echo off
+REM RELOPS-2487: re-assert the node name after specialize. See Set-ActiveComputerName.ps1.
+powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%~dp0Set-ActiveComputerName.ps1"
+exit /b 0
+'@
+
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText((Join-Path $setupScripts 'Set-ActiveComputerName.ps1'), $nameFixPs1, $utf8NoBom)
+    # SetupComplete.cmd must be ANSI/ASCII - cmd.exe will not parse a UTF-8 BOM.
+    [System.IO.File]::WriteAllText((Join-Path $setupScripts 'SetupComplete.cmd'), $setupCompleteCmd, [System.Text.Encoding]::ASCII)
+    Write-Host "== Placed SetupComplete.cmd + Set-ActiveComputerName.ps1 in $setupScripts =="
+
+    Write-Host "Baked WIM applied. Rebooting into the deployed OS. $(Get-DeploySendoff)"
+    Start-Sleep -Seconds 5
+    wpeutil reboot
+}
