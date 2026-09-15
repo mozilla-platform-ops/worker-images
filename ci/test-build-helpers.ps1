@@ -55,6 +55,17 @@ try {
     Remove-Item Function:/gh
     Remove-Item $output
 }
+$global:skuOverride = $null
+$global:skuExit = 0
+function global:az {
+    $global:LASTEXITCODE = $global:skuExit
+    if ($null -ne $global:skuOverride) { return $global:skuOverride }
+    ConvertTo-Json -Depth 10 -InputObject @(@{
+        resourceType = 'virtualMachines'; name = $env:PKR_VAR_vm_size
+        locations = @($env:PKR_VAR_build_location); restrictions = @()
+        capabilities = @(@{ name = 'LowPriorityCapable'; value = 'True' })
+    })
+}
 if (Test-Path win11-64-24h2-replication.json) { throw 'Move the existing replication request before running these checks.' }
 $temp = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString('N'))
 $null = New-Item -ItemType Directory -Path $temp
@@ -124,6 +135,30 @@ try {
     $env:CONFIG = 'win11-64-24h2'
     & ./ci/prepare-azure-shared-worker-image.ps1
     Assert ((Get-Content $env:GITHUB_ENV) -contains "sharedimageversion=$env:PKR_VAR_sharedimage_version") 'artifact version lost'
+. ./bin/WorkerImages/Private/Assert-AzVmSkuAvailable.ps1
+$sku = @{
+    name = 'Standard_Test'; resourceType = 'virtualMachines'; locations = @('eastus')
+    restrictions = @(); capabilities = @(@{ name = 'LowPriorityCapable'; value = 'True' })
+}
+try {
+    foreach ($case in @('supported', 'zone-only', 'other-region', 'restricted', 'partial-name', 'missing', 'api-error', 'no-spot')) {
+        $entry = $sku.Clone()
+        $global:skuExit = 0
+        switch ($case) {
+            'zone-only' { $entry.restrictions = @(@{ type = 'Zone'; values = @('eastus') }) }
+            'other-region' { $entry.restrictions = @(@{ type = 'Location'; values = @('westus') }) }
+            'restricted' { $entry.restrictions = @(@{ type = 'Location'; restrictionInfo = @{ locations = @('eastus') } }) }
+            'partial-name' { $entry.name = 'Standard_Test_Extra' }
+            'api-error' { $global:skuExit = 1 }
+            'no-spot' { $entry.capabilities = @() }
+        }
+        $global:skuOverride = ConvertTo-Json -InputObject @($entry) -Depth 10
+        if ($case -eq 'missing') { $global:skuOverride = '[]' }
+        $passed = $true
+        try { Assert-AzVmSkuAvailable -SubscriptionId test -Location 'East US' -VmSize Standard_Test -UseSpot $true } catch { $passed = $false }
+        Assert ($passed -eq ($case -in 'supported', 'zone-only', 'other-region')) "Unexpected SKU preflight result: $case"
+    }
+} finally { Remove-Item Function:/az }
 } finally {
     Remove-Item Function:/az, Function:/packer -ErrorAction SilentlyContinue
     Remove-Item win11-64-24h2-replication.json -ErrorAction SilentlyContinue
