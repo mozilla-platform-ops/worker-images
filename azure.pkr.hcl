@@ -5,7 +5,7 @@
 packer {
   required_plugins {
     azure = {
-      version = ">= 1.4.5"
+      version = "= 2.5.0"
       source  = "github.com/hashicorp/azure"
     }
   }
@@ -41,11 +41,6 @@ variable "base_image" {
   default = "${env("base_image")}"
 }
 
-variable "bootstrap_script" {
-  type    = string
-  default = "${env("bootstrap_script")}"
-}
-
 variable "client_id" {
   type    = string
   default = "${env("client_id")}"
@@ -64,11 +59,6 @@ variable "oidc_request_token" {
 variable "deployment_id" {
   type    = string
   default = "${env("deployment_id")}"
-}
-
-variable "disk_additional_size" {
-  type    = string
-  default = "${env("disk_additional_size")}"
 }
 
 variable "image_offer" {
@@ -96,29 +86,9 @@ variable "sharedimage_version" {
   default = "${env("sharedimage_version")}"
 }
 
-variable "location" {
-  type    = string
-  default = "${env("location")}"
-}
-
 variable "build_location" {
   type    = string
   default = "${env("build_location")}"
-}
-
-variable "managed-by" {
-  type    = string
-  default = "${env("managed_by")}"
-}
-
-variable "managed_image_name" {
-  type    = string
-  default = "${env("managed_image_name")}"
-}
-
-variable "managed_image_storage_account_type" {
-  type    = string
-  default = "${env("managed_image_storage_account_type")}"
 }
 
 variable "source_branch" {
@@ -198,23 +168,31 @@ variable "config" {
   default = "${env("config")}"
 }
 
+variable "use_shallow_replication" {
+  type    = bool
+  default = false
+}
+
 variable "replication_regions" {
   type        = list(string)
   description = "List of Azure regions to replicate the shared image to"
-  default = [
-    "canadacentral",
-    "centralindia",
-    "eastus",
-    "eastus2",
-    "northcentralus",
-    "northeurope",
-    "southindia",
-    "southcentralus",
-    "uksouth",
-    "westus",
-    "westus2",
-    "westus3"
-  ]
+  default     = [] # The runner supplies explicit per-image targets from config.
+}
+
+variable "bootstrap_archive" {
+  type = string
+}
+
+variable "tests_archive" {
+  type = string
+}
+
+variable "git_version" {
+  type = string
+}
+
+variable "openvox_version" {
+  type = string
 }
 
 source "azure-arm" "sig" {
@@ -240,10 +218,11 @@ source "azure-arm" "sig" {
   image_version   = "${var.image_version}"
 
   # Destination
-  temp_resource_group_name   = "${var.temp_resource_group_name}"
-  location                   = "${var.build_location}"
-  vm_size                    = "${var.vm_size}"
-  async_resourcegroup_delete = true
+  managed_image_storage_account_type = "Premium_LRS"
+  temp_resource_group_name           = "${var.temp_resource_group_name}"
+  location                           = "${var.build_location}"
+  vm_size                            = "${var.vm_size}"
+  async_resourcegroup_delete         = true
 
   dynamic "spot" {
     for_each = var.use_spot ? [1] : []
@@ -255,12 +234,13 @@ source "azure-arm" "sig" {
 
   # Shared image gallery https:github.com/mozilla-platform-ops/relops_infra_as_code/blob/master/terraform/azure_fx_nonci/worker-images.tf
   shared_image_gallery_destination {
-    subscription        = "${var.subscription_id}"
-    resource_group      = "${var.resource_group}"
-    gallery_name        = "${var.gallery_name}"
-    image_name          = "${var.image_name}"
-    image_version       = "${var.sharedimage_version}"
-    replication_regions = var.replication_regions
+    subscription            = "${var.subscription_id}"
+    resource_group          = "${var.resource_group}"
+    gallery_name            = "${var.gallery_name}"
+    image_name              = "${var.image_name}"
+    image_version           = "${var.sharedimage_version}"
+    replication_regions     = var.replication_regions
+    use_shallow_replication = var.use_shallow_replication
   }
 
   # Tags
@@ -268,60 +248,15 @@ source "azure-arm" "sig" {
     base_image         = "${var.base_image}"
     deploymentId       = "${var.deployment_id}"
     sourceBranch       = "${var.source_branch}"
-    sourceOrganisation = "${var.source_organization}"
+    sourceOrganization = "${var.source_organization}"
     sourceRepository   = "${var.source_repository}"
     worker_pool_id     = "${var.worker_pool_id}"
   }
-}
-
-source "azure-arm" "nonsig" {
-  # WinRM
-  communicator   = "winrm"
-  winrm_insecure = "true"
-  winrm_timeout  = "3m"
-  winrm_use_ssl  = "true"
-  winrm_username = "packer"
-
-  # Authentication
-  oidc_request_url   = "${var.oidc_request_url}"
-  oidc_request_token = "${var.oidc_request_token}"
-  client_id          = "${var.client_id}"
-  subscription_id    = "${var.subscription_id}"
-  tenant_id          = "${var.tenant_id}"
-
-  # Source
-  os_type         = "Windows"
-  image_publisher = "${var.image_publisher}"
-  image_offer     = "${var.image_offer}"
-  image_sku       = "${var.image_sku}"
-  image_version   = "${var.image_version}"
-
-  # Destination
-  temp_resource_group_name           = "${var.temp_resource_group_name}"
-  location                           = "${var.location}"
-  managed_image_storage_account_type = "Standard_LRS"
-  vm_size                            = "${var.vm_size}"
-  managed_image_name                 = "${var.managed_image_name}"
-  managed_image_resource_group_name  = "${var.resource_group}"
-  async_resourcegroup_delete         = true
-
-  # Tags
-  azure_tags = {
-    base_image         = "${var.base_image}"
-    deploymentId       = "${var.deployment_id}"
-    sourceBranch       = "${var.source_branch}"
-    sourceOrganisation = "${var.source_organization}"
-    sourceRepository   = "${var.source_repository}"
-    worker_pool_id     = "${var.worker_pool_id}"
-    image_version      = "${var.image_version}"
-  }
-
 }
 
 build {
   sources = [
-    "source.azure-arm.sig",
-    "source.azure-arm.nonsig"
+    "source.azure-arm.sig"
   ]
 
   provisioner "powershell" {
@@ -331,8 +266,8 @@ build {
   }
 
   provisioner "file" {
-    source      = "${path.root}/scripts/windows/CustomFunctions/Bootstrap"
-    destination = "C:/Windows/System32/WindowsPowerShell/v1.0/Modules/"
+    source      = var.bootstrap_archive
+    destination = "C:/Bootstrap.zip"
     max_retries = 3
   }
 
@@ -346,15 +281,32 @@ build {
   }
 
   provisioner "file" {
-    source      = "${path.cwd}/tests/win/"
-    destination = "C:/Tests"
+    source      = var.tests_archive
+    destination = "C:/tests.zip"
     max_retries = 3
   }
 
   provisioner "file" {
-    source      = "${path.cwd}/config/"
-    destination = "C:/Config"
+    source      = "${path.cwd}/config/${var.config}.yaml"
+    destination = "C:/Config/${var.config}.yaml"
     max_retries = 3
+  }
+
+  provisioner "file" {
+    source      = "${path.cwd}/config/windows_production_defaults.yaml"
+    destination = "C:/Config/windows_production_defaults.yaml"
+    max_retries = 3
+  }
+
+  provisioner "powershell" {
+    elevated_password = ""
+    elevated_user     = "SYSTEM"
+    inline = [
+      "$ErrorActionPreference = 'Stop';",
+      "Expand-Archive -Path C:/Bootstrap.zip -DestinationPath C:/Windows/System32/WindowsPowerShell/v1.0/Modules -Force;",
+      "Expand-Archive -Path C:/tests.zip -DestinationPath C:/Tests -Force;",
+      "Remove-Item C:/Bootstrap.zip, C:/tests.zip -Force"
+    ]
   }
 
   provisioner "powershell" {
@@ -370,6 +322,8 @@ build {
       "client_id=${var.client_id}",
       "tenant_id=${var.tenant_id}",
       "application_id=${var.application_id}",
+      "openvox_version=${var.openvox_version}",
+      "git_version=${var.git_version}",
       "config=${var.config}"
     ]
     inline = [
@@ -479,14 +433,6 @@ build {
       "Import-Module BootStrap -Force;",
       "Set-ReleaseNotes -Config $ENV:config -Version $ENV:sharedimage_version -Organization $ENV:src_organisation -Branch $ENV:src_Branch -Repository $ENV:src_Repository -DeploymentId $ENV:deploymentId"
     ]
-  }
-
-  provisioner "file" {
-    only        = ["azure-arm.nonsig"]
-    destination = "${path.root}/${local.sbom_name}.md"
-    source      = "C:/${local.sbom_name}.md"
-    direction   = "download"
-    max_retries = 3
   }
 
   provisioner "file" {

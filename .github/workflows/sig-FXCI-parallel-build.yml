@@ -45,11 +45,44 @@ jobs:
     with:
       config: ${{ matrix.config }}
       trusted: ${{ startsWith(matrix.config, 'trusted-') }}
+      defer-replication: true
     secrets:
       client-id: ${{ secrets[matrix.client_id_secret] }}
       application-id: ${{ secrets[matrix.application_id_secret] }}
       subscription-id: ${{ secrets[matrix.subscription_id_secret] }}
       tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+
+  replicate:
+    needs: [prepare-matrix, packer]
+    name: Replicate ${{ matrix.config }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: replication-${{ matrix.config }}
+      # This job uses the Azure CLI; Packer build jobs authenticate independently.
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906
+        with:
+          client-id: ${{ secrets[matrix.client_id_secret] }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets[matrix.subscription_id_secret] }}
+      - name: Replicate and wait for every target region
+        env:
+          CONFIG: ${{ matrix.config }}
+        run: python3 ci/replicate-azure-image.py "$CONFIG-replication.json"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: deployment-ready-${{ matrix.config }}
+          path: ${{ matrix.config }}-replication-ready.json
+          if-no-files-found: error
+          retention-days: 14
 
   sbom:
     if: ${{ always() }}
@@ -60,7 +93,7 @@ jobs:
     uses: ./.github/workflows/upload-release-notes.yml
 
   os-integration:
-    needs: [prepare-matrix, packer]
+    needs: [prepare-matrix, replicate]
     name: "OS Integration Tests - ${{ matrix.config }}"
     strategy:
       fail-fast: false

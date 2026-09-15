@@ -9,6 +9,9 @@ on:
       trusted:
         type: boolean
         default: false
+      defer-replication:
+        type: boolean
+        default: false
     secrets:
       client-id:
         required: true
@@ -61,6 +64,7 @@ jobs:
           TENANT_ID: ${{ secrets.tenant-id }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PKR_VAR_taskcluster_ref: ''
+          DEFER_REPLICATION: ${{ inputs.defer-replication }}
         run: |
           & "${{ github.workspace }}/ci/prepare-azure-shared-worker-image.ps1"
       - name: Run Packer
@@ -70,6 +74,14 @@ jobs:
           template: azure.pkr.hcl
           only: azure-arm.sig
           force: ${{ contains(inputs.config, 'alpha') }}
+      - name: Upload replication request
+        if: ${{ success() && inputs.defer-replication }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: replication-${{ inputs.config }}
+          path: ${{ inputs.config }}-replication.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Upload release notes
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
