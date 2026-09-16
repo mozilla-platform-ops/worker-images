@@ -334,12 +334,6 @@ worker:
 cacheOverRestarts: C:\generic-worker\start-worker-cache.json
 "@
 
-# workaround for https://www.cygwin.com/ml/cygwin/2015-10/msg00036.html
-# see:
-#   1) https://www.cygwin.com/ml/cygwin/2015-10/msg00038.html
-#   2) https://cygwin.com/git/gitweb.cgi?p=cygwin-csih.git;a=blob;f=cygwin-service-installation-helper.sh;h=10ab4fb6d47803c9ffabdde51923fc2c3f0496bb;hb=7ca191bebb52ae414bb2a2e37ef22d94f2658dc7#l2884
-$env:LOGONSERVER = "\\" + $env:COMPUTERNAME
-
 # Log before stopping transcript to make sure message is included in transcript.
 Write-Log "Bootstrap process completed. Waiting on Packer..."
 

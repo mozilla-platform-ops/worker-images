@@ -334,34 +334,6 @@ worker:
 cacheOverRestarts: C:\generic-worker\start-worker-cache.json
 "@
 
-# download cygwin (not required, but useful)
-Invoke-WebRequest -Uri "https://www.cygwin.com/setup-x86_64.exe" -OutFile "C:\Downloads\cygwin-setup-x86_64.exe"
-
-# install cygwin
-# complete package list: https://cygwin.com/packages/package_list.html
-Run-Executable "C:\Downloads\cygwin-setup-x86_64.exe" @("--quiet-mode", "--wait", "--root", "C:\cygwin", "--site", "https://cygwin.mirror.constant.com", "--packages", "openssh,vim,curl,tar,wget,zip,unzip,diffutils,bzr")
-
-# open up firewall for ssh daemon
-New-NetFirewallRule -DisplayName "Allow SSH inbound" -Direction Inbound -LocalPort 22 -Protocol TCP -Action Allow
-
-# workaround for https://www.cygwin.com/ml/cygwin/2015-10/msg00036.html
-# see:
-#   1) https://www.cygwin.com/ml/cygwin/2015-10/msg00038.html
-#   2) https://cygwin.com/git/gitweb.cgi?p=cygwin-csih.git;a=blob;f=cygwin-service-installation-helper.sh;h=10ab4fb6d47803c9ffabdde51923fc2c3f0496bb;hb=7ca191bebb52ae414bb2a2e37ef22d94f2658dc7#l2884
-$env:LOGONSERVER = "\\" + $env:COMPUTERNAME
-
-# configure sshd (not required, but useful)
-Run-Executable "C:\cygwin\bin\bash.exe" @("--login", "-c", "ssh-host-config -y -c 'ntsec mintty' -u 'cygwinsshd' -w 'qwe123QWE!@#'")
-
-# start sshd
-Run-Executable "net" @("start", "cygsshd")
-
-# download bash setup script
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/petemoore/myscrapbook/master/setup.sh" -OutFile "C:\cygwin\tmp\setup.sh"
-
-# run bash setup script
-Run-Executable "C:\cygwin\bin\bash.exe" @("--login", "-c", "chmod a+x /tmp/setup.sh; /tmp/setup.sh")
-
 # install dependencywalker (useful utility for troubleshooting, not required)
 md "C:\DependencyWalker"
 Expand-ZIPFile -File "C:\Downloads\depends22_x64.zip" -Destination "C:\DependencyWalker" -Url "https://dependencywalker.com/depends22_x64.zip"

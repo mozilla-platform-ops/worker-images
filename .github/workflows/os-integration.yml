@@ -9,7 +9,6 @@ on:
         description: Choose which pool to build
         options:
         - win10-64-2009-alpha
-        - win11-64-2009-alpha
         - win11-64-24h2-alpha
         - win11-64-25h2-alpha
         - win11-a64-25h2-tester-alpha
