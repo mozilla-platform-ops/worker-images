@@ -36,8 +36,14 @@ try {
 }
 if (-not (Test-Path 'C:\FooFrix\cargo-tools.txt')) { throw 'Tool inventory is missing' }
 
+# FooFrix source and its bundle belong to VM bootstrap, never the image.
+if (Test-Path 'C:\FooFrix\src\foofrix') { throw 'FooFrix source must not be baked into the image' }
+if (Get-ChildItem 'C:\FooFrix\artifacts' -Filter '*.bundle' -Recurse) {
+    throw 'Source bundles must not be baked into the image'
+}
+
 # Exercise the baked payload from the Packer account after the second restart.
-foreach ($tool in @('foofrix.cmd', 'run-speedometer.cmd', 'profiler-cli.cmd', 'codex.cmd')) {
+foreach ($tool in @('run-speedometer.cmd', 'profiler-cli.cmd', 'codex.cmd')) {
     & $tool --help
     if ($LASTEXITCODE -ne 0) { throw "$tool failed its help check" }
 }
@@ -51,12 +57,9 @@ foreach ($path in @(
 )) {
     if (-not (Test-Path $path -PathType Leaf)) { throw "Missing prebaked payload: $path" }
 }
-& 'C:\FooFrix\src\foofrix\vendor\perfcompare-new-stats\.venv\Scripts\python.exe' -c 'import numpy, requests, retry, scipy, tqdm'
-if ($LASTEXITCODE -ne 0) { throw 'Statistical comparison dependencies failed to import' }
-
-# Validate both projects' exact Playwright revisions from the shared browser cache.
-foreach ($project in @('C:\FooFrix\src\foofrix', 'C:\FooFrix\tools\run-speedometer')) {
-    & node.exe -e @'
+# Validate the reusable benchmark runner's cached browser.
+$project = 'C:\FooFrix\tools\run-speedometer'
+& node.exe -e @'
 const { firefox } = require(process.argv[1] + '/node_modules/playwright');
 (async () => {
   const browser = await firefox.launch({ headless: true, timeout: 60000 });
@@ -67,8 +70,7 @@ const { firefox } = require(process.argv[1] + '/node_modules/playwright');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode = 1; });
 '@ $project
-    if ($LASTEXITCODE -ne 0) { throw "Playwright browser launch failed for $project" }
-}
+if ($LASTEXITCODE -ne 0) { throw "Playwright browser launch failed for $project" }
 
 # Stock Firefox lacks Playwright's protocol patches: smoke it directly instead.
 $browserProfilePath = Join-Path $env:TEMP ('foofrix-browser-' + [guid]::NewGuid())

@@ -6,10 +6,6 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 . "$PSScriptRoot/bootstrap-helpers.ps1"
 
-if (-not (Test-Path 'C:\FooFrix\artifacts\foofrix.bundle' -PathType Leaf)) {
-    throw 'Required foofrix.bundle is missing from the selected artifact prefix'
-}
-
 # Actions downloads these from Azure and checks config/foofrix/installers.json.
 $installers = 'C:\FooFrix\artifacts\installers'
 Install-BuildInstaller -Path "$installers\Git-2.55.0.5-64-bit.exe" -Arguments '/VERYSILENT /NORESTART /ALLUSERS /SP- /o:PathOption=Cmd'
@@ -37,18 +33,7 @@ Expand-BuildArchive -Path "$installers\google-cloud-sdk-585.0.0-windows-x86_64-b
 $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
 [Environment]::SetEnvironmentVariable('Path', "$machinePath;C:\FooFrix\cargo\bin;C:\FooFrix\tools\google-cloud-sdk\bin", 'Machine')
 
-# 2. Resources uploaded to the private artifacts container are already local.
-# Keep this path aligned with the artifact_prefix selected when starting the build.
-# Example: blob windows/releases/example/chromium.zip arrives at
-# C:\FooFrix\artifacts\windows\releases\example\chromium.zip.
-# Uncomment and replace these examples when the actual artifacts are available:
-# $release = 'C:\FooFrix\artifacts\windows\releases\example'
-# Expand-BuildArchive -Path "$release\chromium.zip" -Destination 'C:\FooFrix\chromium'
-# Expand-BuildArchive -Path "$release\firefox-source.zip" -Destination 'C:\FooFrix\src'
-# Install-BuildInstaller -Path "$release\tools.msi"
-# Install-BuildInstaller -Path "$release\setup.exe" -Arguments '/quiet /norestart'
-
-# 3. Add a matching check in tests/win/foofrix-base.tests.ps1 for new tools.
+# Add a matching check in tests/win/foofrix-base.tests.ps1 for new tools.
 # Packer restarts Windows after this script, then runs those checks before publishing.
 # Do not log in, fetch API keys, start FooFrix, or reboot from this recipe.
 

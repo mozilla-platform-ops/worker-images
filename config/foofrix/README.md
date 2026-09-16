@@ -3,8 +3,9 @@
 RELOPS-2570 adds a standalone image build path for Perf. The initial config is
 Windows 11 24H2 x64 with Git, Node.js 24, Python, C++ Build Tools, 7-Zip,
 Rust/Cargo, Samply, Searchfox CLI, and Google Cloud CLI. The payload stage adds
-MozillaBuild, a full Firefox source build, FooFrix, run-speedometer, profiler-cli,
-Codex, the statistical comparison environment, and Playwright Firefox downloads. This is a base image draft;
+MozillaBuild, a full Firefox source build, run-speedometer, profiler-cli, Codex,
+and the benchmark runner's Playwright Firefox download. FooFrix source and its
+project dependencies are installed during VM bootstrap. This is a base image draft;
 it is not yet a validated Firefox/Chromium build or FooFrix runtime image.
 
 Perf owns the config in this directory and `scripts/windows/foofrix/`. RelOps
@@ -55,28 +56,9 @@ Dispatch **FooFrix Azure Images**, selecting `win11-24h2` and a new numeric
 `major.minor.patch` gallery version. The workflow never forces replacement of an
 existing version. The Packer build size is independent of Perf's eventual VM size.
 
-Supply a directory prefix such as `windows/releases/2026-09-14` in the
-private `artifacts` container. Actions downloads matching files with the dedicated
-OIDC identity and Packer copies them to `C:\FooFrix\artifacts`, preserving their
-blob paths. These files remain in the image. Only select source and binaries
-intended for image distribution; runtime credentials are retrieved separately from GCP Secret Manager.
-The selected prefix must contain `foofrix.bundle`, a self-contained Git bundle of
-reviewed FooFrix source. From a full, authenticated FooFrix checkout, create it with:
-
-```bash
-git bundle create ../foofrix.bundle HEAD
-```
-
-Upload that file into the selected prefix using your existing blob access.
-A Git bundle contains committed source/history, not your checkout's credentials,
-Git configuration, untracked files, or installed dependencies. Review the selected
-commit and ensure its tracked history contains no secrets before distribution.
-Submodules are fetched at the revisions recorded by that commit. The current
-perfcompare submodule is public; a future private submodule needs separate staging.
-Actions checks for this bundle before starting Packer and stages a copy at
-`C:\FooFrix\artifacts\foofrix.bundle`. No GitHub token is sent to the guest.
-The bundle's selected source executes during the trusted image build; restrict
-artifact write access and review its commit as carefully as the image recipe.
+The workflow needs only the image configuration and version. It downloads the
+staged installers described below; no FooFrix source bundle or source prefix is
+required to build an image.
 
 The workflow uploads `foofrix-manifest.json`, containing the published artifact
 identifier, to the run. Perf's provisioner selects the gallery image version and
@@ -84,6 +66,11 @@ owns VM creation, networking, disks, runtime identity attachment, and deletion.
 
 VM provisioning from the GCP Linux launcher and its GCP Secret Manager integration
 are tracked in [FooFrix PR #1](https://github.com/dpalmeiro/foofrix/pull/1).
+Its `create`/`bootstrap` commands install the reviewed FooFrix bundle as the
+configured Windows user after boot, install its npm/Python/browser dependencies,
+and preserve an existing checkout on reruns. Updating or editing FooFrix does not
+require rebuilding the image. See that repository's `docs/azure-workers.md` for
+bundle staging and bootstrap settings.
 
 ## Staged Windows installers
 
@@ -91,7 +78,7 @@ Actions downloads base installers from the private `artifacts` container in
 `safoofrixaad679e2`. `config/foofrix/installers.json` records the versioned blob
 prefix, original vendor URLs, sizes, and SHA-256 hashes. Actions verifies every
 listed file before Packer starts and copies them to `C:\FooFrix\artifacts\installers`.
-This installer prefix is independent of the source bundle's `artifact_prefix`.
+This installer prefix is independent of the source bundle used at VM bootstrap.
 
 The recipe no longer uses Chocolatey or downloads initial installers from vendors.
 It installs Git, Node.js, Python, 7-Zip, and MozillaBuild from staged installers,
@@ -132,9 +119,9 @@ You normally only need to add or change recipe lines and their checks.
 
 | Need | Recipe line |
 | --- | --- |
-| Install a private MSI | `Install-BuildInstaller -Path 'C:\FooFrix\artifacts\tools.msi'` |
-| Install a private EXE | `Install-BuildInstaller -Path 'C:\FooFrix\artifacts\setup.exe' -Arguments '/quiet /norestart'` |
-| Unpack a ZIP | `Expand-BuildArchive -Path 'C:\FooFrix\artifacts\chromium.zip' -Destination 'C:\FooFrix\chromium'` |
+| Install a private MSI | `Install-BuildInstaller -Path 'C:\FooFrix\artifacts\installers\tools.msi'` |
+| Install a private EXE | `Install-BuildInstaller -Path 'C:\FooFrix\artifacts\installers\setup.exe' -Arguments '/quiet /norestart'` |
+| Unpack a ZIP | `Expand-BuildArchive -Path 'C:\FooFrix\artifacts\installers\chromium.zip' -Destination 'C:\FooFrix\chromium'` |
 
 Use the uploaded installer filename from `installers.json` or your artifact path. EXE silent
 switches depend on the installer: check its documentation or ask RelOps. MSI
@@ -142,26 +129,11 @@ installs automatically use quiet mode and defer restart to Packer. A missing fil
 or failed installer stops the build; do not ignore it or replace it with a success
 message. ZIPs should contain the directory layout you want at the destination.
 
-For example, to include a Chromium ZIP:
-
-1. In Azure Portal, open the FooFrix storage account, then **Containers → artifacts**.
-   Upload the ZIP as `windows/releases/example/chromium.zip` using your team access.
-2. In the recipe, uncomment the `$release` and `Expand-BuildArchive` example lines,
-   adjusting `example` to the actual release directory.
-3. Add this check to `tests/win/foofrix-base.tests.ps1`, adjusted to the ZIP layout:
-
-   ```powershell
-   if (-not (Test-Path 'C:\FooFrix\chromium\chrome.exe' -PathType Leaf)) {
-       throw 'Chromium executable is missing'
-   }
-   ```
-
-4. Commit the recipe/check changes on your reviewed branch. Run **FooFrix Azure
-   Images** with `artifact_prefix` set to `windows/releases/example` and a new
-   gallery version. The environment's allowed-branch/approval rules still apply.
-5. Check the Actions build log and manifest. Verify the resulting browser in a
-   candidate VM before using it for real jobs; a file check does not validate GPU
-   acceleration or profiling.
+To include another installer or archive in the image, add it to the next
+installer release and `installers.json`, reference its filename under
+`C:\FooFrix\artifacts\installers` in the recipe, and add a matching check in
+`tests/win/foofrix-base.tests.ps1`. Source bundles belong to VM bootstrap and
+must not be added to the installer manifest.
 
 These are image-build steps, not commands to run on your laptop. They execute as
 Windows SYSTEM. Install tools for all users and use shared paths such as
@@ -176,17 +148,14 @@ can be reviewed with Perf.
 
 ## Prebaked application and browser payload
 
-`prebake-payload.ps1` runs after the toolchain restart. It installs locked npm
-dependencies and compiles TypeScript directly, avoiding upstream setup's Unix
-`chmod`. It installs profiler-cli and its WASM file, initializes benchmark and
-perfcompare submodules, and downloads each project's matching Playwright Firefox.
-Public checkouts are pinned in the recipe. The supplied FooFrix commit and public
-source revisions are recorded in `C:\FooFrix\source-manifest.json`; global npm
-versions are recorded in `C:\FooFrix\npm-tools.json`.
+`prebake-payload.ps1` installs the reusable public tools after the toolchain
+restart. It compiles run-speedometer, initializes its benchmark submodule, caches
+its Playwright Firefox, and installs profiler-cli, Codex, and the Firefox build.
+Public source revisions are recorded in `C:\FooFrix\source-manifest.json`; global
+npm versions are recorded in `C:\FooFrix\npm-tools.json`.
 
 | Payload | Shared location |
 | --- | --- |
-| FooFrix checkout and installed dependencies | `C:\FooFrix\src\foofrix` |
 | Firefox checkout, object files and symbols | `C:\FooFrix\src\firefox` |
 | Firefox bootstrap tools and mach environments | `C:\FooFrix\mozbuild` |
 | Benchmark runner and Speedometer assets | `C:\FooFrix\tools\run-speedometer` |
@@ -207,9 +176,10 @@ Public clones are shallow, so jobs needing older history must fetch it. A revisi
 or toolchain change can invalidate the baseline build and require recompilation.
 The baked Firefox remote uses native Git; Hg/try support remains separate work.
 
-Post-build checks launch the cached Playwright Firefox for both projects, import
-Python comparison dependencies, check CLI entry points, and take a headless
-screenshot with the compiled Firefox. They do not establish GPU performance,
+Post-build checks launch run-speedometer's cached Playwright Firefox, check CLI
+entry points, reject baked FooFrix source/bundles, and take a headless screenshot
+with the compiled Firefox. FooFrix CLI, Python comparison dependencies, and its
+matching browser are checked after VM bootstrap. They do not establish GPU performance,
 Windows profiling compatibility, or a working end-to-end FooFrix job.
 Base installer files are pinned by SHA-256 in `installers.json`. C++ components,
 Cargo/npm packages, and Firefox bootstrap downloads can still change between
