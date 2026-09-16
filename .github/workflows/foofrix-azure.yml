@@ -1,5 +1,5 @@
 name: FooFrix Azure Images
-run-name: FooFrix Azure - ${{ inputs.config }} - ${{ inputs.image_version }}
+run-name: FooFrix Azure - ${{ inputs.config }}
 
 on:
   workflow_dispatch:
@@ -10,16 +10,12 @@ on:
         options:
           - win11-24h2
         required: true
-      image_version:
-        type: string
-        description: New gallery version (major.minor.patch)
-        required: true
 
 permissions:
   contents: read
 
 concurrency:
-  group: foofrix-image-${{ inputs.config }}-${{ inputs.image_version }}
+  group: foofrix-image-${{ inputs.config }}
   cancel-in-progress: false
 
 jobs:
@@ -41,7 +37,6 @@ jobs:
       id-token: write
     env:
       PKR_VAR_config: ${{ inputs.config }}
-      PKR_VAR_image_version: ${{ inputs.image_version }}
       PKR_VAR_client_id: ${{ vars.AZURE_CLIENT_ID_FOOFRIX_IMAGES }}
       PKR_VAR_tenant_id: ${{ secrets.AZURE_TENANT_ID }}
       PKR_VAR_subscription_id: ${{ vars.AZURE_SUBSCRIPTION_ID_FOOFRIX }}
@@ -57,7 +52,6 @@ jobs:
           : "${PKR_VAR_tenant_id:?Set AZURE_TENANT_ID}"
           : "${PKR_VAR_subscription_id:?Set AZURE_SUBSCRIPTION_ID_FOOFRIX}"
           : "${PKR_VAR_build_identity_id:?Set AZURE_IDENTITY_ID_FOOFRIX_IMAGES from image_build_identity_id}"
-          [[ "$PKR_VAR_image_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
           PKR_VAR_artifacts_directory="$RUNNER_TEMP/foofrix-artifacts"
           echo "PKR_VAR_artifacts_directory=$PKR_VAR_artifacts_directory" >> "$GITHUB_ENV"
           mkdir -p "$PKR_VAR_artifacts_directory"
@@ -94,6 +88,6 @@ jobs:
       - name: Publish image manifest
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: foofrix-${{ inputs.config }}-${{ inputs.image_version }}
+          name: foofrix-${{ inputs.config }}
           path: foofrix-manifest.json
           if-no-files-found: error

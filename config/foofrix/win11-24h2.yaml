@@ -9,9 +9,29 @@ azure:
   build_resource_group: rg-foofrix-image-build
   gallery: foofrix
   image_definition: win11_64_24h2
+  image_version: "0.1.0"
   replication_regions:
     - centralus
 vm:
   size: Standard_D16ads_v5
   os_disk_size_gb: 512
 bootstrap_script: windows-base.ps1
+# Base installer binaries and checksums are locked in installers.json.
+software:
+  git: "2.55.0.5"
+  node: "24.13.0"
+  python: "3.13.12"
+  seven_zip: "26.03"
+  mozillabuild: "4.2.1"
+  google_cloud_cli: "585.0.0"
+  rust: "1.98.1"
+  rustup_installer: rustup-init.exe
+  visual_studio_installer: vs_BuildTools.exe
+  yarn: "1.22.22"
+  # These retain the previous moving selections; use exact versions/revisions to pin.
+  codex: latest
+  searchfox_cli: "*"
+  samply_revision: main
+  firefox_revision: 6c74efe2fcddf84b6f320959064a66946b4a1759
+  run_speedometer_revision: 54d8a591cf3131ad0c380f04fc4894c65fc0f2b9
+  profiler_revision: 777fb266152bfc0d118c2e793839a8f5d72fe273
