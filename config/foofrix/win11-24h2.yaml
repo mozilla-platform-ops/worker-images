@@ -13,7 +13,7 @@ azure:
   replication_regions:
     - centralus
 vm:
-  size: Standard_D16ads_v5
+  size: Standard_D16ads_v6
   os_disk_size_gb: 512
 bootstrap_script: windows-base.ps1
 # Base installer binaries and checksums are locked in installers.json.
