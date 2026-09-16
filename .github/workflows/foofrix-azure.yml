@@ -14,10 +14,6 @@ on:
         type: string
         description: New gallery version (major.minor.patch)
         required: true
-      artifact_prefix:
-        type: string
-        description: Directory containing foofrix.bundle in the private artifacts container
-        required: true
 
 permissions:
   contents: read
@@ -51,7 +47,6 @@ jobs:
       PKR_VAR_subscription_id: ${{ vars.AZURE_SUBSCRIPTION_ID_FOOFRIX }}
       PKR_VAR_build_identity_id: ${{ vars.AZURE_IDENTITY_ID_FOOFRIX_IMAGES }}
       ARTIFACT_STORAGE_ACCOUNT: ${{ vars.AZURE_STORAGE_ACCOUNT_FOOFRIX }}
-      ARTIFACT_PREFIX: ${{ inputs.artifact_prefix }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Check build settings
@@ -72,18 +67,23 @@ jobs:
           client-id: ${{ env.PKR_VAR_client_id }}
           tenant-id: ${{ env.PKR_VAR_tenant_id }}
           subscription-id: ${{ env.PKR_VAR_subscription_id }}
-      - name: Download selected image artifacts
+      - name: Download and verify staged Windows installers
         shell: bash
         run: |
           set -euo pipefail
           : "${ARTIFACT_STORAGE_ACCOUNT:?Set AZURE_STORAGE_ACCOUNT_FOOFRIX}"
-          [[ "$ARTIFACT_PREFIX" =~ ^[a-zA-Z0-9_-]+(/[a-zA-Z0-9_.-]+)*$ ]]
+          manifest="$GITHUB_WORKSPACE/config/foofrix/installers.json"
+          prefix=$(jq -r '.prefix' "$manifest")
+          staging="$RUNNER_TEMP/foofrix-installers"
+          mkdir -p "$staging"
           az storage blob download-batch --auth-mode login \
             --account-name "$ARTIFACT_STORAGE_ACCOUNT" --source artifacts \
-            --pattern "$ARTIFACT_PREFIX/*" --destination "$PKR_VAR_artifacts_directory" \
+            --pattern "$prefix/*" --destination "$staging" \
             --only-show-errors --output none
-          test -s "$PKR_VAR_artifacts_directory/$ARTIFACT_PREFIX/foofrix.bundle"
-          cp "$PKR_VAR_artifacts_directory/$ARTIFACT_PREFIX/foofrix.bundle" "$PKR_VAR_artifacts_directory/foofrix.bundle"
+          cd "$staging/$prefix"
+          jq -r '.files[] | "\(.sha256)  \(.name)"' "$manifest" | sha256sum --check --strict
+          test ! -e "$PKR_VAR_artifacts_directory/installers"
+          mv "$staging/$prefix" "$PKR_VAR_artifacts_directory/installers"
       - name: Validate and build image
         shell: bash
         run: |

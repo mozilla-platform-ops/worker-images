@@ -1,0 +1,53 @@
+{
+  "prefix": "windows/installers/2026-09-16",
+  "files": [
+    {
+      "name": "Git-2.55.0.5-64-bit.exe",
+      "url": "https://github.com/git-for-windows/git/releases/download/v2.55.0.windows.5/Git-2.55.0.5-64-bit.exe",
+      "sha256": "d065a4e23c3d9a6b5073d609b5be0830227ec3ca053c083ba385061ddfaf94c6",
+      "size": 65343712
+    },
+    {
+      "name": "node-v24.13.0-x64.msi",
+      "url": "https://nodejs.org/dist/v24.13.0/node-v24.13.0-x64.msi",
+      "sha256": "1a5f0cd914386f3be2fbaf03ad9fff808a588ce50d2e155f338fad5530575f18",
+      "size": 32235520
+    },
+    {
+      "name": "python-3.13.12-amd64.exe",
+      "url": "https://www.python.org/ftp/python/3.13.12/python-3.13.12-amd64.exe",
+      "sha256": "96159fcb523ae404b707186a75b4104ee23851e476a5e838e14584cf1e03f981",
+      "size": 29096776
+    },
+    {
+      "name": "7z2603-x64.exe",
+      "url": "https://github.com/ip7z/7zip/releases/download/26.03/7z2603-x64.exe",
+      "sha256": "0859c524b8a63551848f0c246abddcb1d0b7b656b0fbfe879f8d85e61a9e6edd",
+      "size": 1661239
+    },
+    {
+      "name": "rustup-init.exe",
+      "url": "https://static.rust-lang.org/rustup/dist/x86_64-pc-windows-msvc/rustup-init.exe",
+      "sha256": "6f4bef66261261fcb43131be8720bab817d403a09edec7455c371974b90bdb7e",
+      "size": 12721664
+    },
+    {
+      "name": "google-cloud-sdk-585.0.0-windows-x86_64-bundled-python.zip",
+      "url": "https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-585.0.0-windows-x86_64-bundled-python.zip",
+      "sha256": "42ab5eb7ccc4c217f96afcc17f427f177b58af5334854e358d2b909115c2fd79",
+      "size": 102872567
+    },
+    {
+      "name": "MozillaBuildSetup-4.2.1.exe",
+      "url": "https://ftp.mozilla.org/pub/mozilla/libraries/win32/MozillaBuildSetup-4.2.1.exe",
+      "sha256": "8ef5b3d2087e4867dc75bf19f5e62f12e917f518239415723cc70896b6f1e3d8",
+      "size": 175671840
+    },
+    {
+      "name": "vs_BuildTools.exe",
+      "url": "https://aka.ms/vs/17/release/vs_BuildTools.exe",
+      "sha256": "985969f472caad75d993a5cb4c35a6a4271460cc12b343e2433b994d173aa990",
+      "size": 4478032
+    }
+  ]
+}
