@@ -47,7 +47,7 @@ jobs:
       PKR_VAR_config: ${{ inputs.config }}
       PKR_VAR_image_version: ${{ inputs.image_version }}
       PKR_VAR_client_id: ${{ vars.AZURE_CLIENT_ID_FOOFRIX_IMAGES }}
-      PKR_VAR_tenant_id: ${{ vars.AZURE_TENANT_ID }}
+      PKR_VAR_tenant_id: ${{ secrets.AZURE_TENANT_ID }}
       PKR_VAR_subscription_id: ${{ vars.AZURE_SUBSCRIPTION_ID_FOOFRIX }}
       PKR_VAR_build_identity_id: ${{ vars.AZURE_IDENTITY_ID_FOOFRIX_IMAGES }}
       PKR_VAR_artifacts_directory: ${{ runner.temp }}/foofrix-artifacts
