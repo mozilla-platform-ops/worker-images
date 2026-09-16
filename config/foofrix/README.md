@@ -85,6 +85,44 @@ owns VM creation, networking, disks, runtime identity attachment, and deletion.
 VM provisioning from the GCP Linux launcher and its GCP Secret Manager integration
 are tracked in [FooFrix PR #1](https://github.com/dpalmeiro/foofrix/pull/1).
 
+## Staged Windows installers
+
+Actions downloads base installers from the private `artifacts` container in
+`safoofrixaad679e2`. `config/foofrix/installers.json` records the versioned blob
+prefix, original vendor URLs, sizes, and SHA-256 hashes. Actions verifies every
+listed file before Packer starts and copies them to `C:\FooFrix\artifacts\installers`.
+This installer prefix is independent of the source bundle's `artifact_prefix`.
+
+The recipe no longer uses Chocolatey or downloads initial installers from vendors.
+It installs Git, Node.js, Python, 7-Zip, and MozillaBuild from staged installers,
+and extracts Google Cloud CLI's self-contained ZIP (including Python).
+The staged Visual Studio Build Tools bootstrapper still downloads its C++ workload
+and recommended components from Microsoft. The staged rustup bootstrapper still
+downloads Rust 1.98.1. Git, Cargo, npm, Playwright, and Firefox bootstrap also need
+internet access during the later payload stages. No offline C++ layout is required.
+
+To update the base tools:
+
+1. Download replacement files from their official vendor URLs. Verify published
+   checksums/signatures where available and record the downloaded SHA-256 values.
+2. Upload the complete installer set to a **new** versioned prefix using Azure
+   login, without overwriting an existing release:
+
+   ```bash
+   az storage blob upload-batch --auth-mode login \
+     --account-name safoofrixaad679e2 --destination artifacts \
+     --destination-path windows/installers/NEW-RELEASE \
+     --source ./installers --overwrite false
+   ```
+
+3. Update `installers.json` and the corresponding filenames/arguments in
+   `windows-base.ps1` together. Review that change before building.
+
+The manifest pins bytes, including the C++ and rustup bootstrappers; it does not
+pin the additional packages those bootstrappers download. See Microsoft's
+[Build Tools command-line options](https://learn.microsoft.com/en-us/visualstudio/install/use-command-line-parameters-to-install-visual-studio)
+and Google's [versioned archives](https://docs.cloud.google.com/sdk/docs/downloads-versioned-archives).
+
 ## Editing the image without PowerShell experience
 
 Start with `scripts/windows/foofrix/windows-base.ps1`. It is the image's recipe:
@@ -94,13 +132,11 @@ You normally only need to add or change recipe lines and their checks.
 
 | Need | Recipe line |
 | --- | --- |
-| Install a Chocolatey package | `Install-BuildPackage -Name 'git'` |
-| Pin a package version | `Install-BuildPackage -Name 'nodejs' -Version '24.13.0'` |
 | Install a private MSI | `Install-BuildInstaller -Path 'C:\FooFrix\artifacts\tools.msi'` |
 | Install a private EXE | `Install-BuildInstaller -Path 'C:\FooFrix\artifacts\setup.exe' -Arguments '/quiet /norestart'` |
 | Unpack a ZIP | `Expand-BuildArchive -Path 'C:\FooFrix\artifacts\chromium.zip' -Destination 'C:\FooFrix\chromium'` |
 
-Use the actual Chocolatey package name/version or uploaded file path. EXE silent
+Use the uploaded installer filename from `installers.json` or your artifact path. EXE silent
 switches depend on the installer: check its documentation or ask RelOps. MSI
 installs automatically use quiet mode and defer restart to Packer. A missing file
 or failed installer stops the build; do not ignore it or replace it with a success
@@ -175,8 +211,9 @@ Post-build checks launch the cached Playwright Firefox for both projects, import
 Python comparison dependencies, check CLI entry points, and take a headless
 screenshot with the compiled Firefox. They do not establish GPU performance,
 Windows profiling compatibility, or a working end-to-end FooFrix job.
-MozillaBuild currently uses the vendor's latest installer, and Python/npm global
-packages can resolve newer versions on rebuild; this is not a reproducible image.
+Base installer files are pinned by SHA-256 in `installers.json`. C++ components,
+Cargo/npm packages, and Firefox bootstrap downloads can still change between
+builds; this is not a fully offline or reproducible image.
 
 See [Mozilla's Windows build instructions](https://firefox-source-docs.mozilla.org/setup/windows_build.html)
 and [native mach invocation](https://firefox-source-docs.mozilla.org/mach/windows-usage-outside-mozillabuild.html).

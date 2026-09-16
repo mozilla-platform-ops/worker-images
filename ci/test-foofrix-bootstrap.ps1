@@ -11,10 +11,6 @@ function Assert-Fails {
 }
 
 # Replace external installers with recording fakes for these checks.
-function choco.exe {
-    $script:packageArguments = @($args)
-    $global:LASTEXITCODE = $script:fakeExitCode
-}
 function Start-Process {
     param ($FilePath, $ArgumentList, [switch] $Wait, [switch] $PassThru, [switch] $NoNewWindow)
     $script:installer = $FilePath
@@ -26,22 +22,6 @@ function Start-Process {
 $scratch = Join-Path ([IO.Path]::GetTempPath()) ('foofrix-helper-test-' + [guid]::NewGuid())
 New-Item -ItemType Directory $scratch | Out-Null
 try {
-    $script:fakeExitCode = 0
-    Install-BuildPackage -Name 'nodejs' -Version '24.13.0'
-    if (($script:packageArguments -join ' ') -ne 'install --yes --no-progress --use-package-exit-codes nodejs --version 24.13.0') {
-        throw 'Package arguments were not preserved'
-    }
-    Install-BuildPackage -Name 'visualstudio2022-workload-vctools' -PackageParameters '--includeRecommended'
-    if ($script:packageArguments[-2] -ne '--package-parameters' -or $script:packageArguments[-1] -ne '--includeRecommended') {
-        throw 'Compiler workload options were not preserved'
-    }
-    $script:fakeExitCode = 3010
-    Install-BuildPackage -Name 'git'
-    $script:fakeExitCode = 1
-    Assert-Fails { Install-BuildPackage -Name 'git' }
-    $script:fakeExitCode = 1641
-    Assert-Fails { Install-BuildPackage -Name 'git' }
-
     $msi = Join-Path $scratch 'tool with spaces.msi'
     $exe = Join-Path $scratch 'tool.exe'
     Set-Content $msi 'fake'

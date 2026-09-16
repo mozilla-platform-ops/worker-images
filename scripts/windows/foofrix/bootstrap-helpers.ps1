@@ -2,27 +2,6 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-function Install-BuildPackage {
-    param (
-        [Parameter(Mandatory)] [string] $Name,
-        [string] $Version,
-        [string] $PackageParameters
-    )
-
-    if (-not (Get-Command choco.exe -ErrorAction SilentlyContinue)) {
-        Invoke-RestMethod 'https://community.chocolatey.org/install.ps1' | Invoke-Expression
-    }
-    Write-Host "Installing package: $Name $Version"
-    $arguments = @('install', '--yes', '--no-progress', '--use-package-exit-codes', $Name)
-    if ($Version) { $arguments += @('--version', $Version) }
-    if ($PackageParameters) { $arguments += @('--package-parameters', $PackageParameters) }
-    & choco.exe @arguments
-    # 3010 requests a reboot; Packer performs it after the recipe completes.
-    if ($LASTEXITCODE -notin @(0, 3010)) {
-        throw "Package $Name failed (exit $LASTEXITCODE). See Chocolatey output above."
-    }
-}
-
 function Install-BuildInstaller {
     param (
         [Parameter(Mandatory)] [string] $Path,

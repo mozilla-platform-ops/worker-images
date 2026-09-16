@@ -83,6 +83,22 @@ jobs:
             --only-show-errors --output none
           test -s "$PKR_VAR_artifacts_directory/$ARTIFACT_PREFIX/foofrix.bundle"
           cp "$PKR_VAR_artifacts_directory/$ARTIFACT_PREFIX/foofrix.bundle" "$PKR_VAR_artifacts_directory/foofrix.bundle"
+      - name: Download and verify staged Windows installers
+        shell: bash
+        run: |
+          set -euo pipefail
+          manifest="$GITHUB_WORKSPACE/config/foofrix/installers.json"
+          prefix=$(jq -r '.prefix' "$manifest")
+          staging="$RUNNER_TEMP/foofrix-installers"
+          mkdir -p "$staging"
+          az storage blob download-batch --auth-mode login \
+            --account-name "$ARTIFACT_STORAGE_ACCOUNT" --source artifacts \
+            --pattern "$prefix/*" --destination "$staging" \
+            --only-show-errors --output none
+          cd "$staging/$prefix"
+          jq -r '.files[] | "\(.sha256)  \(.name)"' "$manifest" | sha256sum --check --strict
+          test ! -e "$PKR_VAR_artifacts_directory/installers"
+          mv "$staging/$prefix" "$PKR_VAR_artifacts_directory/installers"
       - name: Validate and build image
         shell: bash
         run: |
