@@ -1,14 +1,15 @@
 # Runs after the image build's restart, using the refreshed machine PATH.
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+$software = (Get-Content 'C:\FooFrix\image-config.json' -Raw | ConvertFrom-Json).software
 
 foreach ($tool in @('git.exe', 'node.exe', 'python.exe', 'cargo.exe', 'rustc.exe', 'samply.exe', 'searchfox-cli.exe', 'gcloud.cmd')) {
     Get-Command $tool -ErrorAction Stop | Out-Null
     & $tool --version
     if ($LASTEXITCODE -ne 0) { throw "$tool failed its version check" }
 }
-if ((& node.exe -p 'process.versions.node.split(".")[0]') -ne '24') {
-    throw 'FooFrix requires Node.js 24'
+if ((& node.exe -p 'process.versions.node') -ne $software.node) {
+    throw "Expected Node.js $($software.node) from image-config.json"
 }
 foreach ($service in @('worker-runner', 'Generic Worker')) {
     if (Get-Service $service -ErrorAction SilentlyContinue) {

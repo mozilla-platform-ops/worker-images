@@ -2,6 +2,7 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 . "$PSScriptRoot/bootstrap-helpers.ps1"
+$software = (Get-Content 'C:\FooFrix\image-config.json' -Raw | ConvertFrom-Json).software
 
 $shared = @{
     MOZILLABUILD = 'C:\mozilla-build\'
@@ -28,9 +29,9 @@ $env:HUSKY = '0'
 
 # Pin reusable public tools; FooFrix source is installed after VM creation.
 $repositories = @(
-    @{ name = 'firefox'; path = $env:FIREFOX_DIR; url = 'https://github.com/mozilla-firefox/firefox.git'; revision = '6c74efe2fcddf84b6f320959064a66946b4a1759' },
-    @{ name = 'run-speedometer'; path = $env:RUN_SPEEDOMETER_DIR; url = 'https://github.com/dpalmeiro/run-speedometer.git'; revision = '54d8a591cf3131ad0c380f04fc4894c65fc0f2b9' },
-    @{ name = 'profiler'; path = 'C:\FooFrix\tools\profiler'; url = 'https://github.com/firefox-devtools/profiler.git'; revision = '777fb266152bfc0d118c2e793839a8f5d72fe273' }
+    @{ name = 'firefox'; path = $env:FIREFOX_DIR; url = 'https://github.com/mozilla-firefox/firefox.git'; revision = $software.firefox_revision },
+    @{ name = 'run-speedometer'; path = $env:RUN_SPEEDOMETER_DIR; url = 'https://github.com/dpalmeiro/run-speedometer.git'; revision = $software.run_speedometer_revision },
+    @{ name = 'profiler'; path = 'C:\FooFrix\tools\profiler'; url = 'https://github.com/firefox-devtools/profiler.git'; revision = $software.profiler_revision }
 )
 Invoke-BuildCommand git.exe @('config', '--system', 'core.longpaths', 'true')
 foreach ($repo in $repositories) {
@@ -55,7 +56,7 @@ try {
 } finally { Pop-Location }
 
 # Reusable CLI tools.
-Invoke-BuildCommand npm.cmd @('install', '--global', 'yarn@1.22.22', '@openai/codex')
+Invoke-BuildCommand npm.cmd @('install', '--global', "yarn@$($software.yarn)", "@openai/codex@$($software.codex)")
 Push-Location 'C:\FooFrix\tools\profiler'
 try {
     Invoke-BuildCommand yarn.cmd @('install', '--frozen-lockfile')

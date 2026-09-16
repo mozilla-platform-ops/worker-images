@@ -16,14 +16,6 @@ variable "config" {
   }
 }
 
-variable "image_version" {
-  type = string
-  validation {
-    condition     = can(regex("^[0-9]+[.][0-9]+[.][0-9]+$", var.image_version))
-    error_message = "Gallery versions must use numeric major.minor.patch format."
-  }
-}
-
 variable "subscription_id" {
   type = string
 }
@@ -57,6 +49,8 @@ variable "oidc_request_token" {
 
 locals {
   config = yamldecode(file(abspath("${path.root}/../config/foofrix/${var.config}.yaml")))
+  # Fail validation unless the destination gallery version is major.minor.patch.
+  image_version = regex("^[0-9]+[.][0-9]+[.][0-9]+$", local.config.azure.image_version)
 }
 
 source "azure-arm" "foofrix" {
@@ -88,7 +82,7 @@ source "azure-arm" "foofrix" {
     resource_group       = local.config.azure.resource_group
     gallery_name         = local.config.azure.gallery
     image_name           = local.config.azure.image_definition
-    image_version        = var.image_version
+    image_version        = local.image_version
     replication_regions  = local.config.azure.replication_regions
     storage_account_type = "Standard_LRS"
   }
@@ -116,6 +110,11 @@ build {
   provisioner "file" {
     source      = "${path.root}/../scripts/windows/foofrix/"
     destination = "C:/Windows/Temp/foofrix-bootstrap"
+  }
+
+  provisioner "file" {
+    content     = jsonencode(local.config)
+    destination = "C:/FooFrix/image-config.json"
   }
 
   provisioner "powershell" {

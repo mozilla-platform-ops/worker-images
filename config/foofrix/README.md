@@ -52,11 +52,15 @@ build applications. No Azure password is required by this workflow.
 
 ## Build and use
 
-Dispatch **FooFrix Azure Images**, selecting `win11-24h2` and a new numeric
-`major.minor.patch` gallery version. The workflow never forces replacement of an
-existing version. The Packer build size is independent of Perf's eventual VM size.
+Set `azure.image_version` in `config/foofrix/win11-24h2.yaml` to a new numeric
+`major.minor.patch` gallery version (initially `0.1.0`), then dispatch **FooFrix
+Azure Images**, selecting `win11-24h2`. Bump the YAML version for each new image;
+the workflow never forces replacement of an existing version.
+`image.version: latest` selects the Marketplace source OS and is separate from
+the destination gallery version. The Packer build size is independent of Perf's
+eventual VM size.
 
-The workflow needs only the image configuration and version. It downloads the
+The workflow needs only the image configuration. It downloads the
 staged installers described below; no FooFrix source bundle or source prefix is
 required to build an image.
 
@@ -85,7 +89,7 @@ It installs Git, Node.js, Python, 7-Zip, and MozillaBuild from staged installers
 and extracts Google Cloud CLI's self-contained ZIP (including Python).
 The staged Visual Studio Build Tools bootstrapper still downloads its C++ workload
 and recommended components from Microsoft. The staged rustup bootstrapper still
-downloads Rust 1.98.1. Git, Cargo, npm, Playwright, and Firefox bootstrap also need
+downloads the Rust toolchain selected in the image YAML. Git, Cargo, npm, Playwright, and Firefox bootstrap also need
 internet access during the later payload stages. No offline C++ layout is required.
 
 To update the base tools:
@@ -102,8 +106,9 @@ To update the base tools:
      --source ./installers --overwrite false
    ```
 
-3. Update `installers.json` and the corresponding filenames/arguments in
-   `windows-base.ps1` together. Review that change before building.
+3. Update `installers.json` and the corresponding `software` settings in the
+   image YAML together. Installer argument changes belong in `windows-base.ps1`.
+   Review those changes before building.
 
 The manifest pins bytes, including the C++ and rustup bootstrappers; it does not
 pin the additional packages those bootstrappers download. See Microsoft's
@@ -112,7 +117,29 @@ and Google's [versioned archives](https://docs.cloud.google.com/sdk/docs/downloa
 
 ## Editing the image without PowerShell experience
 
-Start with `scripts/windows/foofrix/windows-base.ps1`. It is the image's recipe:
+Set versions and source revisions in the `software` section of
+`config/foofrix/win11-24h2.yaml`. Packer passes that configuration to the guest as
+`C:\FooFrix\image-config.json`, which the installation scripts and image checks read.
+For example, `software.node` selects the Node installer version, `software.rust`
+selects the Rust toolchain, and `software.firefox_revision` selects Firefox source.
+`codex: latest`, `searchfox_cli: "*"`, and `samply_revision: main` retain the prior
+moving selections; replace them with exact package versions/commit IDs to pin them.
+The C++ and rustup bootstrapper filenames are selected here too; their exact bytes
+are pinned by `installers.json`. C++ components still come from Microsoft's online
+installer. Playwright and project dependencies follow their source lockfiles.
+
+For staged software, changing a version also requires staging the corresponding
+installer and updating its checksum in `installers.json`. That file is the artifact
+lock/inventory, not an independent software-version setting. Bump
+`azure.image_version` when publishing the resulting image.
+
+Check the YAML wiring and version validation locally (Packer required, no Azure calls):
+
+```bash
+python3 ci/test-foofrix-config.py
+```
+
+For installation behavior, edit `scripts/windows/foofrix/windows-base.ps1`:
 each uncommented line runs in order. Lines starting with `#` are comments or
 disabled examples. RelOps maintains the error handling in `bootstrap-helpers.ps1`.
 You normally only need to add or change recipe lines and their checks.
@@ -208,7 +235,7 @@ Rust lives in `C:\FooFrix\cargo` and `C:\FooFrix\rustup`, exposed through machin
 environment variables. Google Cloud CLI is installed for all users without login.
 The runtime account needs write access to the Rust directories if jobs update
 Rust or install Cargo tools; account creation and permissions remain runtime work.
-Samply follows FooFrix's current `main` selection; `C:\FooFrix\cargo-tools.txt`
+Samply uses `software.samply_revision` (initially `main`); `C:\FooFrix\cargo-tools.txt`
 records resolved Cargo versions and the Git revision. These moving inputs mean
 rebuilding an image version later is not guaranteed to produce identical tools.
 
