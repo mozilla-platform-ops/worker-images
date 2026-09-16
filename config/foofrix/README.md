@@ -24,9 +24,11 @@ Configure the GitHub environment `foofrix-image-build` with these variables:
 | --- | --- |
 | `AZURE_CLIENT_ID_FOOFRIX_IMAGES` | Dedicated image-build application client ID |
 | `AZURE_IDENTITY_ID_FOOFRIX_IMAGES` | Terraform `image_build_identity_id` output (full resource ID) |
-| `AZURE_TENANT_ID` | Mozilla tenant ID |
 | `AZURE_SUBSCRIPTION_ID_FOOFRIX` | Dedicated FooFrix subscription ID |
 | `AZURE_STORAGE_ACCOUNT_FOOFRIX` | FooFrix storage account name |
+
+The workflow reuses the existing repository secret `AZURE_TENANT_ID` for the
+Mozilla tenant ID.
 
 The build application's federated credential must trust issuer
 `https://token.actions.githubusercontent.com`, audience `api://AzureADTokenExchange`,
