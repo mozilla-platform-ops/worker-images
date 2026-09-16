@@ -50,7 +50,6 @@ jobs:
       PKR_VAR_tenant_id: ${{ secrets.AZURE_TENANT_ID }}
       PKR_VAR_subscription_id: ${{ vars.AZURE_SUBSCRIPTION_ID_FOOFRIX }}
       PKR_VAR_build_identity_id: ${{ vars.AZURE_IDENTITY_ID_FOOFRIX_IMAGES }}
-      PKR_VAR_artifacts_directory: ${{ runner.temp }}/foofrix-artifacts
       ARTIFACT_STORAGE_ACCOUNT: ${{ vars.AZURE_STORAGE_ACCOUNT_FOOFRIX }}
       ARTIFACT_PREFIX: ${{ inputs.artifact_prefix }}
     steps:
@@ -64,6 +63,8 @@ jobs:
           : "${PKR_VAR_subscription_id:?Set AZURE_SUBSCRIPTION_ID_FOOFRIX}"
           : "${PKR_VAR_build_identity_id:?Set AZURE_IDENTITY_ID_FOOFRIX_IMAGES from image_build_identity_id}"
           [[ "$PKR_VAR_image_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          PKR_VAR_artifacts_directory="$RUNNER_TEMP/foofrix-artifacts"
+          echo "PKR_VAR_artifacts_directory=$PKR_VAR_artifacts_directory" >> "$GITHUB_ENV"
           mkdir -p "$PKR_VAR_artifacts_directory"
       - name: Azure login with FooFrix image-build identity
         uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c
