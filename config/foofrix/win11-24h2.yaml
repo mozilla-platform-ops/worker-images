@@ -4,14 +4,14 @@ image:
   sku: win11-24h2-avd
   version: latest
 azure:
-  location: centralus
+  location: westus3
   resource_group: rg-foofrix
-  build_resource_group: rg-foofrix-image-build
+  build_resource_group: rg-foofrix-image-build-westus3
   gallery: foofrix
   image_definition: win11_64_24h2
   image_version: "0.1.0"
   replication_regions:
-    - centralus
+    - westus3
 vm:
   size: Standard_D16ads_v5
   os_disk_size_gb: 512
