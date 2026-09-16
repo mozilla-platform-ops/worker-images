@@ -28,7 +28,7 @@ vm:
     worker_pool_id: win11-64-2009
     sourceOrganization: "default"
     sourceRepository: "default"
-    sourceBranch: "relops/remove-vac-azure-cloud-workers"
+    sourceBranch: "windows-taskcluster-110.0.0"
     deploymentId: "NA"
     managed_by: packer
 tests:
