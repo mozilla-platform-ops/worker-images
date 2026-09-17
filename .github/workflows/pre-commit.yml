@@ -19,6 +19,9 @@ jobs:
       with:
         python-version: '3.11'
 
+    - name: Check the GCP worker version test
+      run: python3 ci/test-gcp-worker-check.py
+
     - name: Install pre-commit
       run: pip install pre-commit
 
