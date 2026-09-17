@@ -1,0 +1,10 @@
+# Build artifacts — never commit images
+output/
+work/
+*.vhdx
+*.wim
+*.iso
+packer_cache/
+*.pkrvars.hcl
+!example.pkrvars.hcl
+crash.log

@@ -1,0 +1,145 @@
+---
+# Baked Windows HW install.wim: Windows 11 24H2, generic hardware (hw) bake.
+#
+# Build:  .\bin\WinHwWim\New-WinHwWim.ps1 -Image win11-24h2-hw
+#
+# Naming is scalable across two dimensions — OS version AND specialized worker
+# pool. The image id is this file's basename (win11-24h2-hw). Add a new WIM by
+# dropping in another config/<image>.yaml, e.g.:
+#   - win11-25h2-hw.yaml        (new OS version; new base_wim)
+#   - win11-24h2-perf.yaml      (same base_wim, specialized bake_role/pool)
+#   - win2022-hw.yaml           (new OS)
+# Several variants can share one base_wim but differ in bake_role/worker_pool_id.
+
+base:
+  # Blob in resources/WIMs/. Convention: <os>-base-install.wim
+  wim: win11-24h2-base-install.wim
+  # Edition NAME inside the WIM; prepare-base-vhdx resolves it to the image index
+  # via Get-WindowsImage (a multi-edition install.wim has several indexes).
+  # Verify the exact name with: dism /Get-WimInfo /WimFile:<wim>
+  edition: "Windows 11 Enterprise"
+
+# Offline driver injection into the applied base image (DISM /Add-Driver before
+# capture, so drivers land in the golden WIM). NUC13 (Arena Canyon / Raptor Lake)
+# pack: without it the DISM-applied node has no Intel drivers (iGPU A7A0, Smart
+# Sound audio, serial-IO GPIO/I2C/SMBus, MEI, Bluetooth, NIC/GNA) and falls back
+# to the Microsoft Basic Display Adapter (RELOPS-2487). Each URL must be publicly
+# reachable (the bake downloads it with an unauthenticated Invoke-WebRequest) and be
+# a .cab OR .zip that expands to an .inf tree. Source: MDT Out-of-Box Drivers.
+drivers:
+  inject: true
+  # One or more driver-pack URLs, each a .cab OR a .zip (scalable — add more list
+  # entries to inject extra packs; every pack is downloaded, expanded, and applied in
+  # a single recursive DISM /Add-Driver before capture).
+  cabs:
+    # Network drivers (Intel PROSet/NIC) - public roninpuppetassets mirror (Invoke-WebRequest).
+    - "https://roninpuppetassets.blob.core.windows.net/binaries/drivers/nuc13/nuc13-24h2-nuc_driver.zip"
+    # Intel graphics (Raptor Lake-P Iris Xe DEV_A7A0), DCH 32.0.101.7085 from the MS Update Catalog.
+    # Hosted in hardwareimaging (Entra-secured, no anon) so the bake pulls it via azcopy AAD. Proven on 160:
+    # flips MS Basic Display Adapter (RR=1) -> Intel(R) Iris(R) Xe Graphics (RR=60).
+    - "https://hardwareimaging.blob.core.windows.net/resources/drivers/nuc13-24h2-intel-gfx-32.0.101.7085.cab"
+    # Platform/chipset packs (added 2026-08-27, RELOPS-2487). Exported with
+    # `Export-WindowsDriver -Online` off the MDT reference nodes - nuc13-006 (NUC13 / Raptor
+    # Lake-P) and t-nuc12-005 (NUC12 / Alder Lake-P) - i.e. the exact driver set production runs.
+    #
+    # Measured gap they close: a baked node has 10 devices in error 28 (CM_PROB_FAILED_INSTALL)
+    # that the MDT image binds cleanly - Serial IO GPIO INTC1055 + I2C 51E8/51E9
+    # (iaLPSS2_*_ADL), SMBus 51A3 + SPI 51A4 (AlderLakePCH-PSystem), Smart Sound audio
+    # 51CA/51C8 (IntcAudioBus/intcsst - a baked node's ONLY sound device is the Virtual Audio
+    # Cable), MEI 51E0 (heci), GNA A74F/464F, Wi-Fi 51F1/51F0 (Netwtw6e), Bluetooth PID_0033
+    # (ibtusb). NOTE: INTC1055 is Serial IO GPIO, NOT DPTF - Intel Dynamic Tuning is absent from
+    # the MDT image too, so it is not a baked-vs-production difference.
+    #
+    # PRUNED before upload: the DCH graphics family (iigd_dch, iigd_ext, hdbusext, cui_dch,
+    # igcc_dch, mshdadac). The cab above already supplies a COMPLETE and NEWER matched
+    # 32.0.101.7085 set (Display + Extension + MEDIA + 2 SoftwareComponent), while the reference
+    # nodes carry 32.0.101.7079 (NUC13) / 31.0.101.3729 (NUC12); mixing DCH graphics component
+    # versions against a 7085 base buys nothing and is what Intel warns against.
+    #
+    # BOTH packs are injected because ONE WIM serves BOTH canary pools (perf-debug = NUC13,
+    # ref-alpha = NUC12). Overlap is safe: DISM stores every version and PnP binds the best
+    # match per device (they share the Alder Lake-P PCH driver family, so most INFs cover both).
+    - "https://hardwareimaging.blob.core.windows.net/resources/drivers/nuc13-24h2-platform-drivers-20260827.zip"
+    - "https://hardwareimaging.blob.core.windows.net/resources/drivers/nuc12-24h2-platform-drivers-20260827.zip"
+
+# Payloads copied VERBATIM into the image at C:\extras\ - not expanded, not DISM-injected,
+# not run here. They SHIP in the golden WIM (~+740 MB for the entry below) and the
+# DEPLOY-time puppet apply is what runs them.
+extras:
+  files:
+    # Intel's full graphics installer. Supplies IntelGraphicsSoftwareService, which the
+    # MDT production image has and a baked node did not: the service ships inside the
+    # AppUp.IntelArcSoftware MSIX at Resources/Extras/IntelGraphicsSoftware_26.18.2353.2_Release.exe,
+    # and under DCH that MSIX arrives via Windows Update as a driver companion app - which
+    # never happens here because WU is disabled by design, so the driver cab above (INF
+    # only) cannot supply it. ronin's win_intel_graphics_software runs this WITHOUT
+    # --noExtras, the flag that would skip exactly that folder.
+    #
+    # It is staged rather than installed at bake because installing at bake CANNOT work:
+    # the installer returns rc=1008 in the GPU-less Hyper-V build guest (rc=1001 + service
+    # Running on real NUC13 hardware), and the MSIX it lays down is per-user, which
+    # sysprep /generalize strips from the WIM. So the WIM carries the installer and the
+    # node installs it on first puppet run.
+    - "https://hardwareimaging.blob.core.windows.net/resources/drivers/gfx_win_101.7088.exe"
+
+ronin:
+  org: default
+  repo: default
+  branch: wim-bake-role         # feature branch carrying the bake role (until merged)
+  hash: "a312287f"              # ronin_puppet#1297 HEAD; bake role excludes hardware_observability (no marlin_pw lookup). Bump when the branch moves.
+                                # a312287f SUPERSEDES 4c2e223d: the bake role no longer includes
+                                # intel_graphics_software (rc=1008 in the GPU-less build guest, and the MSIX is a
+                                # per-user install sysprep would strip anyway). The installer is staged to C:\extras
+                                # by extras.files below and run at DEPLOY time instead. Pin BOTH this and the
+                                # pools.yml hash to a312287f or the deployed node looks for the old C:\bake\extras.
+                                # 4c2e223d SUPERSEDED 7dac7f0a. Two reasons: (a) wim-bake-role was rebased onto
+                                # master on 2026-08-26 and 7dac7f0a no longer exists on the branch - Get-Ronin does
+                                # a --single-branch clone, which carries no unreachable objects, so the checkout
+                                # would fail outright; (b) it predates the two things this bake is FOR - VBS/HVCI
+                                # (win_device_guard, so baked nodes match the MDT image's Credential Guard + HVCI)
+                                # and Intel Graphics Software (win_intel_graphics_software, run at DEPLOY time from
+                                # the installer that extras.files stages into the WIM at C:\extras).
+                                # HISTORY: 7dac7f0a (RELOPS-2487) SUPERSEDED b64eb0b5. b64eb0b5 stopped the bake disabling
+                                # AppXSvc so the image shipped it Manual; that fixed the codecs but changed sysprep -
+                                # the WIM then got a full generalize, and the first-boot specialize pass regenerated a
+                                # random WIN-xxxxxxxx into ActiveComputerName, which sent maintainsystem-hw into a
+                                # Set-PXE re-image loop. The bake never needed changing: the media extensions are
+                                # PROVISIONED at bake time (DISM-level, no AppXSvc), and only the per-user registration
+                                # at first task_* logon needs the service. So 7dac7f0a bakes the disable again and
+                                # re-enables AppXSvc at DEPLOY time for ref/ref-alpha instead. Stage at bake, register
+                                # at deploy.
+  bake_role: win116424h2hwbake  # trimmed hw role that performs the one-time AppX/catalog bake
+
+vm:
+  puppet_version: default
+  git_version: default
+  openvox_version: default
+  cpus: default
+  memory_mb: default
+  switch_name: default
+  # OFF deliberately (was true; flipped 2026-08-11 after bake run 31428853582).
+  # Patching at bake time fights the bake role: win116424h2hwbake includes
+  # roles_profiles::profiles::disable_services -> win_disable_services::disable_windows_update,
+  # which disables wuauserv. So the WU-on order was: install updates -> reboot ->
+  # puppet disables the update stack -> reboot, and that last reboot never came back
+  # ("A system shutdown is in progress.(1115)" -> "Timeout waiting for machine to
+  # restart"), losing a 1h41m build. hw-test bakes the SAME role from the SAME branch
+  # with WU off and has gone green repeatedly - windows_update was the only difference.
+  # Consequence, accepted: the WIM ships at the patch level of base_wim, and the
+  # deployed workers never patch themselves (that same puppet class keeps WU disabled
+  # in production), so refreshing patches means uploading newer base media. Also saves
+  # ~40 min per bake and makes the image content deterministic instead of build-date
+  # dependent. If bake-time patching is ever wanted back, do it OFFLINE - a pinned
+  # SSU+LCU .msu via DISM /Add-Package in prepare-base-vhdx.ps1 (which already does
+  # offline driver injection) - not with the online WU provisioner.
+  windows_update: false
+
+# Deploy-side metadata (informational; used for output tagging / provenance).
+sharedimage:
+  worker_pool_id: win11-64-24h2-hw
+
+tags:
+  base_image: win11-24h2-base-install.wim
+  sourceOrganization: default
+  sourceRepository: default
+  sourceBranch: wim-bake-role
