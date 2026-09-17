@@ -7,7 +7,7 @@ Set-StrictMode -Version Latest
 . "$PSScriptRoot/bootstrap-helpers.ps1"
 $software = (Get-Content 'C:\FooFrix\image-config.json' -Raw | ConvertFrom-Json).software
 
-# Actions downloads these from Azure and checks config/foofrix/installers.json.
+# download-installers.ps1 downloads and verifies these before this recipe runs.
 $installers = 'C:\FooFrix\artifacts\installers'
 Install-BuildInstaller -Path "$installers\Git-$($software.git)-64-bit.exe" -Arguments '/VERYSILENT /NORESTART /ALLUSERS /SP- /o:PathOption=Cmd'
 Install-BuildInstaller -Path "$installers\node-v$($software.node)-x64.msi" -Arguments 'ALLUSERS=1'

@@ -32,7 +32,7 @@ variable "build_identity_id" {
   type = string
 }
 
-variable "artifacts_directory" {
+variable "artifact_storage_account" {
   type = string
 }
 
@@ -101,10 +101,9 @@ build {
     inline = ["New-Item -ItemType Directory -Force C:/FooFrix/artifacts, C:/Windows/Temp/foofrix-bootstrap | Out-Null"]
   }
 
-  # Actions downloads the artifacts using OIDC; no storage credential enters the guest.
   provisioner "file" {
-    source      = "${var.artifacts_directory}/"
-    destination = "C:/FooFrix/artifacts"
+    source      = "${path.root}/../config/foofrix/installers.json"
+    destination = "C:/FooFrix/installers.json"
   }
 
   provisioner "file" {
@@ -115,6 +114,17 @@ build {
   provisioner "file" {
     content     = jsonencode(local.config)
     destination = "C:/FooFrix/image-config.json"
+  }
+
+  provisioner "powershell" {
+    elevated_user     = "SYSTEM"
+    elevated_password = ""
+    environment_vars = [
+      "ARTIFACT_STORAGE_ACCOUNT=${var.artifact_storage_account}",
+      "BUILD_IDENTITY_ID=${var.build_identity_id}"
+    ]
+    inline  = ["& 'C:/Windows/Temp/foofrix-bootstrap/download-installers.ps1' -StorageAccount $env:ARTIFACT_STORAGE_ACCOUNT -BuildIdentityId $env:BUILD_IDENTITY_ID"]
+    timeout = "30m"
   }
 
   provisioner "powershell" {
