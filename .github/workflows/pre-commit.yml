@@ -22,7 +22,7 @@ jobs:
     - name: Check Azure upload archives
       shell: pwsh
       run: |
-        ./ci/install-powershell-yaml.ps1
+        Install-PSResource powershell-yaml -Version 0.4.12 -TrustRepository -Quiet
         ./ci/test-azure-upload-archives.ps1
 
     - name: Install pre-commit
