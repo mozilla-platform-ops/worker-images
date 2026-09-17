@@ -38,7 +38,6 @@ pools:
     image: "win11-24h2-hw-20260908-172915"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    # Testing ronin_puppet#1396 (Taskcluster 110.0.0 workers) on the production image.
     src_Branch: "relops-2402-fleetbench"
     hash: "b7ede03d"
     secret_date: "02-24-2026"
@@ -152,7 +151,6 @@ pools:
     image: "win11-24h2-hw-20260908-172915"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    # Testing ronin_puppet#1396 (Taskcluster 110.0.0 workers) on the production image.
     src_Branch: "relops-2402-fleetbench"
     hash: "b7ede03d"
     secret_date: "02-06-2026"
