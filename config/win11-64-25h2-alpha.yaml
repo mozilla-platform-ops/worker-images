@@ -28,8 +28,8 @@ vm:
     worker_pool_id: win11-64-25h2-alpha
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "windows-taskcluster-110.0.0"
-    deploymentId: "NA"
+    sourceBranch: "generic-worker-preloaded-cache-alpha"
+    deploymentId: "345b7259"
     managed_by: packer
 tests:
   - win11_sdk_tests.ps1
@@ -55,3 +55,4 @@ tests:
   - gpu_drivers.tests.ps1
   - mercurial.tests.ps1
   - microsoft_wptx64.tests.ps1
+  - preloaded_cache_smoke.tests.ps1
