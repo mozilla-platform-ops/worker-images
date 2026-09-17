@@ -35,12 +35,11 @@ pools:
     # With `dev:` set, OS-deploy.ps1 refreshes pools.yml from the feature branch and the
     # image/src_Branch/hash below are ignored, so the pin needs it off to take effect.
     #dev: "nuc-wim-pipeline"
-    image: "win11-24H2-NUC-01-16-2025"
+    image: "win11-24h2-hw-20260908-172915"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    # Testing ronin_puppet#1396 (Taskcluster 110.0.0 workers) on the production image.
-    src_Branch: "windows-taskcluster-110.0.0"
-    hash: "7b306b2"
+    src_Branch: "relops-2402-fleetbench"
+    hash: "c353d2b6"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -149,12 +148,11 @@ pools:
     #dev: RELOPS-1660
     git_version: "2.50.1"
     Description: "NUC12 Hardware Performance Staging/Testing Pool"
-    image: "win11-24H2-NUC-01-16-2025"
+    image: "win11-24h2-hw-20260908-172915"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    # Testing ronin_puppet#1396 (Taskcluster 110.0.0 workers) on the production image.
-    src_Branch: "windows-taskcluster-110.0.0"
-    hash: "7b306b2"
+    src_Branch: "relops-2402-fleetbench"
+    hash: "c353d2b6"
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
