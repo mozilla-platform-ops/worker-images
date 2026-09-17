@@ -171,10 +171,26 @@ function New-AzSharedWorkerImage {
         $ENV:PKR_VAR_use_keyvault = "false"
         $ENV:PKR_VAR_vault_name = "kv-central-us-key"
     }
-    packer init azure.pkr.hcl
-    if ($PackerForceBuild) {
-        packer build --only azure-arm.sig -force azure.pkr.hcl
-    } else {
-        packer build --only azure-arm.sig azure.pkr.hcl
+    $uploadDirectory = Join-Path ([IO.Path]::GetTempPath()) ('worker-image-uploads-' + [guid]::NewGuid())
+    $previousUploadDirectory = $env:PKR_VAR_upload_directory
+    try {
+        $null = New-Item -ItemType Directory -Path $uploadDirectory -ErrorAction Stop
+        Compress-Archive -Path 'scripts/windows/CustomFunctions/Bootstrap' -DestinationPath "$uploadDirectory/Bootstrap.zip" -ErrorAction Stop
+        Compress-Archive -Path 'tests/win/*' -DestinationPath "$uploadDirectory/tests.zip" -ErrorAction Stop
+        $env:PKR_VAR_upload_directory = $uploadDirectory
+
+        packer init azure.pkr.hcl
+        if ($LASTEXITCODE -ne 0) { throw "packer init failed with exit code $LASTEXITCODE" }
+        if ($PackerForceBuild) {
+            packer build --only azure-arm.sig -force azure.pkr.hcl
+        } else {
+            packer build --only azure-arm.sig azure.pkr.hcl
+        }
+        if ($LASTEXITCODE -ne 0) { throw "packer build failed with exit code $LASTEXITCODE" }
+    } finally {
+        $env:PKR_VAR_upload_directory = $previousUploadDirectory
+        if (Test-Path -LiteralPath $uploadDirectory) {
+            Remove-Item -LiteralPath $uploadDirectory -Recurse -Force -ErrorAction Stop
+        }
     }
 }

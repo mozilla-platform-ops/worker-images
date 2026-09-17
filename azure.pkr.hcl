@@ -198,6 +198,13 @@ variable "config" {
   default = "${env("config")}"
 }
 
+# The shared-image runner supplies ZIPs. Direct Packer and nonsig callers keep
+# the existing directory uploads when this path is empty.
+variable "upload_directory" {
+  type    = string
+  default = ""
+}
+
 variable "replication_regions" {
   type        = list(string)
   description = "List of Azure regions to replicate the shared image to"
@@ -331,8 +338,8 @@ build {
   }
 
   provisioner "file" {
-    source      = "${path.root}/scripts/windows/CustomFunctions/Bootstrap"
-    destination = "C:/Windows/System32/WindowsPowerShell/v1.0/Modules/"
+    source      = var.upload_directory != "" ? "${var.upload_directory}/Bootstrap.zip" : "${path.root}/scripts/windows/CustomFunctions/Bootstrap"
+    destination = var.upload_directory != "" ? "C:/Bootstrap.zip" : "C:/Windows/System32/WindowsPowerShell/v1.0/Modules/"
     max_retries = 3
   }
 
@@ -346,15 +353,37 @@ build {
   }
 
   provisioner "file" {
-    source      = "${path.cwd}/tests/win/"
-    destination = "C:/Tests"
+    source      = var.upload_directory != "" ? "${var.upload_directory}/tests.zip" : "${path.cwd}/tests/win/"
+    destination = var.upload_directory != "" ? "C:/tests.zip" : "C:/Tests"
     max_retries = 3
   }
 
   provisioner "file" {
-    source      = "${path.cwd}/config/"
-    destination = "C:/Config"
+    source      = "${path.cwd}/config/${var.config}.yaml"
+    destination = "C:/Config/${var.config}.yaml"
     max_retries = 3
+  }
+
+  provisioner "file" {
+    source      = "${path.cwd}/config/windows_production_defaults.yaml"
+    destination = "C:/Config/windows_production_defaults.yaml"
+    max_retries = 3
+  }
+
+  provisioner "powershell" {
+    elevated_password = ""
+    elevated_user     = "SYSTEM"
+    environment_vars = [
+      "USE_UPLOAD_ARCHIVES=${var.upload_directory != ""}"
+    ]
+    inline = [
+      "$ErrorActionPreference = 'Stop';",
+      "if ($env:USE_UPLOAD_ARCHIVES -eq 'true') {",
+      "  Expand-Archive -LiteralPath C:/Bootstrap.zip -DestinationPath C:/Windows/System32/WindowsPowerShell/v1.0/Modules -Force;",
+      "  Expand-Archive -LiteralPath C:/tests.zip -DestinationPath C:/Tests -Force;",
+      "  Remove-Item -LiteralPath C:/Bootstrap.zip, C:/tests.zip -Force;",
+      "}"
+    ]
   }
 
   provisioner "powershell" {

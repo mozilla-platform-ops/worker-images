@@ -19,6 +19,12 @@ jobs:
       with:
         python-version: '3.11'
 
+    - name: Check Azure upload archives
+      shell: pwsh
+      run: |
+        Install-PSResource powershell-yaml -Version 0.4.12 -TrustRepository -Quiet
+        ./ci/test-azure-upload-archives.ps1
+
     - name: Install pre-commit
       run: pip install pre-commit
 
