@@ -154,7 +154,7 @@ pools:
     # Testing ronin_puppet#1404 (RELOPS-2575): Chrome installed/updated straight from
     # Google instead of the chocolatey community feed, whose 429s PXE-loop the fleet.
     src_Branch: "relops-2575-chrome-without-chocolatey"
-    hash: "bff9baf6"
+    hash: "344aa4d1"
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
