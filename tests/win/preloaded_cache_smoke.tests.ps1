@@ -33,7 +33,8 @@ Describe "Preloaded Gecko checkout" {
         Test-Path "$seed\src\toolkit\components" | Should -BeTrue
         $store = (Get-Content "$seed\src\.hg\sharedpath" -Raw).Trim()
         Test-Path $store | Should -BeTrue
-        $store | Should -BeLike 'C:\hg-shared\*'
+        ($store -replace '/', '\') | Should -BeLike 'C:\hg-shared\*'
+        (Get-Content "$seed\src\.hg\preloaded-cache-proof" -Raw).Trim() | Should -BeExactly $receipt.revision
     }
     It "Imports the checkout into the try cache" {
         $config = Get-Content 'C:\worker-runner\runner.yml' -Raw | ConvertFrom-Yaml
