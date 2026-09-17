@@ -51,6 +51,15 @@ Describe "Taskcluster" {
             Test-Path "C:\worker-runner\start-worker.exe" | Should -Be $true
         }
         It "Worker Runner Version is correct" {
+            $sourceBuild = $win.taskcluster.'generic-worker'.source_build
+            if ($sourceBuild) {
+                $receipt = Get-Content 'C:\generic-worker\generic-worker.exe.source-build.json' -Raw | ConvertFrom-Json
+                if ($receipt.runner_hash) {
+                    $receipt.revision | Should -BeExactly $sourceBuild.revision
+                    $receipt.runner_hash | Should -Be (Get-FileHash 'C:\worker-runner\start-worker.exe' -Algorithm SHA256).Hash
+                    return
+                }
+            }
             Start-Process -FilePath "C:\worker-runner\start-worker.exe" -ArgumentList "--short-version" -RedirectStandardOutput "Testdrive:\startworkerversion.txt" -Wait -NoNewWindow
             Get-Content "Testdrive:\startworkerversion.txt" | Should -be $taskcluster_ExpectedSoftwareVersion
         }

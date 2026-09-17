@@ -29,7 +29,7 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: "generic-worker-preloaded-cache-alpha"
-    deploymentId: "345b7259"
+    deploymentId: "8d6b02c6"
     managed_by: packer
 tests:
   - win11_sdk_tests.ps1
