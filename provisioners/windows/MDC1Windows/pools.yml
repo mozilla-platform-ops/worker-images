@@ -151,8 +151,10 @@ pools:
     image: "win11-24h2-hw-20260908-172915"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "relops-2402-fleetbench"
-    hash: "c353d2b6"
+    # Testing ronin_puppet#1404 (RELOPS-2575): Chrome installed/updated straight from
+    # Google instead of the chocolatey community feed, whose 429s PXE-loop the fleet.
+    src_Branch: "relops-2575-chrome-without-chocolatey"
+    hash: "bff9baf6"
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
