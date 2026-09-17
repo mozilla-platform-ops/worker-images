@@ -12,7 +12,7 @@ uuid = '00000000-0000-0000-0000-000000000001'
 env = {**os.environ, 'PKR_VAR_config': 'win11-24h2',
        'PKR_VAR_subscription_id': uuid, 'PKR_VAR_tenant_id': uuid,
        'PKR_VAR_client_id': uuid, 'PKR_VAR_build_identity_id': '/unused',
-       'PKR_VAR_artifacts_directory': '/unused',
+       'PKR_VAR_artifact_storage_account': 'unusedstorage',
        'PKR_VAR_oidc_request_url': 'https://example.invalid',
        'PKR_VAR_oidc_request_token': 'test'}
 
