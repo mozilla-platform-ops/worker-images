@@ -64,4 +64,6 @@ foreach ($case in @(
     if (Test-Path $check.directory) { throw 'Upload archives were not removed.' }
     if ($env:PKR_VAR_upload_directory -ne 'previous-value') { throw 'Upload environment was not restored.' }
 }
+# GitHub Actions uses LASTEXITCODE as the step result; clear the mocked failure.
+$global:LASTEXITCODE = 0
 Write-Host 'Archive contents, overwrite policy, Packer failures, and cleanup passed.'
