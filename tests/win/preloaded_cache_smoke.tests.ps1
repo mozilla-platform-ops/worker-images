@@ -1,15 +1,15 @@
 # Selected only by the 25H2 alpha cache test image.
 Describe "Preloaded cache smoke seed" {
     It "Contains the expected marker and creation stamp" {
-        (Get-Content 'C:\cache-seeds\relops-8809-smoke-20260917\marker.txt' -Raw).Trim() | Should -BeExactly 'from-image-78da8f580'
-        (Get-Content 'C:\cache-seeds\relops-8809-smoke-20260917.created' -Raw).Trim() | Should -BeExactly '78da8f5807fb6f033039394ad9c196ed81bc8de2'
+        (Get-Content 'C:\cache-seeds\relops-8809-smoke-20260918\marker.txt' -Raw).Trim() | Should -BeExactly 'from-image-e29a4639f'
+        (Get-Content 'C:\cache-seeds\relops-8809-smoke-20260918.created' -Raw).Trim() | Should -BeExactly 'e29a4639fd4402431b7a01cb9982b145c3077aa9'
     }
-    It "Configures generic-worker to import the marker" {
+    It "Configures generic-worker to register the marker" {
         $config = Get-Content 'C:\worker-runner\runner.yml' -Raw | ConvertFrom-Yaml
-        $config.workerConfig.preloadedDirectoryCaches.Count | Should -Be 2
+        $config.workerConfig.preloadedDirectoryCaches.Count | Should -Be 3
         $seed = $config.workerConfig.preloadedDirectoryCaches[0]
-        $seed.cacheName | Should -BeExactly 'relops-8809-smoke-20260917'
-        $seed.location | Should -BeExactly 'C:\cache-seeds\relops-8809-smoke-20260917'
+        $seed.cacheName | Should -BeExactly 'relops-8809-smoke-20260918'
+        $seed.location | Should -BeExactly 'C:\cache-seeds\relops-8809-smoke-20260918'
     }
     It "Restricts seed access to SYSTEM and Administrators" {
         $acl = Get-Acl 'C:\cache-seeds'
@@ -36,10 +36,27 @@ Describe "Preloaded Gecko checkout" {
         ($store -replace '/', '\') | Should -BeLike 'C:\hg-shared\*'
         (Get-Content "$seed\src\.hg\preloaded-cache-proof" -Raw).Trim() | Should -BeExactly $receipt.revision
     }
-    It "Imports the checkout into the try cache" {
+    It "Registers the checkout as the try cache" {
         $config = Get-Content 'C:\worker-runner\runner.yml' -Raw | ConvertFrom-Yaml
         $seed = @($config.workerConfig.preloadedDirectoryCaches | Where-Object cacheName -eq 'gecko-level-1-checkouts')
         $seed.Count | Should -Be 1
         $seed[0].location | Should -BeExactly 'C:\cache-seeds\gecko'
+    }
+}
+
+Describe "Preloaded pip cache" {
+    It "Contains a prepared package cache and proof" {
+        $seed = 'C:\cache-seeds\pip'
+        $proof = Get-Content "$seed\preloaded-cache-proof.json" -Raw | ConvertFrom-Json
+        $proof.package | Should -BeExactly 'six==1.17.0'
+        $proof.worker_revision | Should -BeExactly 'e29a4639fd4402431b7a01cb9982b145c3077aa9'
+        @(Get-ChildItem $seed -Recurse -File | Where-Object Name -ne 'preloaded-cache-proof.json').Count | Should -BeGreaterThan 0
+        Test-Path "$seed.created" | Should -BeTrue
+    }
+    It "Registers the pip cache under the task cache name" {
+        $config = Get-Content 'C:\worker-runner\runner.yml' -Raw | ConvertFrom-Yaml
+        $seed = @($config.workerConfig.preloadedDirectoryCaches | Where-Object cacheName -eq 'gecko-level-1-pip')
+        $seed.Count | Should -Be 1
+        $seed[0].location | Should -BeExactly 'C:\cache-seeds\pip'
     }
 }
