@@ -58,19 +58,23 @@ jobs:
         run: |
           ./ci/test-foofrix-bootstrap.ps1
           ./ci/test-foofrix-download.ps1
-      - name: Azure login with FooFrix image-build identity
-        uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c
-        with:
-          client-id: ${{ env.PKR_VAR_client_id }}
-          tenant-id: ${{ env.PKR_VAR_tenant_id }}
-          subscription-id: ${{ env.PKR_VAR_subscription_id }}
-      - name: Validate and build image
+      - name: Validate Packer configuration
         shell: bash
         run: |
           set -euo pipefail
           packer init packer/foofrix-azure.pkr.hcl
           python3 ci/test-foofrix-config.py
           packer validate packer/foofrix-azure.pkr.hcl
+      - name: Azure login with FooFrix image-build identity
+        uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c
+        with:
+          client-id: ${{ env.PKR_VAR_client_id }}
+          tenant-id: ${{ env.PKR_VAR_tenant_id }}
+          subscription-id: ${{ env.PKR_VAR_subscription_id }}
+      - name: Build image
+        shell: bash
+        run: |
+          set -euo pipefail
           packer build packer/foofrix-azure.pkr.hcl
       - name: Publish image manifest
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

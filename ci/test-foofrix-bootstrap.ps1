@@ -68,6 +68,8 @@ try {
     Assert-Fails { Invoke-BuildRecipe -Steps $invalid -ArtifactDirectory $scratch -Variables $variables }
     $invalid = '[{"action":"install","artifact":"../tool.exe"}]' | ConvertFrom-Json
     Assert-Fails { Invoke-BuildRecipe -Steps $invalid -ArtifactDirectory $scratch -Variables $variables }
+    $invalid = '[{"action":"install","artifact":"{missing}.exe"}]' | ConvertFrom-Json
+    Assert-Fails { Invoke-BuildRecipe -Steps $invalid -ArtifactDirectory $scratch -Variables $variables }
     Write-Host 'All bootstrap helper checks passed.'
 } finally {
     Remove-Item -LiteralPath $scratch -Recurse -Force
