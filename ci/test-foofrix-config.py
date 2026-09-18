@@ -30,11 +30,22 @@ assert evaluate(template, 'local.image_version') == config['azure']['image_versi
 manifest = json.loads((root / 'config/foofrix/installers.json').read_text())
 artifacts = {entry['name'] for entry in manifest['files']}
 assert config['build_steps']
-assert all(step['action'] in {'install', 'extract'} for step in config['build_steps'])
-resolved_artifacts = [step['artifact'] for step in config['build_steps']]
-for name, value in config['software'].items():
-    resolved_artifacts = [artifact.replace(f'{{{name}}}', value) for artifact in resolved_artifacts]
-assert all('{' not in artifact and artifact in artifacts for artifact in resolved_artifacts)
+
+
+def resolve(value):
+    for name, replacement in config['software'].items():
+        value = value.replace(f'{{{name}}}', str(replacement))
+    assert '{' not in value, f'Unknown variable: {value}'
+    return value
+
+
+for step in config['build_steps']:
+    assert step['action'] in {'install', 'extract'}
+    assert resolve(step['artifact']) in artifacts
+    if step['action'] == 'install':
+        resolve(step.get('arguments', ''))
+    else:
+        assert step.get('destination')
 with tempfile.TemporaryDirectory(prefix='foofrix-config-') as directory:
     scratch = Path(directory)
     (scratch / 'packer').mkdir()

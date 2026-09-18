@@ -107,7 +107,7 @@ To update the base tools:
    ```
 
 3. Update `installers.json` and the corresponding `software` settings in the
-   image YAML together. Installer argument changes belong in `windows-base.ps1`.
+   image YAML together. Installer argument changes belong in `build_steps`.
    Review those changes before building.
 
 The manifest pins bytes, including the C++ and rustup bootstrappers; it does not

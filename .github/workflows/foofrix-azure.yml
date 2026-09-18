@@ -53,6 +53,11 @@ jobs:
           : "${PKR_VAR_subscription_id:?Set AZURE_SUBSCRIPTION_ID_FOOFRIX}"
           : "${PKR_VAR_build_identity_id:?Set AZURE_IDENTITY_ID_FOOFRIX_IMAGES from image_build_identity_id}"
           : "${PKR_VAR_artifact_storage_account:?Set AZURE_STORAGE_ACCOUNT_FOOFRIX}"
+      - name: Check image configuration and PowerShell helpers
+        shell: pwsh
+        run: |
+          ./ci/test-foofrix-bootstrap.ps1
+          ./ci/test-foofrix-download.ps1
       - name: Azure login with FooFrix image-build identity
         uses: azure/login@7ddb5af1ef8758cf1353cf3b42f940aee27ba21c
         with:
@@ -64,6 +69,7 @@ jobs:
         run: |
           set -euo pipefail
           packer init packer/foofrix-azure.pkr.hcl
+          python3 ci/test-foofrix-config.py
           packer validate packer/foofrix-azure.pkr.hcl
           packer build packer/foofrix-azure.pkr.hcl
       - name: Publish image manifest
