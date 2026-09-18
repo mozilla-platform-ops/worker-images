@@ -44,9 +44,8 @@ Managed Identity Operator on `id-foofrix-image-build`, matching PR #339. Packer
 creates temporary resources inside that group and derives its location from the
 group. It must not create or delete the group itself. Failed builds can leave
 resources there; inspect and remove only that build's leftovers.
-The build managed identity is attached to the temporary VM. Artifacts currently
-download in Actions and arrive through Packer, so guest blob authentication is
-not used; the identity is available if that download strategy changes. Build
+The build managed identity is attached to the temporary VM. The VM downloads installers directly from Blob Storage using this identity.
+Only scripts and configuration cross WinRM. Build
 credentials must remain separate from the VM-provisioning identity and FXCI/TCEng
 build applications. No Azure password is required by this workflow.
 
@@ -60,7 +59,7 @@ the workflow never forces replacement of an existing version.
 the destination gallery version. The Packer build size is independent of Perf's
 eventual VM size.
 
-The workflow needs only the image configuration. It downloads the
+The workflow needs only the image configuration. The build VM downloads the
 staged installers described below; no FooFrix source bundle or source prefix is
 required to build an image.
 
@@ -78,10 +77,11 @@ bundle staging and bootstrap settings.
 
 ## Staged Windows installers
 
-Actions downloads base installers from the private `artifacts` container in
+The build VM downloads base installers from the private `artifacts` container in
 `safoofrixaad679e2`. `config/foofrix/installers.json` records the versioned blob
-prefix, original vendor URLs, sizes, and SHA-256 hashes. Actions verifies every
-listed file before Packer starts and copies them to `C:\FooFrix\artifacts\installers`.
+prefix, original vendor URLs, sizes, and SHA-256 hashes. The VM verifies every
+listed file before installation and stores it in `C:\FooFrix\artifacts\installers`.
+Downloads use the attached build identity, bounded retries, and SHA-256 checks.
 This installer prefix is independent of the source bundle used at VM bootstrap.
 
 The recipe no longer uses Chocolatey or downloads initial installers from vendors.
@@ -107,7 +107,7 @@ To update the base tools:
    ```
 
 3. Update `installers.json` and the corresponding `software` settings in the
-   image YAML together. Installer argument changes belong in `windows-base.ps1`.
+   image YAML together. Installer argument changes belong in `build_steps`.
    Review those changes before building.
 
 The manifest pins bytes, including the C++ and rustup bootstrappers; it does not
@@ -139,26 +139,27 @@ Check the YAML wiring and version validation locally (Packer required, no Azure 
 python3 ci/test-foofrix-config.py
 ```
 
-For installation behavior, edit `scripts/windows/foofrix/windows-base.ps1`:
-each uncommented line runs in order. Lines starting with `#` are comments or
-disabled examples. RelOps maintains the error handling in `bootstrap-helpers.ps1`.
-You normally only need to add or change recipe lines and their checks.
+For installation behavior, edit `build_steps` in the image YAML. Steps run in
+order. RelOps maintains the allow-listed dispatcher and error handling in
+`bootstrap-helpers.ps1`. Use `{name}` in an artifact or argument to insert the
+matching value from `software` without executing PowerShell.
 
-| Need | Recipe line |
+| Need | YAML step |
 | --- | --- |
-| Install a private MSI | `Install-BuildInstaller -Path 'C:\FooFrix\artifacts\installers\tools.msi'` |
-| Install a private EXE | `Install-BuildInstaller -Path 'C:\FooFrix\artifacts\installers\setup.exe' -Arguments '/quiet /norestart'` |
-| Unpack a ZIP | `Expand-BuildArchive -Path 'C:\FooFrix\artifacts\installers\chromium.zip' -Destination 'C:\FooFrix\chromium'` |
+| Install a private MSI | `{ action: install, artifact: tools.msi }` |
+| Install a private EXE | `{ action: install, artifact: setup.exe, arguments: /quiet /norestart }` |
+| Unpack a ZIP | `{ action: extract, artifact: chromium.zip, destination: 'C:\FooFrix\chromium' }` |
 
-Use the uploaded installer filename from `installers.json` or your artifact path. EXE silent
+Use an uploaded filename from `installers.json`; paths and arbitrary commands are
+rejected. EXE silent
 switches depend on the installer: check its documentation or ask RelOps. MSI
 installs automatically use quiet mode and defer restart to Packer. A missing file
 or failed installer stops the build; do not ignore it or replace it with a success
 message. ZIPs should contain the directory layout you want at the destination.
 
 To include another installer or archive in the image, add it to the next
-installer release and `installers.json`, reference its filename under
-`C:\FooFrix\artifacts\installers` in the recipe, and add a matching check in
+installer release and `installers.json`, add a `build_steps` entry to the image
+YAML, and add a matching check in
 `tests/win/foofrix-base.tests.ps1`. Source bundles belong to VM bootstrap and
 must not be added to the installer manifest.
 
@@ -241,3 +242,22 @@ rebuilding an image version later is not guaranteed to produce identical tools.
 
 Installation references: [Rust shared locations](https://rust-lang.github.io/rustup/installation/)
 and [Google unattended installer](https://docs.cloud.google.com/sdk/docs/downloads-interactive).
+
+## Differences from the other Azure Windows builds
+
+Compared with `packer/tceng-azure.pkr.hcl`, `azure.pkr.hcl`, and their workflows:
+
+| Area | FooFrix | TCEng / production Windows |
+| --- | --- | --- |
+| Installer transfer | Guest downloads private blobs with its managed identity and verifies SHA-256; WinRM carries scripts/config only. | TCEng downloads packages in its bootstrap script; production uses Bootstrap/Puppet and guest downloads. |
+| Provisioning | Standalone PowerShell recipes, staged installers, no Chocolatey; Firefox is compiled during image creation. | TCEng uses a bootstrap script including Chocolatey; production uses Ronin/Puppet roles. |
+| Build resources | Dedicated existing resource group; its location determines the build region. | TCEng creates a temporary resource group from the requested location and deletes it asynchronously. |
+| Image output | Explicit YAML gallery version and replication regions. | TCEng template creates managed images; production also supports gallery images and parallel builds. |
+| Runtime | No Taskcluster services; editable FooFrix checkout is installed during VM bootstrap. | Taskcluster worker setup is part of the other images. |
+| Verification and reporting | Tool, Rust/MSVC, and browser smoke checks; inventories stay inside the image and Actions publishes the Packer manifest. | Production runs Ronin/Pester tests and exports software release notes into its SBOM workflow. |
+
+Follow-up gaps: FooFrix does not export its guest inventories or persistent guest
+build logs to Actions. Some software selections still float (`latest`, `main`,
+and online installer components), so the YAML alone is not a complete lockfile.
+The six-hour job limit includes the full Firefox and Rust-tool builds; successful
+end-to-end timing is still needed. These are separate from the installer-transfer fix.

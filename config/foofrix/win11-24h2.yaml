@@ -21,7 +21,7 @@ software:
   git: "2.55.0.5"
   node: "24.13.0"
   python: "3.13.12"
-  seven_zip: "26.03"
+  seven_zip_installer: 7z2603-x64.exe
   mozillabuild: "4.2.1"
   google_cloud_cli: "585.0.0"
   rust: "1.98.1"
@@ -35,3 +35,28 @@ software:
   firefox_revision: 6c74efe2fcddf84b6f320959064a66946b4a1759
   run_speedometer_revision: 54d8a591cf3131ad0c380f04fc4894c65fc0f2b9
   profiler_revision: 777fb266152bfc0d118c2e793839a8f5d72fe273
+build_steps:
+  - action: install
+    artifact: Git-{git}-64-bit.exe
+    arguments: /VERYSILENT /NORESTART /ALLUSERS /SP- /o:PathOption=Cmd
+  - action: install
+    artifact: node-v{node}-x64.msi
+    arguments: ALLUSERS=1
+  - action: install
+    artifact: python-{python}-amd64.exe
+    arguments: /quiet InstallAllUsers=1 PrependPath=1 Include_test=0 Include_launcher=0 TargetDir=C:\FooFrix\Python
+  - action: install
+    artifact: "{visual_studio_installer}"
+    arguments: --quiet --wait --norestart --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended
+  - action: install
+    artifact: "{seven_zip_installer}"
+    arguments: /S
+  - action: install
+    artifact: "{rustup_installer}"
+    arguments: -y --no-modify-path --profile minimal --default-toolchain {rust}
+  - action: extract
+    artifact: google-cloud-sdk-{google_cloud_cli}-windows-x86_64-bundled-python.zip
+    destination: C:\FooFrix\tools
+  - action: install
+    artifact: MozillaBuildSetup-{mozillabuild}.exe
+    arguments: /S

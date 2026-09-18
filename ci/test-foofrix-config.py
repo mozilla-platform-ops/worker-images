@@ -12,7 +12,7 @@ uuid = '00000000-0000-0000-0000-000000000001'
 env = {**os.environ, 'PKR_VAR_config': 'win11-24h2',
        'PKR_VAR_subscription_id': uuid, 'PKR_VAR_tenant_id': uuid,
        'PKR_VAR_client_id': uuid, 'PKR_VAR_build_identity_id': '/unused',
-       'PKR_VAR_artifacts_directory': '/unused',
+       'PKR_VAR_artifact_storage_account': 'unusedstorage',
        'PKR_VAR_oidc_request_url': 'https://example.invalid',
        'PKR_VAR_oidc_request_token': 'test'}
 
@@ -27,6 +27,25 @@ def evaluate(template, expression, success=True):
 template = root / 'packer/foofrix-azure.pkr.hcl'
 config = json.loads(evaluate(template, 'jsonencode(local.config)'))
 assert evaluate(template, 'local.image_version') == config['azure']['image_version']
+manifest = json.loads((root / 'config/foofrix/installers.json').read_text())
+artifacts = {entry['name'] for entry in manifest['files']}
+assert config['build_steps']
+
+
+def resolve(value):
+    for name, replacement in config['software'].items():
+        value = value.replace(f'{{{name}}}', str(replacement))
+    assert '{' not in value, f'Unknown variable: {value}'
+    return value
+
+
+for step in config['build_steps']:
+    assert step['action'] in {'install', 'extract'}
+    assert resolve(step['artifact']) in artifacts
+    if step['action'] == 'install':
+        resolve(step.get('arguments', ''))
+    else:
+        assert step.get('destination')
 with tempfile.TemporaryDirectory(prefix='foofrix-config-') as directory:
     scratch = Path(directory)
     (scratch / 'packer').mkdir()

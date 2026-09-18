@@ -50,6 +50,26 @@ try {
         throw 'Archive content was not extracted'
     }
     Assert-Fails { Expand-BuildArchive -Path (Join-Path $scratch 'missing.zip') -Destination $destination }
+
+    $steps = ConvertFrom-Json @"
+[
+  { "action": "install", "artifact": "tool {suffix}.msi", "arguments": "OWNER={owner}" },
+  { "action": "extract", "artifact": "source.zip", "destination": "$($destination.Replace('\', '\\'))" }
+]
+"@
+    $script:fakeExitCode = 0
+    $variables = '{"suffix":"with spaces","owner":"all"}' | ConvertFrom-Json
+    Invoke-BuildRecipe -Steps $steps -ArtifactDirectory $scratch -Variables $variables
+    if ($script:installer -ne 'msiexec.exe' -or $script:installerArguments -notlike '*OWNER=all' -or
+        -not (Test-Path (Join-Path $destination 'source.txt'))) {
+        throw 'Build recipe did not dispatch its install and extract steps'
+    }
+    $invalid = '[{"action":"run","artifact":"tool.exe"}]' | ConvertFrom-Json
+    Assert-Fails { Invoke-BuildRecipe -Steps $invalid -ArtifactDirectory $scratch -Variables $variables }
+    $invalid = '[{"action":"install","artifact":"../tool.exe"}]' | ConvertFrom-Json
+    Assert-Fails { Invoke-BuildRecipe -Steps $invalid -ArtifactDirectory $scratch -Variables $variables }
+    $invalid = '[{"action":"install","artifact":"{missing}.exe"}]' | ConvertFrom-Json
+    Assert-Fails { Invoke-BuildRecipe -Steps $invalid -ArtifactDirectory $scratch -Variables $variables }
     Write-Host 'All bootstrap helper checks passed.'
 } finally {
     Remove-Item -LiteralPath $scratch -Recurse -Force
