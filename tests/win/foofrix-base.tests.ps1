@@ -54,7 +54,7 @@ foreach ($path in @(
     'C:\FooFrix\tools\profiler\profiler-cli\dist\mappings.wasm',
     'C:\FooFrix\tools\run-speedometer\speedometer\index.html',
     'C:\FooFrix\src\firefox\obj-opt\dist\bin\firefox.exe',
-    'C:\FooFrix\src\firefox\obj-opt\dist\bin\xul.pdb'
+    'C:\FooFrix\src\firefox\obj-opt\toolkit\library\build\xul.pdb'
 )) {
     if (-not (Test-Path $path -PathType Leaf)) { throw "Missing prebaked payload: $path" }
 }
