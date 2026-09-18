@@ -86,4 +86,5 @@ if ($script:nativeArguments.Count -ne 2 -or $script:nativeArguments[0] -ne 'path
 }
 $script:fakeExitCode = 1
 Assert-Fails { Invoke-BuildCommand fake-native @('build') }
+$global:LASTEXITCODE = 0
 Write-Host 'Native build command checks passed.'
