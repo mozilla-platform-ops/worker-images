@@ -31,7 +31,7 @@ software:
   # These retain the previous moving selections; use exact versions/revisions to pin.
   codex: latest
   searchfox_cli: "*"
-  samply_revision: main
+  samply_branch: main
   firefox_revision: 6c74efe2fcddf84b6f320959064a66946b4a1759
   run_speedometer_revision: 54d8a591cf3131ad0c380f04fc4894c65fc0f2b9
   profiler_revision: 777fb266152bfc0d118c2e793839a8f5d72fe273

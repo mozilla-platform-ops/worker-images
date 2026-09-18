@@ -122,7 +122,7 @@ Set versions and source revisions in the `software` section of
 `C:\FooFrix\image-config.json`, which the installation scripts and image checks read.
 For example, `software.node` selects the Node installer version, `software.rust`
 selects the Rust toolchain, and `software.firefox_revision` selects Firefox source.
-`codex: latest`, `searchfox_cli: "*"`, and `samply_revision: main` retain the prior
+`codex: latest`, `searchfox_cli: "*"`, and `samply_branch: main` retain the prior
 moving selections; replace them with exact package versions/commit IDs to pin them.
 The C++ and rustup bootstrapper filenames are selected here too; their exact bytes
 are pinned by `installers.json`. C++ components still come from Microsoft's online
@@ -236,7 +236,7 @@ Rust lives in `C:\FooFrix\cargo` and `C:\FooFrix\rustup`, exposed through machin
 environment variables. Google Cloud CLI is installed for all users without login.
 The runtime account needs write access to the Rust directories if jobs update
 Rust or install Cargo tools; account creation and permissions remain runtime work.
-Samply uses `software.samply_revision` (initially `main`); `C:\FooFrix\cargo-tools.txt`
+Samply uses `software.samply_branch` (initially `main`); `C:\FooFrix\cargo-tools.txt`
 records resolved Cargo versions and the Git revision. These moving inputs mean
 rebuilding an image version later is not guaranteed to produce identical tools.
 
