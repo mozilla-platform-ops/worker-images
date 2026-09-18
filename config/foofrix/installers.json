@@ -1,5 +1,5 @@
 {
-  "prefix": "windows/installers/2026-09-16",
+  "prefix": "windows/installers/2026-09-18",
   "files": [
     {
       "name": "Git-2.55.0.5-64-bit.exe",
@@ -8,10 +8,10 @@
       "size": 65343712
     },
     {
-      "name": "node-v24.13.0-x64.msi",
-      "url": "https://nodejs.org/dist/v24.13.0/node-v24.13.0-x64.msi",
-      "sha256": "1a5f0cd914386f3be2fbaf03ad9fff808a588ce50d2e155f338fad5530575f18",
-      "size": 32235520
+      "name": "node-v24.14.0-x64.msi",
+      "url": "https://nodejs.org/dist/v24.14.0/node-v24.14.0-x64.msi",
+      "sha256": "e75802e82be6875b03b63377a9e12e4416799d0fb6dd460f0605d29144d386a6",
+      "size": 32280576
     },
     {
       "name": "python-3.13.12-amd64.exe",

@@ -19,7 +19,7 @@ bootstrap_script: windows-base.ps1
 # Base installer binaries and checksums are locked in installers.json.
 software:
   git: "2.55.0.5"
-  node: "24.13.0"
+  node: "24.14.0"
   python: "3.13.12"
   seven_zip_installer: 7z2603-x64.exe
   mozillabuild: "4.2.1"
