@@ -139,26 +139,27 @@ Check the YAML wiring and version validation locally (Packer required, no Azure 
 python3 ci/test-foofrix-config.py
 ```
 
-For installation behavior, edit `scripts/windows/foofrix/windows-base.ps1`:
-each uncommented line runs in order. Lines starting with `#` are comments or
-disabled examples. RelOps maintains the error handling in `bootstrap-helpers.ps1`.
-You normally only need to add or change recipe lines and their checks.
+For installation behavior, edit `build_steps` in the image YAML. Steps run in
+order. RelOps maintains the allow-listed dispatcher and error handling in
+`bootstrap-helpers.ps1`. Use `{name}` in an artifact or argument to insert the
+matching value from `software` without executing PowerShell.
 
-| Need | Recipe line |
+| Need | YAML step |
 | --- | --- |
-| Install a private MSI | `Install-BuildInstaller -Path 'C:\FooFrix\artifacts\installers\tools.msi'` |
-| Install a private EXE | `Install-BuildInstaller -Path 'C:\FooFrix\artifacts\installers\setup.exe' -Arguments '/quiet /norestart'` |
-| Unpack a ZIP | `Expand-BuildArchive -Path 'C:\FooFrix\artifacts\installers\chromium.zip' -Destination 'C:\FooFrix\chromium'` |
+| Install a private MSI | `{ action: install, artifact: tools.msi }` |
+| Install a private EXE | `{ action: install, artifact: setup.exe, arguments: /quiet /norestart }` |
+| Unpack a ZIP | `{ action: extract, artifact: chromium.zip, destination: 'C:\FooFrix\chromium' }` |
 
-Use the uploaded installer filename from `installers.json` or your artifact path. EXE silent
+Use an uploaded filename from `installers.json`; paths and arbitrary commands are
+rejected. EXE silent
 switches depend on the installer: check its documentation or ask RelOps. MSI
 installs automatically use quiet mode and defer restart to Packer. A missing file
 or failed installer stops the build; do not ignore it or replace it with a success
 message. ZIPs should contain the directory layout you want at the destination.
 
 To include another installer or archive in the image, add it to the next
-installer release and `installers.json`, reference its filename under
-`C:\FooFrix\artifacts\installers` in the recipe, and add a matching check in
+installer release and `installers.json`, add a `build_steps` entry to the image
+YAML, and add a matching check in
 `tests/win/foofrix-base.tests.ps1`. Source bundles belong to VM bootstrap and
 must not be added to the installer manifest.
 

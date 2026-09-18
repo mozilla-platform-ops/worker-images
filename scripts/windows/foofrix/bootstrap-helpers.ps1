@@ -40,6 +40,50 @@ function Expand-BuildArchive {
     Expand-Archive -LiteralPath $Path -DestinationPath $Destination -Force
 }
 
+function Invoke-BuildRecipe {
+    param (
+        [Parameter(Mandatory)] [object[]] $Steps,
+        [Parameter(Mandatory)] [string] $ArtifactDirectory,
+        [Parameter(Mandatory)] [object] $Variables
+    )
+
+    foreach ($step in $Steps) {
+        if (-not $step.PSObject.Properties['action'] -or -not $step.PSObject.Properties['artifact']) {
+            throw 'Each build step needs an action and artifact.'
+        }
+        $artifact = [string] $step.artifact
+        foreach ($variable in $Variables.PSObject.Properties) {
+            $artifact = $artifact.Replace("{$($variable.Name)}", [string] $variable.Value)
+        }
+        if ($artifact -match '\{[a-zA-Z0-9_]+\}') {
+            throw "Unknown variable in artifact: $artifact"
+        }
+        if ([IO.Path]::GetFileName($artifact) -ne $artifact) {
+            throw "Artifact must be a filename, not a path: $artifact"
+        }
+        $path = Join-Path $ArtifactDirectory $artifact
+        switch ([string] $step.action) {
+            'install' {
+                $arguments = if ($step.PSObject.Properties['arguments']) { [string] $step.arguments } else { '' }
+                foreach ($variable in $Variables.PSObject.Properties) {
+                    $arguments = $arguments.Replace("{$($variable.Name)}", [string] $variable.Value)
+                }
+                if ($arguments -match '\{[a-zA-Z0-9_]+\}') {
+                    throw "Unknown variable in arguments for ${artifact}: $arguments"
+                }
+                Install-BuildInstaller -Path $path -Arguments $arguments
+            }
+            'extract' {
+                if (-not $step.PSObject.Properties['destination']) {
+                    throw "Extract step for $artifact needs a destination."
+                }
+                Expand-BuildArchive -Path $path -Destination ([string] $step.destination)
+            }
+            default { throw "Unknown build action: $($step.action)" }
+        }
+    }
+}
+
 # PowerShell 5 does not turn native nonzero exit codes into terminating errors.
 function Invoke-BuildCommand {
     param (

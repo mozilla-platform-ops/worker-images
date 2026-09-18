@@ -27,6 +27,14 @@ def evaluate(template, expression, success=True):
 template = root / 'packer/foofrix-azure.pkr.hcl'
 config = json.loads(evaluate(template, 'jsonencode(local.config)'))
 assert evaluate(template, 'local.image_version') == config['azure']['image_version']
+manifest = json.loads((root / 'config/foofrix/installers.json').read_text())
+artifacts = {entry['name'] for entry in manifest['files']}
+assert config['build_steps']
+assert all(step['action'] in {'install', 'extract'} for step in config['build_steps'])
+resolved_artifacts = [step['artifact'] for step in config['build_steps']]
+for name, value in config['software'].items():
+    resolved_artifacts = [artifact.replace(f'{{{name}}}', value) for artifact in resolved_artifacts]
+assert all('{' not in artifact and artifact in artifacts for artifact in resolved_artifacts)
 with tempfile.TemporaryDirectory(prefix='foofrix-config-') as directory:
     scratch = Path(directory)
     (scratch / 'packer').mkdir()
