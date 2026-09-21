@@ -61,11 +61,6 @@ Function Invoke-RoninTest {
     }
 
     $CombinedHiera = Merge-HashTables -Base $WindowsHiera -Overlay $Hiera
-    $PoolPath = "C:\ronin\data\windows-pools\$($Config_tests.vm.tags.worker_pool_id).yaml"
-    if (Test-Path $PoolPath) {
-        $PoolHiera = ConvertFrom-Yaml (Get-Content -Path $PoolPath -Raw)
-        $CombinedHiera = Merge-HashTables -Base $PoolHiera -Overlay $CombinedHiera
-    }
 
     $tests = foreach ($t in $Config_tests.tests) {
         Get-ChildItem -Path "C:/Tests/$t"
