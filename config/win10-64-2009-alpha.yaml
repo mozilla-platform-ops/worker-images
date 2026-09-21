@@ -22,10 +22,10 @@ vm:
   size: Standard_D8ads_v5
   tags:
     base_image: win10642009azure
-    worker_pool_id: win10-64-2009
+    worker_pool_id: win10-64-2009-alpha
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "windows-alpha-c-drive"
+    sourceBranch: "windows-task-storage-drive"
     deploymentId: "NA"
     managed_by: packer
 tests:
