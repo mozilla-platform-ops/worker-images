@@ -198,6 +198,11 @@ variable "config" {
   default = "${env("config")}"
 }
 
+variable "upload_directory" {
+  type    = string
+  default = ""
+}
+
 variable "replication_regions" {
   type        = list(string)
   description = "List of Azure regions to replicate the shared image to"
@@ -331,8 +336,8 @@ build {
   }
 
   provisioner "file" {
-    source      = "${path.root}/scripts/windows/CustomFunctions/Bootstrap"
-    destination = "C:/Windows/System32/WindowsPowerShell/v1.0/Modules/"
+    source      = var.upload_directory != "" ? "${var.upload_directory}/Bootstrap.zip" : "${path.root}/scripts/windows/CustomFunctions/Bootstrap"
+    destination = var.upload_directory != "" ? "C:/Bootstrap.zip" : "C:/Windows/System32/WindowsPowerShell/v1.0/Modules/"
     max_retries = 3
   }
 
@@ -346,14 +351,20 @@ build {
   }
 
   provisioner "file" {
-    source      = "${path.cwd}/tests/win/"
-    destination = "C:/Tests"
+    source      = var.upload_directory != "" ? "${var.upload_directory}/tests.zip" : "${path.cwd}/tests/win/"
+    destination = var.upload_directory != "" ? "C:/tests.zip" : "C:/Tests"
     max_retries = 3
   }
 
   provisioner "file" {
-    source      = "${path.cwd}/config/"
-    destination = "C:/Config"
+    source      = "${path.cwd}/config/${var.config}.yaml"
+    destination = "C:/Config/${var.config}.yaml"
+    max_retries = 3
+  }
+
+  provisioner "file" {
+    source      = "${path.cwd}/config/windows_production_defaults.yaml"
+    destination = "C:/Config/windows_production_defaults.yaml"
     max_retries = 3
   }
 
@@ -372,13 +383,17 @@ build {
       "application_id=${var.application_id}",
       "config=${var.config}"
     ]
-    inline = [
+    inline = concat(var.upload_directory != "" ? [
+      "Expand-Archive -LiteralPath C:/Bootstrap.zip -DestinationPath C:/Windows/System32/WindowsPowerShell/v1.0/Modules -Force -ErrorAction Stop;",
+      "Expand-Archive -LiteralPath C:/tests.zip -DestinationPath C:/Tests -Force -ErrorAction Stop;",
+      "Remove-Item -LiteralPath C:/Bootstrap.zip, C:/tests.zip -Force -ErrorAction Stop;"
+      ] : [], [
       "Import-Module BootStrap -Force;",
       "Disable-AntiVirus;",
       "Set-Logging;",
       "Install-AzPreReq;",
       "Set-RoninRegOptions"
-    ]
+    ])
   }
 
   provisioner "windows-restart" {
