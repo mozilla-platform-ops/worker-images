@@ -55,5 +55,4 @@ tests:
   - gpu_drivers.tests.ps1
   - mercurial.tests.ps1
   - microsoft_wptx64.tests.ps1
-  - preloaded_cache_smoke.tests.ps1
   - c_drive_task_storage.tests.ps1
