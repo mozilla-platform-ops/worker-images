@@ -13,8 +13,8 @@ azure:
   managed_image_storage_account_type: Standard_LRS
   build_location: eastus
   locations:
-    - ukwest
-    - uksouth
+    - centralindia
+    - eastus2
 vm:
   puppet_version: 8.10.0
   git_version: 2.54.0
@@ -25,7 +25,7 @@ vm:
     worker_pool_id: win10-64-2009
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "windows-taskcluster-110.0.0"
+    sourceBranch: "windows-alpha-c-drive"
     deploymentId: "NA"
     managed_by: packer
 tests:
@@ -48,3 +48,4 @@ tests:
   - mozilla_maintenance_service.tests.ps1
   - windows_worker_runner.tests.ps1
   - gpu_drivers.tests.ps1
+  - c_drive_task_storage.tests.ps1
