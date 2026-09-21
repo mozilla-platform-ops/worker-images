@@ -29,7 +29,7 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: "win25h2-alpha-c-drive"
-    deploymentId: "97fa1aae"
+    deploymentId: "NA"
     managed_by: packer
 tests:
   - win11_sdk_tests.ps1
@@ -56,3 +56,4 @@ tests:
   - mercurial.tests.ps1
   - microsoft_wptx64.tests.ps1
   - preloaded_cache_smoke.tests.ps1
+  - c_drive_task_storage.tests.ps1
