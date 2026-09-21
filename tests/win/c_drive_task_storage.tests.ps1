@@ -1,4 +1,4 @@
-# Selected only by the Windows 11 25H2 alpha image.
+# Selected by Windows alpha images that use C: task storage.
 Describe "C: task storage" {
     It "Configures task and cache paths on C:" {
         $config = Get-Content 'C:\worker-runner\runner.yml' -Raw | ConvertFrom-Yaml
