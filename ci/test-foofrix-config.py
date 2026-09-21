@@ -25,6 +25,11 @@ def evaluate(template, expression, success=True):
 
 
 template = root / 'packer/foofrix-azure.pkr.hcl'
+env['PKR_VAR_config'] = 'win11-25h2'
+config_25h2 = json.loads(evaluate(template, 'jsonencode(local.config)'))
+assert (config_25h2['image']['sku'], config_25h2['azure']['gallery'], config_25h2['azure']['image_definition']) == (
+    'win11-25h2-avd', 'win11_64_25h2', 'win11_64_25h2')
+env['PKR_VAR_config'] = 'win11-24h2'
 config = json.loads(evaluate(template, 'jsonencode(local.config)'))
 assert evaluate(template, 'local.image_version') == config['azure']['image_version']
 manifest = json.loads((root / 'config/foofrix/installers.json').read_text())
