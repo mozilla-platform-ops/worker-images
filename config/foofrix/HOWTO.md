@@ -24,6 +24,36 @@ See [README.md](README.md) for architecture, access, and installer details.
 FooFrix application source is installed when a VM starts. Source-only FooFrix
 changes do not require a new base image.
 
+### Add software
+
+For an MSI, EXE, or ZIP, prefer configuration over new PowerShell:
+
+1. Stage the file and add its URL, size, and SHA-256 to `installers.json`.
+2. Add its version or filename under `software` in each affected image config.
+3. Add an `install` or `extract` entry to that config's `build_steps`.
+4. Add a command or file check to `tests/win/foofrix-base.tests.ps1`.
+
+For Cargo, npm, or source-built tools, pin the version or revision in the image
+config and install it in `prebake-tools.ps1` or `prebake-payload.ps1`. Install
+for all users under `C:\FooFrix`; image scripts run as Windows SYSTEM, not as the
+eventual Perf user.
+
+### Add PowerShell
+
+Put image-build scripts in `scripts/windows/foofrix/`. Packer uploads that whole
+directory, but a new script does not run automatically. Invoke it from the
+matching fixed stage:
+
+- `windows-base.ps1` for base installation before the first restart.
+- `prebake-tools.ps1` for compiler-dependent tools after that restart.
+- `prebake-payload.ps1` for source checkouts, application builds, and caches.
+
+Use `$ErrorActionPreference = 'Stop'` and strict mode. Check `$LASTEXITCODE`
+after native commands, or use the existing `Invoke-BuildCommand` helper. Do not
+ignore failures, log secrets, perform runtime login, or reboot inside a script;
+Packer owns restarts. Add a matching post-build check and include every changed
+script in the focused pre-commit command.
+
 ## Add another image
 
 RelOps can add image galleries and definitions to the Performance Engineering
