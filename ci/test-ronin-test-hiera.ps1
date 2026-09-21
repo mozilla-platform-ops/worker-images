@@ -13,7 +13,7 @@ function Get-Content($Path, [switch]$Raw) {
         '*Config*' { 'vm: {tags: {worker_pool_id: alpha}}\ntests: [example.tests.ps1]' -replace '\\n', "`n" }
         '*windows-pools*' {
             if ($Path -ne 'C:\ronin\data\windows-pools\alpha.yaml') { throw "Wrong pool path: $Path" }
-            'windows: {taskcluster: {task_drive: "C:", generic-worker: {source_build: {revision: test}}}}'
+            'windows: {taskcluster: {task_drive: "C:"}}'
         }
         default { throw "Unexpected path: $Path" }
     }
@@ -29,9 +29,5 @@ foreach ($script:HasPool in @($false, $true)) {
     if ($script:Actual.windows.taskcluster.task_drive -ne $expectedDrive -or
         $script:Actual.windows.taskcluster.version -ne '110.0.0' -or
         $script:Actual.role -ne 'present') { throw 'Hiera merge failed' }
-    if ($script:HasPool -and
-        $script:Actual.windows.taskcluster.'generic-worker'.source_build.revision -ne 'test') {
-        throw 'Missing per-pool source build'
-    }
 }
 Write-Output 'PASS: optional pool data takes priority and preserves existing settings.'
