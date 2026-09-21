@@ -21,6 +21,13 @@ See [README.md](README.md) for architecture, access, and installer details.
    pre-commit run --files config/foofrix/IMAGE.yaml
    ```
 
+`image.version` selects the Marketplace source; `azure.image_version` names the
+new version published to the destination gallery. Normally, increment
+`azure.image_version` and keep the old version available for rollback. The build
+does not overwrite an existing gallery version. To reuse an existing version
+number, first confirm that no provisioner or VM uses it, then ask RelOps to
+delete it; the next build recreates it. Prefer a new version instead.
+
 FooFrix application source is installed when a VM starts. Source-only FooFrix
 changes do not require a new base image.
 
@@ -87,5 +94,5 @@ The config names must match resources already applied by RelOps.
 4. Download `foofrix-manifest.json` from the workflow artifacts. It identifies
    the published gallery image version for Perf's VM provisioner.
 
-The workflow never replaces an existing gallery version. If a build fails, keep
-its temporary resources for diagnosis and ask RelOps to remove them afterward.
+If a build fails, keep its temporary resources for diagnosis and ask RelOps to
+remove them afterward.
