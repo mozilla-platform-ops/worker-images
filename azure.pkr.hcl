@@ -198,8 +198,6 @@ variable "config" {
   default = "${env("config")}"
 }
 
-# The shared-image runner supplies ZIPs. Direct Packer and nonsig callers keep
-# the existing directory uploads when this path is empty.
 variable "upload_directory" {
   type    = string
   default = ""
@@ -374,22 +372,6 @@ build {
     elevated_password = ""
     elevated_user     = "SYSTEM"
     environment_vars = [
-      "USE_UPLOAD_ARCHIVES=${var.upload_directory != ""}"
-    ]
-    inline = [
-      "$ErrorActionPreference = 'Stop';",
-      "if ($env:USE_UPLOAD_ARCHIVES -eq 'true') {",
-      "  Expand-Archive -LiteralPath C:/Bootstrap.zip -DestinationPath C:/Windows/System32/WindowsPowerShell/v1.0/Modules -Force;",
-      "  Expand-Archive -LiteralPath C:/tests.zip -DestinationPath C:/Tests -Force;",
-      "  Remove-Item -LiteralPath C:/Bootstrap.zip, C:/tests.zip -Force;",
-      "}"
-    ]
-  }
-
-  provisioner "powershell" {
-    elevated_password = ""
-    elevated_user     = "SYSTEM"
-    environment_vars = [
       "worker_pool_id=${var.worker_pool_id}",
       "base_image=${var.base_image}",
       "src_organisation=${var.source_organization}",
@@ -401,13 +383,17 @@ build {
       "application_id=${var.application_id}",
       "config=${var.config}"
     ]
-    inline = [
+    inline = concat(var.upload_directory != "" ? [
+      "Expand-Archive -LiteralPath C:/Bootstrap.zip -DestinationPath C:/Windows/System32/WindowsPowerShell/v1.0/Modules -Force -ErrorAction Stop;",
+      "Expand-Archive -LiteralPath C:/tests.zip -DestinationPath C:/Tests -Force -ErrorAction Stop;",
+      "Remove-Item -LiteralPath C:/Bootstrap.zip, C:/tests.zip -Force -ErrorAction Stop;"
+      ] : [], [
       "Import-Module BootStrap -Force;",
       "Disable-AntiVirus;",
       "Set-Logging;",
       "Install-AzPreReq;",
       "Set-RoninRegOptions"
-    ]
+    ])
   }
 
   provisioner "windows-restart" {

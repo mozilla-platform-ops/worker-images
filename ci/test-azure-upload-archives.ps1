@@ -1,4 +1,3 @@
-# Run from the repository root. Only Packer and module installation are mocked.
 $ErrorActionPreference = 'Stop'
 Import-Module powershell-yaml
 . ./bin/WorkerImages/Public/New-AzSharedWorkerImage.ps1
@@ -17,7 +16,6 @@ function packer {
         if (($args -contains '-force') -ne ($env:PKR_VAR_config -like '*alpha*')) {
             throw 'The image overwrite policy changed.'
         }
-        # Extract at the same relative paths used by the guest provisioner.
         Expand-Archive "$($check.directory)/Bootstrap.zip" "$($check.directory)/Modules"
         Expand-Archive "$($check.directory)/tests.zip" "$($check.directory)/Tests"
         foreach ($pair in @(
@@ -64,6 +62,5 @@ foreach ($case in @(
     if (Test-Path $check.directory) { throw 'Upload archives were not removed.' }
     if ($env:PKR_VAR_upload_directory -ne 'previous-value') { throw 'Upload environment was not restored.' }
 }
-# GitHub Actions uses LASTEXITCODE as the step result; clear the mocked failure.
 $global:LASTEXITCODE = 0
 Write-Host 'Archive contents, overwrite policy, Packer failures, and cleanup passed.'
