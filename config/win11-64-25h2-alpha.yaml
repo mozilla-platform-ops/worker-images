@@ -28,8 +28,8 @@ vm:
     worker_pool_id: win11-64-25h2-alpha
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "generic-worker-preloaded-cache-alpha"
-    deploymentId: "79e88243"
+    sourceBranch: "win25h2-alpha-c-drive"
+    deploymentId: "97fa1aae"
     managed_by: packer
 tests:
   - win11_sdk_tests.ps1
