@@ -1,7 +1,7 @@
 # FooFrix Windows images
 
-RELOPS-2570 adds a standalone image build path for Perf. The initial config is
-Windows 11 24H2 x64 with Git, Node.js 24, Python, C++ Build Tools, 7-Zip,
+RELOPS-2570 adds a standalone image build path for Perf. The configs are
+Windows 11 24H2 and 25H2 x64 with Git, Node.js 24, Python, C++ Build Tools, 7-Zip,
 Rust/Cargo, Samply, Searchfox CLI, and Google Cloud CLI. The payload stage adds
 MozillaBuild, a full Firefox source build, run-speedometer, profiler-cli, Codex,
 and the benchmark runner's Playwright Firefox download. FooFrix source and its
@@ -10,13 +10,13 @@ it is not yet a validated Firefox/Chromium build or FooFrix runtime image.
 
 Perf owns the config in this directory and `scripts/windows/foofrix/`. RelOps
 maintains the shared build infrastructure. Builds publish versions into the
-isolated FooFrix gallery; they do not update FXCI or TCEng images or worker pools.
+isolated FooFrix galleries; they do not update FXCI or TCEng images or worker pools.
 
 ## Azure and GitHub prerequisites
 
-The infrastructure is tracked by RELOPS-2548 and relops_infra_as_code PR #339.
-Terraform must create the gallery and the `win11_64_24h2` image definition
-(Windows, x64, generalized, Hyper-V V2) before the first build. Confirm that
+The infrastructure is tracked by RELOPS-2548 and relops_infra_as_code PRs #339 and #345.
+Terraform must create the `foofrix` and `win11_64_25h2` galleries and their matching
+image definitions (Windows, x64, generalized, Hyper-V V2) before the first build. Confirm that
 definition's security/disk settings match the selected Marketplace source.
 
 Configure the GitHub environment `foofrix-image-build` with these variables:
@@ -39,8 +39,8 @@ its approval rules before enabling builds. The workflow also checks the actor
 against `.github/foofrix.json` and `.github/relsre.json`.
 
 The build identity needs Contributor on the existing `rg-foofrix-image-build`
-resource group and the `foofrix` gallery, Blob Data Reader on `artifacts`, and
-Managed Identity Operator on `id-foofrix-image-build`, matching PR #339. Packer
+resource group and both galleries, Blob Data Reader on `artifacts`, and
+Managed Identity Operator on `id-foofrix-image-build`, matching PRs #339 and #345. Packer
 creates temporary resources inside that group and derives its location from the
 group. It must not create or delete the group itself. Failed builds can leave
 resources there; inspect and remove only that build's leftovers.
@@ -51,9 +51,9 @@ build applications. No Azure password is required by this workflow.
 
 ## Build and use
 
-Set `azure.image_version` in `config/foofrix/win11-24h2.yaml` to a new numeric
+Set `azure.image_version` in the selected `config/foofrix/*.yaml` to a new numeric
 `major.minor.patch` gallery version (initially `0.1.0`), then dispatch **FooFrix
-Azure Images**, selecting `win11-24h2`. Bump the YAML version for each new image;
+Azure Images**, selecting the matching config. Bump the YAML version for each new image;
 the workflow never forces replacement of an existing version.
 `image.version: latest` selects the Marketplace source OS and is separate from
 the destination gallery version. The Packer build size is independent of Perf's
@@ -117,8 +117,8 @@ and Google's [versioned archives](https://docs.cloud.google.com/sdk/docs/downloa
 
 ## Editing the image without PowerShell experience
 
-Set versions and source revisions in the `software` section of
-`config/foofrix/win11-24h2.yaml`. Packer passes that configuration to the guest as
+Set versions and source revisions in the selected file under `config/foofrix/`.
+Packer passes that configuration to the guest as
 `C:\FooFrix\image-config.json`, which the installation scripts and image checks read.
 For example, `software.node` selects the Node installer version, `software.rust`
 selects the Rust toolchain, and `software.firefox_revision` selects Firefox source.

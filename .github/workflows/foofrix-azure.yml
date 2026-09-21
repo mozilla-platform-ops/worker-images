@@ -9,6 +9,7 @@ on:
         description: Image configuration
         options:
           - win11-24h2
+          - win11-25h2
         required: true
 
 permissions:
