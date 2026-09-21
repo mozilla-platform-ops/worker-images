@@ -1,5 +1,7 @@
 # FooFrix Windows images
 
+For the concise change and build procedure, see [HOWTO.md](HOWTO.md).
+
 RELOPS-2570 adds a standalone image build path for Perf. The configs are
 Windows 11 24H2 and 25H2 x64 with Git, Node.js 24, Python, C++ Build Tools, 7-Zip,
 Rust/Cargo, Samply, Searchfox CLI, and Google Cloud CLI. The payload stage adds
