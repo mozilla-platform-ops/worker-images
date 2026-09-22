@@ -36,7 +36,7 @@ def baseline(flag=False, worse=True):
         "flag": flag,
         "baseline": {
             "source": "perfherder",
-            "detail": "14d of mozilla-central",
+            "detail": "7d of mozilla-central",
             "n": 40,
             "mean": 25.0,
             "median": 25.0,
@@ -75,6 +75,12 @@ class TestPerfherderScoreSummary(unittest.TestCase):
     def test_faster_score_is_named_as_faster(self):
         row = score_summary.comparisons(runs(baseline(worse=False)), summarize)[0]
         self.assertEqual(row["status"], "faster than production")
+
+    def test_equal_score_is_named_as_a_match(self):
+        comparison = baseline(worse=False)
+        comparison["percent"] = 0.0
+        row = score_summary.comparisons(runs(comparison), summarize)[0]
+        self.assertEqual(row["status"], "matches production")
 
     def test_missing_baseline_is_inconclusive(self):
         row = score_summary.comparisons(runs(None), summarize)[0]

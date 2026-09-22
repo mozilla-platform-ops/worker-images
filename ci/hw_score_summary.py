@@ -69,6 +69,8 @@ def comparisons(runs: list[dict], summarize) -> list[dict]:
                             if comparison["flag"]
                             else "within production spread"
                             if comparison["worse"]
+                            else "matches production"
+                            if comparison["percent"] == 0
                             else "faster than production"
                         ),
                     }
@@ -144,6 +146,7 @@ def summary_lines(rows: list[dict], ai: dict | None = None) -> list[str]:
         mark = {
             "possible regression": "⚠️ possible regression",
             "within production spread": "✅ within production spread",
+            "matches production": "✅ matches production",
             "faster than production": "✅ faster than production",
         }.get(row["status"], "❔ inconclusive")
         reason = f" — {row['reason']}" if row.get("reason") else ""

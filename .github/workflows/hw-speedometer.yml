@@ -58,7 +58,7 @@ on:
         type: choice
         default: perfherder
         options:
-          # mozilla-central's own 14-day series for the production counterpart
+          # mozilla-central's own 7-day series for the production counterpart
           # platform: a spread, so a number can be called normal or outside the
           # envelope. Not paired -- the series spans revisions.
           - perfherder

@@ -12,7 +12,7 @@ change make the hardware slower", and that question needs production's number.
 Two ways to get one, because they fail differently:
 
 `perfherder` (the default) reads mozilla-central's own series for the production
-counterpart platform -- fourteen days, dozens of pushes, many nodes. That gives a
+counterpart platform -- seven days, dozens of pushes, many nodes. That gives a
 spread, so a staging number can be called normal or outside the envelope rather
 than merely different. It is not paired: the series spans revisions, so a real
 Firefox change moves the baseline. Production CV runs 1.6-1.8% on speedometer3,
@@ -44,9 +44,9 @@ PERFHERDER_PROJECT = "mozilla-central"
 USER_AGENT = "mozilla-platform-ops/worker-images hw-os-integration (RELOPS-2503)"
 HTTP_TIMEOUT_SECONDS = 30
 
-# Fourteen days of pushes: long enough for a spread that means something, short
+# Seven days of pushes: long enough for a spread that means something, short
 # enough that a Firefox landing does not sit in the middle of it unnoticed.
-BASELINE_WINDOW_DAYS = 14
+BASELINE_WINDOW_DAYS = 7
 
 # Only a *worse* result is worth a word, and only past the point where
 # production's own scatter explains it. Production stdev is the yardstick rather
