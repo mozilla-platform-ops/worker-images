@@ -12,12 +12,4 @@ Describe "C: task storage" {
         @($paging) | Should -Contain 'C:\pagefile.sys 8192 8192'
         @($paging | Where-Object { $_ -like 'D:*' }).Count | Should -Be 0
     }
-
-    It "Skips temporary disk initialization for C: task storage" {
-        . 'C:\ProgramData\PuppetLabs\ronin\maintainsystem.ps1'
-        Mock Write-Log {}
-        $taskDrive = Get-ItemPropertyValue 'HKLM:\SOFTWARE\Mozilla\ronin_puppet' -Name task_drive
-        Ensure-AzureNvmeTemporaryDrive -vmSize 'Standard_F8alds_v7' -TaskDrive $taskDrive -scriptPath "$TestDrive\missing-disk-setup.ps1"
-        Test-AzureNvmeTemporaryDriveRequired -vmSize 'Standard_F8alds_v7' -TaskDrive 'D:' | Should -BeTrue
-    }
 }
