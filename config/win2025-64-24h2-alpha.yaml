@@ -17,8 +17,8 @@ azure:
 vm:
   spot: true
   puppet_version: 8.10.0
-  git_version: 2.54.0
-  openvox_version: 8.25.0
+  git_version: "default"
+  openvox_version: "default"
   size: Standard_D32ads_v7
   tags:
     base_image: win20256424h2azure

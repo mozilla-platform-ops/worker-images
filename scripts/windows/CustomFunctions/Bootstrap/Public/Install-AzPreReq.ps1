@@ -70,7 +70,12 @@ function Install-AzPreReq {
                 $git = "Git-$git_version-64-bit.exe"
             }
         }
-        $git_url = "https://github.com/git-for-windows/git/releases/download/v$git_version.windows.1/$git"
+        $git_release = if ($git_version -match '^(\d+\.\d+\.\d+)\.(\d+)$') {
+            "$($Matches[1]).windows.$($Matches[2])"
+        } else {
+            "$git_version.windows.1"
+        }
+        $git_url = "https://github.com/git-for-windows/git/releases/download/v$git_release/$git"
 
         Write-Log -message ('Puppet version: {0} :: - {1:o}' -f $puppet, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
         Write-Host ('Puppet version: {0} :: - {1:o}' -f $puppet, (Get-Date).ToUniversalTime())
