@@ -7,7 +7,7 @@ image:
 sharedimage:
   gallery_name: "trusted_win2022_64_2009"
   image_name: "trusted_win2022_64_2009"
-  image_version: "1.3.8"
+  image_version: "1.3.9"
 azure:
   managed_image_resource_group_name: "default"
   managed_image_storage_account_type: "default"
@@ -34,6 +34,7 @@ tests:
   - disable_uac.tests.ps1
   - suppress_dialog_boxes.tests.ps1
   - files_system_management.tests.ps1
+  - task_storage.tests.ps1
   - firewall.tests.ps1
   - network.tests.ps1
   - ntp.tests.ps1

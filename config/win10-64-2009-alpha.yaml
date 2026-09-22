@@ -48,4 +48,4 @@ tests:
   - mozilla_maintenance_service.tests.ps1
   - windows_worker_runner.tests.ps1
   - gpu_drivers.tests.ps1
-  - c_drive_task_storage.tests.ps1
+  - task_storage.tests.ps1
