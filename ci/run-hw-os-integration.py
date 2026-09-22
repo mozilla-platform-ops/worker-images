@@ -79,6 +79,7 @@ HW_POOLS_MODULE = (
 
 FAILURE_SUMMARY_MODULE = Path(__file__).resolve().parent / "hw_failure_summary.py"
 BASELINE_MODULE = Path(__file__).resolve().parent / "hw_baseline.py"
+SCORE_SUMMARY_MODULE = Path(__file__).resolve().parent / "hw_score_summary.py"
 
 
 def _load_by_path(name: str, path: Path):
@@ -93,6 +94,7 @@ def _load_by_path(name: str, path: Path):
 hw_pools = _load_by_path("hw_pools", HW_POOLS_MODULE)
 hw_failure_summary = _load_by_path("hw_failure_summary", FAILURE_SUMMARY_MODULE)
 hw_baseline = _load_by_path("hw_baseline", BASELINE_MODULE)
+hw_score_summary = _load_by_path("hw_score_summary", SCORE_SUMMARY_MODULE)
 
 
 def _escape_github_command_message(message: str) -> str:
@@ -620,7 +622,13 @@ def drift_summary_lines(changes: list[dict]) -> list[str]:
 # ---- trigger + monitor ---------------------------------------------------- #
 
 
-def trigger(hooks, pool_name: str, tests: list[str], repeat: int) -> str:
+def trigger(
+    hooks,
+    pool_name: str,
+    tests: list[str],
+    repeat: int,
+    compare_production: bool = False,
+) -> str:
     # One hook fire per pool, so each pool gets its own decision and task group
     # and a slow pool cannot hide another's results.
     payload: dict = {"pools": [pool_name]}
@@ -628,6 +636,8 @@ def trigger(hooks, pool_name: str, tests: list[str], repeat: int) -> str:
         payload["tests"] = tests
     if repeat > 1:
         payload["repeat"] = repeat
+    if compare_production:
+        payload["compare_production"] = True
     notice(f"triggering hook for {pool_name}: {json.dumps(payload)}")
     response = hooks.triggerHook(HOOK_GROUP_ID, HOOK_ID, payload)
     return response["taskId"]
@@ -905,6 +915,10 @@ def task_name(task: dict) -> str:
     )
 
 
+def task_target_pool(task: dict, fallback: str) -> str:
+    return task.get("task", {}).get("workerType") or fallback
+
+
 def short_pool(pool: str) -> str:
     """The part of a pool name that differs between pools.
 
@@ -1105,6 +1119,7 @@ def collect_scores(queue, runs: list[dict]) -> None:
     """
     for run in runs:
         scores: dict[str, dict] = {}
+        production_scores: dict[str, dict] = {}
         for task in replicated_tasks(run.get("tasks") or [], run.get("task_group_id")):
             if task["status"]["state"] != "completed":
                 continue
@@ -1112,13 +1127,19 @@ def collect_scores(queue, runs: list[dict]) -> None:
             data = fetch_perfherder(queue, task_id)
             if not data:
                 continue
+            target_pool = task_target_pool(task, run["pool"])
+            destination = (
+                production_scores
+                if run.get("compare_production") and target_pool == run.get("stages")
+                else scores
+            )
             application = data.get("application") or {}
             for suite in data.get("suites") or []:
                 name = suite.get("name")
                 value = suite.get("value")
                 if not name or value is None:
                     continue
-                entry = scores.setdefault(
+                entry = destination.setdefault(
                     score_key(data, name),
                     {
                         "unit": suite.get("unit", ""),
@@ -1132,7 +1153,7 @@ def collect_scores(queue, runs: list[dict]) -> None:
                         "application": application.get("name", ""),
                         "extra_options": list(suite.get("extraOptions") or []),
                         "framework": (data.get("framework") or {}).get("name", ""),
-                        "test_platform": task_platform([task], run["pool"]),
+                        "test_platform": task_platform([task], target_pool),
                         "source_task_id": (
                             (task.get("task", {}).get("extra") or {})
                             .get("hw-integration", {})
@@ -1153,6 +1174,8 @@ def collect_scores(queue, runs: list[dict]) -> None:
                 )
         if scores:
             run["scores"] = scores
+        if production_scores:
+            run["production_scores"] = production_scores
 
 
 def sample_values(samples: list[dict]) -> list[float]:
@@ -1655,11 +1678,12 @@ def results_table_lines(runs: list[dict], root_url: str) -> list[str]:
         seconds = task_seconds(task)
         # The emoji carries every state `result_emoji` knows, which is why there
         # is no State column; a state it does not know is named instead of lost.
-        label = short_task(task_name(task), run["pool"])
+        target_pool = task_target_pool(task, run["pool"])
+        label = short_task(task_name(task), target_pool)
         if state not in _STATE_ORDER:
             label = f"{label} ({state})"
         lines.append(
-            f"| {result_emoji(state)} | {short_pool(run['pool'])} | "
+            f"| {result_emoji(state)} | {short_pool(target_pool)} | "
             f"[{label}]({root_url}/tasks/{task['status']['taskId']}) | "
             f"`{task_worker(task)}` | "
             f"{format_duration(seconds) if seconds is not None else '-'} |"
@@ -1787,6 +1811,7 @@ def write_github_summary(
     drift: list[dict] | None = None,
     failure_summary: list[str] | None = None,
     inconclusive: list[tuple] | None = None,
+    score_comparison: list[str] | None = None,
 ) -> None:
     summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
     if not summary_file:
@@ -1853,6 +1878,7 @@ def write_github_summary(
     # The numbers come after the thing they are numbers about, and only the
     # headline: one row per pool and suite.
     lines += score_summary_lines(runs)
+    lines += score_comparison or []
 
     lines += deployment_summary_lines(runs)
 
@@ -1860,7 +1886,8 @@ def write_github_summary(
     # per-node breakdown, the idle-node accounting and the per-run replicates.
     lines += score_detail_lines(runs)
 
-    Path(summary_file).open("a").write("\n".join(lines))
+    with Path(summary_file).open("a") as summary:
+        summary.write("\n".join(lines))
 
 
 # --------------------------------------------------------------------------- #
@@ -1928,6 +1955,11 @@ def main() -> int:
     )
     parser.add_argument("--no-wait", action="store_true", help="Exit after triggering")
     parser.add_argument(
+        "--compare-production",
+        action="store_true",
+        help="also run each selected task on the staging pool's production counterpart",
+    )
+    parser.add_argument(
         "--timeout",
         type=int,
         default=DEFAULT_TIMEOUT_SECONDS,
@@ -1986,9 +2018,23 @@ def main() -> int:
 
     # ---- pre-flight ------------------------------------------------------- #
     if not args.skip_preflight:
-        reports = [
-            preflight(queue, registry, pool, args.min_healthy_nodes, records[pool.name])
+        checks = {
+            pool.name: (pool, records[pool.name])
             for pool in pools
+        }
+        if args.compare_production:
+            for pool in pools:
+                counterpart = registry.pools.get(pool.source_worker_type)
+                if counterpart is None or not counterpart.is_production:
+                    error(
+                        f"{pool.name} has no production counterpart called "
+                        f"{pool.source_worker_type!r} in pools.yml"
+                    )
+                    return 2
+                checks.setdefault(counterpart.name, (counterpart, None))
+        reports = [
+            preflight(queue, registry, pool, args.min_healthy_nodes, record)
+            for pool, record in checks.values()
         ]
         for report in reports:
             print_preflight(report)
@@ -2016,6 +2062,8 @@ def main() -> int:
         described.append("tasks matching " + ", ".join(f"`{t}`" for t in tests))
     if args.repeat > 1:
         described.append(f"{args.repeat} runs of each")
+    if args.compare_production:
+        described.append("paired production runs")
     selection = "Selection: " + "; ".join(described) if described else ""
     if selection:
         notice(selection.replace("`", ""))
@@ -2024,7 +2072,9 @@ def main() -> int:
     runs = []
     for pool in pools:
         record = records[pool.name]
-        decision_task_id = trigger(hooks, pool.name, tests, args.repeat)
+        decision_task_id = trigger(
+            hooks, pool.name, tests, args.repeat, args.compare_production
+        )
         notice(f"  {pool.name}: decision {root_url}/tasks/{decision_task_id}")
         runs.append(
             {
@@ -2037,6 +2087,7 @@ def main() -> int:
                 # What this pool is standing in for: the production worker type
                 # whose mozilla-central tasks get replicated onto it.
                 "stages": pool.source_worker_type,
+                "compare_production": args.compare_production,
                 # For the by-worker breakdown: a node that claimed nothing all
                 # run has no task to be found from.
                 "nodes": list(pool.nodes),
@@ -2071,6 +2122,11 @@ def main() -> int:
     # the summary: the summary dies with the job if GitHub cancels it at 6h.
     collect_builds(queue, live)
     collect_baselines(queue, live, args.baseline)
+    score_comparison = (
+        hw_score_summary.build(live, summarize, warn)
+        if args.compare_production
+        else []
+    )
     for run in live:
         for build in run.get("builds") or []:
             notice(
@@ -2108,7 +2164,13 @@ def main() -> int:
         )
 
     write_github_summary(
-        runs, root_url, selection, drift, failure_summary, inconclusive
+        runs,
+        root_url,
+        selection,
+        drift,
+        failure_summary,
+        inconclusive,
+        score_comparison,
     )
     print_scores(runs)
 

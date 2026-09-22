@@ -693,6 +693,7 @@ def replicate_onto_hw_pools(config, tasks):
         source_cache: dict[str, dict] = {}
 
         test_filters = [f for f in (config.params.get("hw_tests") or []) if f]
+        compare_production = config.params.get("hw_compare_production") is True
         # Unset means once; anything else is taken at face value, so `0` is a
         # mistake to report rather than a synonym for the default.
         repeat = config.params.get("hw_repeat")
@@ -712,6 +713,14 @@ def replicate_onto_hw_pools(config, tasks):
         scheduler_id = f"{trust_domain}-level-{level}"
 
         for pool in pools:
+            counterpart = registry.pools.get(pool.source_worker_type)
+            if compare_production and (
+                counterpart is None or not counterpart.is_production
+            ):
+                raise HwPoolError(
+                    f"hw-integration: {pool.name} has no production counterpart "
+                    f"called {pool.source_worker_type!r} in pools.yml"
+                )
             logger.info(
                 f"hw-integration: targeting {pool.task_queue_id} "
                 f"(image={pool.image} branch={pool.src_branch} rev={pool.revision} "
@@ -757,6 +766,8 @@ def replicate_onto_hw_pools(config, tasks):
                     tried.add(fallback_index)
                     source_index, source_tasks = fallback_index, fallback_tasks
             _log_runtime_budget(pool, source_tasks, repeat)
+            if compare_production:
+                _log_runtime_budget(counterpart, source_tasks, repeat)
 
             for source in source_tasks:
                 for run_index in range(1, repeat + 1):
@@ -769,18 +780,37 @@ def replicate_onto_hw_pools(config, tasks):
                         run_index=run_index,
                         run_count=repeat,
                     )
+                    if compare_production:
+                        yield _build_task(
+                            source,
+                            task_name=task["name"],
+                            pool=pool,
+                            scheduler_id=scheduler_id,
+                            source_index=source_index,
+                            run_index=run_index,
+                            run_count=repeat,
+                            target_pool=counterpart,
+                        )
 
 
 def _build_task(
-    source, task_name, pool, scheduler_id, source_index, run_index=1, run_count=1
+    source,
+    task_name,
+    pool,
+    scheduler_id,
+    source_index,
+    run_index=1,
+    run_count=1,
+    target_pool=None,
 ):
     task_def = deepcopy(source)
     task = task_def["task"]
 
     old_pool = f"{task['provisionerId']}/{task['workerType']}"
-    new_pool = pool.task_queue_id
+    target = target_pool or pool
+    new_pool = target.task_queue_id
 
-    task["workerType"] = pool.name
+    task["workerType"] = target.name
     task["schedulerId"] = scheduler_id
     task["taskGroupId"] = os.environ["TASK_ID"]
     task["priority"] = "low"
@@ -799,14 +829,14 @@ def _build_task(
     # point at builds of exactly this revision.
 
     original_name = task["metadata"]["name"]
-    label = f"{task_name}-{pool.name}-{original_name}"
+    label = f"{task_name}-{target.name}-{original_name}"
     # Repeats have to differ somewhere: taskgraph derives a task id from the
     # label, so identical labels would collide into one task.
     if run_count > 1:
         label = f"{label}-run{run_index}"
     task["metadata"]["name"] = label
 
-    return {
+    built = {
         "label": label,
         # Dependencies are already concrete task ids; nothing to resolve by label.
         "dependencies": {},
@@ -814,14 +844,17 @@ def _build_task(
         "task": task,
         "attributes": {
             "hw_replicate": task_name,
-            "hw_pool": pool.name,
+            "hw_pool": target.name,
             "hw_source_label": source.get("label", original_name),
             "hw_source_worker_type": pool.source_worker_type,
             "hw_source_index": source_index,
             "hw_run_index": run_index,
             "hw_run_count": run_count,
-            "hw_pool_image": pool.image,
-            "hw_pool_branch": pool.src_branch,
-            "hw_pool_revision": pool.revision,
+            "hw_pool_image": target.image,
+            "hw_pool_branch": target.src_branch,
+            "hw_pool_revision": target.revision,
         },
     }
+    if target.name != pool.name:
+        built["attributes"]["hw_comparison_for"] = pool.name
+    return built

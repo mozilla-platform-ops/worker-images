@@ -48,11 +48,31 @@ def _load_runner():
     return module
 
 
-def _task(task_id, state, name=None, worker=None):
+def _task(task_id, state, name=None, worker=None, target_pool=None):
     status = {"taskId": task_id, "state": state}
     if worker is not None:
         status["runs"] = [{"runId": 0, "workerId": worker}]
-    return {"status": status, "task": {"metadata": {"name": name or task_id}}}
+    task = {"metadata": {"name": name or task_id}}
+    if target_pool:
+        task["workerType"] = target_pool
+    return {"status": status, "task": task}
+
+
+class TestTrigger(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.mod = _load_runner()
+
+    def test_production_comparison_is_explicit_in_the_hook_payload(self):
+        payloads = []
+
+        class Hooks:
+            def triggerHook(_self, group, hook, payload):
+                payloads.append(payload)
+                return {"taskId": "decision"}
+
+        self.mod.trigger(Hooks(), "staging", ["speedometer"], 5, True)
+        self.assertEqual(payloads[0]["compare_production"], True)
 
 
 def _perfherder(
@@ -208,10 +228,13 @@ class TestScores(RunnerTestBase):
     """Reading the score out of the task, which is why this run needs no
     Treeherder route."""
 
-    def _run_with(self, blobs, states=None, workers=None, nodes=None):
+    def _run_with(
+        self, blobs, states=None, workers=None, nodes=None, target_pools=None
+    ):
         """`blobs` maps task id -> perfherder blob, or None for no artifact."""
         states = states or {}
         workers = workers or {}
+        target_pools = target_pools or {}
 
         class Queue:
             def getLatestArtifact(_self, task_id, name):
@@ -232,6 +255,7 @@ class TestScores(RunnerTestBase):
                         task_id,
                         states.get(task_id, "completed"),
                         worker=workers.get(task_id, "nuc13-024"),
+                        target_pool=target_pools.get(task_id),
                     )
                     for task_id in blobs
                 ],
@@ -239,6 +263,39 @@ class TestScores(RunnerTestBase):
         ]
         self.mod.collect_scores(Queue(), runs)
         return runs
+
+    def test_production_comparison_scores_are_not_mixed_with_staging(self):
+        runs = self._run_with(
+            {"staging": _perfherder(25.0), "production": _perfherder(24.0)},
+            target_pools={
+                "staging": "win11-64-24h2-hw-perf-debug",
+                "production": "win11-64-24h2-hw",
+            },
+        )
+        runs[0]["compare_production"] = True
+        runs[0]["stages"] = "win11-64-24h2-hw"
+
+        # Recollect after enabling comparison; _run_with collected in ordinary mode.
+        class Queue:
+            def getLatestArtifact(_self, task_id, _name):
+                return {
+                    "staging": _perfherder(25.0),
+                    "production": _perfherder(24.0),
+                }[task_id]
+
+        self.mod.collect_scores(Queue(), runs)
+        self.assertEqual(
+            self.mod.sample_values(
+                runs[0]["scores"]["firefox speedometer3"]["samples"]
+            ),
+            [25.0],
+        )
+        self.assertEqual(
+            self.mod.sample_values(
+                runs[0]["production_scores"]["firefox speedometer3"]["samples"]
+            ),
+            [24.0],
+        )
 
     def _values(self, runs, suite="firefox speedometer3"):
         return self.mod.sample_values(runs[0]["scores"][suite]["samples"])

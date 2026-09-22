@@ -15,6 +15,7 @@ _CRON_INPUT_ENV = {
     "hw_pools": "DEPLOY_HW_POOLS",
     "hw_tests": "DEPLOY_HW_TESTS",
     "hw_repeat": "DEPLOY_HW_REPEAT",
+    "hw_compare_production": "DEPLOY_HW_COMPARE_PRODUCTION",
 }
 
 
@@ -34,6 +35,9 @@ extend_parameters_schema(
         # How many times to run each selected task, for reading through the
         # noise of a single perf result.
         Required("hw_repeat"): Any(None, int),
+        # Explicit opt-in to copy the selected tasks onto each staging pool's
+        # production counterpart as well.
+        Required("hw_compare_production"): Any(None, bool),
     },
     defaults_fn=get_defaults,
 )

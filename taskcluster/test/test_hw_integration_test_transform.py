@@ -205,11 +205,20 @@ class GraphConfig(dict):
 class DummyConfig:
     kind = "hw-integration-test"
 
-    def __init__(self, repo_root, hw_pools, level="3", hw_tests=None, hw_repeat=None):
+    def __init__(
+        self,
+        repo_root,
+        hw_pools,
+        level="3",
+        hw_tests=None,
+        hw_repeat=None,
+        hw_compare_production=None,
+    ):
         self.params = {
             "hw_pools": hw_pools,
             "hw_tests": hw_tests,
             "hw_repeat": hw_repeat,
+            "hw_compare_production": hw_compare_production,
             "level": level,
         }
         self.graph_config = GraphConfig(
@@ -726,7 +735,13 @@ class TestTestFilterAndRepeat(HwPoolsTestBase):
         self.addCleanup(os.environ.pop, "TASK_ID", None)
         self.sources = _speedometer_sources()
 
-    def _run(self, hw_tests=None, hw_repeat=None, sources=None):
+    def _run(
+        self,
+        hw_tests=None,
+        hw_repeat=None,
+        sources=None,
+        hw_compare_production=None,
+    ):
         sources = self.sources if sources is None else sources
         self.mod._fetch_source_tasks = lambda index, provisioner: {
             "labels": {},
@@ -745,6 +760,7 @@ class TestTestFilterAndRepeat(HwPoolsTestBase):
             ["win11-64-24h2-hw-alpha"],
             hw_tests=hw_tests,
             hw_repeat=hw_repeat,
+            hw_compare_production=hw_compare_production,
         )
         return list(self.mod.replicate_onto_hw_pools(config, [task]))
 
@@ -818,6 +834,32 @@ class TestTestFilterAndRepeat(HwPoolsTestBase):
     def test_filter_and_repeat_multiply(self):
         out = self._run(hw_tests=["speedometer"], hw_repeat=4)
         self.assertEqual(len(out), 8)
+
+    def test_production_comparison_copies_the_same_runs_to_the_counterpart(self):
+        out = self._run(
+            hw_tests=["firefox-speedometer"],
+            hw_repeat=3,
+            hw_compare_production=True,
+        )
+        self.assertEqual(len(out), 6)
+        self.assertEqual(
+            [task["task"]["workerType"] for task in out],
+            ["win11-64-24h2-hw-alpha", "win11-64-24h2-hw"] * 3,
+        )
+        production = out[1::2]
+        self.assertTrue(
+            all(
+                task["attributes"]["hw_comparison_for"]
+                == "win11-64-24h2-hw-alpha"
+                for task in production
+            )
+        )
+        self.assertTrue(all(task["task"]["routes"] == [] for task in production))
+        for staging, counterpart in zip(out[::2], production):
+            self.assertEqual(staging["task"]["payload"], counterpart["task"]["payload"])
+            self.assertEqual(
+                staging["task"]["dependencies"], counterpart["task"]["dependencies"]
+            )
 
 
 class TestBlockedDependencies(HwPoolsTestBase):
