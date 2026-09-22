@@ -58,7 +58,7 @@ on:
         type: choice
         default: perfherder
         options:
-          # mozilla-central's own 14-day series for the production counterpart
+          # mozilla-central's own 7-day series for the production counterpart
           # platform: a spread, so a number can be called normal or outside the
           # envelope. Not paired -- the series spans revisions.
           - perfherder
@@ -155,8 +155,10 @@ jobs:
           REPEAT: ${{ inputs.repeat }}
           TIMEOUT_HOURS: ${{ inputs.timeout_hours }}
           NO_WAIT: ${{ inputs.no_wait }}
+          GITHUB_RUN_STARTED_AT: ${{ github.run_started_at }}
           TASKCLUSTER_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
           TASKCLUSTER_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           PYTHONUNBUFFERED: "1"
         run: |
           args=(--tests "$TESTS" --repeat "$REPEAT")

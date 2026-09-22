@@ -1656,7 +1656,7 @@ class TestProductionBaseline(unittest.TestCase):
     def _production(self, mean, stdev=0.44, n=40):
         return {
             "source": "perfherder",
-            "detail": "14d of mozilla-central",
+            "detail": "7d of mozilla-central",
             "n": n,
             "mean": mean,
             "median": mean,
@@ -1853,6 +1853,7 @@ class TestProductionBaseline(unittest.TestCase):
 
     def test_perfherder_is_the_default_mode(self):
         self.assertEqual(self.baseline.DEFAULT_BASELINE_MODE, "perfherder")
+        self.assertEqual(self.baseline.BASELINE_WINDOW_DAYS, 7)
         self.assertEqual(
             sorted(self.baseline.BASELINE_MODES), ["counterpart", "none", "perfherder"]
         )

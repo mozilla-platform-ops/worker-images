@@ -79,6 +79,7 @@ HW_POOLS_MODULE = (
 
 FAILURE_SUMMARY_MODULE = Path(__file__).resolve().parent / "hw_failure_summary.py"
 BASELINE_MODULE = Path(__file__).resolve().parent / "hw_baseline.py"
+SCORE_SUMMARY_MODULE = Path(__file__).resolve().parent / "hw_score_summary.py"
 
 
 def _load_by_path(name: str, path: Path):
@@ -93,6 +94,7 @@ def _load_by_path(name: str, path: Path):
 hw_pools = _load_by_path("hw_pools", HW_POOLS_MODULE)
 hw_failure_summary = _load_by_path("hw_failure_summary", FAILURE_SUMMARY_MODULE)
 hw_baseline = _load_by_path("hw_baseline", BASELINE_MODULE)
+hw_score_summary = _load_by_path("hw_score_summary", SCORE_SUMMARY_MODULE)
 
 
 def _escape_github_command_message(message: str) -> str:
@@ -1787,6 +1789,7 @@ def write_github_summary(
     drift: list[dict] | None = None,
     failure_summary: list[str] | None = None,
     inconclusive: list[tuple] | None = None,
+    score_comparison: list[str] | None = None,
 ) -> None:
     summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
     if not summary_file:
@@ -1853,6 +1856,7 @@ def write_github_summary(
     # The numbers come after the thing they are numbers about, and only the
     # headline: one row per pool and suite.
     lines += score_summary_lines(runs)
+    lines += score_comparison or []
 
     lines += deployment_summary_lines(runs)
 
@@ -1860,7 +1864,8 @@ def write_github_summary(
     # per-node breakdown, the idle-node accounting and the per-run replicates.
     lines += score_detail_lines(runs)
 
-    Path(summary_file).open("a").write("\n".join(lines))
+    with Path(summary_file).open("a") as summary:
+        summary.write("\n".join(lines))
 
 
 # --------------------------------------------------------------------------- #
@@ -2071,6 +2076,11 @@ def main() -> int:
     # the summary: the summary dies with the job if GitHub cancels it at 6h.
     collect_builds(queue, live)
     collect_baselines(queue, live, args.baseline)
+    score_comparison = (
+        hw_score_summary.build(live, summarize, warn)
+        if args.baseline == "perfherder"
+        else []
+    )
     for run in live:
         for build in run.get("builds") or []:
             notice(
@@ -2108,7 +2118,13 @@ def main() -> int:
         )
 
     write_github_summary(
-        runs, root_url, selection, drift, failure_summary, inconclusive
+        runs,
+        root_url,
+        selection,
+        drift,
+        failure_summary,
+        inconclusive,
+        score_comparison,
     )
     print_scores(runs)
 
