@@ -1,4 +1,4 @@
-# Selected by Windows alpha images that use C: task storage.
+# Selected by Windows Azure images that use C: task storage.
 Describe "C: task storage" {
     It "Configures task and cache paths on C:" {
         $config = Get-Content 'C:\worker-runner\runner.yml' -Raw | ConvertFrom-Yaml

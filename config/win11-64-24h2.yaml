@@ -7,15 +7,16 @@ image:
 sharedimage:
   gallery_name: "win11_64_24h2"
   image_name: "win11_64_24h2"
-  image_version: "1.3.8"
+  image_version: "1.3.9"
 azure:
+  build_location: eastus
   managed_image_resource_group_name: "default"
   managed_image_storage_account_type: "default"
 vm:
   puppet_version: "default"
   git_version: "default"
   openvox_version: "default"
-  size: Standard_F8s_v2
+  size: Standard_D8ads_v5
   tags:
     base_image: win116424h2azure
     worker_pool_id: win11-64-24h2
@@ -32,6 +33,7 @@ tests:
   - error_reporting.tests.ps1
   - suppress_dialog_boxes.tests.ps1
   - files_system_management.tests.ps1
+  - c_drive_task_storage.tests.ps1
   - firewall.tests.ps1
   - enable_ipv6.tests.ps1
   - ntp.tests.ps1
