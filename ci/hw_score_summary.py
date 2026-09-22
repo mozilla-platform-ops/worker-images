@@ -3,7 +3,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-"""Compare repeated staging and production scores, then ask Claude to explain."""
+"""Ask Claude to explain staging scores against their Perfherder baseline."""
 
 import json
 import os
@@ -11,12 +11,6 @@ import os
 MODEL = "claude-opus-5"
 MAX_TOKENS = 4000
 API_TIMEOUT_SECONDS = 180
-
-# ponytail: fixed Speedometer guardrails; make these workflow inputs only if
-# different hardware families prove they need different tolerances.
-CLOSE_PERCENT = 5.0
-MAX_CV_PERCENT = 5.0
-MIN_SAMPLES = 2
 
 SCHEMA = {
     "type": "object",
@@ -41,66 +35,52 @@ SCHEMA = {
 }
 
 SYSTEM = """\
-You explain a Firefox Speedometer comparison between a candidate staging pool \
-and its production hardware counterpart. The measurements and deterministic \
-status are already computed. Do not recalculate, override, or invent numbers. \
-Explain whether the scores are close, materially different, or inconclusive, \
-and mention noise, sample count, and whether staging is slower when relevant. \
-Be concise. A status of inconclusive must never be described as close."""
+You explain Firefox hardware performance scores from a candidate staging pool \
+against the computed Perfherder production baseline. The measurements, direction, \
+and deterministic status are already computed. Do not recalculate, override, or \
+invent numbers. Explain whether staging is consistent with production, faster, a \
+possible regression, or inconclusive. Mention sample count and production spread \
+when relevant. Be concise. Never describe an unavailable baseline as a pass."""
 
 
 def comparisons(runs: list[dict], summarize) -> list[dict]:
-    """Pair staging and production suites and classify their measured gap."""
-    found = []
+    """Flatten the runner's measured scores and attached baselines for Claude."""
+    rows = []
     for run in runs:
-        staging = run.get("scores") or {}
-        production = run.get("production_scores") or {}
-        for suite in sorted(staging.keys() | production.keys()):
-            ours, theirs = staging.get(suite), production.get(suite)
+        for suite, entry in sorted((run.get("scores") or {}).items()):
+            ours = summarize([sample["value"] for sample in entry["samples"]])
             row = {
                 "pool": run["pool"],
-                "production_pool": run.get("stages") or "-",
                 "suite": suite,
+                "staging": ours,
+                "lower_is_better": entry["lower_is_better"],
                 "status": "inconclusive",
             }
-            if not ours or not theirs:
-                row["reason"] = "missing staging or production scores"
-                found.append(row)
-                continue
-
-            ours_stats = summarize([sample["value"] for sample in ours["samples"]])
-            their_stats = summarize(
-                [sample["value"] for sample in theirs["samples"]]
-            )
-            mean = their_stats["mean"]
-            delta = 100 * (ours_stats["mean"] - mean) / mean if mean else None
-            row.update(
-                {
-                    "staging": ours_stats,
-                    "production": their_stats,
-                    "delta_percent": delta,
-                    "lower_is_better": ours["lower_is_better"],
-                    "staging_slower": (
-                        delta < 0 if not ours["lower_is_better"] else delta > 0
-                    )
-                    if delta is not None
-                    else None,
-                }
-            )
-            if ours.get("version") != theirs.get("version"):
-                row["reason"] = "browser versions differ"
-            elif min(ours_stats["n"], their_stats["n"]) < MIN_SAMPLES:
-                row["reason"] = f"fewer than {MIN_SAMPLES} samples"
-            elif max(ours_stats["cv"], their_stats["cv"]) > MAX_CV_PERCENT:
-                row["reason"] = f"run-to-run CV exceeds {MAX_CV_PERCENT:.0f}%"
-            elif delta is None:
-                row["reason"] = "production mean is zero"
-            elif abs(delta) <= CLOSE_PERCENT:
-                row["status"] = "close"
+            comparison = entry.get("baseline")
+            if comparison and comparison.get("comparable"):
+                row.update(
+                    {
+                        "production": comparison["baseline"],
+                        "delta_percent": comparison["percent"],
+                        "sigmas": comparison["sigmas"],
+                        "staging_slower": comparison["worse"],
+                        "status": (
+                            "possible regression"
+                            if comparison["flag"]
+                            else "within production spread"
+                            if comparison["worse"]
+                            else "faster than production"
+                        ),
+                    }
+                )
             else:
-                row["status"] = "different"
-            found.append(row)
-    return found
+                row["reason"] = (
+                    "Perfherder baseline has too little data or no spread"
+                    if comparison
+                    else "Perfherder baseline unavailable"
+                )
+            rows.append(row)
+    return rows
 
 
 def _ask(rows: list[dict], warn) -> dict | None:
@@ -137,7 +117,7 @@ def _ask(rows: list[dict], warn) -> dict | None:
         }
         return result
     except Exception as exc:  # noqa: BLE001 -- AI commentary is never fatal
-        warn(f"no score comparison summary: {type(exc).__name__}: {exc}")
+        warn(f"no Perfherder comparison summary: {type(exc).__name__}: {exc}")
         return None
 
 
@@ -145,43 +125,32 @@ def summary_lines(rows: list[dict], ai: dict | None = None) -> list[str]:
     if not rows:
         return []
     lines = [
-        "### Production comparison",
+        "### Perfherder comparison",
         "",
-        (
-            f"Close means the two means are within {CLOSE_PERCENT:.0f}%, with at "
-            f"least {MIN_SAMPLES} scores each and CV no higher than "
-            f"{MAX_CV_PERCENT:.0f}%."
-        ),
-        "",
-        "| Staging | Production | Suite | Runs | Means | Difference | CV | Result |",
-        "|---|---|---|:---:|---:|---:|---:|---|",
+        "| Pool | Suite | Runs | Staging | Production | Difference | Spread | Result |",
+        "|---|---|:---:|---:|---:|---:|---:|---|",
     ]
     for row in rows:
-        ours, theirs = row.get("staging"), row.get("production")
-        if not ours or not theirs:
-            runs = means = delta = cv = "-"
+        production = row.get("production")
+        direction = "↓" if row["lower_is_better"] else "↑"
+        if production:
+            baseline = f"{production['mean']:.2f} (n={production['n']})"
+            delta = f"{row['delta_percent']:+.1f}%"
+            spread = (
+                f"{row['sigmas']:.1f}σ" if row.get("sigmas") is not None else "-"
+            )
         else:
-            runs = f"{ours['n']} / {theirs['n']}"
-            means = f"{ours['mean']:.2f} / {theirs['mean']:.2f}"
-            delta = (
-                f"{row['delta_percent']:+.1f}%"
-                if row.get("delta_percent") is not None
-                else "-"
-            )
-            cv = f"{ours['cv']:.1f}% / {theirs['cv']:.1f}%"
-        mark = {"close": "✅ close", "different": "⚠️ different"}.get(
-            row["status"], "❔ inconclusive"
-        )
-        if row["status"] == "different":
-            mark += " — staging " + (
-                "slower" if row.get("staging_slower") else "faster"
-            )
+            baseline = delta = spread = "-"
+        mark = {
+            "possible regression": "⚠️ possible regression",
+            "within production spread": "✅ within production spread",
+            "faster than production": "✅ faster than production",
+        }.get(row["status"], "❔ inconclusive")
         reason = f" — {row['reason']}" if row.get("reason") else ""
-        direction = "↓" if row.get("lower_is_better") else "↑"
         lines.append(
-            f"| `{row['pool']}` | `{row['production_pool']}` | "
-            f"{row['suite']} {direction} | "
-            f"{runs} | {means} | {delta} | {cv} | {mark}{reason} |"
+            f"| `{row['pool']}` | {row['suite']} {direction} | "
+            f"{row['staging']['n']} | {row['staging']['mean']:.2f} | {baseline} | "
+            f"{delta} | {spread} | {mark}{reason} |"
         )
 
     if ai:

@@ -231,16 +231,13 @@ def compare(observed_mean: float, baseline: dict, lower_is_better: bool) -> dict
     stdev = baseline.get("stdev") or 0.0
     sigmas = abs(delta) / stdev if stdev else None
 
-    flag = bool(
-        worse
-        and sigmas is not None
-        and sigmas >= REGRESSION_SIGMAS
-        and baseline.get("n", 0) >= MIN_BASELINE_POINTS
-    )
+    comparable = bool(stdev and baseline.get("n", 0) >= MIN_BASELINE_POINTS)
+    flag = bool(worse and comparable and sigmas >= REGRESSION_SIGMAS)
     return {
         "percent": percent,
         "sigmas": sigmas,
         "worse": worse,
+        "comparable": comparable,
         "flag": flag,
         "baseline": baseline,
     }

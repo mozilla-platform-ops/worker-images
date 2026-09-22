@@ -27,51 +27,73 @@ def summarize(values):
     }
 
 
-def entry(values, version="156.0a1"):
+def baseline(flag=False, worse=True):
     return {
-        "version": version,
-        "lower_is_better": False,
-        "samples": [{"value": value} for value in values],
+        "percent": -10.0 if worse else 8.0,
+        "sigmas": 4.0,
+        "worse": worse,
+        "comparable": True,
+        "flag": flag,
+        "baseline": {
+            "source": "perfherder",
+            "detail": "14d of mozilla-central",
+            "n": 40,
+            "mean": 25.0,
+            "median": 25.0,
+            "min": 24.0,
+            "max": 26.0,
+            "stdev": 0.5,
+        },
     }
 
 
-class TestProductionScoreComparison(unittest.TestCase):
-    def _rows(self, staging, production):
-        runs = [
-            {
-                "pool": "win11-64-24h2-hw-alpha",
-                "stages": "win11-64-24h2-hw",
-                "scores": {"firefox speedometer3": entry(staging)},
-                "production_scores": {"firefox speedometer3": entry(production)},
-            }
-        ]
-        return score_summary.comparisons(runs, summarize)
+def runs(comparison):
+    entry = {
+        "lower_is_better": False,
+        "samples": [{"value": 22.5}, {"value": 22.5}],
+    }
+    if comparison:
+        entry["baseline"] = comparison
+    return [
+        {
+            "pool": "win11-64-24h2-hw-alpha",
+            "scores": {"firefox speedometer3": entry},
+        }
+    ]
 
-    def test_close_repeated_scores_are_close(self):
-        row = self._rows([25.0, 25.1, 24.9], [24.5, 24.6, 24.4])[0]
-        self.assertEqual(row["status"], "close")
-        self.assertAlmostEqual(row["delta_percent"], 100 * 0.5 / 24.5)
 
-    def test_material_gap_is_different(self):
-        row = self._rows([21.0, 21.1, 20.9], [25.0, 25.1, 24.9])[0]
-        self.assertEqual(row["status"], "different")
+class TestPerfherderScoreSummary(unittest.TestCase):
+    def test_flagged_slowdown_is_a_possible_regression(self):
+        row = score_summary.comparisons(runs(baseline(flag=True)), summarize)[0]
+        self.assertEqual(row["status"], "possible regression")
         self.assertTrue(row["staging_slower"])
 
-    def test_one_sample_is_inconclusive(self):
-        row = self._rows([25.0], [25.0])[0]
-        self.assertEqual(row["status"], "inconclusive")
-        self.assertIn("fewer than", row["reason"])
+    def test_unflagged_slowdown_is_within_production_spread(self):
+        row = score_summary.comparisons(runs(baseline()), summarize)[0]
+        self.assertEqual(row["status"], "within production spread")
 
-    def test_noisy_scores_are_inconclusive(self):
-        row = self._rows([20.0, 30.0], [24.9, 25.1])[0]
-        self.assertEqual(row["status"], "inconclusive")
-        self.assertIn("CV", row["reason"])
+    def test_faster_score_is_named_as_faster(self):
+        row = score_summary.comparisons(runs(baseline(worse=False)), summarize)[0]
+        self.assertEqual(row["status"], "faster than production")
 
-    def test_raw_table_explains_a_material_slowdown_without_ai(self):
-        row = self._rows([21.0, 21.1, 20.9], [25.0, 25.1, 24.9])[0]
+    def test_missing_baseline_is_inconclusive(self):
+        row = score_summary.comparisons(runs(None), summarize)[0]
+        self.assertEqual(row["status"], "inconclusive")
+        self.assertIn("unavailable", row["reason"])
+
+    def test_thin_baseline_is_inconclusive(self):
+        comparison = baseline()
+        comparison["comparable"] = False
+        row = score_summary.comparisons(runs(comparison), summarize)[0]
+        self.assertEqual(row["status"], "inconclusive")
+        self.assertIn("too little data", row["reason"])
+
+    def test_raw_table_is_authoritative_without_ai(self):
+        row = score_summary.comparisons(runs(baseline(flag=True)), summarize)[0]
         rendered = "\n".join(score_summary.summary_lines([row]))
         self.assertIn("firefox speedometer3 ↑", rendered)
-        self.assertIn("staging slower", rendered)
+        self.assertIn("⚠️ possible regression", rendered)
+        self.assertIn("25.00 (n=40)", rendered)
 
 
 if __name__ == "__main__":

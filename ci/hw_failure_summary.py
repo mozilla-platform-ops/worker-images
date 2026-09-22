@@ -240,7 +240,7 @@ def failing_tasks(runs: list[dict], replicated) -> list[dict]:
             runs_ = status.get("runs") or []
             failing.append(
                 {
-                    "pool": task.get("task", {}).get("workerType") or run["pool"],
+                    "pool": run["pool"],
                     "task_id": status.get("taskId"),
                     "name": task.get("task", {}).get("metadata", {}).get("name", "?"),
                     "state": status.get("state"),

@@ -83,9 +83,6 @@ on:
           # The single production task this run's tasks were copied from: same
           # build, same revision, same day, but one node and no error bar.
           - counterpart
-          # Repeat the same source tasks on the mapped production pool and
-          # compare the two distributions directly.
-          - production-runs
           - none
       timeout_hours:
         description: "Hours to wait for results, 1-6 (waiting stops at 5.75h)"
@@ -191,15 +188,12 @@ jobs:
           GITHUB_RUN_STARTED_AT: ${{ github.run_started_at }}
           TASKCLUSTER_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
           TASKCLUSTER_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}
-          # Used for failure analysis and production-run score comparisons.
+          # Used for failure analysis and Perfherder score comparisons.
           # Absent, the deterministic summary is still written.
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           PYTHONUNBUFFERED: "1"
         run: |
-          args=(--repeat "$REPEAT" --timeout "$(( TIMEOUT_HOURS * 3600 ))")
-          if [ "$BASELINE" = "production-runs" ]; then
-            args+=(--compare-production --baseline none)
-          else
-            args+=(--baseline "$BASELINE")
-          fi
-          uv run ci/run-hw-os-integration.py "$POOLS" "${args[@]}"
+          uv run ci/run-hw-os-integration.py "$POOLS" \
+            --repeat "$REPEAT" \
+            --baseline "$BASELINE" \
+            --timeout "$(( TIMEOUT_HOURS * 3600 ))"

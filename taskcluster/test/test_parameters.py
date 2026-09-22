@@ -50,11 +50,7 @@ class TestDecisionParameters(unittest.TestCase):
         cls.mod, cls.captured = _load_parameters_module()
 
     def setUp(self):
-        for name in (
-            "DEPLOY_IMAGES",
-            "DEPLOY_HW_POOLS",
-            "DEPLOY_HW_COMPARE_PRODUCTION",
-        ):
+        for name in ("DEPLOY_IMAGES", "DEPLOY_HW_POOLS"):
             self.addCleanup(os.environ.pop, name, None)
             os.environ.pop(name, None)
 
@@ -97,10 +93,6 @@ class TestDecisionParameters(unittest.TestCase):
         parameters = self._run()
         self.assertIsNone(parameters["images"])
         self.assertIsNone(parameters["hw_pools"])
-
-    def test_production_comparison_input_is_boolean(self):
-        os.environ["DEPLOY_HW_COMPARE_PRODUCTION"] = "true"
-        self.assertIs(self._run()["hw_compare_production"], True)
 
 
 if __name__ == "__main__":
