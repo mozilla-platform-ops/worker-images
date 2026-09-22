@@ -55,6 +55,8 @@ foreach ($short in $target_shorts) {
     $fqdn = "$short.$domain_suffix"
     Write-Host "--- $fqdn ---"
     try {
+        # SECURITY: redeployment regenerates NUC host keys, so persisted known_hosts entries
+        # become stale. The upstream VPN/VLAN is the trust boundary; this bypass is intentional.
         & ssh -o ConnectTimeout=15 -o UserKnownHostsFile=NUL -o StrictHostKeyChecking=no `
             "$ssh_user@$fqdn" "powershell -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command $cleanup"
         if ($LASTEXITCODE -ne 0) {

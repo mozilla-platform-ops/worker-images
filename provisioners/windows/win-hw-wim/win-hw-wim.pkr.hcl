@@ -42,10 +42,9 @@ source "hyperv-vmcx" "nuc" {
 
   # WinRM — the HTTP listener + static NAT IP are set up at first logon by
   # scripts/unattend/set-bake-network.ps1 (dropped in by prepare-base-vhdx.ps1).
-  # Use NTLM (message-encrypted), NOT Basic-over-HTTP: the NAT link is classified
-  # a 'Public' network, and WinRM refuses to enable AllowUnencrypted there (the
-  # firewall-exception guard blocks it), so Basic/plaintext auth can't be turned
-  # on. NTLM needs no AllowUnencrypted and works with the local build account.
+  # Use NTLM (message-encrypted), never Basic or unencrypted WinRM. The build-only
+  # listener is restricted to the Hyper-V host on the isolated build VLAN/NAT and
+  # is removed before WIM capture by sysprep-generalize.ps1.
   communicator   = "winrm"
   winrm_username = var.winrm_username
   winrm_password = var.winrm_password
@@ -86,6 +85,12 @@ build {
   provisioner "file" {
     source      = "${path.root}/scripts/"
     destination = "C:/wim-bake/"
+  }
+
+  # Copy SSH policy from this checkout so the bake cannot drift to mutable GitHub main.
+  provisioner "file" {
+    source      = "${path.root}/../MDC1Windows/ssh/"
+    destination = "C:/wim-bake/ssh/"
   }
 
   # ---- 3. Bake: install puppet/git, clone ronin, AppX (provisioned) removal, puppet apply of the BAKE role ----

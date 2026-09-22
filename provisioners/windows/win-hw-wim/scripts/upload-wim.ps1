@@ -39,12 +39,13 @@ if (-not $BlobName) { $BlobName = Split-Path -Leaf $Wim }
 # reuse the az CLI identity (the build VM's managed identity, an SP, or a user).
 if (-not $env:AZCOPY_AUTO_LOGIN_TYPE) { $env:AZCOPY_AUTO_LOGIN_TYPE = 'AZCLI' }
 $base = "https://$Account.blob.core.windows.net/$Container"
-# Upload the WIM and its .sha256 sidecar under the same blob name.
+# Generate the sidecar from the exact bytes being published; never upload a stale hash.
+$hash = (Get-FileHash -LiteralPath $Wim -Algorithm SHA256).Hash.ToLowerInvariant()
+[System.IO.File]::WriteAllText("$Wim.sha256", "$hash  $(Split-Path -Leaf $Wim)", [System.Text.Encoding]::ASCII)
+
 foreach ($pair in @(@{ Src = $Wim; Dest = $BlobName }, @{ Src = "$Wim.sha256"; Dest = "$BlobName.sha256" })) {
-    if (Test-Path -LiteralPath $pair.Src) {
-        Write-Host "== Uploading $($pair.Src) -> $base/$($pair.Dest) =="
-        & azcopy copy "$($pair.Src)" "$base/$($pair.Dest)" --overwrite=ifSourceNewer
-        if ($LASTEXITCODE -ne 0) { throw "azcopy upload failed rc=$LASTEXITCODE ($($pair.Dest))" }
-    }
+    Write-Host "== Uploading $($pair.Src) -> $base/$($pair.Dest) =="
+    & azcopy copy "$($pair.Src)" "$base/$($pair.Dest)" --overwrite=true
+    if ($LASTEXITCODE -ne 0) { throw "azcopy upload failed rc=$LASTEXITCODE ($($pair.Dest))" }
 }
 Write-Host "== Done. =="

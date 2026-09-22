@@ -4,6 +4,9 @@
 LogLevel VERBOSE
 PubkeyAuthentication yes
 AuthorizedKeysFile .ssh/authorized_keys
-PermitRootLogin yes
+# SECURITY: SSH is reachable only through the upstream VPN/VLAN, and only local
+# administrators may use it. This prevents task users from planting persistent keys.
+AllowGroups administrators
+PermitRootLogin no
 PasswordAuthentication no
 Subsystem sftp sftp-server.exe -f AUTHPRIV -l INFO

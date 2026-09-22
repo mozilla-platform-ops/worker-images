@@ -66,7 +66,7 @@ variable "ronin_branch" {
 variable "ronin_hash" {
   type        = string
   default     = ""
-  description = "Optional pinned commit to checkout after clone. Empty = branch HEAD."
+  description = "Pinned 7- to 40-character ronin_puppet commit ID; bake-bootstrap resolves it uniquely and verifies the full SHA."
 }
 
 variable "bake_role" {

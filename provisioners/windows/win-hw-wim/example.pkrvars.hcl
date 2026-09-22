@@ -16,7 +16,7 @@ memory_mb = 8192
 ronin_org    = "mozilla-platform-ops"
 ronin_repo   = "ronin_puppet"
 ronin_branch = "wim-bake-role"
-ronin_hash   = "" # optional pinned commit
+ronin_hash   = "1234567" # replace with a pinned 7- to 40-character commit ID
 bake_role    = "win116424h2hwbake"
 
 # Pinned to worker-images config/windows_production_defaults.yaml (source of truth).

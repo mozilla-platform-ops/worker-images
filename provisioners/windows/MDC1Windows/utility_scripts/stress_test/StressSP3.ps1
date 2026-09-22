@@ -98,6 +98,8 @@ function Invoke-SSH {
           [int]$TimeoutSec = 600, [string]$StdinText = "")
     $target = if ($NodeName -match '@') { $NodeName } else { "$ssh_user@$NodeName" }
     $psi = [System.Diagnostics.ProcessStartInfo]::new('ssh')
+    # SECURITY: redeployment regenerates NUC host keys, so persisted known_hosts entries
+    # become stale. The upstream VPN/VLAN is the trust boundary; this bypass is intentional.
     $psi.Arguments              = "-o ConnectTimeout=15 -o UserKnownHostsFile=NUL -o StrictHostKeyChecking=no $target $Command"
     $psi.UseShellExecute        = $false
     $psi.RedirectStandardOutput = $true
@@ -134,6 +136,8 @@ function Invoke-SSHPS {
     Write-Host ("[$NodeName] payload={0}B  remote={1}  user={2}" -f $PsCommand.Length, $remoteName, $ssh_user)
 
     try {
+        # SECURITY: redeployment regenerates NUC host keys, so persisted known_hosts entries
+        # become stale. The upstream VPN/VLAN is the trust boundary; this bypass is intentional.
         $scpArgs = "-O -o ConnectTimeout=15 -o UserKnownHostsFile=NUL -o StrictHostKeyChecking=no `"$localTemp`" `"${scpTarget}:$remoteName`""
         $psi = [System.Diagnostics.ProcessStartInfo]::new('scp')
         $psi.Arguments              = $scpArgs
@@ -884,6 +888,8 @@ function Invoke-Parallel {
             param([string]$NodeName, [string]$Command, [int]$TimeoutSec = 600, [string]$StdinText = "")
             $target = if ($NodeName -match '@') { $NodeName } else { "$SshUser@$NodeName" }
             $psi = [System.Diagnostics.ProcessStartInfo]::new('ssh')
+            # SECURITY: redeployment regenerates NUC host keys, so persisted known_hosts entries
+            # become stale. The upstream VPN/VLAN is the trust boundary; this bypass is intentional.
             $psi.Arguments              = "-o ConnectTimeout=15 -o UserKnownHostsFile=NUL -o StrictHostKeyChecking=no $target $Command"
             $psi.UseShellExecute        = $false
             $psi.RedirectStandardOutput = $true
@@ -915,6 +921,8 @@ function Invoke-Parallel {
             Log ("[$NodeName] payload={0}B  remote={1}  user={2}" -f $PsCommand.Length, $remoteName, $SshUser)
 
             try {
+                # SECURITY: redeployment regenerates NUC host keys, so persisted known_hosts entries
+                # become stale. The upstream VPN/VLAN is the trust boundary; this bypass is intentional.
                 $scpArgs = "-O -o ConnectTimeout=15 -o UserKnownHostsFile=NUL -o StrictHostKeyChecking=no `"$localTemp`" `"${scpTarget}:$remoteName`""
                 $psi = [System.Diagnostics.ProcessStartInfo]::new('scp')
                 $psi.Arguments              = $scpArgs

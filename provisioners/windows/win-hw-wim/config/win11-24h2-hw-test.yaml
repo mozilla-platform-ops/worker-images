@@ -41,7 +41,7 @@ ronin:
   org: default
   repo: default
   branch: wim-bake-role         # bake role branch
-  hash: ""                      # testing: track branch HEAD (no pin) so iterations don't need a bump
+  hash: "bc33d1c"               # pinned branch HEAD; bump explicitly for each test iteration
   bake_role: win116424h2hwbake
 
 vm:

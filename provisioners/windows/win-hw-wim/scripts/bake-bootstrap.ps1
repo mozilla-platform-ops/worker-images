@@ -32,6 +32,7 @@ $hash     = $env:RONIN_HASH
 $role     = if ($env:BAKE_ROLE) { $env:BAKE_ROLE } else { 'win116424h2hwbake' }
 $log      = 'C:\bake\logs'
 $roninDir = 'C:\ronin'
+if ($hash -notmatch '^[0-9a-fA-F]{7,40}$') { throw 'RONIN_HASH must be a 7- to 40-character hexadecimal commit ID.' }
 New-Item -ItemType Directory -Path $log -Force | Out-Null
 Start-Transcript -Path (Join-Path $log 'bake-bootstrap.log') -Append | Out-Null
 
@@ -106,11 +107,34 @@ if (-not (Get-Command git    -ErrorAction SilentlyContinue)) { throw 'git not on
 # --- 3. Clone ronin at the pinned branch/hash ---
 Step "Cloning $org/$repo@$branch"
 if (Test-Path $roninDir) { Remove-Item $roninDir -Recurse -Force }
-& git clone --single-branch --branch $branch "https://github.com/$org/$repo.git" $roninDir
+& git clone --no-checkout --single-branch --branch $branch "https://github.com/$org/$repo.git" $roninDir
 if ($LASTEXITCODE -ne 0) { throw "git clone failed rc=$LASTEXITCODE" }
-if ($hash) {
-  Push-Location $roninDir; & git checkout $hash; if ($LASTEXITCODE -ne 0) { Pop-Location; throw "checkout $hash failed" }; Pop-Location
+Push-Location $roninDir
+try {
+  $resolvedHash = "$(git rev-parse --verify "${hash}^{commit}")".Trim().ToLowerInvariant()
+  $resolveExit = $LASTEXITCODE
+  if (($resolveExit -ne 0) -or ($resolvedHash -notmatch '^[0-9a-f]{40}$')) {
+    # Preserve short YAML pins even when a historical commit is no longer reachable
+    # from its branch: resolve the prefix, fetch that exact object, and never use HEAD.
+    $headers = @{ Accept = 'application/vnd.github+json'; 'X-GitHub-Api-Version' = '2022-11-28' }
+    if ($env:CUSTOM_WIN_GITHUB_PAT) { $headers.Authorization = "Bearer $env:CUSTOM_WIN_GITHUB_PAT" }
+    $commit = Invoke-RestMethod -Uri "https://api.github.com/repos/$org/$repo/commits/$hash" -Headers $headers
+    $resolvedHash = "$($commit.sha)".Trim().ToLowerInvariant()
+    if (($resolvedHash -notmatch '^[0-9a-f]{40}$') -or
+        (-not $resolvedHash.StartsWith($hash, [System.StringComparison]::OrdinalIgnoreCase))) {
+      throw "GitHub did not resolve ronin commit prefix $hash uniquely"
+    }
+    & git fetch --no-tags origin $resolvedHash
+    if ($LASTEXITCODE -ne 0) { throw "fetch $resolvedHash failed rc=$LASTEXITCODE" }
+  }
+  & git checkout --detach $resolvedHash
+  if ($LASTEXITCODE -ne 0) { throw "checkout $resolvedHash failed rc=$LASTEXITCODE" }
+  $actualHash = "$(git rev-parse HEAD)".Trim().ToLowerInvariant()
+  if (($LASTEXITCODE -ne 0) -or ($actualHash -ne $resolvedHash)) {
+    throw "ronin checkout verification failed: expected $resolvedHash, got $actualHash"
+  }
 }
+finally { Pop-Location }
 & git config --global --add safe.directory $roninDir
 
 # --- 4. Seed BAKE registry identity (generic, no pool/worker secrets) ---
@@ -256,16 +280,16 @@ if ($rc -eq 0 -or $rc -eq 2) {
   # first-boot bootstrap stalls. Assets come from the same source Get-Bootstrap uses;
   # sysprep-generalize.ps1 removes ssh_host_* so host keys regenerate per node.
   Step 'Baking OpenSSH server + audit key'
-  $sshAssets = 'https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/main/provisioners/windows/MDC1Windows/ssh'
+  $sshAssets = 'C:\wim-bake\ssh'
   $sshMsi = Join-Path $dlDir 'OpenSSH-Win64.msi'
   Get-PrereqFile -Urls @('https://github.com/PowerShell/Win32-OpenSSH/releases/download/v9.8.3.0p2-Preview/OpenSSH-Win64-v9.8.3.0.msi') -OutFile $sshMsi
   $s = Start-Process msiexec.exe -ArgumentList "/i `"$sshMsi`" /quiet /norestart ADDLOCAL=Server" -Wait -PassThru
   if ($s.ExitCode -ne 0 -and $s.ExitCode -ne 3010) { throw "OpenSSH MSI install failed rc=$($s.ExitCode)" }
   New-Item -ItemType Directory -Path 'C:\ProgramData\ssh' -Force | Out-Null
-  Get-PrereqFile -Urls @("$sshAssets/sshd_config") -OutFile 'C:\ProgramData\ssh\sshd_config'
+  Copy-Item (Join-Path $sshAssets 'sshd_config') 'C:\ProgramData\ssh\sshd_config' -Force
   $adminSsh = 'C:\Users\Administrator\.ssh'
   New-Item -ItemType Directory -Path $adminSsh -Force | Out-Null
-  Get-PrereqFile -Urls @("$sshAssets/authorized_keys") -OutFile (Join-Path $adminSsh 'authorized_keys')
+  Copy-Item (Join-Path $sshAssets 'authorized_keys') (Join-Path $adminSsh 'authorized_keys') -Force
 
   # Also bake the audit key as an ADMIN-GROUP key. Win32-OpenSSH treats members of the
   # local Administrators group specially: with the "Match Group administrators" block
@@ -287,6 +311,8 @@ if ($rc -eq 0 -or $rc -eq 2) {
   }
 
   if (-not (Get-NetFirewallRule -Name 'AllowSSH' -ErrorAction SilentlyContinue)) {
+    # SECURITY: port 22 is reachable only through the upstream VPN/firewall;
+    # Profile Any is required because these workgroup NUCs may classify as Public.
     New-NetFirewallRule -Name 'AllowSSH' -DisplayName 'Allow SSH' -Profile Any -Direction Inbound -Action Allow -Protocol TCP -LocalPort 22 | Out-Null
   }
   Set-Service -Name sshd -StartupType Automatic

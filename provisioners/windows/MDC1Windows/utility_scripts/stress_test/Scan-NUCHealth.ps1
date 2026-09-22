@@ -216,6 +216,8 @@ $rsScript = {
     Set-Content -Path $localTemp -Value $Payload -Encoding UTF8
 
     try {
+        # SECURITY: redeployment regenerates NUC host keys, so persisted known_hosts entries
+        # become stale. The upstream VPN/VLAN is the trust boundary for SSH/SCP below.
         $scpArgs = "-O -o ConnectTimeout=10 -o UserKnownHostsFile=NUL -o StrictHostKeyChecking=no `"$localTemp`" `"${User}@${Fqdn}:$remoteName`""
         $psi = [System.Diagnostics.ProcessStartInfo]::new('scp')
         $psi.Arguments              = $scpArgs
@@ -243,6 +245,8 @@ $rsScript = {
         # CleanupSP3.ps1 covers stress_payload_*.ps1 and a similar sweep can clean
         # these scan files later if needed.
         $remoteCmd = "powershell -NoLogo -NonInteractive -NoProfile -ExecutionPolicy Bypass -File C:\Users\Administrator\$remoteName"
+        # SECURITY: redeployment regenerates NUC host keys, so persisted known_hosts entries
+        # become stale. The upstream VPN/VLAN is the trust boundary; this bypass is intentional.
         $sshArgs = "-o ConnectTimeout=10 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o UserKnownHostsFile=NUL -o StrictHostKeyChecking=no ${User}@${Fqdn} $remoteCmd"
         $psi2 = [System.Diagnostics.ProcessStartInfo]::new('ssh')
         $psi2.Arguments              = $sshArgs

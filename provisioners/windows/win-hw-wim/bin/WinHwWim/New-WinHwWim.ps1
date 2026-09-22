@@ -176,6 +176,9 @@ $wimStages = ($Stages -contains 'prep') -or ($Stages -contains 'build')
 if ($wimStages -and -not $baseWim) { throw "config/$Image.yaml: base.wim is required." }
 if ($wimStages -and -not $edition) { throw "config/$Image.yaml: base.edition is required (the WIM edition name; empty would silently default to index 1)." }
 if (($Stages -contains 'build') -and -not $bakeRole) { throw "config/$Image.yaml: ronin.bake_role is required." }
+if (($Stages -contains 'build') -and $roninHash -notmatch '^[0-9a-fA-F]{7,40}$') {
+    throw "config/$Image.yaml: ronin.hash must be a 7- to 40-character hexadecimal commit ID."
+}
 if ($drvInject -and $drvCabUrls.Count -eq 0) { throw "config/$Image.yaml: drivers.inject is true but drivers.cabs is empty." }
 if (($Stages -contains 'iso') -and -not $baseIso) { throw "config/$Image.yaml: base.iso is required for the iso stage." }
 # Provisioning is EITHER ronin (bake_role) OR scripts, not both.

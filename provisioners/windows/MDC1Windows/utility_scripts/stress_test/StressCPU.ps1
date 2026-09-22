@@ -93,6 +93,8 @@ function Invoke-SSH {
     param([Parameter(Mandatory)][string]$NodeName, [Parameter(Mandatory)][string]$Command, [int]$TimeoutSec = 300)
     $target = if ($NodeName -match '@') { $NodeName } else { "$ssh_user@$NodeName" }
     $psi = [System.Diagnostics.ProcessStartInfo]::new('ssh')
+    # SECURITY: redeployment regenerates NUC host keys, so persisted known_hosts entries
+    # become stale. The upstream VPN/VLAN is the trust boundary; this bypass is intentional.
     $psi.Arguments              = "-o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o UserKnownHostsFile=NUL -o StrictHostKeyChecking=no $target $Command"
     $psi.UseShellExecute        = $false
     $psi.RedirectStandardOutput = $true
@@ -470,6 +472,8 @@ function Invoke-Parallel {
             param([string]$NodeName,[string]$Command,[int]$TimeoutSec=300)
             $target = if ($NodeName -match '@') { $NodeName } else { "$SshUser@$NodeName" }
             $psi = [System.Diagnostics.ProcessStartInfo]::new('ssh')
+            # SECURITY: redeployment regenerates NUC host keys, so persisted known_hosts entries
+            # become stale. The upstream VPN/VLAN is the trust boundary; this bypass is intentional.
             $psi.Arguments              = "-o ConnectTimeout=15 -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o UserKnownHostsFile=NUL -o StrictHostKeyChecking=no $target $Command"
             $psi.UseShellExecute        = $false
             $psi.RedirectStandardOutput = $true

@@ -9,9 +9,55 @@ param(
     [string] $puppet_version,
     [string] $git_version,
     [string] $openvox_version,
+    [string] $worker_images_revision,
     [string] $image_provisioner = 'MDC1Windows'
 )
 
+if ([string]::IsNullOrWhiteSpace($worker_images_revision)) {
+    $worker_images_revision = (Get-ItemProperty -Path 'HKLM:\SOFTWARE\Mozilla\ronin_puppet' -Name worker_images_revision -ErrorAction SilentlyContinue).worker_images_revision
+}
+if ($worker_images_revision -and $worker_images_revision -notmatch '^[0-9a-fA-F]{40}$') {
+    throw 'bootstrap received an invalid worker-images revision.'
+}
+
+function Protect-PrivilegedDirectory {
+    param([Parameter(Mandatory)][string] $Path)
+
+    $directorySddl = 'O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)'
+    $fileSddl = 'O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)'
+    $rootAcl = [System.Security.AccessControl.DirectorySecurity]::new()
+    $rootAcl.SetSecurityDescriptorSddlForm($directorySddl)
+    New-Item -ItemType Directory -Path $Path -Force | Out-Null
+    Set-Acl -LiteralPath $Path -AclObject $rootAcl
+
+    Get-ChildItem -LiteralPath $Path -Recurse -Force | ForEach-Object {
+        $acl = if ($_.PSIsContainer) {
+            [System.Security.AccessControl.DirectorySecurity]::new()
+        } else {
+            [System.Security.AccessControl.FileSecurity]::new()
+        }
+        $acl.SetSecurityDescriptorSddlForm($(if ($_.PSIsContainer) { $directorySddl } else { $fileSddl }))
+        Set-Acl -LiteralPath $_.FullName -AclObject $acl
+    }
+
+    $access = [System.Security.AccessControl.AccessControlSections]::Access
+    if ((Get-Acl -LiteralPath $Path).GetSecurityDescriptorSddlForm($access) -ne
+        $rootAcl.GetSecurityDescriptorSddlForm($access)) {
+        throw "Failed to restrict $Path to SYSTEM and Administrators."
+    }
+}
+
+# SECURITY: these paths contain provisioning secrets or scripts executed by SYSTEM.
+# Reapply exact ACLs for existing images as well as newly deployed ones.
+Protect-PrivilegedDirectory -Path "$env:systemdrive\bootstrap"
+if (Test-Path -LiteralPath "$env:systemdrive\deploy") {
+    Protect-PrivilegedDirectory -Path "$env:systemdrive\deploy"
+}
+
+# SECURITY: executable prerequisites are normally served from the RelOps-owned Azure Blob
+# account, where write access is restricted to approved identities. HTTPS and Azure RBAC are
+# the integrity trust boundary; a hash sidecar in that same account would not protect against
+# a compromised authorized writer. Explicit GitHub fallback URLs are a separate trust source.
 # Copied from https://github.com/actions/runner-images
 function Invoke-DownloadWithRetry {
     <#
@@ -329,8 +375,8 @@ function Set-SSH {
         ## Install the server component
         $install = Start-Process -FilePath msiexec.exe -ArgumentList "/i $win32_openssh /quiet /norestart ADDLOCAL=Server" -Wait -PassThru -NoNewWindow
         Write-host "win32_openssh install exit code: $($install.ExitCode)"
-        Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/main/provisioners/windows/MDC1Windows/ssh/authorized_keys" -Path $authorized_keys
-        Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/main/provisioners/windows/MDC1Windows/ssh/sshd_config" -Path "C:\programdata\ssh\sshd_config"
+        Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$worker_images_revision/provisioners/windows/MDC1Windows/ssh/authorized_keys" -Path $authorized_keys
+        Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$worker_images_revision/provisioners/windows/MDC1Windows/ssh/sshd_config" -Path "C:\programdata\ssh\sshd_config"
         $sshdService = Get-Service -Name ssh* -ErrorAction SilentlyContinue
         foreach ($s in $sshdService) {
             Write-host "sshdService status: $($s.status)"
@@ -339,6 +385,8 @@ function Set-SSH {
         ## Refresh env variable for ssh to work
         [Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", [System.EnvironmentVariableTarget]::Machine) + ';' + ${Env:ProgramFiles} + '\OpenSSH', [System.EnvironmentVariableTarget]::Machine)
         $sshfw = @{
+            # SECURITY: port 22 is reachable only through the upstream VPN/firewall;
+            # Profile Any is required because these workgroup NUCs may classify as Public.
             Name        = "AllowSSH"
             DisplayName = "Allow SSH"
             Description = "Allow SSH traffic on port 22"
@@ -743,6 +791,10 @@ function Set-Ronin-Registry {
             if ([string]::IsNullOrWhiteSpace($image_provisioner)) { $image_provisioner = $r.image_provisioner }
             if ([string]::IsNullOrWhiteSpace($secret_date))       { $secret_date       = $r.secret_date }
             if ([string]::IsNullOrWhiteSpace($hash))              { $hash              = $r.GITHASH }
+            if ([string]::IsNullOrWhiteSpace($worker_images_revision)) { $worker_images_revision = $r.worker_images_revision }
+        }
+        if ($hash -notmatch '^[0-9a-fA-F]{7,40}$') {
+            throw 'ronin_puppet GITHASH must be a 7- to 40-character hexadecimal commit ID.'
         }
         Write-Log -Message ('{0} :: Creating HKLM:\SOFTWARE\Mozilla\ronin_puppet' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
         New-Item -Path HKLM:\SOFTWARE -Name Mozilla -force
@@ -760,6 +812,7 @@ function Set-Ronin-Registry {
         New-ItemProperty -Path "HKLM:\SOFTWARE\Mozilla\ronin_puppet" -Name 'Branch' -Value $src_Branch -PropertyType String -force
         New-ItemProperty -Path "HKLM:\SOFTWARE\Mozilla\ronin_puppet" -Name 'GITHASH' -Value $hash -PropertyType String -force
         New-ItemProperty -Path "HKLM:\SOFTWARE\Mozilla\ronin_puppet" -Name 'secret_date' -Value $secret_date -PropertyType String -force
+        New-ItemProperty -Path "HKLM:\SOFTWARE\Mozilla\ronin_puppet" -Name 'worker_images_revision' -Value $worker_images_revision -PropertyType String -force
     }
     end {
         Write-Log -message ('{0} :: end - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
@@ -778,6 +831,9 @@ function Get-Ronin {
         $src_Repository = (Get-ItemProperty -path "HKLM:\SOFTWARE\Mozilla\ronin_puppet").Repository
         $role = (Get-ItemProperty -path "HKLM:\SOFTWARE\Mozilla\ronin_puppet").role
         $hash = (Get-ItemProperty -path "HKLM:\SOFTWARE\Mozilla\ronin_puppet").GITHASH
+        if ($hash -notmatch '^[0-9a-fA-F]{7,40}$') {
+            throw 'Refusing to run Puppet without a valid ronin_puppet commit ID.'
+        }
 
         $ronin_repo = "$env:systemdrive\ronin"
 
@@ -785,37 +841,44 @@ function Get-Ronin {
             Remove-Item $ronin_repo  -Force -Recurse
         }
 
-        if (-Not (Test-Path "$env:systemdrive\ronin\LICENSE")) {
-            Write-Log -Message ('{0} :: Cloning {1}' -f $($MyInvocation.MyCommand.Name), "$src_Organisation/$src_Repository") -severity 'DEBUG'
-            git config --global --add safe.directory $ronin_repo
-            git clone --single-branch --branch $src_Branch https://github.com/$src_Organisation/$src_Repository $ronin_repo
+        Write-Log -Message ('{0} :: Cloning {1}' -f $($MyInvocation.MyCommand.Name), "$src_Organisation/$src_Repository") -severity 'DEBUG'
+        git config --global --add safe.directory $ronin_repo
+        & git clone --no-checkout --single-branch --branch $src_Branch "https://github.com/$src_Organisation/$src_Repository" $ronin_repo
+        if ($LASTEXITCODE -ne 0) { throw "git clone failed with exit code $LASTEXITCODE." }
 
-            ## comment out during testing
-            Set-Location $ronin_repo
-            if ($hash -ne "NA") {
-                git checkout -q $deploymentId
+        Push-Location $ronin_repo
+        try {
+            $resolvedHash = "$(git rev-parse --verify "${hash}^{commit}")".Trim().ToLowerInvariant()
+            $resolveExit = $LASTEXITCODE
+            if (($resolveExit -ne 0) -or ($resolvedHash -notmatch '^[0-9a-f]{40}$')) {
+                # A pinned historical commit may no longer be reachable from the branch after
+                # a force-push. Resolve the unique short ID through GitHub, then fetch only that
+                # exact full object. Never fall back to branch HEAD.
+                $headers = @{ Accept = 'application/vnd.github+json'; 'X-GitHub-Api-Version' = '2022-11-28' }
+                if (Test-Path -LiteralPath 'D:\Secrets\pat.txt') {
+                    $token = (Get-Content -LiteralPath 'D:\Secrets\pat.txt' -Raw).Trim()
+                    if ($token) { $headers.Authorization = "Bearer $token" }
+                }
+                $commit = Invoke-RestMethod -Uri "https://api.github.com/repos/$src_Organisation/$src_Repository/commits/$hash" -Headers $headers
+                $resolvedHash = "$($commit.sha)".Trim().ToLowerInvariant()
+                if (($resolvedHash -notmatch '^[0-9a-f]{40}$') -or
+                    (-not $resolvedHash.StartsWith($hash, [System.StringComparison]::OrdinalIgnoreCase))) {
+                    throw "GitHub did not resolve ronin_puppet commit prefix $hash uniquely."
+                }
+                & git fetch --no-tags origin $resolvedHash
+                if ($LASTEXITCODE -ne 0) { throw "git fetch $resolvedHash failed with exit code $LASTEXITCODE." }
             }
-            if ($debug) {
-                Write-Log -message  ('{0} :: Debugging set; pulling latest repo version .' -f $($MyInvocation.MyCommand.Name), ($hash)) -severity 'DEBUG'
+            & git checkout --detach $resolvedHash
+            if ($LASTEXITCODE -ne 0) { throw "git checkout $resolvedHash failed with exit code $LASTEXITCODE." }
+            $actualHash = "$(git rev-parse HEAD)".Trim().ToLowerInvariant()
+            if (($LASTEXITCODE -ne 0) -or ($actualHash -ne $resolvedHash)) {
+                throw "ronin_puppet checkout verification failed: expected $resolvedHash, got $actualHash."
             }
-            else {
-                git checkout $hash
-                Write-Log -message  ('{0} :: Ronin Puppet HEAD is set to {1} .' -f $($MyInvocation.MyCommand.Name), ($hash)) -severity 'DEBUG'
-            }
-
         }
-
-
-        ## ugit convert git output to pscustomobject
-        $branch = git branch | Where-object { $PSItem.isCurrentBranch -eq $true }
-
-        if ($branch -ne $src_branch) {
-            git checkout $src_branch
-            git pull
-            git config --global --add safe.directory "C:/ronin"
-            Set-Location $ronin_repo
-            git checkout $hash
+        finally {
+            Pop-Location
         }
+        Write-Log -message ('{0} :: Ronin Puppet HEAD is set to {1} ({2}).' -f $($MyInvocation.MyCommand.Name), $hash, $resolvedHash) -severity 'DEBUG'
 
 
         ## Set nodes.pp
@@ -839,6 +902,7 @@ node default {
         #$secrets = Get-Content -Path "D:\secrets\$secrets_name"
         #Set-Content -Path "$env:systemdrive\ronin\data\secrets\vault.yaml" -Value $secrets
         Copy-item -path "D:\secrets\$secrets_name" -destination "$env:systemdrive\ronin\data\secrets\vault.yaml" -force
+        Protect-PrivilegedDirectory -Path $ronin_repo
         if (Test-Path "$env:systemdrive\ronin\data\secrets\vault.yaml") {
             Write-Log -message ('{0} :: vault.yml has been created - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
         }
@@ -847,6 +911,40 @@ node default {
         Write-Log -message ('{0} :: end - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
     }
 }
+
+function Remove-ProvisioningSecrets {
+    # Keep D:\secrets intact until last so any earlier cleanup failure can retry bootstrap.
+    $answerFiles = @(
+        "$env:systemdrive\Windows\Panther\unattend.xml",
+        "$env:systemdrive\Windows\Panther\Unattend\unattend.xml",
+        "$env:systemdrive\Windows\System32\Sysprep\unattend.xml"
+    )
+    $secretFiles = @(
+        "$env:systemdrive\ronin\data\secrets\vault.yaml",
+        "$env:systemdrive\bootstrap\vault.yaml"
+    )
+
+    foreach ($path in ($secretFiles + $answerFiles)) {
+        if (Test-Path -LiteralPath $path) {
+            Remove-Item -LiteralPath $path -Force -ErrorAction Stop
+        }
+    }
+    Get-ChildItem -Path 'D:\*\autounattend.xml' -File -Force -ErrorAction SilentlyContinue |
+        Remove-Item -Force -ErrorAction Stop
+
+    $winlogon = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon'
+    Remove-ItemProperty -Path $winlogon -Name DefaultPassword -ErrorAction SilentlyContinue
+    Set-ItemProperty -Path $winlogon -Name AutoAdminLogon -Value '0' -ErrorAction Stop
+
+    if (Test-Path -LiteralPath 'D:\secrets') {
+        Remove-Item -LiteralPath 'D:\secrets' -Recurse -Force -ErrorAction Stop
+    }
+    if (Test-Path -LiteralPath 'D:\secrets') {
+        throw 'Provisioning secret cleanup did not remove D:\secrets.'
+    }
+    Write-Log -Message 'Provisioning secrets and populated answer files removed after successful Puppet apply.' -severity 'DEBUG'
+}
+
 function Run-Ronin-Run {
     param (
     )
@@ -856,6 +954,7 @@ function Run-Ronin-Run {
     process {
 
         Set-Location $env:systemdrive\ronin
+        Protect-PrivilegedDirectory -Path "$env:systemdrive\logs"
         If (-Not (test-path $env:systemdrive\logs\old)) {
             New-Item -ItemType Directory -Force -Path $env:systemdrive\logs\old
         }
@@ -882,7 +981,7 @@ function Run-Ronin-Run {
         $logDate = $(get-date -format yyyyMMdd-HHmm)
 
         Write-Log -Message ('{0} :: Running Puppet' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-        puppet apply manifests\nodes.pp --onetime --verbose --no-daemonize --no-usecacheonfailure --detailed-exitcodes --no-splay --show_diff --modulepath=modules`;r10k_modules --hiera_config=hiera.yaml --logdest $env:systemdrive\logs\$($logdate)-bootstrap-puppet.json
+        puppet apply manifests\nodes.pp --onetime --verbose --no-daemonize --no-usecacheonfailure --detailed-exitcodes --no-splay --modulepath=modules`;r10k_modules --hiera_config=hiera.yaml --logdest $env:systemdrive\logs\$($logdate)-bootstrap-puppet.json
         [int]$puppet_exit = $LastExitCode
         Write-Log -Message ('{0} :: Puppet error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit) -severity 'DEBUG'
 
@@ -892,6 +991,7 @@ function Run-Ronin-Run {
                 Write-Log -message  ('{0} :: Puppet apply succeeded with no changes or failures :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit) -severity 'DEBUG'
                 Write-Host ('{0} :: Puppet apply succeeded with no changes or failures :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit)
                 Set-ItemProperty -Path "HKLM:\SOFTWARE\Mozilla\ronin_puppet" -name last_run_exit -value $puppet_exit
+                Remove-ProvisioningSecrets
                 Set-ItemProperty -Path "HKLM:\SOFTWARE\Mozilla\ronin_puppet" -Name 'bootstrap_stage' -Value 'complete'
                 Start-sleep -Seconds 120
                 Restart-Computer -Confirm:$false -Force
@@ -920,6 +1020,7 @@ function Run-Ronin-Run {
                 Write-Log -message ('{0} :: Puppet apply succeeded, and some resources were changed :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit) -severity 'DEBUG'
                 Write-Host ('{0} :: Puppet apply succeeded, and some resources were changed :: Error code {1}' -f $($MyInvocation.MyCommand.Name), $puppet_exit)
                 Set-ItemProperty -Path "HKLM:\SOFTWARE\Mozilla\ronin_puppet" -name last_run_exit -value $puppet_exit
+                Remove-ProvisioningSecrets
                 Set-ItemProperty -Path "HKLM:\SOFTWARE\Mozilla\ronin_puppet" -Name 'bootstrap_stage' -Value 'complete'
                 Restart-Computer -Confirm:$false -Force
             }
@@ -1055,6 +1156,7 @@ Write-Host "Source Repository: $src_Repository"
 Write-host "Source Branch: $src_Branch"
 Write-Host "Hash: $hash"
 Write-host "Secret Date: $secret_date"
+Write-Host "Worker-images Revision: $worker_images_revision"
 Write-Host "Image Provisioner: $image_provisioner"
 
 # === Parameter validation: abort to PXE if any param is null/empty ===
@@ -1072,6 +1174,7 @@ $__ParamMap = [ordered]@{
     puppet_version   = $puppet_version
     git_version      = $git_version
     openvox_version  = $openvox_version
+    worker_images_revision = $worker_images_revision
     image_provisioner = $image_provisioner
 }
 
@@ -1121,7 +1224,7 @@ If ($stage -ne 'complete') {
     # ===== PARAMETER CHECK: log missing params, sleep 60s, PXE, then stop =====
     $requiredParams = @(
         'worker_pool_id','role','src_Organisation','src_Repository',
-        'src_Branch','hash','secret_date','puppet_version','git_version'
+        'src_Branch','hash','secret_date','puppet_version','git_version','worker_images_revision'
     )
     $missingParams = @()
     foreach ($p in $requiredParams) {

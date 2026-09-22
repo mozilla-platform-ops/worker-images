@@ -2,6 +2,7 @@ param(
     [string]$deployuser,
     [string]$deploymentaccess,
     [string]$branch = "main",
+    [string]$worker_images_revision,
     [switch]$devlopment_script = $false
 
 )
@@ -11,7 +12,16 @@ function Deploy-OS-Dev {
         [string]$Password
     )
     $local_dir = "X:\working"
-    $source = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/${branch}/provisioners/windows/MDC1Windows"
+    Mount-ZDrive
+    try {
+        $pat = (Get-Content 'Z:\secrets\pat.txt' -Raw -ErrorAction Stop).Trim()
+        $revision = Resolve-WorkerImagesRevision -Ref $branch -PAT $pat
+    }
+    finally {
+        Remove-Variable pat -ErrorAction SilentlyContinue
+        Remove-PSDrive -Name Z -Scope Global -Force -ErrorAction SilentlyContinue
+    }
+    $source = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/${revision}/provisioners/windows/MDC1Windows"
     $script = "OS-deploy.ps1"
     $deploy_script = "$local_dir\$script"
 
@@ -51,7 +61,7 @@ function Deploy-OS-Dev {
 
     Write-Host "Running DEV deployment script..."
     $branch = "$($pool.dev)"
-    powershell $deploy_script -deployuser "deployment" -deploymentaccess "$Password" -devlopment_script -branch "$branch"
+    & $deploy_script -deployuser "deployment" -deploymentaccess $Password -devlopment_script -branch $branch -worker_images_revision $revision
 }
 
 function Get-DeploySendoff {
@@ -78,9 +88,8 @@ function Get-DeploySendoff {
 function Mount-ZDrive {
     param(
     )
-    ## Mount Deployment share
-    ## PSDrive is will unmount when the Powershell sessions ends. Ultimately maybe OK.
-    ## net use will presist
+    ## Mount the deployment share only for this PowerShell session. Keeping the password
+    ## in PSCredential avoids exposing it in net.exe process arguments.
     $deploypw = ConvertTo-SecureString -String $deploymentaccess -AsPlainText -Force
     $credential = New-Object System.Management.Automation.PSCredential($deployuser, $deploypw)
 
@@ -90,7 +99,9 @@ function Mount-ZDrive {
     Write-Host "Mounting Deployment Share."
     for ($retryCount = 1; $retryCount -le $maxRetries; $retryCount++) {
         try {
-            net use Z: \\mdt2022.ad.mozilla.com\deployments /user:$deployuser $deploymentaccess /persistent:yes
+            Remove-PSDrive -Name Z -Scope Global -Force -ErrorAction SilentlyContinue
+            New-PSDrive -Name Z -PSProvider FileSystem -Root '\\mdt2022.ad.mozilla.com\deployments' `
+                -Credential $credential -Scope Global -ErrorAction Stop | Out-Null
             break
         }
         catch {
@@ -103,6 +114,62 @@ function Mount-ZDrive {
         exit 99
     }
 }
+
+function Resolve-WorkerImagesRevision {
+    param(
+        [Parameter(Mandatory)][string] $Ref,
+        [Parameter(Mandatory)][string] $PAT
+    )
+
+    $headers = @{
+        Accept                 = 'application/vnd.github+json'
+        Authorization          = "Bearer $PAT"
+        'X-GitHub-Api-Version' = '2022-11-28'
+        'User-Agent'           = 'worker-images-mdc1-deploy'
+    }
+    $encodedRef = [uri]::EscapeDataString($Ref)
+    $result = Invoke-RestMethod -Uri "https://api.github.com/repos/mozilla-platform-ops/worker-images/commits/$encodedRef" -Headers $headers
+    $revision = [string]$result.sha
+    if ($revision -notmatch '^[0-9a-fA-F]{40}$') {
+        throw "GitHub returned an invalid worker-images revision for '$Ref'."
+    }
+    return $revision.ToLowerInvariant()
+}
+
+function Protect-ProvisioningDrive {
+    param([switch]$Fresh)
+
+    $admins = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-32-544')
+    # Protected DACL: SYSTEM and built-in Administrators, inheritable full control.
+    $acl = [System.Security.AccessControl.DirectorySecurity]::new()
+    $acl.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)')
+    $accessSection = [System.Security.AccessControl.AccessControlSections]::Access
+    $expected = $acl.GetSecurityDescriptorSddlForm($accessSection)
+    $currentAcl = Get-Acl -LiteralPath 'D:\'
+    $current = $currentAcl.GetSecurityDescriptorSddlForm($accessSection)
+    $currentOwner = $currentAcl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value
+
+    if (($current -eq $expected) -and ($currentOwner -eq $admins.Value)) {
+        return
+    }
+
+    if (-not $Fresh) {
+        # Existing children may carry attacker-controlled protected ACLs, so changing only
+        # the root DACL is insufficient. Recreate this cache volume once during rollout.
+        Write-Warning 'D: was not protected; formatting it before reusing provisioning content.'
+        Format-Volume -DriveLetter D -FileSystem NTFS -Force -Confirm:$false -ErrorAction Stop | Out-Null
+    }
+
+    Set-Acl -LiteralPath 'D:\' -AclObject $acl
+
+    $actualAcl = Get-Acl -LiteralPath 'D:\'
+    $actual = $actualAcl.GetSecurityDescriptorSddlForm($accessSection)
+    $actualOwner = $actualAcl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value
+    if (($actual -ne $expected) -or ($actualOwner -ne $admins.Value)) {
+        throw 'Failed to restrict D:\ to SYSTEM and Administrators.'
+    }
+}
+
 function Update-PATSecret {
     <#
     .SYNOPSIS
@@ -155,12 +222,12 @@ function Update-PATSecret {
     }
     finally {
         Write-Host "Disconecting Deployment Share."
-        net use Z: /delete
+        Remove-PSDrive -Name Z -Scope Global -Force -ErrorAction SilentlyContinue
     }
 }
 function Update-GetBoot {
     param(
-        [string]$branch = "main"
+        [Parameter(Mandatory)][string]$revision
     )
     $Get_Bootstrap = "D:\scripts\Get-Bootstrap.ps1"
     $Template_Get_Bootstrap = $local_scripts + "Template_Get-Bootstrap.ps1"
@@ -175,11 +242,11 @@ function Update-GetBoot {
     }
 
     $bootstrapSplat = @{
-        URI     = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/$branch/provisioners/windows/MDC1Windows/Get-Bootstrap.ps1"
+        URI     = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$revision/provisioners/windows/MDC1Windows/Get-Bootstrap.ps1"
         OutFile = $Template_Get_Bootstrap
     }
     write-host checking
-    write-host $branch
+    write-host $revision
     write-host $pool.dev
     write-host "Invoke-WebRequest @bootstrapSplat"
     write-host $bootstrapSplat.URI
@@ -214,6 +281,7 @@ function Update-GetBoot {
         @{ OldString = "1puppet_version"; NewString = $puppet_version }
         @{ OldString = "1openvox_version"; NewString = $openvox_version }
         @{ OldString = "1git_version"; NewString = $git_version }
+        @{ OldString = "WIRevisionPlaceholder"; NewString = $revision }
     )
     $content = Get-Content -Path $Template_Get_Bootstrap
     foreach ($replacement in $replacements) {
@@ -592,14 +660,29 @@ Write-Host "Host name set to be $ResolvedName"
 
 ## Get data
 ## Assumes files is in the same dir.
-## In dev mode the initial (default-branch) run staged pools.yml, but Deploy-OS-Dev only
-## re-downloads OS-deploy.ps1 - so refresh pools.yml from the dev branch here too. That
-## lets the WHOLE canary config (image / src_Branch / hash, not just the scripts) live on
-## the feature branch; the default branch only needs the `dev:` trigger on the pool.
-if ($devlopment_script) {
-    $poolsUrl = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$branch/provisioners/windows/MDC1Windows/pools.yml"
-    Write-Host "DEV: refreshing pools.yml from branch '$branch'"
-    Invoke-WebRequest -Uri $poolsUrl -OutFile "pools.yml"
+# Resolve the selected branch once, then use that immutable revision for the whole deploy.
+# Read the GitHub token directly from the deployment share; do not trust a cached D: copy
+# before Protect-ProvisioningDrive has run.
+Mount-ZDrive
+try {
+    $workerImagesPAT = (Get-Content 'Z:\secrets\pat.txt' -Raw -ErrorAction Stop).Trim()
+    if ($worker_images_revision) {
+        if ($worker_images_revision -notmatch '^[0-9a-fA-F]{40}$') {
+            throw 'OS-deploy received an invalid worker-images revision.'
+        }
+        $workerImagesRevision = $worker_images_revision.ToLowerInvariant()
+    }
+    else {
+        $workerImagesRevision = Resolve-WorkerImagesRevision -Ref $branch -PAT $workerImagesPAT
+    }
+    Write-Host "Pinned worker-images '$branch' to $workerImagesRevision"
+    Invoke-DownloadWithRetryGithub `
+        -Url "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$workerImagesRevision/provisioners/windows/MDC1Windows/pools.yml" `
+        -Path 'pools.yml' -PAT $workerImagesPAT
+}
+finally {
+    Remove-Variable workerImagesPAT -ErrorAction SilentlyContinue
+    Remove-PSDrive -Name Z -Scope Global -Force -ErrorAction SilentlyContinue
 }
 $YAML = Convertfrom-Yaml (Get-Content "pools.yml" -raw)
 
@@ -730,6 +813,10 @@ elseif ($disks.Count -eq 1) {
 
 Write-Host "Partition labeling check and adjustments complete."
 
+# D: persists across deployments and contains WIMs, bootstrap executables, and secrets.
+# Restrict it before inspecting or reusing any cached content.
+Protect-ProvisioningDrive -Fresh:(-not $skipPartitioning)
+
 ## Show if needed
 #<#
 foreach ($partition in $partitions) {
@@ -778,6 +865,7 @@ $local_app = $local_install + "applications"
 # pools.yml are refreshed separately from GitHub, so skipping the resync doesn't stale those;
 # on an image change the new WIM name is absent -> resync runs and wipes the old one.)
 $needWim = Join-Path $OS_files "$neededImage.wim"
+$shareMounted = $false
 if ((!(Test-Path $setup)) -and (!(Test-Path $needWim))) {
     Write-Host "Install files wrong or missing."
     Write-Host "Will resync files."
@@ -787,10 +875,9 @@ if ((!(Test-Path $setup)) -and (!(Test-Path $needWim))) {
     }
 
     Mount-ZDrive
+    $shareMounted = $true
 
     Write-Host "Copying needed files"
-    Write-Host "Creating $secret_dir"
-    New-Item -ItemType Directory $secret_dir  | Out-Null
     Write-Host "Creating $local_app"
     New-Item -ItemType Directory $local_app  | Out-Null
     Write-Host "Creating $local_yaml_dir"
@@ -798,71 +885,68 @@ if ((!(Test-Path $setup)) -and (!(Test-Path $needWim))) {
 
     Write-host "Copying $source_install to $local_install"
     Copy-Item -Path $source_install -Destination $local_install -Recurse -Force
-    Write-Host "Copying $source_secrets to $secret_file"
-    Copy-Item -Path $source_secrets -Destination $secret_file -Force
-    Write-host "Copying $source_secrets_pat to $PATsecret_file"
-    Copy-Item -Path $source_secrets_pat -Destination $PATsecret_file -Force
-    #Write-Host "Copying $source_AZsecrets to $AZsecret_file"
-    #Copy-Item -Path $source_AZsecrets -Destination $AZsecret_file -Force
     Write-host "Copying $source_scripts to $local_scripts"
     Copy-Item -Path $source_scripts $local_scripts -Recurse -Force
     Write-host "Copying $source_app\* to $local_app"
     Copy-Item -Path $source_app\* $local_app -Recurse -Force
 
-    Write-Host "Disconecting Deployment Share."
-    net use Z: /delete
-
-    $splat = @{
-        Url  = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$branch/provisioners/windows/MDC1Windows/base-autounattend.xml"
-        Path = $unattend
-        PAT  = Get-Content $PATsecret_file
-    }
-
-    Invoke-DownloadWithRetryGithub @splat
-
-    $secret_YAML = Convertfrom-Yaml (Get-Content $secret_file -raw)
-
-    Write-Host "Updating autounattend.xml."
-
-    $DiskNumber = ((Get-Partition -DriveLetter C).DiskNumber)
-    $install_to = "<DiskID>$DiskNumber</DiskID>"
-    $PartitionNumber = (Get-Partition -DriveLetter C).PartitionNumber
-    $partition = "<PartitionID>$PartitionNumber</PartitionID>"
-
-    $replacetheses = @(
-        @{ OldString = "THIS-IS-A-NAME"; NewString = $shortname },
-        @{ OldString = "<DiskID>0</DiskID>"; NewString = $install_to },
-        @{ OldString = "<PartitionID>3</PartitionID>"; NewString = $partition },
-        @{ OldString = "NotARealPassword"; NewString = $secret_YAML.win_adminpw }
-    )
-
-    $content2 = Get-Content -Path $unattend
-    foreach ($replacethese in $replacetheses) {
-        $content2 = $content2 -replace $replacethese.OldString, $replacethese.NewString
-    }
-
-    Set-Content -Path $unattend -Value $content2
-}
-elseif (!(Test-Path $secret_file)) {
-    Get-ChildItem -Path $secret_dir | Remove-Item -Recurse
-    Mount-ZDrive
-    Write-host "Updating secret file."
-    Copy-Item -Path $source_secrets -Destination $secret_file -Force
-    Copy-Item -Path $source_AZsecrets -Destination $AZsecret_file -Force
-    Copy-Item -Path $source_secrets_pat -Destination $PATsecret_file -Force
-    #Copy-Item -Path $source_scripts\Get-Bootstrap.ps1 $local_scripts\Get-Bootstrap.ps1 -Recurse -Force
-    Write-Host "Disconecting Deployment Share."
-    net use Z: /delete
 }
 else {
-    Write-Host "Local installation files are good. No further action needed."
+    Write-Host "Local installation image is good. No image resync needed."
 }
+
+# Secrets are small and may rotate independently of the cached image, so refresh them on
+# every deployment. Bootstrap still needs both files until its Puppet run succeeds.
+if (-not $shareMounted) { Mount-ZDrive }
+New-Item -ItemType Directory -Path $secret_dir -Force | Out-Null
+Write-Host "Refreshing $source_secrets -> $secret_file"
+Copy-Item -Path $source_secrets -Destination $secret_file -Force -ErrorAction Stop
+Write-Host "Refreshing $source_secrets_pat -> $PATsecret_file"
+Copy-Item -Path $source_secrets_pat -Destination $PATsecret_file -Force -ErrorAction Stop
+Write-Host "Disconecting Deployment Share."
+Remove-PSDrive -Name Z -Scope Global -Force -ErrorAction SilentlyContinue
+
+if ((-not (Test-Path -LiteralPath $secret_file -PathType Leaf)) -or
+    (-not (Test-Path -LiteralPath $PATsecret_file -PathType Leaf))) {
+    throw 'Required provisioning secrets were not refreshed on D:.'
+}
+
+# The populated answer file contains the current node name and Administrator password.
+# Regenerate it every deployment rather than treating it as part of the persistent image cache.
+$splat = @{
+    Url  = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$workerImagesRevision/provisioners/windows/MDC1Windows/base-autounattend.xml"
+    Path = $unattend
+    PAT  = Get-Content $PATsecret_file
+}
+Invoke-DownloadWithRetryGithub @splat
+
+$secret_YAML = Convertfrom-Yaml (Get-Content $secret_file -raw)
+$DiskNumber = (Get-Partition -DriveLetter C).DiskNumber
+$PartitionNumber = (Get-Partition -DriveLetter C).PartitionNumber
+$content2 = (Get-Content -Path $unattend -Raw).
+    Replace('THIS-IS-A-NAME', $shortname).
+    Replace('<DiskID>0</DiskID>', "<DiskID>$DiskNumber</DiskID>").
+    Replace('<PartitionID>3</PartitionID>', "<PartitionID>$PartitionNumber</PartitionID>")
+
+$adminPassword = [string]$secret_YAML.win_adminpw
+if ([string]::IsNullOrWhiteSpace($adminPassword)) { throw 'win_adminpw is missing from the deployment secrets.' }
+$unattendXml = New-Object System.Xml.XmlDocument
+$unattendXml.PreserveWhitespace = $true
+$unattendXml.LoadXml($content2)
+$passwordNodes = $unattendXml.SelectNodes("//*[local-name()='Value' and text()='NotARealPassword']")
+if ($passwordNodes.Count -eq 0) { throw 'No Administrator password placeholders found in the unattend template.' }
+foreach ($node in $passwordNodes) { $node.InnerText = $adminPassword }
+$xmlSettings = New-Object System.Xml.XmlWriterSettings
+$xmlSettings.Encoding = New-Object System.Text.UTF8Encoding($false)
+$xmlWriter = [System.Xml.XmlWriter]::Create($unattend, $xmlSettings)
+try { $unattendXml.Save($xmlWriter) } finally { $xmlWriter.Dispose() }
+
 if ((Get-ChildItem -Path C:\ -Force) -ne $null) {
     write-host "Previous installation detected. Formatting OS disk."
     Format-Volume -DriveLetter C -FileSystem NTFS -Force -ErrorAction Inquire | Out-Null
 }
 
-Update-GetBoot -branch "$branch"
+Update-GetBoot -revision $workerImagesRevision
 
 ## Update yaml files with recent changes
 Copy-Item -Path pools.yml  $local_yaml -Force
@@ -887,6 +971,21 @@ else {
     if (-not (Test-Path $wim)) {
         throw "No setup.exe and no baked WIM at '$wim' - nothing to deploy for image '$neededImage'."
     }
+
+    $wimHash = "$wim.sha256"
+    if (-not (Test-Path -LiteralPath $wimHash)) {
+        throw "SHA-256 sidecar missing for baked WIM: $wimHash"
+    }
+    $sidecar = Get-Content -LiteralPath $wimHash -Raw
+    if ($sidecar -notmatch '^\s*([0-9a-fA-F]{64})(?:\s|$)') {
+        throw "Invalid SHA-256 sidecar: $wimHash"
+    }
+    $expectedHash = $Matches[1]
+    $actualHash = (Get-FileHash -LiteralPath $wim -Algorithm SHA256).Hash
+    if ($actualHash -ne $expectedHash) {
+        throw "SHA-256 mismatch for $wim (expected $expectedHash, got $actualHash)"
+    }
+    Write-Host "== SHA-256 verified: $actualHash =="
 
     $winVol = "C:"   # Windows target (primary NTFS; diskpart 'assign letter=C')
 

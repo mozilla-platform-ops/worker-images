@@ -124,18 +124,22 @@
 				</SynchronousCommand>
 				<SynchronousCommand wcm:action="add">
 					<Order>3</Order>
-					<CommandLine>powershell.exe Copy-Item -Path D:\secrets\vault.yaml -Destination C:\bootstrap -Force </CommandLine>
+					<CommandLine>powershell.exe -NoProfile -Command "$a=[System.Security.AccessControl.DirectorySecurity]::new();$a.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)');Set-Acl -LiteralPath C:\bootstrap -AclObject $a"</CommandLine>
 				</SynchronousCommand>
 				<SynchronousCommand wcm:action="add">
 					<Order>4</Order>
-					<CommandLine>powercfg.exe -x -standby-timeout-ac 0 </CommandLine>
+					<CommandLine>powershell.exe Copy-Item -Path D:\secrets\vault.yaml -Destination C:\bootstrap -Force </CommandLine>
 				</SynchronousCommand>
 				<SynchronousCommand wcm:action="add">
 					<Order>5</Order>
-					<CommandLine>powercfg.exe -x -monitor-timeout-ac 0 </CommandLine>
+					<CommandLine>powercfg.exe -x -standby-timeout-ac 0 </CommandLine>
 				</SynchronousCommand>
 				<SynchronousCommand wcm:action="add">
 					<Order>6</Order>
+					<CommandLine>powercfg.exe -x -monitor-timeout-ac 0 </CommandLine>
+				</SynchronousCommand>
+				<SynchronousCommand wcm:action="add">
+					<Order>7</Order>
 					<CommandLine>powershell.exe -ExecutionPolicy Bypass -File D:\scripts\Get-Bootstrap.ps1 </CommandLine>
 				</SynchronousCommand>
 			</FirstLogonCommands>

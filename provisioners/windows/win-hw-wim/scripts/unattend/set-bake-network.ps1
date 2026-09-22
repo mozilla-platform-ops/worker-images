@@ -83,13 +83,8 @@ for ($j = 0; $j -lt 30; $j++) {
 }
 Write-BakeLog ("network profile(s): " + ((Get-NetConnectionProfile -ErrorAction SilentlyContinue | ForEach-Object { $_.Name + '=' + $_.NetworkCategory }) -join ', '))
 
-# Belt-and-suspenders: WinRM service policy keys enable Basic + unencrypted regardless
-# of the network profile (they bypass the interactive 'network is Public' guard), so a
-# Basic-auth fallback also works if NTLM/Private ever fails. Harmless with NTLM.
-$winrmPol = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service'
-New-Item -Path $winrmPol -Force -ErrorAction SilentlyContinue | Out-Null
-Set-ItemProperty -Path $winrmPol -Name AllowBasic -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue
-Set-ItemProperty -Path $winrmPol -Name AllowUnencryptedTraffic -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue
+# SECURITY: Packer uses NTLM message encryption. Basic authentication and unencrypted
+# WinRM must never be enabled, even on the isolated build VLAN/NAT.
 
 # Bring up the WinRM HTTP listener. Explicit `winrm create Listener` (unlike
 # Enable-PSRemoting / winrm quickconfig) does NOT check the network-connection profile,
@@ -97,7 +92,9 @@ Set-ItemProperty -Path $winrmPol -Name AllowUnencryptedTraffic -Value 1 -Type DW
 cmd.exe /c 'sc config WinRM start= auto' | Out-Null
 cmd.exe /c 'net start WinRM' 2>$null | Out-Null
 cmd.exe /c 'winrm create winrm/config/Listener?Address=*+Transport=HTTP' 2>$null | Out-Null
-netsh advfirewall firewall add rule name="WinRM-HTTP-In-5985" dir=in action=allow protocol=TCP localport=5985 | Out-Null
+# SECURITY: this build-only listener is reachable only from the Hyper-V host on the
+# isolated build VLAN/NAT. sysprep-generalize.ps1 removes it before capture.
+netsh advfirewall firewall add rule name="WinRM-HTTP-In-5985" dir=in action=allow protocol=TCP localport=5985 remoteip=$gw profile=private | Out-Null
 
 $ok = $false
 try { $ok = [bool](Get-NetFirewallRule -DisplayName 'WinRM-HTTP-In-5985' -ErrorAction SilentlyContinue) } catch {}

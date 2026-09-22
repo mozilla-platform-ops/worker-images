@@ -57,6 +57,8 @@ function Invoke-SSH {
         [Parameter(Mandatory)][string]$NodeName,
         [Parameter(Mandatory)][string]$Command
     )
+    # SECURITY: redeployment regenerates NUC host keys, so persisted known_hosts entries
+    # become stale. The upstream VPN/VLAN is the trust boundary; this bypass is intentional.
     $output = & ssh -q -o ConnectTimeout=5 -o UserKnownHostsFile=empty.txt -o StrictHostKeyChecking=no $NodeName $Command
     [pscustomobject]@{ Output = $output; ExitCode = $LASTEXITCODE }
 }

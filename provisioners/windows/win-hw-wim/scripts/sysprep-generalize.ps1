@@ -87,6 +87,43 @@ Remove-Item 'C:\Windows\Temp\bake-network.log' -Force -ErrorAction SilentlyConti
 # it never ships in the golden WIM.
 Unregister-ScheduledTask -TaskName 'BakeNetwork' -Confirm:$false -ErrorAction SilentlyContinue
 
+# --- Remove build-only WinRM exposure ---
+# SECURITY: the bake uses NTLM-only WinRM through an isolated VLAN/NAT. None of its
+# listener, firewall, or remote-admin policy may ship in the deployed worker image.
+Step 'Removing build-only WinRM configuration'
+Remove-NetFirewallRule -Name 'WinRM-HTTP-In-5985' -ErrorAction SilentlyContinue
+$winrmPolicy = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service'
+Remove-ItemProperty -Path $winrmPolicy -Name AllowBasic -ErrorAction SilentlyContinue
+Remove-ItemProperty -Path $winrmPolicy -Name AllowUnencryptedTraffic -ErrorAction SilentlyContinue
+Remove-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' `
+  -Name LocalAccountTokenFilterPolicy -ErrorAction SilentlyContinue
+Get-ChildItem WSMan:\localhost\Listener -ErrorAction SilentlyContinue |
+  Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+# Do not stop WinRM here: this script is running inside the final Packer WinRM session.
+# Disabling startup prevents it from returning when the captured image boots.
+Set-Service -Name WinRM -StartupType Disabled
+
+if (Get-NetFirewallRule -Name 'WinRM-HTTP-In-5985' -ErrorAction SilentlyContinue) {
+  throw 'Build-only WinRM firewall rule remains before capture.'
+}
+if (Get-ChildItem WSMan:\localhost\Listener -ErrorAction SilentlyContinue) {
+  throw 'Build-only WinRM listener remains before capture.'
+}
+$allowBasic = Get-ItemPropertyValue -Path $winrmPolicy -Name AllowBasic -ErrorAction SilentlyContinue
+$allowUnencrypted = Get-ItemPropertyValue -Path $winrmPolicy -Name AllowUnencryptedTraffic -ErrorAction SilentlyContinue
+if (($null -ne $allowBasic) -or ($null -ne $allowUnencrypted)) {
+  throw 'Basic or unencrypted WinRM policy remains before capture.'
+}
+$remoteAdminPolicy = Get-ItemPropertyValue `
+  -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' `
+  -Name LocalAccountTokenFilterPolicy -ErrorAction SilentlyContinue
+if ($null -ne $remoteAdminPolicy) {
+  throw 'LocalAccountTokenFilterPolicy remains before capture.'
+}
+if ((Get-CimInstance Win32_Service -Filter "Name='WinRM'").StartMode -ne 'Disabled') {
+  throw 'WinRM is not disabled for the captured image.'
+}
+
 # NOTE: there is deliberately no pre-Sysprep leftover-AppX enumeration here. The bake
 # disables AppXSvc (win_disable_services::disable_appxsvc), and Get-AppxPackage needs that
 # service, so any such check post-bake can only ever fail/no-op. If a per-user AppX
@@ -104,10 +141,19 @@ Unregister-ScheduledTask -TaskName 'BakeNetwork' -Confirm:$false -ErrorAction Si
 Step 'Baking first-boot bootstrap runner (RunDeployBootstrap startup task)'
 $deployDir = 'C:\deploy'
 New-Item -ItemType Directory -Path $deployDir -Force | Out-Null
+$deployAcl = [System.Security.AccessControl.DirectorySecurity]::new()
+$deployAcl.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)')
+Set-Acl -LiteralPath $deployDir -AclObject $deployAcl
 $runner = @'
 $ErrorActionPreference = 'Continue'
 $log = 'C:\deploy\run-bootstrap.log'
 function L($m) { ('{0} {1}' -f (Get-Date -Format o), $m) | Tee-Object -FilePath $log -Append | Out-Null }
+function Protect-AdminDirectory($path) {
+    New-Item -ItemType Directory -Path $path -Force | Out-Null
+    $acl = [System.Security.AccessControl.DirectorySecurity]::new()
+    $acl.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)')
+    Set-Acl -LiteralPath $path -AclObject $acl
+}
 $flag = 'C:\deploy\.bootstrap-launched'
 if (Test-Path $flag) {
     L 'bootstrap already launched on a prior boot; unregistering task and exiting'
@@ -121,7 +167,7 @@ $gb = 'D:\scripts\Get-Bootstrap.ps1'
 for ($i = 0; $i -lt 60 -and -not (Test-Path $gb); $i++) { Start-Sleep -Seconds 10 }
 if (-not (Test-Path $gb)) { L "ERROR: $gb not found; leaving task registered to retry next boot"; return }
 # FirstLogonCommands-equivalent prerequisites (base-autounattend.xml oobeSystem pass):
-if (-not (Test-Path 'C:\bootstrap')) { New-Item -ItemType Directory -Path 'C:\bootstrap' -Force | Out-Null }
+Protect-AdminDirectory 'C:\bootstrap'
 if (Test-Path 'D:\secrets\vault.yaml') { Copy-Item 'D:\secrets\vault.yaml' 'C:\bootstrap\' -Force }
 powercfg -x -standby-timeout-ac 0 2>$null
 powercfg -x -monitor-timeout-ac 0 2>$null

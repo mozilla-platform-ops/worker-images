@@ -30,23 +30,32 @@ param(
 $ErrorActionPreference = 'Stop'
 if (-not (Get-Command azcopy -ErrorAction SilentlyContinue)) { throw 'azcopy not on PATH.' }
 
-$url = "https://$Account.blob.core.windows.net/$Blob"
 $destDir = Split-Path -Parent $Dest
 if ($destDir -and -not (Test-Path $destDir)) { New-Item -ItemType Directory -Path $destDir -Force | Out-Null }
 
-if ($AuthMode -eq 'sas') {
-    if (-not $Sas) { throw '-Sas required when -AuthMode sas' }
-    $sep = if ($Sas.StartsWith('?')) { '' } else { '?' }
-    & azcopy copy "$url$sep$Sas" "$Dest" --overwrite=ifSourceNewer
-} else {
-    # azcopy has its own credential store — it does NOT inherit `az login`. Tell it
-    # to reuse the az CLI identity (the VM's managed identity, an SP, or a user).
-    # (azcopy 10.32 dropped --auth-mode on copy; AZCOPY_AUTO_LOGIN_TYPE drives OAuth.)
-    if (-not $env:AZCOPY_AUTO_LOGIN_TYPE) { $env:AZCOPY_AUTO_LOGIN_TYPE = 'AZCLI' }
-    & azcopy copy "$url" "$Dest" --overwrite=ifSourceNewer
+if ($AuthMode -eq 'sas' -and -not $Sas) { throw '-Sas required when -AuthMode sas' }
+if ($AuthMode -eq 'login' -and -not $env:AZCOPY_AUTO_LOGIN_TYPE) {
+    # azcopy does not inherit `az login`; reuse the az CLI identity.
+    $env:AZCOPY_AUTO_LOGIN_TYPE = 'AZCLI'
 }
-if ($LASTEXITCODE -ne 0) { throw "azcopy download failed rc=$LASTEXITCODE" }
 
-# Verify SHA-256 if a sidecar is present next to the source.
-Write-Host "== Downloaded $Blob -> $Dest =="
-Write-Host "   (verify against captured/<wim>.sha256 if present)"
+foreach ($pair in @(@{ Blob = $Blob; Dest = $Dest }, @{ Blob = "$Blob.sha256"; Dest = "$Dest.sha256" })) {
+    $url = "https://$Account.blob.core.windows.net/$($pair.Blob)"
+    if ($AuthMode -eq 'sas') {
+        $sep = if ($Sas.StartsWith('?')) { '' } else { '?' }
+        $url = "$url$sep$Sas"
+    }
+    & azcopy copy $url $pair.Dest --overwrite=true
+    if ($LASTEXITCODE -ne 0) { throw "azcopy download failed rc=$LASTEXITCODE ($($pair.Blob))" }
+}
+
+$sidecar = Get-Content -LiteralPath "$Dest.sha256" -Raw
+if ($sidecar -notmatch '^\s*([0-9a-fA-F]{64})(?:\s|$)') {
+    throw "Invalid SHA-256 sidecar: $Dest.sha256"
+}
+$expected = $Matches[1]
+$actual = (Get-FileHash -LiteralPath $Dest -Algorithm SHA256).Hash
+if ($actual -ne $expected) {
+    throw "SHA-256 mismatch for $Dest (expected $expected, got $actual)"
+}
+Write-Host "== Downloaded and SHA-256 verified $Blob -> $Dest ($actual) =="
