@@ -17,8 +17,8 @@ azure:
     - eastus2
 vm:
   puppet_version: 8.10.0
-  git_version: 2.54.0
-  openvox_version: 8.25.0
+  git_version: "default"
+  openvox_version: "default"
   size: Standard_D8alds_v6
   tags:
     base_image: win10642009azure
