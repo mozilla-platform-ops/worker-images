@@ -444,7 +444,9 @@ SSH config example:
 
 # ------------------ Pool Data ------------------
 Write-Host "Pulling pool data from $yaml_url"
-$YAML = Invoke-WebRequest -Uri $yaml_url | ConvertFrom-Yaml
+# -UseBasicParsing: without it, PowerShell 5.1 hands the response to the IE engine
+# and throws a NullReferenceException on a controller with no IE user profile.
+$YAML = Invoke-WebRequest -Uri $yaml_url -UseBasicParsing | ConvertFrom-Yaml
 
 # ------------------ Wipe-D decision ------------------
 if ($single) {
