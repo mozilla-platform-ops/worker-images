@@ -3,7 +3,7 @@
 ## Build provenance
 
 - Image name: gw-fxci-gcp-l1-2404-amd64-gui-googlecompute-alpha
-- Taskcluster version: 108.1.0
+- Taskcluster version: 110.1.0
 - Taskcluster ref: unknown
 - Architecture: AMD64
 - Source image family: ubuntu-2404-lts-amd64
@@ -20,10 +20,10 @@
 
 | Name | Version |
 | --- | --- |
-| generic-worker | generic-worker (multiuser engine) 108.1.0 [ revision: https://github.com/taskcluster/taskcluster/commits/f86624a8bf3761cdbc48de2c7f74bae44d7464dd ] |
-| start-worker | start-worker 108.1.0 |
-| livelog | livelog 108.1.0 |
-| taskcluster-proxy | Taskcluster proxy 108.1.0 (git revision f86624a8bf3761cdbc48de2c7f74bae44d7464dd) |
+| generic-worker | generic-worker (multiuser engine) 110.1.0 [ revision: https://github.com/taskcluster/taskcluster/commits/8522ee4ea64acdb407128264f3b3b56a2e24c2d9 ] |
+| start-worker | start-worker 110.1.0 |
+| livelog | livelog 110.1.0 |
+| taskcluster-proxy | Taskcluster proxy 110.1.0 (git revision 8522ee4ea64acdb407128264f3b3b56a2e24c2d9) |
 
 ## Python packages
 
@@ -190,7 +190,7 @@
 | bsdextrautils | 2.39.3-9ubuntu6.6 | amd64 |
 | bsdutils | 1:2.39.3-9ubuntu6.6 | amd64 |
 | btrfs-progs | 6.6.3-1.1build2 | amd64 |
-| bubblewrap | 0.9.0-1ubuntu0.1 | amd64 |
+| bubblewrap | 0.9.0-1ubuntu0.3 | amd64 |
 | build-essential | 12.10ubuntu1 | amd64 |
 | buildah | 1.33.7+ds1-1ubuntu0.24.04.3 | amd64 |
 | busybox-initramfs | 1:1.36.1-6ubuntu3.1 | amd64 |
@@ -271,10 +271,10 @@
 | dns-root-data | 2024071801~ubuntu0.24.04.1 | all |
 | dnsmasq-base | 2.91-0ubuntu0.24.04.1 | amd64 |
 | docbook-xml | 4.5-12 | all |
-| docker-buildx-plugin | 0.37.0-1~ubuntu.24.04~noble | amd64 |
+| docker-buildx-plugin | 0.37.1-1~ubuntu.24.04~noble | amd64 |
 | docker-ce | 5:29.5.3-1~ubuntu.24.04~noble | amd64 |
 | docker-ce-cli | 5:29.5.3-1~ubuntu.24.04~noble | amd64 |
-| docker-ce-rootless-extras | 5:29.8.0-1~ubuntu.24.04~noble | amd64 |
+| docker-ce-rootless-extras | 5:29.8.1-1~ubuntu.24.04~noble | amd64 |
 | docker-compose-plugin | 5.5.1-1~ubuntu.24.04~noble | amd64 |
 | dosfstools | 4.2-1.1build1 | amd64 |
 | dpkg | 1.22.6ubuntu6.6 | amd64 |
@@ -348,7 +348,7 @@
 | geoclue-2.0 | 2.7.0-3ubuntu7 | amd64 |
 | geocode-glib-common | 3.26.3-6build3 | all |
 | gettext-base | 0.21-14ubuntu2 | amd64 |
-| ghostscript | 10.02.1~dfsg1-0ubuntu7.8 | amd64 |
+| ghostscript | 10.02.1~dfsg1-0ubuntu7.9 | amd64 |
 | gir1.2-accountsservice-1.0:amd64 | 23.13.9-2ubuntu6.1 | amd64 |
 | gir1.2-adw-1:amd64 | 1.5.0-1ubuntu2 | amd64 |
 | gir1.2-atk-1.0:amd64 | 2.52.0-1build1 | amd64 |
@@ -363,7 +363,7 @@
 | gir1.2-gdm-1.0 | 46.2-1ubuntu1~24.04.9 | amd64 |
 | gir1.2-geoclue-2.0:amd64 | 2.7.0-3ubuntu7 | amd64 |
 | gir1.2-girepository-2.0:amd64 | 1.80.1-1 | amd64 |
-| gir1.2-glib-2.0:amd64 | 2.80.0-6ubuntu3.8 | amd64 |
+| gir1.2-glib-2.0:amd64 | 2.80.0-6ubuntu3.9 | amd64 |
 | gir1.2-gmenu-3.0:amd64 | 3.36.0-1.1ubuntu3 | amd64 |
 | gir1.2-gnomeautoar-0.1:amd64 | 0.4.4-2build4 | amd64 |
 | gir1.2-gnomebg-4.0:amd64 | 44.0-5build2 | amd64 |
@@ -371,7 +371,7 @@
 | gir1.2-gnomedesktop-3.0:amd64 | 44.0-5build2 | amd64 |
 | gir1.2-gnomedesktop-4.0:amd64 | 44.0-5build2 | amd64 |
 | gir1.2-graphene-1.0:amd64 | 1.10.8-3build2 | amd64 |
-| gir1.2-gst-plugins-base-1.0:amd64 | 1.24.2-1ubuntu0.4 | amd64 |
+| gir1.2-gst-plugins-base-1.0:amd64 | 1.24.2-1ubuntu0.5 | amd64 |
 | gir1.2-gstreamer-1.0:amd64 | 1.24.2-1ubuntu0.1 | amd64 |
 | gir1.2-gtk-3.0:amd64 | 3.24.41-4ubuntu1.3 | amd64 |
 | gir1.2-gtk-4.0:amd64 | 4.14.5+ds-0ubuntu0.10 | amd64 |
@@ -389,12 +389,12 @@
 | gir1.2-packagekitglib-1.0 | 1.2.8-2ubuntu1.5 | amd64 |
 | gir1.2-pango-1.0:amd64 | 1.52.1+ds-1build1 | amd64 |
 | gir1.2-peas-1.0:amd64 | 1.36.0-3build4 | amd64 |
-| gir1.2-polkit-1.0 | 124-2ubuntu1.24.04.3 | amd64 |
+| gir1.2-polkit-1.0 | 124-2ubuntu1.24.04.4 | amd64 |
 | gir1.2-rb-3.0:amd64 | 3.4.7-2ubuntu6 | amd64 |
 | gir1.2-rsvg-2.0:amd64 | 2.58.0+dfsg-1build1 | amd64 |
 | gir1.2-secret-1:amd64 | 0.21.4-1build3 | amd64 |
 | gir1.2-snapd-2:amd64 | 1.64-0ubuntu5 | amd64 |
-| gir1.2-soup-3.0:amd64 | 3.4.4-5ubuntu0.7 | amd64 |
+| gir1.2-soup-3.0:amd64 | 3.4.4-5ubuntu0.8 | amd64 |
 | gir1.2-totem-1.0:amd64 | 43.0-2ubuntu4 | amd64 |
 | gir1.2-totemplparser-1.0:amd64 | 3.26.6-1build5 | amd64 |
 | gir1.2-udisks-2.0:amd64 | 2.10.1-6ubuntu1.5 | amd64 |
@@ -459,8 +459,8 @@
 | gnupg-utils | 2.4.4-2ubuntu17.6 | amd64 |
 | golang-github-containers-common | 0.57.4+ds1-2ubuntu0.2 | all |
 | golang-github-containers-image | 5.29.2-2 | all |
-| google-compute-engine | 20260121.00-0ubuntu1~24.04.0 | all |
-| google-compute-engine-oslogin | 20260116.00-0ubuntu1~24.04.0 | amd64 |
+| google-compute-engine | 20260819.00-0ubuntu1~24.04.0 | all |
+| google-compute-engine-oslogin | 20260814.00-0ubuntu1~24.04.0 | amd64 |
 | google-guest-agent | 20250116.00-0ubuntu1~24.04.4 | amd64 |
 | google-osconfig-agent | 20251028.00-0ubuntu2~24.04.0 | amd64 |
 | gpg | 2.4.4-2ubuntu17.6 | amd64 |
@@ -481,20 +481,20 @@
 | grub2-common | 2.12-1ubuntu7.3 | amd64 |
 | gsettings-desktop-schemas | 46.1-0ubuntu1 | all |
 | gsettings-ubuntu-schemas | 0.0.7+21.10.20210712-0ubuntu3 | all |
-| gstreamer1.0-alsa:amd64 | 1.24.2-1ubuntu0.4 | amd64 |
-| gstreamer1.0-gl:amd64 | 1.24.2-1ubuntu0.4 | amd64 |
-| gstreamer1.0-gtk3:amd64 | 1.24.2-1ubuntu1.5 | amd64 |
+| gstreamer1.0-alsa:amd64 | 1.24.2-1ubuntu0.5 | amd64 |
+| gstreamer1.0-gl:amd64 | 1.24.2-1ubuntu0.5 | amd64 |
+| gstreamer1.0-gtk3:amd64 | 1.24.2-1ubuntu1.7 | amd64 |
 | gstreamer1.0-libav:amd64 | 1.24.1-1build1 | amd64 |
 | gstreamer1.0-libcamera:amd64 | 0.2.0-3fakesync1build6 | amd64 |
 | gstreamer1.0-packagekit | 1.2.8-2ubuntu1.5 | amd64 |
 | gstreamer1.0-pipewire:amd64 | 1.0.5-1ubuntu3.3 | amd64 |
-| gstreamer1.0-plugins-base-apps | 1.24.2-1ubuntu0.4 | amd64 |
-| gstreamer1.0-plugins-base:amd64 | 1.24.2-1ubuntu0.4 | amd64 |
-| gstreamer1.0-plugins-good:amd64 | 1.24.2-1ubuntu1.5 | amd64 |
+| gstreamer1.0-plugins-base-apps | 1.24.2-1ubuntu0.5 | amd64 |
+| gstreamer1.0-plugins-base:amd64 | 1.24.2-1ubuntu0.5 | amd64 |
+| gstreamer1.0-plugins-good:amd64 | 1.24.2-1ubuntu1.7 | amd64 |
 | gstreamer1.0-plugins-ugly:amd64 | 1.24.1-1build1 | amd64 |
 | gstreamer1.0-tools | 1.24.2-1ubuntu0.1 | amd64 |
 | gstreamer1.0-vaapi:amd64 | 1.24.2-1 | amd64 |
-| gstreamer1.0-x:amd64 | 1.24.2-1ubuntu0.4 | amd64 |
+| gstreamer1.0-x:amd64 | 1.24.2-1ubuntu0.5 | amd64 |
 | gtk-update-icon-cache | 3.24.41-4ubuntu1.3 | amd64 |
 | gtk2-engines-murrine:amd64 | 0.98.2-4 | amd64 |
 | gtk2-engines-pixbuf:amd64 | 2.24.33-4ubuntu1.1 | amd64 |
@@ -555,7 +555,7 @@
 | klibc-utils | 2.0.13-4ubuntu0.2 | amd64 |
 | kmod | 31+20240202-2ubuntu7.2 | amd64 |
 | kpartx | 0.9.4-5ubuntu8.2 | amd64 |
-| krb5-locales | 1.20.1-6ubuntu2.8 | all |
+| krb5-locales | 1.20.1-6ubuntu2.10 | all |
 | landscape-common | 24.02-0ubuntu5.7 | amd64 |
 | language-selector-common | 0.225 | all |
 | language-selector-gnome | 0.225 | all |
@@ -576,7 +576,7 @@
 | libalgorithm-merge-perl | 0.08-5 | all |
 | libao-common | 1.2.2+20180113-1.1ubuntu4 | all |
 | libao4:amd64 | 1.2.2+20180113-1.1ubuntu4 | amd64 |
-| libaom3:amd64 | 3.8.2-2ubuntu0.1 | amd64 |
+| libaom3:amd64 | 3.8.2-2ubuntu0.2 | amd64 |
 | libapparmor1:amd64 | 4.0.1really4.0.1-0ubuntu0.24.04.7 | amd64 |
 | libappstream5:amd64 | 1.0.2-1build6 | amd64 |
 | libapt-pkg6.0t64:amd64 | 2.8.3 | amd64 |
@@ -647,12 +647,12 @@
 | libbytesize-common | 2.10-1ubuntu2 | all |
 | libbytesize1:amd64 | 2.10-1ubuntu2 | amd64 |
 | libbz2-1.0:amd64 | 1.0.8-5.1ubuntu0.1 | amd64 |
-| libc-bin | 2.39-0ubuntu8.8 | amd64 |
-| libc-dev-bin | 2.39-0ubuntu8.8 | amd64 |
-| libc-devtools | 2.39-0ubuntu8.8 | amd64 |
-| libc6-dbg:amd64 | 2.39-0ubuntu8.8 | amd64 |
-| libc6-dev:amd64 | 2.39-0ubuntu8.8 | amd64 |
-| libc6:amd64 | 2.39-0ubuntu8.8 | amd64 |
+| libc-bin | 2.39-0ubuntu8.9 | amd64 |
+| libc-dev-bin | 2.39-0ubuntu8.9 | amd64 |
+| libc-devtools | 2.39-0ubuntu8.9 | amd64 |
+| libc6-dbg:amd64 | 2.39-0ubuntu8.9 | amd64 |
+| libc6-dev:amd64 | 2.39-0ubuntu8.9 | amd64 |
+| libc6:amd64 | 2.39-0ubuntu8.9 | amd64 |
 | libcaca0:amd64 | 0.99.beta20-4ubuntu0.2 | amd64 |
 | libcacard0:amd64 | 1:2.8.0-3build4 | amd64 |
 | libcairo-gobject-perl | 1.005-4build3 | amd64 |
@@ -778,8 +778,8 @@
 | libexempi8:amd64 | 2.6.5-1build1 | amd64 |
 | libexif12:amd64 | 0.6.24-1ubuntu0.24.04.1 | amd64 |
 | libexiv2-27:amd64 | 0.27.6-1ubuntu0.3 | amd64 |
-| libexpat1-dev:amd64 | 2.6.1-2ubuntu0.4 | amd64 |
-| libexpat1:amd64 | 2.6.1-2ubuntu0.4 | amd64 |
+| libexpat1-dev:amd64 | 2.6.1-2ubuntu0.5 | amd64 |
+| libexpat1:amd64 | 2.6.1-2ubuntu0.5 | amd64 |
 | libext2fs2t64:amd64 | 1.47.0-2.4~exp1ubuntu4.1 | amd64 |
 | libexttextcat-2.0-0:amd64 | 3.4.7-1build1 | amd64 |
 | libexttextcat-data | 3.4.7-1build1 | all |
@@ -851,9 +851,9 @@
 | libgles2:amd64 | 1.7.0-1build1 | amd64 |
 | libglib-object-introspection-perl | 0.051-1build3 | amd64 |
 | libglib-perl:amd64 | 3:1.329.3-3build3 | amd64 |
-| libglib2.0-0t64:amd64 | 2.80.0-6ubuntu3.8 | amd64 |
-| libglib2.0-bin | 2.80.0-6ubuntu3.8 | amd64 |
-| libglib2.0-data | 2.80.0-6ubuntu3.8 | all |
+| libglib2.0-0t64:amd64 | 2.80.0-6ubuntu3.9 | amd64 |
+| libglib2.0-bin | 2.80.0-6ubuntu3.9 | amd64 |
+| libglib2.0-data | 2.80.0-6ubuntu3.9 | all |
 | libglibmm-2.68-1t64:amd64 | 2.78.1-2.2build2 | amd64 |
 | libglu1-mesa:amd64 | 9.0.2-1.1build1 | amd64 |
 | libglvnd0:amd64 | 1.7.0-1build1 | amd64 |
@@ -891,21 +891,21 @@
 | libgraphene-1.0-0:amd64 | 1.10.8-3build2 | amd64 |
 | libgraphite2-3:amd64 | 1.3.14-2ubuntu0.24.04.1 | amd64 |
 | libgrilo-0.3-0:amd64 | 0.3.16-1build3 | amd64 |
-| libgs-common | 10.02.1~dfsg1-0ubuntu7.8 | all |
-| libgs10-common | 10.02.1~dfsg1-0ubuntu7.8 | all |
-| libgs10:amd64 | 10.02.1~dfsg1-0ubuntu7.8 | amd64 |
+| libgs-common | 10.02.1~dfsg1-0ubuntu7.9 | all |
+| libgs10-common | 10.02.1~dfsg1-0ubuntu7.9 | all |
+| libgs10:amd64 | 10.02.1~dfsg1-0ubuntu7.9 | amd64 |
 | libgsf-1-114:amd64 | 1.14.51-2ubuntu0.1 | amd64 |
 | libgsf-1-common | 1.14.51-2ubuntu0.1 | all |
 | libgsm1:amd64 | 1.0.22-1build1 | amd64 |
 | libgsound0t64:amd64 | 1.0.3-3.2build2 | amd64 |
 | libgspell-1-2:amd64 | 1.12.2-1build4 | amd64 |
 | libgspell-1-common | 1.12.2-1build4 | all |
-| libgssapi-krb5-2:amd64 | 1.20.1-6ubuntu2.8 | amd64 |
+| libgssapi-krb5-2:amd64 | 1.20.1-6ubuntu2.10 | amd64 |
 | libgssdp-1.6-0:amd64 | 1.6.3-1build3 | amd64 |
-| libgstreamer-gl1.0-0:amd64 | 1.24.2-1ubuntu0.4 | amd64 |
+| libgstreamer-gl1.0-0:amd64 | 1.24.2-1ubuntu0.5 | amd64 |
 | libgstreamer-plugins-bad1.0-0:amd64 | 1.24.2-1ubuntu4 | amd64 |
-| libgstreamer-plugins-base1.0-0:amd64 | 1.24.2-1ubuntu0.4 | amd64 |
-| libgstreamer-plugins-good1.0-0:amd64 | 1.24.2-1ubuntu1.5 | amd64 |
+| libgstreamer-plugins-base1.0-0:amd64 | 1.24.2-1ubuntu0.5 | amd64 |
+| libgstreamer-plugins-good1.0-0:amd64 | 1.24.2-1ubuntu1.7 | amd64 |
 | libgstreamer1.0-0:amd64 | 1.24.2-1ubuntu0.1 | amd64 |
 | libgtk-3-0t64:amd64 | 3.24.41-4ubuntu1.3 | amd64 |
 | libgtk-3-bin | 3.24.41-4ubuntu1.3 | amd64 |
@@ -972,8 +972,8 @@
 | libimobiledevice6:amd64 | 1.3.0-8.1build3 | amd64 |
 | libini-config5t64:amd64 | 0.6.2-2.1build1 | amd64 |
 | libinih1:amd64 | 55-1ubuntu2 | amd64 |
-| libinput-bin | 1.25.0-1ubuntu3.6 | amd64 |
-| libinput10:amd64 | 1.25.0-1ubuntu3.6 | amd64 |
+| libinput-bin | 1.25.0-1ubuntu3.7 | amd64 |
+| libinput10:amd64 | 1.25.0-1ubuntu3.7 | amd64 |
 | libintl-perl | 1.33-1build3 | all |
 | libintl-xs-perl | 1.33-1build3 | amd64 |
 | libio-html-perl | 1.004-3 | all |
@@ -986,7 +986,7 @@
 | libipt2 | 2.0.6-1build1 | amd64 |
 | libiscsi7:amd64 | 1.19.0-3build4 | amd64 |
 | libisl23:amd64 | 0.26-3build1.1 | amd64 |
-| libisns0t64:amd64 | 0.101-0.3build3 | amd64 |
+| libisns0t64:amd64 | 0.101-0.3ubuntu0.1 | amd64 |
 | libisoburn1t64:amd64 | 1:1.5.6-1.1ubuntu3 | amd64 |
 | libisofs6t64:amd64 | 1.5.6.pl01-1.1ubuntu2 | amd64 |
 | libitm1:amd64 | 14.2.0-4ubuntu2~24.04.1 | amd64 |
@@ -1008,13 +1008,13 @@
 | libjson-glib-1.0-0:amd64 | 1.8.0-2build2 | amd64 |
 | libjson-glib-1.0-common | 1.8.0-2build2 | all |
 | libjxl0.7:amd64 | 0.7.0-10.2ubuntu6.1 | amd64 |
-| libk5crypto3:amd64 | 1.20.1-6ubuntu2.8 | amd64 |
+| libk5crypto3:amd64 | 1.20.1-6ubuntu2.10 | amd64 |
 | libkeyutils1:amd64 | 1.6.3-3build1 | amd64 |
 | libklibc:amd64 | 2.0.13-4ubuntu0.2 | amd64 |
 | libkmod2:amd64 | 31+20240202-2ubuntu7.2 | amd64 |
 | libkpathsea6:amd64 | 2023.20230311.66589-9build3 | amd64 |
-| libkrb5-3:amd64 | 1.20.1-6ubuntu2.8 | amd64 |
-| libkrb5support0:amd64 | 1.20.1-6ubuntu2.8 | amd64 |
+| libkrb5-3:amd64 | 1.20.1-6ubuntu2.10 | amd64 |
+| libkrb5support0:amd64 | 1.20.1-6ubuntu2.10 | amd64 |
 | libksba8:amd64 | 1.6.6-1build1 | amd64 |
 | liblangtag-common | 0.6.7-1build2 | all |
 | liblangtag1:amd64 | 0.6.7-1build2 | amd64 |
@@ -1101,7 +1101,7 @@
 | libnet-smtp-ssl-perl | 1.04-2 | all |
 | libnet-ssleay-perl:amd64 | 1.94-1build4 | amd64 |
 | libnetfilter-conntrack3:amd64 | 1.0.9-6build1 | amd64 |
-| libnetplan1:amd64 | 1.1.2-8ubuntu1~24.04.2 | amd64 |
+| libnetplan1:amd64 | 1.1.2-8ubuntu1~24.04.3 | amd64 |
 | libnettle8t64:amd64 | 3.9.1-2.2build1.1 | amd64 |
 | libnewt0.52:amd64 | 0.52.24-2ubuntu2 | amd64 |
 | libnfnetlink0:amd64 | 1.0.2-2build1 | amd64 |
@@ -1176,7 +1176,7 @@
 | libpcsclite1:amd64 | 2.0.3-1build1 | amd64 |
 | libpeas-1.0-0:amd64 | 1.36.0-3build4 | amd64 |
 | libpeas-common | 1.36.0-3build4 | all |
-| libperl5.38t64:amd64 | 5.38.2-3.2ubuntu0.4 | amd64 |
+| libperl5.38t64:amd64 | 5.38.2-3.2ubuntu0.6 | amd64 |
 | libpfm4:amd64 | 4.13.0+git32-g0d4ed0e-1ubuntu0.1 | amd64 |
 | libpgm-5.3-0t64:amd64 | 5.3.128~dfsg-2.1build1 | amd64 |
 | libphonenumber8:amd64 | 8.12.57+ds-4.2build3 | amd64 |
@@ -1193,8 +1193,8 @@
 | libpmemobj1:amd64 | 1.13.1-1.1ubuntu2 | amd64 |
 | libpng16-16t64:amd64 | 1.6.43-5ubuntu0.6 | amd64 |
 | libpocketsphinx3:amd64 | 0.8.0+real5prealpha+1-15ubuntu5 | amd64 |
-| libpolkit-agent-1-0:amd64 | 124-2ubuntu1.24.04.3 | amd64 |
-| libpolkit-gobject-1-0:amd64 | 124-2ubuntu1.24.04.3 | amd64 |
+| libpolkit-agent-1-0:amd64 | 124-2ubuntu1.24.04.4 | amd64 |
+| libpolkit-gobject-1-0:amd64 | 124-2ubuntu1.24.04.4 | amd64 |
 | libpoppler-cpp0t64:amd64 | 24.02.0-1ubuntu9.9 | amd64 |
 | libpoppler-glib8t64:amd64 | 24.02.0-1ubuntu9.9 | amd64 |
 | libpoppler134:amd64 | 24.02.0-1ubuntu9.9 | amd64 |
@@ -1219,10 +1219,10 @@
 | libpwquality1:amd64 | 1.4.5-3build1 | amd64 |
 | libpython3-dev:amd64 | 3.12.3-0ubuntu2.1 | amd64 |
 | libpython3-stdlib:amd64 | 3.12.3-0ubuntu2.1 | amd64 |
-| libpython3.12-dev:amd64 | 3.12.3-1ubuntu0.16 | amd64 |
-| libpython3.12-minimal:amd64 | 3.12.3-1ubuntu0.16 | amd64 |
-| libpython3.12-stdlib:amd64 | 3.12.3-1ubuntu0.16 | amd64 |
-| libpython3.12t64:amd64 | 3.12.3-1ubuntu0.16 | amd64 |
+| libpython3.12-dev:amd64 | 3.12.3-1ubuntu0.17 | amd64 |
+| libpython3.12-minimal:amd64 | 3.12.3-1ubuntu0.17 | amd64 |
+| libpython3.12-stdlib:amd64 | 3.12.3-1ubuntu0.17 | amd64 |
+| libpython3.12t64:amd64 | 3.12.3-1ubuntu0.17 | amd64 |
 | libqmi-glib5:amd64 | 1.35.2-0ubuntu2 | amd64 |
 | libqmi-proxy | 1.35.2-0ubuntu2 | amd64 |
 | libqmi-utils | 1.35.2-0ubuntu2 | amd64 |
@@ -1318,10 +1318,10 @@
 | libsonic0:amd64 | 0.2.0-13build1 | amd64 |
 | libsord-0-0:amd64 | 0.16.16-2build1 | amd64 |
 | libsort-naturally-perl | 1.03-4 | all |
-| libsoup-2.4-1:amd64 | 2.74.3-6ubuntu1.7 | amd64 |
-| libsoup-3.0-0:amd64 | 3.4.4-5ubuntu0.7 | amd64 |
-| libsoup-3.0-common | 3.4.4-5ubuntu0.7 | all |
-| libsoup2.4-common | 2.74.3-6ubuntu1.7 | all |
+| libsoup-2.4-1:amd64 | 2.74.3-6ubuntu1.8 | amd64 |
+| libsoup-3.0-0:amd64 | 3.4.4-5ubuntu0.8 | amd64 |
+| libsoup-3.0-common | 3.4.4-5ubuntu0.8 | all |
+| libsoup2.4-common | 2.74.3-6ubuntu1.8 | all |
 | libsource-highlight-common | 3.1.9-4.3build1 | all |
 | libsource-highlight4t64:amd64 | 3.1.9-4.3build1 | amd64 |
 | libsox-fmt-alsa:amd64 | 14.4.2+git20190427-4build4 | amd64 |
@@ -1336,7 +1336,7 @@
 | libspeexdsp1:amd64 | 1.2.1-1ubuntu3 | amd64 |
 | libsphinxbase3t64:amd64 | 0.8+5prealpha+1-17build2 | amd64 |
 | libspice-server1:amd64 | 0.15.1-1build2 | amd64 |
-| libsqlite3-0:amd64 | 3.45.1-1ubuntu2.7 | amd64 |
+| libsqlite3-0:amd64 | 3.45.1-1ubuntu2.8 | amd64 |
 | libsratom-0-0:amd64 | 0.6.16-1build1 | amd64 |
 | libsrt1.5-gnutls:amd64 | 1.5.3-1build2 | amd64 |
 | libss2:amd64 | 1.47.0-2.4~exp1ubuntu4.1 | amd64 |
@@ -1438,15 +1438,15 @@
 | libvdpau1:amd64 | 1.5-2build1 | amd64 |
 | libvidstab1.1:amd64 | 1.1.0-2build1 | amd64 |
 | libvirglrenderer1:amd64 | 1.0.0-1ubuntu2 | amd64 |
-| libvirt-clients | 10.0.0-2ubuntu8.16 | amd64 |
-| libvirt-daemon | 10.0.0-2ubuntu8.16 | amd64 |
-| libvirt-daemon-config-network | 10.0.0-2ubuntu8.16 | all |
-| libvirt-daemon-config-nwfilter | 10.0.0-2ubuntu8.16 | all |
-| libvirt-daemon-driver-qemu | 10.0.0-2ubuntu8.16 | amd64 |
-| libvirt-daemon-system | 10.0.0-2ubuntu8.16 | amd64 |
-| libvirt-daemon-system-systemd | 10.0.0-2ubuntu8.16 | all |
-| libvirt-l10n | 10.0.0-2ubuntu8.16 | all |
-| libvirt0:amd64 | 10.0.0-2ubuntu8.16 | amd64 |
+| libvirt-clients | 10.0.0-2ubuntu8.17 | amd64 |
+| libvirt-daemon | 10.0.0-2ubuntu8.17 | amd64 |
+| libvirt-daemon-config-network | 10.0.0-2ubuntu8.17 | all |
+| libvirt-daemon-config-nwfilter | 10.0.0-2ubuntu8.17 | all |
+| libvirt-daemon-driver-qemu | 10.0.0-2ubuntu8.17 | amd64 |
+| libvirt-daemon-system | 10.0.0-2ubuntu8.17 | amd64 |
+| libvirt-daemon-system-systemd | 10.0.0-2ubuntu8.17 | all |
+| libvirt-l10n | 10.0.0-2ubuntu8.17 | all |
+| libvirt0:amd64 | 10.0.0-2ubuntu8.17 | amd64 |
 | libvisio-0.1-1:amd64 | 0.1.7-1build9 | amd64 |
 | libvisual-0.4-0:amd64 | 0.4.2-2build1 | amd64 |
 | libvncclient1:amd64 | 0.9.14+dfsg-1ubuntu0.2 | amd64 |
@@ -1539,9 +1539,9 @@
 | libxml-parser-perl | 2.47-1ubuntu0.24.04.1 | amd64 |
 | libxml-twig-perl | 1:3.52-2 | all |
 | libxml-xpathengine-perl | 0.14-2 | all |
-| libxml2-dev:amd64 | 2.9.14+dfsg-1.3ubuntu3.8 | amd64 |
-| libxml2-utils | 2.9.14+dfsg-1.3ubuntu3.8 | amd64 |
-| libxml2:amd64 | 2.9.14+dfsg-1.3ubuntu3.8 | amd64 |
+| libxml2-dev:amd64 | 2.9.14+dfsg-1.3ubuntu3.9 | amd64 |
+| libxml2-utils | 2.9.14+dfsg-1.3ubuntu3.9 | amd64 |
+| libxml2:amd64 | 2.9.14+dfsg-1.3ubuntu3.9 | amd64 |
 | libxmlb2:amd64 | 0.3.24-1~ubuntu0.24.04.1 | amd64 |
 | libxmlsec1t64-nss:amd64 | 1.2.39-5build2 | amd64 |
 | libxmlsec1t64-openssl:amd64 | 1.2.39-5build2 | amd64 |
@@ -1583,14 +1583,14 @@
 | linux-headers-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
 | linux-image-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
 | linux-image-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
-| linux-libc-dev:amd64 | 6.8.0-139.139 | amd64 |
+| linux-libc-dev:amd64 | 6.8.0-142.142 | amd64 |
 | linux-modules-6.17.0-1022-gcp | 6.17.0-1022.25 | amd64 |
 | linux-modules-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
 | linux-modules-extra-6.17.0-1022-gcp | 6.17.0-1022.25 | amd64 |
 | linux-modules-extra-gcp | 6.17.0-1022.25 | amd64 |
 | linux-sound-base | 1.0.25+dfsg-0ubuntu7 | all |
 | linux-tools-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
-| linux-tools-common | 6.8.0-139.139 | all |
+| linux-tools-common | 6.8.0-142.142 | all |
 | llvm | 1:18.0-59~exp2 | amd64 |
 | llvm-18 | 1:18.1.3-1ubuntu1 | amd64 |
 | llvm-18-dev | 1:18.1.3-1ubuntu1 | amd64 |
@@ -1598,7 +1598,7 @@
 | llvm-18-runtime | 1:18.1.3-1ubuntu1 | amd64 |
 | llvm-18-tools | 1:18.1.3-1ubuntu1 | amd64 |
 | llvm-runtime:amd64 | 1:18.0-59~exp2 | amd64 |
-| locales | 2.39-0ubuntu8.8 | all |
+| locales | 2.39-0ubuntu8.9 | all |
 | login | 1:4.13+dfsg1-4ubuntu3.2 | amd64 |
 | logrotate | 3.21.0-2build1 | amd64 |
 | logsave | 1.47.0-2.4~exp1ubuntu4.1 | amd64 |
@@ -1634,7 +1634,7 @@
 | mount | 2.39.3-9ubuntu6.6 | amd64 |
 | mousetweaks | 3.32.0-4build2 | amd64 |
 | mscompress | 0.4-10build1 | amd64 |
-| msr-tools | 1.3-5build1 | amd64 |
+| msr-tools | 1.3-5ubuntu0.1 | amd64 |
 | mtr-tiny | 0.95-1.1ubuntu0.1 | amd64 |
 | multipath-tools | 0.9.4-5ubuntu8.2 | amd64 |
 | mutter-common | 46.2-1ubuntu0.24.04.16 | all |
@@ -1651,8 +1651,8 @@
 | netavark | 1.4.0-4 | amd64 |
 | netbase | 6.4 | all |
 | netcat-openbsd | 1.226-1ubuntu2 | amd64 |
-| netplan-generator | 1.1.2-8ubuntu1~24.04.2 | amd64 |
-| netplan.io | 1.1.2-8ubuntu1~24.04.2 | amd64 |
+| netplan-generator | 1.1.2-8ubuntu1~24.04.3 | amd64 |
+| netplan.io | 1.1.2-8ubuntu1~24.04.3 | amd64 |
 | network-manager | 1.46.0-1ubuntu2.8 | amd64 |
 | network-manager-config-connectivity-ubuntu | 1.46.0-1ubuntu2.8 | all |
 | network-manager-gnome | 1.34.0-1ubuntu3 | amd64 |
@@ -1698,9 +1698,9 @@
 | pci.ids | 0.0~2024.03.31-1ubuntu0.1 | all |
 | pciutils | 1:3.10.0-2build1 | amd64 |
 | pcmciautils | 018-14build1 | amd64 |
-| perl | 5.38.2-3.2ubuntu0.4 | amd64 |
-| perl-base | 5.38.2-3.2ubuntu0.4 | amd64 |
-| perl-modules-5.38 | 5.38.2-3.2ubuntu0.4 | all |
+| perl | 5.38.2-3.2ubuntu0.6 | amd64 |
+| perl-base | 5.38.2-3.2ubuntu0.6 | amd64 |
+| perl-modules-5.38 | 5.38.2-3.2ubuntu0.6 | all |
 | perl-openssl-defaults:amd64 | 7build3 | amd64 |
 | pigz | 2.8-1 | amd64 |
 | pinentry-curses | 1.2.1-3ubuntu5 | amd64 |
@@ -1710,20 +1710,20 @@
 | pipewire-bin | 1.0.5-1ubuntu3.3 | amd64 |
 | pipewire-pulse | 1.0.5-1ubuntu3.3 | amd64 |
 | pipewire:amd64 | 1.0.5-1ubuntu3.3 | amd64 |
-| pkexec | 124-2ubuntu1.24.04.3 | amd64 |
+| pkexec | 124-2ubuntu1.24.04.4 | amd64 |
 | plymouth | 24.004.60-1ubuntu7.2 | amd64 |
 | plymouth-label | 24.004.60-1ubuntu7.2 | amd64 |
 | plymouth-theme-spinner | 24.004.60-1ubuntu7.2 | amd64 |
 | plymouth-theme-ubuntu-text | 24.004.60-1ubuntu7.2 | amd64 |
 | pocketsphinx-en-us | 0.8.0+real5prealpha+1-15ubuntu5 | all |
 | podman | 4.9.3+ds1-1ubuntu0.2 | amd64 |
-| policykit-1 | 124-2ubuntu1.24.04.3 | amd64 |
+| policykit-1 | 124-2ubuntu1.24.04.4 | amd64 |
 | policykit-desktop-privileges | 0.22 | all |
-| polkitd | 124-2ubuntu1.24.04.3 | amd64 |
+| polkitd | 124-2ubuntu1.24.04.4 | amd64 |
 | pollinate | 4.33-3.1ubuntu1.3 | all |
 | poppler-data | 0.4.12-1 | all |
 | poppler-utils | 24.02.0-1ubuntu9.9 | amd64 |
-| power-profiles-daemon | 0.21-1ubuntu2 | amd64 |
+| power-profiles-daemon | 0.21-1ubuntu3 | amd64 |
 | powermgmt-base | 1.37ubuntu0.1 | all |
 | powershell | 7.6.6-1.deb | amd64 |
 | ppp | 2.4.9-1+1.1ubuntu4 | amd64 |
@@ -1812,7 +1812,7 @@
 | python3-nacl | 1.5.0-4build1 | amd64 |
 | python3-netaddr | 0.8.0-2ubuntu1 | all |
 | python3-netifaces:amd64 | 0.11.0-2build3 | amd64 |
-| python3-netplan | 1.1.2-8ubuntu1~24.04.2 | amd64 |
+| python3-netplan | 1.1.2-8ubuntu1~24.04.3 | amd64 |
 | python3-newt:amd64 | 0.52.24-2ubuntu2 | amd64 |
 | python3-oauthlib | 3.2.2-1 | all |
 | python3-olefile | 0.46-3 | all |
@@ -1860,10 +1860,10 @@
 | python3-zope.interface | 6.1-1build1 | amd64 |
 | python3-zstandard | 0.22.0-1build1 | amd64 |
 | python3-zstd | 1.5.5.1-1build1 | amd64 |
-| python3.12 | 3.12.3-1ubuntu0.16 | amd64 |
-| python3.12-dev | 3.12.3-1ubuntu0.16 | amd64 |
-| python3.12-minimal | 3.12.3-1ubuntu0.16 | amd64 |
-| python3.12-venv | 3.12.3-1ubuntu0.16 | amd64 |
+| python3.12 | 3.12.3-1ubuntu0.17 | amd64 |
+| python3.12-dev | 3.12.3-1ubuntu0.17 | amd64 |
+| python3.12-minimal | 3.12.3-1ubuntu0.17 | amd64 |
+| python3.12-venv | 3.12.3-1ubuntu0.17 | amd64 |
 | qemu-block-extra | 1:8.2.2+ds-0ubuntu1.18 | amd64 |
 | qemu-system-common | 1:8.2.2+ds-0ubuntu1.18 | amd64 |
 | qemu-system-data | 1:8.2.2+ds-0ubuntu1.18 | all |
@@ -1885,7 +1885,7 @@
 | rhythmbox-plugins | 3.4.7-2ubuntu6 | amd64 |
 | rpcsvc-proto | 1.4.2-0ubuntu7 | amd64 |
 | rsync | 3.2.7-1ubuntu1.5 | amd64 |
-| rsyslog | 8.2312.0-3ubuntu9.3 | amd64 |
+| rsyslog | 8.2312.0-3ubuntu9.4 | amd64 |
 | rtkit | 0.13-5build1 | amd64 |
 | run-one | 1.17-0ubuntu2 | all |
 | rygel | 0.42.5-1ubuntu3 | amd64 |
@@ -1934,7 +1934,7 @@
 | sssd-ldap | 2.9.4-1.1ubuntu6.8 | amd64 |
 | sssd-proxy | 2.9.4-1.1ubuntu6.8 | amd64 |
 | strace | 6.8-0ubuntu2 | amd64 |
-| sudo | 1.9.15p5-3ubuntu5.24.04.2 | amd64 |
+| sudo | 1.9.15p5-3ubuntu5.24.04.3 | amd64 |
 | switcheroo-control | 2.6-2build2 | amd64 |
 | swtpm | 0.7.3-0ubuntu5.24.04.1 | amd64 |
 | swtpm-tools | 0.7.3-0ubuntu5.24.04.1 | amd64 |
@@ -2035,7 +2035,7 @@
 | whiptail | 0.52.24-2ubuntu2 | amd64 |
 | whoopsie | 0.2.77ubuntu0.1 | amd64 |
 | whoopsie-preferences | 23build3 | amd64 |
-| wireless-regdb | 2026.02.04-0ubuntu1~24.04.1 | all |
+| wireless-regdb | 2026.05.30-0ubuntu1~24.04.1 | all |
 | wireless-tools | 30~pre9-16.1ubuntu2 | amd64 |
 | wireplumber | 0.4.17-1ubuntu4.1 | amd64 |
 | wpasupplicant | 2:2.10-21ubuntu0.4 | amd64 |
@@ -2052,7 +2052,7 @@
 | xcursor-themes | 1.0.6-0ubuntu1 | all |
 | xcvt | 0.1.2-1build1 | amd64 |
 | xdg-dbus-proxy | 0.1.5-1ubuntu0.2 | amd64 |
-| xdg-desktop-portal | 1.18.4-1ubuntu2.24.04.2 | amd64 |
+| xdg-desktop-portal | 1.18.4-1ubuntu2.24.04.3 | amd64 |
 | xdg-desktop-portal-gnome | 46.2-0ubuntu1 | amd64 |
 | xdg-desktop-portal-gtk | 1.15.1-1build2 | amd64 |
 | xdg-user-dirs | 0.18-1build1 | amd64 |
