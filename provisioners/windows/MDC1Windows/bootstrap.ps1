@@ -913,7 +913,6 @@ node default {
 }
 
 function Remove-ProvisioningSecrets {
-    # Keep D:\secrets intact until last so any earlier cleanup failure can retry bootstrap.
     $answerFiles = @(
         "$env:systemdrive\Windows\Panther\unattend.xml",
         "$env:systemdrive\Windows\Panther\Unattend\unattend.xml",
@@ -936,13 +935,16 @@ function Remove-ProvisioningSecrets {
     Remove-ItemProperty -Path $winlogon -Name DefaultPassword -ErrorAction SilentlyContinue
     Set-ItemProperty -Path $winlogon -Name AutoAdminLogon -Value '0' -ErrorAction Stop
 
-    if (Test-Path -LiteralPath 'D:\secrets') {
-        Remove-Item -LiteralPath 'D:\secrets' -Recurse -Force -ErrorAction Stop
+    # MaintainSystem/CompareConfigBasic uses pat.txt on every boot to compare the node's
+    # configuration with GitHub. Preserve only that runtime credential on the protected D: drive.
+    $stagedSecrets = @(Get-ChildItem -LiteralPath 'D:\secrets' -Force -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -ne 'pat.txt' })
+    $stagedSecrets | Remove-Item -Recurse -Force -ErrorAction Stop
+    if (@(Get-ChildItem -LiteralPath 'D:\secrets' -Force -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -ne 'pat.txt' }).Count -gt 0) {
+        throw 'Provisioning secret cleanup left files other than D:\secrets\pat.txt.'
     }
-    if (Test-Path -LiteralPath 'D:\secrets') {
-        throw 'Provisioning secret cleanup did not remove D:\secrets.'
-    }
-    Write-Log -Message 'Provisioning secrets and populated answer files removed after successful Puppet apply.' -severity 'DEBUG'
+    Write-Log -Message 'Bootstrap-only secrets and populated answer files removed; retained D:\secrets\pat.txt for boot-time GitHub configuration checks.' -severity 'DEBUG'
 }
 
 function Run-Ronin-Run {
