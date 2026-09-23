@@ -24,7 +24,7 @@ vm:
     worker_pool_id: win11-a64-25h2-tester-alpha
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "windows-task-storage-drive"
+    sourceBranch: "windows-builder-long-paths"
     deploymentId: "NA"
     managed_by: packer
 tests:
