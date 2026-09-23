@@ -136,20 +136,41 @@ function Resolve-WorkerImagesRevision {
     return $revision.ToLowerInvariant()
 }
 
+function Test-ProvisioningDriveAcl {
+    param([System.Security.AccessControl.DirectorySecurity]$Acl)
+
+    $admins = 'S-1-5-32-544'
+    $allowedSids = @('S-1-5-18', $admins)
+    $rules = @($Acl.GetAccessRules($true, $true, [System.Security.Principal.SecurityIdentifier]))
+    if ((-not $Acl.AreAccessRulesProtected) -or
+        ($Acl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value -ne $admins) -or
+        ($rules.Count -ne $allowedSids.Count)) {
+        return $false
+    }
+
+    foreach ($sid in $allowedSids) {
+        $rule = @($rules | Where-Object { $_.IdentityReference.Value -eq $sid })
+        if (($rule.Count -ne 1) -or
+            ($rule[0].AccessControlType -ne [System.Security.AccessControl.AccessControlType]::Allow) -or
+            ($rule[0].FileSystemRights -ne [System.Security.AccessControl.FileSystemRights]::FullControl) -or
+            ($rule[0].InheritanceFlags -ne ([System.Security.AccessControl.InheritanceFlags]::ContainerInherit -bor [System.Security.AccessControl.InheritanceFlags]::ObjectInherit)) -or
+            ($rule[0].PropagationFlags -ne [System.Security.AccessControl.PropagationFlags]::None) -or
+            $rule[0].IsInherited) {
+            return $false
+        }
+    }
+    return $true
+}
+
 function Protect-ProvisioningDrive {
     param([switch]$Fresh)
 
-    $admins = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-32-544')
     # Protected DACL: SYSTEM and built-in Administrators, inheritable full control.
     $acl = [System.Security.AccessControl.DirectorySecurity]::new()
     $acl.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)')
-    $accessSection = [System.Security.AccessControl.AccessControlSections]::Access
-    $expected = $acl.GetSecurityDescriptorSddlForm($accessSection)
     $currentAcl = Get-Acl -LiteralPath 'D:\'
-    $current = $currentAcl.GetSecurityDescriptorSddlForm($accessSection)
-    $currentOwner = $currentAcl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value
 
-    if (($current -eq $expected) -and ($currentOwner -eq $admins.Value)) {
+    if (Test-ProvisioningDriveAcl $currentAcl) {
         return
     }
 
@@ -163,10 +184,9 @@ function Protect-ProvisioningDrive {
     Set-Acl -LiteralPath 'D:\' -AclObject $acl
 
     $actualAcl = Get-Acl -LiteralPath 'D:\'
-    $actual = $actualAcl.GetSecurityDescriptorSddlForm($accessSection)
-    $actualOwner = $actualAcl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value
-    if (($actual -ne $expected) -or ($actualOwner -ne $admins.Value)) {
-        throw 'Failed to restrict D:\ to SYSTEM and Administrators.'
+    if (-not (Test-ProvisioningDriveAcl $actualAcl)) {
+        $actualOwner = $actualAcl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value
+        throw "Failed to restrict D:\ to SYSTEM and Administrators. Owner=$actualOwner SDDL=$($actualAcl.Sddl)"
     }
 }
 
