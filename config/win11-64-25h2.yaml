@@ -16,6 +16,7 @@ azure:
     - canadacentral
     - canadaeast
     - centralindia
+    - centralus
     - eastus
     - eastus2
     - northcentralus
