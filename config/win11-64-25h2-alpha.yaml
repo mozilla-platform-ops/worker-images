@@ -13,11 +13,14 @@ azure:
   managed_image_storage_account_type: Standard_LRS
   build_location: eastus
   locations:
-    - uksouth
+    - centralus
     - eastus
     - eastus2
-    - westus2
+    - northeurope
+    - uksouth
     - westus
+    - westus2
+    - westus3
 vm:
   puppet_version: 8.10.0
   git_version: "default"
@@ -28,8 +31,8 @@ vm:
     worker_pool_id: win11-64-25h2-alpha
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "windows-builder-long-paths"
-    deploymentId: "NA"
+    sourceBranch: "default"
+    deploymentId: "default"
     managed_by: packer
 tests:
   - win11_sdk_tests.ps1
