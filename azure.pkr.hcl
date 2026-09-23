@@ -209,6 +209,7 @@ variable "replication_regions" {
   default = [
     "canadacentral",
     "centralindia",
+    "centralus",
     "eastus",
     "eastus2",
     "northcentralus",
