@@ -39,7 +39,7 @@ pools:
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "windows-task-storage-drive"
-    hash: "2eaa2ce0c44c439193c9d43ebe9d0f38b78053de"
+    hash: "2eaa2ce"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -155,7 +155,7 @@ pools:
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "master"
-    hash: "084c19f3b680cbe6c09bfae25c19ab52a6161b08"
+    hash: "084c19f"
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
