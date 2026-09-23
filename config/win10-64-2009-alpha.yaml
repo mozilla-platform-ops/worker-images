@@ -14,7 +14,13 @@ azure:
   build_location: eastus
   locations:
     - centralindia
+    - centralus
+    - eastus
     - eastus2
+    - northcentralus
+    - westus
+    - westus2
+    - westus3
 vm:
   puppet_version: 8.10.0
   git_version: "default"
@@ -25,8 +31,8 @@ vm:
     worker_pool_id: win10-64-2009-alpha
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "windows-builder-long-paths"
-    deploymentId: "NA"
+    sourceBranch: "default"
+    deploymentId: "default"
     managed_by: packer
 tests:
   - microsoft_vcc_win10_win11_x64.tests.ps1

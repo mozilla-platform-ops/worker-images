@@ -13,7 +13,11 @@ azure:
   managed_image_storage_account_type: Standard_LRS
   build_location: eastus
   locations:
+    - centralindia
     - centralus
+    - eastus2
+    - northcentralus
+    - uksouth
 vm:
   puppet_version: 8.10.0
   openvox_version: "default"
@@ -24,8 +28,8 @@ vm:
     worker_pool_id: win11-a64-25h2-tester-alpha
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "windows-builder-long-paths"
-    deploymentId: "NA"
+    sourceBranch: "default"
+    deploymentId: "default"
     managed_by: packer
 tests:
   - error_reporting.tests.ps1
