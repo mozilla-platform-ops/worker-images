@@ -145,15 +145,17 @@ pools:
   - name: "win11-64-24h2-hw-alpha"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
-    #dev: RELOPS-1660
     git_version: "2.50.1"
     Description: "NUC12 Hardware Performance Staging/Testing Pool"
+    # RELOPS-2584: run this pool's deploy from the hardening branch so the nodes pull
+    # OS-deploy/Get-Bootstrap/bootstrap and the new sshd_config from it. Puppet is back
+    # on ronin_puppet mainline so anything that breaks here is this branch, not a pin.
+    dev: "relops-2584-windows-hw-deployment-hardening"
     image: "win11-24h2-hw-20260908-172915"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    # Validate shared Windows changes from ronin_puppet#1408 on hardware.
-    src_Branch: "windows-task-storage-drive"
-    hash: "2eaa2ce0c44c439193c9d43ebe9d0f38b78053de"
+    src_Branch: "master"
+    hash: "084c19f3b680cbe6c09bfae25c19ab52a6161b08"
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
