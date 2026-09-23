@@ -878,15 +878,17 @@ $local_app = $local_install + "applications"
 
 
 # Resync the local deploy files from the share only when they're actually missing. The
-# sentinel for setup-media deploys is setup.exe; for baked-WIM deploys it's the WIM itself.
+# sentinel for setup-media deploys is setup.exe; baked-WIM deploys require both the WIM and
+# its adjacent SHA-256 sidecar.
 # D: PERSISTS across (re)deploys when partitioning is skipped, so keying only on setup.exe made
 # the WIM path ALWAYS wipe D:\* and recopy the ~6 GB WIM every single deploy. Also require the
 # needed WIM to be absent, so a same-image redeploy reuses the cached WIM. (Get-Bootstrap +
 # pools.yml are refreshed separately from GitHub, so skipping the resync doesn't stale those;
 # on an image change the new WIM name is absent -> resync runs and wipes the old one.)
 $needWim = Join-Path $OS_files "$neededImage.wim"
+$needWimHash = "$needWim.sha256"
 $shareMounted = $false
-if ((!(Test-Path $setup)) -and (!(Test-Path $needWim))) {
+if ((!(Test-Path $setup)) -and ((!(Test-Path $needWim)) -or (!(Test-Path $needWimHash)))) {
     Write-Host "Install files wrong or missing."
     Write-Host "Will resync files."
     if ((Get-ChildItem -Path $local_install -Force).Count -gt 0) {
