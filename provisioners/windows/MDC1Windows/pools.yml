@@ -29,17 +29,17 @@ pools:
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
     git_version: "2.50.0"
-    #dev: RELOPS-1470
     Description: "NUC12 Hardware Reference Staging/Testing Pool"
-    # RELOPS-2487 canary paused to validate ronin_puppet#1408.
-    # With `dev:` set, OS-deploy.ps1 refreshes pools.yml from the feature branch and the
-    # image/src_Branch/hash below are ignored, so the pin needs it off to take effect.
-    #dev: "nuc-wim-pipeline"
+    # RELOPS-2584: run this pool's deploy from the hardening branch alongside
+    # win11-64-24h2-hw-alpha. This retires both the paused RELOPS-2487 nuc-wim-pipeline
+    # canary and the ronin_puppet#1408 pin; Puppet is back on mainline so a failure on
+    # these two nodes points at the hardening branch.
+    dev: "relops-2584-windows-hw-deployment-hardening"
     image: "win11-24h2-hw-20260908-172915"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "windows-task-storage-drive"
-    hash: "2eaa2ce"
+    src_Branch: "master"
+    hash: "084c19f"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
