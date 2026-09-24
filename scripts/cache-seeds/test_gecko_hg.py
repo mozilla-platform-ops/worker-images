@@ -5,6 +5,7 @@ As root on Linux, set RUN_TASK and ROBUSTCHECKOUT to test Gecko's real helpers.
 """
 
 import hashlib
+from datetime import datetime
 import json
 import os
 from pathlib import Path
@@ -61,6 +62,8 @@ class SeedTest(unittest.TestCase):
             state = root / "directory-caches.json"
             seed.install(image, root / "caches", state)
             entries = json.loads(state.read_text())
+            if os.name == "posix":
+                self.assertEqual((root / "caches").stat().st_mode & 0o777, 0o700)
             self.assertEqual(len(entries), 2)
             saved = state.read_bytes()
             seed.install(image, root / "caches", state)
@@ -68,6 +71,8 @@ class SeedTest(unittest.TestCase):
             for name, caches in entries.items():
                 cache = Path(caches[0]["location"])
                 self.assertEqual(caches[0]["key"], name)
+                self.assertEqual(caches[0]["created"], spec["created"])
+                self.assertIsNotNone(datetime.fromisoformat(caches[0]["created"]).tzinfo)
                 store = cache / spec["store_subdir"] / revision
                 self.assertFalse((store / ".hg/sharedpath").exists())
                 self.assertFalse((store / "tracked").exists())

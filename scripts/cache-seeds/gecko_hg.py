@@ -2,6 +2,7 @@
 """Build and install an opt-in Gecko Mercurial history seed."""
 
 import argparse
+from datetime import datetime, timezone
 import hashlib
 import json
 import os
@@ -82,7 +83,8 @@ def build(revision, mode, level, seed_root, hg):
         staging = Path(temp) / "seed"
         cache = staging / "cache"
         cache.mkdir(parents=True)
-        spec = {"source": SOURCE, "revision": revision, "mode": mode, "level": level}
+        spec = {"source": SOURCE, "revision": revision, "mode": mode, "level": level,
+                "created": datetime.now(timezone.utc).isoformat()}
         if mode == "linux-d2g":
             url = f"{SOURCE}/raw-file/{revision}/taskcluster/scripts/run-task"
             with urlopen(url, timeout=120) as response:
@@ -108,12 +110,16 @@ def install(seed_root, destination_root, state_file):
     spec = json.loads((seed_root / "manifest.json").read_text())
     state = {}
     destination_root.mkdir(parents=True, exist_ok=True)
+    if os.name == "posix":
+        # Idle caches must not be accessible without a scoped task mount.
+        destination_root.chmod(0o700)
     for name in spec["cache_names"]:
         if not re.fullmatch(r"gecko-level-[13]-checkouts(?:-sparse)?(?:-hg58-v3-[0-9a-f]{20})?", name):
             raise ValueError("Invalid cache name in seed manifest")
         destination = destination_root / name
         if destination.exists():
             raise FileExistsError(f"Cache directory exists without worker state: {destination}")
+        print(f"Installing Gecko Hg cache: {name}", flush=True)
         with tempfile.TemporaryDirectory(prefix=".install-", dir=destination_root) as temp:
             cache = Path(temp) / "cache"
             shutil.copytree(seed_root / "cache", cache)
@@ -124,7 +130,8 @@ def install(seed_root, destination_root, state_file):
                     for entry in files:
                         os.chown(Path(directory) / entry, 1000, 1000)
             cache.rename(destination)
-        state[name] = [{"key": name, "location": str(destination.resolve())}]
+        state[name] = [{"key": name, "location": str(destination.resolve()),
+                        "created": spec["created"]}]
     state_file.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".hg-state-", dir=state_file.parent) as temp:
         pending = Path(temp) / "state.json"

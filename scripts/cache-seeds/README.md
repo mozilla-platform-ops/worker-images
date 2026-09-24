@@ -43,7 +43,7 @@ older D: pools or change tasksDir, cachesDir, or downloadsDir.
 ## Linux images
 
 The image contains one seed at `/usr/local/share/gecko-hg-seed`. Before Worker
-Runner starts, a small service installs independent full and sparse caches at
+Runner starts, its ExecStartPre hook installs independent full and sparse caches at
 `/home/generic-worker/caches`, after the task disk is mounted. It writes initial
 state to `/directory-caches.json`, because the existing worker service has no
 WorkingDirectory and starts in `/`. It does not change either setting.
@@ -66,7 +66,10 @@ fetches missing changes. No absolute `.hg/sharedpath` from the image build is
 stored in the seed. Full and sparse caches do not share mutable store files.
 
 The installer never replaces an existing worker state file. Reimage to test a
-new seed. An interrupted install that leaves cache directories without state
+new seed. Image creation fails if cache state is already present. Cache records
+retain the seed's build time so later purge requests still apply. On POSIX,
+the host cache parent is private (0700); tasks can access only mounted caches.
+An interrupted install that leaves cache directories without state
 fails closed; reimage that worker. Reserve disk space for two runtime stores,
 the image seed, task checkouts, and subsequent changes.
 

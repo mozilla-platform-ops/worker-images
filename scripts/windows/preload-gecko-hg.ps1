@@ -20,6 +20,9 @@ $seed = 'C:\hg-shared'
 if (@(Get-CimInstance -ClassName Win32_Processor -ErrorAction Stop).Architecture -contains 12) {
     $mode = 'windows-arm64'
     $seed = 'C:\gecko-hg-seed'
+    if (Test-Path -LiteralPath 'C:\worker-runner\directory-caches.json') {
+        throw 'Build the seed on a fresh image without Generic Worker cache state'
+    }
 }
 if ((Test-Path -LiteralPath $seed) -and (Get-ChildItem -LiteralPath $seed -Force)) {
     throw "Seed directory must be empty: $seed"
