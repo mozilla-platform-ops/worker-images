@@ -33,22 +33,6 @@ local "sbom_name" {
   expression = var.config
 }
 
-variable "gecko_hg_seed_revision" {
-  type        = string
-  default     = ""
-  description = "WIP: full autoland Hg changeset to seed. Empty disables seeding."
-}
-
-variable "gecko_hg_seed_level" {
-  type        = number
-  default     = 1
-  description = "Gecko trust level (1 or 3) for the ARM64 checkout caches."
-  validation {
-    condition     = contains([1, 3], var.gecko_hg_seed_level)
-    error_message = "Use Gecko trust level 1 or 3."
-  }
-}
-
 variable "vault_name" {
   type    = string
   default = "${env("vault_name")}"
@@ -469,21 +453,6 @@ build {
       "Import-Module BootStrap -Force;",
       "Disable-Services"
     ]
-  }
-
-  provisioner "file" {
-    source      = "${path.cwd}/scripts/cache-seeds/gecko_hg.py"
-    destination = "C:/gecko_hg.py"
-  }
-
-  provisioner "powershell" {
-    elevated_password = ""
-    elevated_user     = "SYSTEM"
-    environment_vars = [
-      "GECKO_HG_SEED_REVISION=${var.gecko_hg_seed_revision}",
-      "GECKO_HG_SEED_LEVEL=${var.gecko_hg_seed_level}",
-    ]
-    script = "${path.cwd}/scripts/windows/preload-gecko-hg.ps1"
   }
 
   provisioner "powershell" {
