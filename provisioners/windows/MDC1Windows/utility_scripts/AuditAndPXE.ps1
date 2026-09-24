@@ -57,6 +57,8 @@ function Invoke-SSH {
         [Parameter(Mandatory)][string]$NodeName,
         [Parameter(Mandatory)][string]$Command
     )
+    # SECURITY: redeployment regenerates NUC host keys, so persisted known_hosts entries
+    # become stale. The upstream VPN/VLAN is the trust boundary; this bypass is intentional.
     $output = & ssh -q -o ConnectTimeout=5 -o UserKnownHostsFile=empty.txt -o StrictHostKeyChecking=no $NodeName $Command
     [pscustomobject]@{ Output = $output; ExitCode = $LASTEXITCODE }
 }
@@ -442,7 +444,9 @@ SSH config example:
 
 # ------------------ Pool Data ------------------
 Write-Host "Pulling pool data from $yaml_url"
-$YAML = Invoke-WebRequest -Uri $yaml_url | ConvertFrom-Yaml
+# -UseBasicParsing: without it, PowerShell 5.1 hands the response to the IE engine
+# and throws a NullReferenceException on a controller with no IE user profile.
+$YAML = Invoke-WebRequest -Uri $yaml_url -UseBasicParsing | ConvertFrom-Yaml
 
 # ------------------ Wipe-D decision ------------------
 if ($single) {

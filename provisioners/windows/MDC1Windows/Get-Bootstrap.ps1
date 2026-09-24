@@ -1,3 +1,8 @@
+$worker_images_revision = 'WIRevisionPlaceholder'
+if ($worker_images_revision -notmatch '^[0-9a-fA-F]{40}$') {
+    throw 'Get-Bootstrap received an invalid worker-images revision.'
+}
+
 function Write-Log {
     param (
         [string] $message,
@@ -121,8 +126,8 @@ function Set-SSH {
         $win32_openssh = Invoke-DownloadWithRetry "https://github.com/PowerShell/Win32-OpenSSH/releases/download/v9.8.3.0p2-Preview/OpenSSH-Win64-v9.8.3.0.msi"
         $install = Start-Process -FilePath msiexec.exe -ArgumentList "/i $win32_openssh /quiet /norestart ADDLOCAL=Server" -Wait -PassThru -NoNewWindow
         Write-Host "win32_openssh install exit code: $($install.ExitCode)"
-        Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/main/provisioners/windows/MDC1Windows/ssh/authorized_keys" -Path $authorized_keys
-        Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/main/provisioners/windows/MDC1Windows/ssh/sshd_config" -Path "C:\programdata\ssh\sshd_config"
+        Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$worker_images_revision/provisioners/windows/MDC1Windows/ssh/authorized_keys" -Path $authorized_keys
+        Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$worker_images_revision/provisioners/windows/MDC1Windows/ssh/sshd_config" -Path "C:\programdata\ssh\sshd_config"
         $sshdService = Get-Service -Name ssh* -ErrorAction SilentlyContinue
         foreach ($s in $sshdService) {
             Write-Host "sshdService status: $($s.status)"
@@ -130,6 +135,8 @@ function Set-SSH {
         }
         [Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", [System.EnvironmentVariableTarget]::Machine) + ';' + ${Env:ProgramFiles} + '\OpenSSH', [System.EnvironmentVariableTarget]::Machine)
         $sshfw = @{
+            # SECURITY: port 22 is reachable only through the upstream VPN/firewall;
+            # Profile Any is required because these workgroup NUCs may classify as Public.
             Name="AllowSSH"; DisplayName="Allow SSH"; Description="Allow SSH traffic on port 22"
             Profile="Any"; Direction="Inbound"; Action="Allow"; Protocol="TCP"; LocalPort=22
         }
@@ -374,10 +381,10 @@ Install-Choco
 # Fetch bootstrap.ps1
 $local_bootstrap = "C:\bootstrap\bootstrap.ps1"
 if (-Not (Test-Path "D:\Secrets\pat.txt")) {
-    $splat = @{ Url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/main/provisioners/windows/MDC1Windows/bootstrap.ps1"; Path = $local_bootstrap }
+    $splat = @{ Url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$worker_images_revision/provisioners/windows/MDC1Windows/bootstrap.ps1"; Path = $local_bootstrap }
     Invoke-DownloadWithRetry @splat
 } else {
-    $splat = @{ Url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/refs/heads/main/provisioners/windows/MDC1Windows/bootstrap.ps1"; Path = $local_bootstrap; PAT = Get-Content "D:\Secrets\pat.txt" }
+    $splat = @{ Url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$worker_images_revision/provisioners/windows/MDC1Windows/bootstrap.ps1"; Path = $local_bootstrap; PAT = Get-Content "D:\Secrets\pat.txt" }
     Invoke-DownloadWithRetryGithub @splat
 }
 
@@ -390,6 +397,9 @@ if (-Not (Test-Path -Path $local_bootstrap)) {
 }
 
 # Run bootstrap with PsExec
+New-Item -Path 'HKLM:\SOFTWARE\Mozilla' -Force | Out-Null
+New-Item -Path 'HKLM:\SOFTWARE\Mozilla\ronin_puppet' -Force | Out-Null
+New-ItemProperty -Path 'HKLM:\SOFTWARE\Mozilla\ronin_puppet' -Name worker_images_revision -Value $worker_images_revision -PropertyType String -Force | Out-Null
 D:\applications\psexec.exe -i -s -d -accepteula powershell.exe -ExecutionPolicy Bypass -file $local_bootstrap `
     -worker_pool_id "WorkerPoolId" `
     -role "1Role" `
@@ -400,4 +410,5 @@ D:\applications\psexec.exe -i -s -d -accepteula powershell.exe -ExecutionPolicy 
     -secret_date "1secret_date" `
     -puppet_version "1puppet_version" `
     -git_version "1git_version" `
-    -openvox_version "1openvox_version"
+    -openvox_version "1openvox_version" `
+    -worker_images_revision "$worker_images_revision"

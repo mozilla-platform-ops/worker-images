@@ -184,6 +184,8 @@ function Invoke-NodeDiag {
     Set-Content -Path $localTemp -Value $Payload -Encoding UTF8
 
     try {
+        # SECURITY: redeployment regenerates NUC host keys, so persisted known_hosts entries
+        # become stale. The upstream VPN/VLAN is the trust boundary for SSH/SCP below.
         $scpArgs = "-O -o ConnectTimeout=15 -o UserKnownHostsFile=NUL -o StrictHostKeyChecking=no `"$localTemp`" `"${User}@${NodeName}:$remoteName`""
         $psi = [System.Diagnostics.ProcessStartInfo]::new('scp')
         $psi.Arguments              = $scpArgs
@@ -202,6 +204,8 @@ function Invoke-NodeDiag {
         }
 
         $remoteCmd = "powershell -NoLogo -NonInteractive -NoProfile -ExecutionPolicy Bypass -File `"`$env:USERPROFILE\$remoteName`"; Remove-Item `"`$env:USERPROFILE\$remoteName`" -Force -ErrorAction SilentlyContinue"
+        # SECURITY: redeployment regenerates NUC host keys, so persisted known_hosts entries
+        # become stale. The upstream VPN/VLAN is the trust boundary; this bypass is intentional.
         $sshArgs = "-o ConnectTimeout=15 -o UserKnownHostsFile=NUL -o StrictHostKeyChecking=no ${User}@${NodeName} $remoteCmd"
         $psi2 = [System.Diagnostics.ProcessStartInfo]::new('ssh')
         $psi2.Arguments              = $sshArgs
