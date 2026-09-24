@@ -5,8 +5,8 @@
 # Build:  .\bin\WinHwWim\New-WinHwWim.ps1 -Image win11-24h2-hw-test
 #
 # Same base WIM + edition + bake role as win11-24h2-hw; differs only in identity
-# so it captures to its own namespace (captured/win11-24h2-hw-test/…) and tracks
-# the bake-role branch HEAD for fast iteration. Delete this file when done testing.
+# so it captures to its own namespace (captured/win11-24h2-hw-test/…).
+# Delete this file when done testing.
 
 base:
   wim: win11-24h2-base-install.wim
@@ -40,8 +40,8 @@ drivers:
 ronin:
   org: default
   repo: default
-  branch: wim-bake-role         # bake role branch
-  hash: "bc33d1c"               # pinned branch HEAD; bump explicitly for each test iteration
+  branch: relops-2581-windows-privileged-paths
+  hash: "9f684f4"
   bake_role: win116424h2hwbake
 
 vm:
@@ -63,5 +63,5 @@ tags:
   base_image: win11-24h2-base-install.wim
   sourceOrganization: default
   sourceRepository: default
-  sourceBranch: wim-bake-role
+  sourceBranch: relops-2581-windows-privileged-paths
   temp: "true"
