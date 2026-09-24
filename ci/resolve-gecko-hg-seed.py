@@ -1,4 +1,4 @@
-"""Resolve the latest autoland decision to one Hg revision for an image build."""
+"""Resolve paired Hg and Git revisions from one latest autoland decision."""
 
 import json
 import re
@@ -13,15 +13,15 @@ def read_json(url):
         return json.load(response)
 
 
-def hg_revision(graph):
+def hg_revision(graph, source="https://hg.mozilla.org/integration/autoland"):
     revisions = {
         task["task"]["payload"]["env"].get("GECKO_HEAD_REV", "")
         for task in graph.values()
         if task.get("task", {}).get("payload", {}).get("env", {}).get("GECKO_HEAD_REPOSITORY")
-        == "https://hg.mozilla.org/integration/autoland"
+        == source
     }
     if len(revisions) != 1 or not re.fullmatch(r"[0-9a-f]{40}", next(iter(revisions), "")):
-        raise ValueError("Expected one full autoland Hg revision in the decision graph")
+        raise ValueError(f"Expected one full autoland revision for {source} in the decision graph")
     return revisions.pop()
 
 
@@ -30,3 +30,4 @@ if __name__ == "__main__":
     graph = read_json(f"{ROOT}/queue/v1/task/{decision}/artifacts/public/full-task-graph.json")
     print(f"decision={decision}")
     print(f"revision={hg_revision(graph)}")
+    print(f"git_revision={hg_revision(graph, 'https://github.com/mozilla-firefox/firefox')}")

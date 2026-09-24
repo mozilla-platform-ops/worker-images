@@ -28,6 +28,16 @@ variable "gecko_hg_seed_revision" {
   description = "WIP: full autoland Hg changeset to seed. Empty disables seeding."
 }
 
+variable "gecko_git_seed_revision" {
+  type    = string
+  default = ""
+}
+
+variable "gecko_seed_decision" {
+  type    = string
+  default = ""
+}
+
 variable "use_keyvault" {
   type        = bool
   default     = false
@@ -367,6 +377,8 @@ build {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     environment_vars = [
       "GECKO_HG_SEED_REVISION=${var.gecko_hg_seed_revision}",
+      "GECKO_GIT_SEED_REVISION=${var.gecko_git_seed_revision}",
+      "GECKO_SEED_DECISION=${var.gecko_seed_decision}",
       "GECKO_HG_SEED_MODE=${source.name == "gw-fxci-gcp-l1-2404-gui-alpha" ? "linux-native" : "linux-d2g"}",
       "GECKO_HG_SEED_LEVEL=${startswith(source.name, "trusted-") ? "3" : "1"}",
     ]

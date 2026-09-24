@@ -29,6 +29,7 @@ class SeedTest(unittest.TestCase):
             }}}}
         graph = {"hg": task(seed.SOURCE, "a" * 40), "git": task("https://github.com/mozilla-firefox/firefox", "b" * 40)}
         self.assertEqual(resolve(graph), "a" * 40)
+        self.assertEqual(resolve(graph, "https://github.com/mozilla-firefox/firefox"), "b" * 40)
         for invalid in ({}, {"hg": task(seed.SOURCE, "tip")},
                         dict(graph, other=task(seed.SOURCE, "c" * 40))):
             with self.assertRaises(ValueError):

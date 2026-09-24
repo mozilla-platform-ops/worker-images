@@ -1,12 +1,12 @@
-# Gecko Hg image seed (WIP)
+# Gecko Hg and Git image seeds (WIP)
 
-This opt-in seed contains Gecko Mercurial history. It does not contain a working
-checkout, Git data, pip packages, or other task dependencies. Hardware WIMs are
+These opt-in seeds contain Gecko Mercurial and Git history. They do not contain
+checked-out source files, pip packages, or other task dependencies. Hardware WIMs are
 not changed.
 
 The Linux and Windows parallel alpha workflows automatically resolve the latest
-autoland decision and seed its Hg revision. No revision input is needed. Each
-workflow resolves it once, logs the decision and revision, and uses that revision
+autoland decision and seed its paired Hg and Git revisions. No revision input is needed. Each
+workflow resolves it once, logs the decision and revisions, and uses those revisions
 for all images in that run. The next run resolves the latest decision again.
 The seed stays fixed after image creation; tasks fetch later changes normally.
 
@@ -20,11 +20,15 @@ For example, add these arguments to the normal Packer build command:
 
 ```text
 -var 'gecko_hg_seed_revision=<full-autoland-Hg-revision>'
+-var 'gecko_git_seed_revision=<full-autoland-Git-revision>'
+-var 'gecko_seed_decision=<autoland-decision-task-id>'
 ```
 
 For Azure ARM64, also set `-var 'gecko_hg_seed_level=3'` for a level-3 image;
 the default is level 1. GCP selects level 1 or 3 from the Packer source name.
 Do not enable this WIP on a pool with a different cache layout or trust domain.
+Omit the Git revision to retain the Hg-only trial. Git seeding requires the
+paired Hg revision. It is not enabled in hardware WIMs or other build workflows.
 
 ## Windows cloud images
 
@@ -34,7 +38,7 @@ after Puppet as SYSTEM, with Worker Runner stopped.
 
 On x64, the image builder writes the Hg store directly under
 `C:\hg-shared\<root-changeset>`. This is the pool that Gecko's `run-task` already
-uses. No directory-cache state file or copy to D: is needed. The builder restores
+uses. Hg needs no directory-cache state file or copy to D:. The builder restores
 inherited ACLs on the new store and sets its owner to SYSTEM.
 
 On ARM64, Gecko uses `build/hg-store` inside a Generic Worker checkout cache.
@@ -51,6 +55,34 @@ The directories do not share hardlinks or junctions: a task can change or purge
 one cache without changing the others. This costs one extra Hg store on the
 image disk. Windows x64 needs no RelOps copy because both task types use
 `C:\hg-shared` directly. Linux registration is unchanged.
+
+## Git caches
+
+The builder fetches Git history once from
+`https://github.com/mozilla-firefox/firefox` at the paired autoland Git commit.
+It creates a depth-1 seed through local Git transport. Both seeds contain a
+normal `.git` directory without checked-out files, alternates, or hardlinked
+objects. Each task can fetch a newer revision with `run-task-git`.
+
+Git uses independent `gecko-level-<level>-checkouts-git` and
+`gecko-level-<level>-checkouts-git-shallow` caches. The repository is at `src`
+inside Windows caches and `gecko` inside Linux caches. Windows also registers
+independent `relops-level-3-checkouts-git` and `relops-level-3-checkouts-git-shallow`
+copies. Both Windows architectures use directory-cache state for Git; neither
+uses `C:\hg-shared` for Git. Hg and Git registrations are written together.
+
+Linux restores two extra archives, full and shallow, directly onto the task
+disk. D2G archives have UID/GID 1000 and use the pinned decision's
+`run-task-git` cache initializer. Their `-v3-<hash>` suffix follows Gecko's
+decision repository type: an Hg decision hashes `run-task-hg`, even for Git
+tasks. A Git decision hashes `run-task-git`. External Docker cache suffixes
+remain outside this trial.
+
+Allow space for both Git seed formats and their runtime copies in addition to
+Hg. Full Gecko disk use and Linux restore time have not been measured in a
+cloud build. Do not infer a speed gain from these local checks. The existing
+`benchmark.py` measures Hg only; Git reuse is covered by `test_git_seed.py`
+locally and still needs a fresh-image task test.
 
 Use the C: pool configuration from fxci-config. These changes do not convert
 older D: pools or change tasksDir, cachesDir, or downloadsDir.
@@ -152,6 +184,9 @@ Local checks:
 ```sh
 uv run scripts/cache-seeds/test_gecko_hg.py
 uv run scripts/cache-seeds/test_benchmark.py
+uv run scripts/cache-seeds/test_git_seed.py
+# Test updates with the decision artifact's actual Git helper:
+RUN_TASK_GIT=/path/to/run-task-git uv run scripts/cache-seeds/test_git_seed.py
 # On Linux as root, test with Gecko's pinned helpers too:
 RUN_TASK=/path/to/run-task ROBUSTCHECKOUT=/path/to/robustcheckout.py \
   uv run scripts/cache-seeds/test_gecko_hg.py

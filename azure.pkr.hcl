@@ -39,6 +39,16 @@ variable "gecko_hg_seed_revision" {
   description = "WIP: full autoland Hg changeset to seed. Empty disables seeding."
 }
 
+variable "gecko_git_seed_revision" {
+  type    = string
+  default = ""
+}
+
+variable "gecko_seed_decision" {
+  type    = string
+  default = ""
+}
+
 variable "gecko_hg_seed_level" {
   type        = number
   default     = 1
@@ -481,6 +491,8 @@ build {
     elevated_user     = "SYSTEM"
     environment_vars = [
       "GECKO_HG_SEED_REVISION=${var.gecko_hg_seed_revision}",
+      "GECKO_GIT_SEED_REVISION=${var.gecko_git_seed_revision}",
+      "GECKO_SEED_DECISION=${var.gecko_seed_decision}",
       "GECKO_HG_SEED_LEVEL=${var.gecko_hg_seed_level}",
     ]
     script = "${path.cwd}/scripts/windows/preload-gecko-hg.ps1"

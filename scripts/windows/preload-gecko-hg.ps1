@@ -1,6 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
 if (-not $env:GECKO_HG_SEED_REVISION) {
+    if ($env:GECKO_GIT_SEED_REVISION) { throw 'Git seeding requires the paired autoland Hg revision' }
     Write-Host 'Gecko Hg image seed is disabled'
     exit 0
 }
@@ -13,6 +14,9 @@ if ([Environment]::GetEnvironmentVariable('HG_CACHE', 'Machine') -ne 'C:\hg-cach
 }
 if (Get-Service worker-runner -ErrorAction SilentlyContinue | Where-Object Status -eq 'Running') {
     throw 'Stop worker-runner before building the image seed'
+}
+if ($env:GECKO_GIT_SEED_REVISION -and (Test-Path -LiteralPath 'C:\worker-runner\directory-caches.json')) {
+    throw 'Build the Git seed on a fresh image without Generic Worker cache state'
 }
 
 $mode = 'windows-x64'
@@ -31,11 +35,24 @@ if ((Test-Path -LiteralPath $seed) -and (Get-ChildItem -LiteralPath $seed -Force
     --mode $mode --level $env:GECKO_HG_SEED_LEVEL --seed-root $seed --hg $hg
 if ($LASTEXITCODE -ne 0) { throw 'Gecko Hg seed build failed' }
 
+$extraSeed = @()
+if ($env:GECKO_GIT_SEED_REVISION) {
+    & $python $helper build-git --revision $env:GECKO_GIT_SEED_REVISION `
+        --decision $env:GECKO_SEED_DECISION --mode $mode --level $env:GECKO_HG_SEED_LEVEL `
+        --seed-root 'C:\gecko-git-seed' --git 'C:\Program Files\Git\cmd\git.exe'
+    if ($LASTEXITCODE -ne 0) { throw 'Gecko Git seed build failed' }
+    $extraSeed = @('--extra-seed-root', 'C:\gecko-git-seed')
+}
 if ($mode -eq 'windows-arm64') {
-    & $python $helper install --seed-root $seed --destination-root 'C:\caches' `
+    & $python $helper install --seed-root $seed @extraSeed --destination-root 'C:\caches' `
         --state-file 'C:\worker-runner\directory-caches.json'
     if ($LASTEXITCODE -ne 0) { throw 'Gecko Hg cache registration failed' }
 } else {
+    if ($env:GECKO_GIT_SEED_REVISION) {
+        & $python $helper install --seed-root 'C:\gecko-git-seed' --destination-root 'C:\caches' `
+            --state-file 'C:\worker-runner\directory-caches.json'
+        if ($LASTEXITCODE -ne 0) { throw 'Gecko Git cache registration failed' }
+    }
     # Puppet grants inherited task-user access to this shared store.
     # A temporary build directory can have a private ACL. Restore inheritance
     # on the new store, without removing Puppet's ACL on C:\hg-shared.

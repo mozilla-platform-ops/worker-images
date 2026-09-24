@@ -16,6 +16,8 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
       os_integration_matrix: ${{ steps.set-matrix.outputs.os_integration_matrix }}
       gecko_hg_seed_revision: ${{ steps.seed.outputs.revision }}
+      gecko_git_seed_revision: ${{ steps.seed.outputs.git_revision }}
+      gecko_seed_decision: ${{ steps.seed.outputs.decision }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -74,6 +76,8 @@ jobs:
   packer:
     env:
       PKR_VAR_gecko_hg_seed_revision: ${{ needs.prepare-matrix.outputs.gecko_hg_seed_revision }}
+      PKR_VAR_gecko_git_seed_revision: ${{ needs.prepare-matrix.outputs.gecko_git_seed_revision }}
+      PKR_VAR_gecko_seed_decision: ${{ needs.prepare-matrix.outputs.gecko_seed_decision }}
     needs: [check-access, prepare-matrix]
     name: Build ${{ matrix.config }}
     runs-on: ubuntu-latest
