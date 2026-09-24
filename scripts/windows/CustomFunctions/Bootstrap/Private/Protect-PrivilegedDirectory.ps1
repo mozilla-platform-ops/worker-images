@@ -20,7 +20,8 @@ function Protect-PrivilegedDirectory {
 
     $sections = [System.Security.AccessControl.AccessControlSections]::Access -bor
         [System.Security.AccessControl.AccessControlSections]::Owner
-    if ((Get-Acl -LiteralPath $Path -ErrorAction Stop).GetSecurityDescriptorSddlForm($sections) -ne
+    # Windows may add the AI flag when applying this protected DACL.
+    if (((Get-Acl -LiteralPath $Path -ErrorAction Stop).GetSecurityDescriptorSddlForm($sections) -replace 'D:PAI', 'D:P') -ne
         $rootAcl.GetSecurityDescriptorSddlForm($sections)) {
         throw "Failed to restrict $Path to SYSTEM and Administrators."
     }
