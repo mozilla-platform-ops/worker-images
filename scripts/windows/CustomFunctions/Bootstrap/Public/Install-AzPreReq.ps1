@@ -17,6 +17,11 @@ function Install-AzPreReq {
     }
 
     process {
+        # SECURITY: these paths contain configuration, tests, or manifests consumed by SYSTEM.
+        Protect-PrivilegedDirectory -Path 'C:\Config'
+        Protect-PrivilegedDirectory -Path 'C:\Tests'
+        Protect-PrivilegedDirectory -Path $local_dir
+
         $configPath   = "C:\Config\$($env:Config).yaml"
         $defaultsPath = "C:\Config\windows_production_defaults.yaml"
 

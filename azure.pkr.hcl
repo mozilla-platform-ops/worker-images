@@ -5,7 +5,9 @@
 packer {
   required_plugins {
     azure = {
-      version = ">= 1.4.5"
+      # SECURITY: keep the OIDC-enabled image build on a reviewed plugin version.
+      # TODO(SECURITY): commit .packer.lock.hcl separately to pin the plugin checksum.
+      version = "= 2.6.4"
       source  = "github.com/hashicorp/azure"
     }
   }
@@ -57,8 +59,9 @@ variable "oidc_request_url" {
 }
 
 variable "oidc_request_token" {
-  type    = string
-  default = "${env("ACTIONS_ID_TOKEN_REQUEST_TOKEN")}"
+  type      = string
+  default   = "${env("ACTIONS_ID_TOKEN_REQUEST_TOKEN")}"
+  sensitive = true
 }
 
 variable "deployment_id" {

@@ -17,6 +17,9 @@ function Disable-AntiVirus {
         throw $_
     }
 
+    # SECURITY: Defender is intentionally disabled on ephemeral CI workers because scanning
+    # materially interferes with build and test workloads. Re-evaluate this exception for
+    # builder images separately before enabling protections fleet-wide.
     $avPreference = @(
         @{DisableArchiveScanning = $true }
         @{DisableAutoExclusions = $true }

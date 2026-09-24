@@ -22,6 +22,8 @@ function Start-AzRoninPuppet {
     }
     process {
         Set-Location $env:systemdrive\ronin
+        # SECURITY: bootstrap logs can contain sensitive provisioning details.
+        Protect-PrivilegedDirectory -Path $logdir
         If ( -Not (test-path $logdir\old)) {
             $null = New-Item -ItemType Directory -Force -Path $logdir\old
         }
@@ -58,7 +60,7 @@ function Start-AzRoninPuppet {
         $stopWatch.Start()
         Write-host ('{0} :: Beginning Puppet apply' -f $($MyInvocation.MyCommand.Name))
         Write-Log -message ('{0} :: Beginning Puppet apply' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-        puppet apply manifests\nodes.pp --onetime --verbose --no-daemonize --no-usecacheonfailure --detailed-exitcodes --no-splay --show_diff --modulepath=modules`;r10k_modules --hiera_config=hiera.yaml --logdest $LogDestination --debug
+        puppet apply manifests\nodes.pp --onetime --verbose --no-daemonize --no-usecacheonfailure --detailed-exitcodes --no-splay --modulepath=modules`;r10k_modules --hiera_config=hiera.yaml --logdest $LogDestination
         [int]$puppet_exit = $LastExitCode
         ## stop the timer
         $stopWatch.Stop()
@@ -95,7 +97,7 @@ function Start-AzRoninPuppet {
                         }
 
                         Write-Log -message  ('{0} :: Trusted image. Blocking livelog outbound access.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-                        New-NetFirewallRule -DisplayName "Block LiveLog" -Direction Outbound -Program "c:\generic-worker\livelog.exe" -Action block
+                        New-NetFirewallRule -DisplayName "Block LiveLog" -Direction Outbound -Program "c:\generic-worker\livelog.exe" -Action Block -ErrorAction Stop | Out-Null
                         Exit 0
                     }
                     else {
@@ -161,7 +163,7 @@ function Start-AzRoninPuppet {
                         }
 
                         Write-Log -message  ('{0} :: Trusted image. Blocking livelog outbound access.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
-                        New-NetFirewallRule -DisplayName "Block LiveLog" -Direction Outbound -Program "c:\generic-worker\livelog.exe" -Action block
+                        New-NetFirewallRule -DisplayName "Block LiveLog" -Direction Outbound -Program "c:\generic-worker\livelog.exe" -Action Block -ErrorAction Stop | Out-Null
                         Exit 2
                     }
                     else {
