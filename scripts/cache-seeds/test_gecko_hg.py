@@ -47,13 +47,25 @@ class SeedTest(unittest.TestCase):
             revision = seed.hg_command("hg", "-R", source, "log", "-r", ".", "-T", "{node}", capture=True)
             with patch.object(seed, "SOURCE", str(source)):
                 seed.build(revision, "windows-x64", 1, root / "hg-shared", "hg")
-                seed.build(revision, "windows-arm64", 1, root / "arm-seed", "hg")
+                with patch.object(seed, "seed_store", wraps=seed.seed_store) as clone:
+                    seed.build(revision, "windows-arm64", 1, root / "arm-seed", "hg")
+                    self.assertEqual(clone.call_count, 1)
             self.assertTrue((root / "hg-shared" / revision / ".hg").is_dir())
             self.assertFalse((root / "hg-shared/manifest.json").exists())
             seed.install(root / "arm-seed", root / "arm-caches", root / "arm-state.json")
             arm_state = json.loads((root / "arm-state.json").read_text())
+            self.assertEqual(set(arm_state), set(seed.cache_names("windows-arm64", 1)))
+            arm_stores = []
             for name in seed.cache_names("windows-arm64", 1):
-                self.assertTrue((Path(arm_state[name][0]["location"]) / "hg-store" / revision / ".hg").is_dir())
+                store = Path(arm_state[name][0]["location"]) / "hg-store" / revision / ".hg"
+                self.assertTrue(store.is_dir())
+                for other in arm_stores:
+                    self.assertFalse(os.path.samefile(store / "store/00changelog.i", other / "store/00changelog.i"))
+                arm_stores.append(store)
+            # A write in the RelOps cache must not change either Gecko cache.
+            (arm_stores[-1] / "worker-image-seed").write_text("changed by RelOps task\n")
+            for store in arm_stores[:-1]:
+                self.assertEqual((store / "worker-image-seed").read_text().strip(), revision)
             wrapper = os.environ.get("RUN_TASK")
             mode = "linux-d2g" if wrapper else "linux-native"
             image = root / "image-seed"
@@ -134,6 +146,12 @@ class SeedTest(unittest.TestCase):
 
     def test_names_and_existing_state(self):
         self.assertEqual(seed.cache_names("windows-arm64", 1),
+                         ["gecko-level-1-checkouts", "gecko-level-1-checkouts-sparse",
+                          "relops-level-3-checkouts-sparse"])
+        self.assertEqual(seed.cache_names("windows-arm64", 3),
+                         ["gecko-level-3-checkouts", "gecko-level-3-checkouts-sparse",
+                          "relops-level-3-checkouts-sparse"])
+        self.assertEqual(seed.cache_names("linux-native", 1),
                          ["gecko-level-1-checkouts", "gecko-level-1-checkouts-sparse"])
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

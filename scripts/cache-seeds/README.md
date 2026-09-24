@@ -43,6 +43,15 @@ writes initial state to `C:\worker-runner\directory-caches.json`. These use
 `gecko-level-<level>-checkouts` and `gecko-level-<level>-checkouts-sparse`.
 Generic Worker grants task-user access when it mounts each cache.
 
+The ARM64 image also registers `relops-level-3-checkouts-sparse` for the
+existing OS integration startup test. The builder clones history once, then
+copies that seed into three independent cache directories during image creation.
+There are no extra network clones and no cache copies at worker startup.
+The directories do not share hardlinks or junctions: a task can change or purge
+one cache without changing the others. This costs one extra Hg store on the
+image disk. Windows x64 needs no RelOps copy because both task types use
+`C:\hg-shared` directly. Linux registration is unchanged.
+
 Use the C: pool configuration from fxci-config. These changes do not convert
 older D: pools or change tasksDir, cachesDir, or downloadsDir.
 
@@ -83,7 +92,8 @@ the new names. There are no wildcard cache names.
 ## State and validation
 
 The automatic OS integration suite is not a cache benchmark. Its replication
-step changes cache names to `relops-level-1-*`. Linux startup tests also use a
+step changes cache names to `relops-level-3-*` in the deployed main-branch hook.
+The ARM64 seed now includes the matching sparse cache. Linux startup tests use a
 sparse cache, while this trial seeds a full cache. Do not report an image cache
 hit or a speed gain from those tests.
 
@@ -135,7 +145,7 @@ retain the seed's build time so later purge requests still apply. On POSIX,
 the host cache parent is private (0700); tasks can access only mounted caches.
 An interrupted install that leaves cache directories without state
 fails closed; reimage that worker. Reserve disk space for one Linux runtime
-store (two on Windows ARM64), the image seed, task checkouts, and subsequent changes.
+store (three on Windows ARM64), the image seed, task checkouts, and subsequent changes.
 
 Local checks:
 

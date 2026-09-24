@@ -70,7 +70,10 @@ def initialize_run_task_cache(run_task, cache):
 
 def cache_names(mode, level, digest=None):
     suffix = f"-hg58-v3-{digest[:20]}" if mode == "linux-d2g" else ""
-    return [f"gecko-level-{level}-{name}{suffix}" for name in ("checkouts", "checkouts-sparse")]
+    names = [f"gecko-level-{level}-{name}{suffix}" for name in ("checkouts", "checkouts-sparse")]
+    if mode == "windows-arm64":
+        names.append("relops-level-3-checkouts-sparse")
+    return names
 
 
 def build(revision, mode, level, seed_root, hg):
@@ -128,7 +131,8 @@ def install(seed_root, destination_root, state_file):
         # Idle caches must not be accessible without a scoped task mount.
         destination_root.chmod(0o700)
     for name in spec["cache_names"]:
-        if not re.fullmatch(r"gecko-level-[13]-checkouts(?:-sparse)?(?:-hg58-v3-[0-9a-f]{20})?", name):
+        relops_cache = spec["mode"] == "windows-arm64" and name == "relops-level-3-checkouts-sparse"
+        if not relops_cache and not re.fullmatch(r"gecko-level-[13]-checkouts(?:-sparse)?(?:-hg58-v3-[0-9a-f]{20})?", name):
             raise ValueError("Invalid cache name in seed manifest")
         destination = destination_root / name
         if destination.exists():
