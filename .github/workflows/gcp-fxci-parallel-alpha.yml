@@ -15,9 +15,20 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
       os_integration_matrix: ${{ steps.set-matrix.outputs.os_integration_matrix }}
+      gecko_hg_seed_revision: ${{ steps.seed.outputs.revision }}
+      gecko_git_seed_revision: ${{ steps.seed.outputs.git_revision }}
+      gecko_seed_decision: ${{ steps.seed.outputs.decision }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4
+
+      - name: Resolve latest autoland Hg revision
+        id: seed
+        shell: bash
+        run: uv run ci/resolve-gecko-hg-seed.py | tee -a "$GITHUB_OUTPUT"
 
       - id: set-matrix
         name: Extract GCP alpha configs
@@ -63,6 +74,10 @@ jobs:
           }
 
   packer:
+    env:
+      PKR_VAR_gecko_hg_seed_revision: ${{ needs.prepare-matrix.outputs.gecko_hg_seed_revision }}
+      PKR_VAR_gecko_git_seed_revision: ${{ needs.prepare-matrix.outputs.gecko_git_seed_revision }}
+      PKR_VAR_gecko_seed_decision: ${{ needs.prepare-matrix.outputs.gecko_seed_decision }}
     needs: [check-access, prepare-matrix]
     name: Build ${{ matrix.config }}
     runs-on: ubuntu-latest
