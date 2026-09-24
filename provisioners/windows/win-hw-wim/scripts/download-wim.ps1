@@ -25,7 +25,8 @@ param(
     [Parameter(Mandatory)] [string] $Dest,
     [string] $Account = 'hardwareimaging',
     [ValidateSet('login','sas')] [string] $AuthMode = 'login',
-    [string] $Sas
+    [string] $Sas,
+    [switch] $SkipSidecar
 )
 $ErrorActionPreference = 'Stop'
 if (-not (Get-Command azcopy -ErrorAction SilentlyContinue)) { throw 'azcopy not on PATH.' }
@@ -39,7 +40,9 @@ if ($AuthMode -eq 'login' -and -not $env:AZCOPY_AUTO_LOGIN_TYPE) {
     $env:AZCOPY_AUTO_LOGIN_TYPE = 'AZCLI'
 }
 
-foreach ($pair in @(@{ Blob = $Blob; Dest = $Dest }, @{ Blob = "$Blob.sha256"; Dest = "$Dest.sha256" })) {
+$downloads = @(@{ Blob = $Blob; Dest = $Dest })
+if (-not $SkipSidecar) { $downloads += @{ Blob = "$Blob.sha256"; Dest = "$Dest.sha256" } }
+foreach ($pair in $downloads) {
     $url = "https://$Account.blob.core.windows.net/$($pair.Blob)"
     if ($AuthMode -eq 'sas') {
         $sep = if ($Sas.StartsWith('?')) { '' } else { '?' }
@@ -49,13 +52,18 @@ foreach ($pair in @(@{ Blob = $Blob; Dest = $Dest }, @{ Blob = "$Blob.sha256"; D
     if ($LASTEXITCODE -ne 0) { throw "azcopy download failed rc=$LASTEXITCODE ($($pair.Blob))" }
 }
 
-$sidecar = Get-Content -LiteralPath "$Dest.sha256" -Raw
-if ($sidecar -notmatch '^\s*([0-9a-fA-F]{64})(?:\s|$)') {
-    throw "Invalid SHA-256 sidecar: $Dest.sha256"
+if ($SkipSidecar) {
+    Write-Host "== Downloaded $Blob -> $Dest =="
 }
-$expected = $Matches[1]
-$actual = (Get-FileHash -LiteralPath $Dest -Algorithm SHA256).Hash
-if ($actual -ne $expected) {
-    throw "SHA-256 mismatch for $Dest (expected $expected, got $actual)"
+else {
+    $sidecar = Get-Content -LiteralPath "$Dest.sha256" -Raw
+    if ($sidecar -notmatch '^\s*([0-9a-fA-F]{64})(?:\s|$)') {
+        throw "Invalid SHA-256 sidecar: $Dest.sha256"
+    }
+    $expected = $Matches[1]
+    $actual = (Get-FileHash -LiteralPath $Dest -Algorithm SHA256).Hash
+    if ($actual -ne $expected) {
+        throw "SHA-256 mismatch for $Dest (expected $expected, got $actual)"
+    }
+    Write-Host "== Downloaded and SHA-256 verified $Blob -> $Dest ($actual) =="
 }
-Write-Host "== Downloaded and SHA-256 verified $Blob -> $Dest ($actual) =="

@@ -299,12 +299,12 @@ if ($Stages -contains 'prep') {
     # <os>-base-install.wim), and cache it back to resources/WIMs/ so later bakes reuse it — so a WIM
     # bake can start from just an uploaded ISO.
     if (Test-BlobExists $account $baseCont $baseWimBlob) {
-        & $ps 'download-wim.ps1' @('-Blob', "$baseCont/$baseWimBlob", '-Dest', $localBase, '-Account', $account)
+        & $ps 'download-wim.ps1' @('-Blob', "$baseCont/$baseWimBlob", '-Dest', $localBase, '-Account', $account, '-SkipSidecar')
     }
     elseif ($baseIso) {
         Write-Host "  $baseCont/$baseWimBlob not present -> extracting it from $baseCont/$baseIsoBlob"
         $localSrcIso = Join-Path $work $baseIso
-        & $ps 'download-wim.ps1'        @('-Blob', "$baseCont/$baseIsoBlob", '-Dest', $localSrcIso, '-Account', $account)
+        & $ps 'download-wim.ps1'        @('-Blob', "$baseCont/$baseIsoBlob", '-Dest', $localSrcIso, '-Account', $account, '-SkipSidecar')
         & $ps 'extract-wim-from-iso.ps1' @('-SourceIso', $localSrcIso, '-OutWim', $localBase)
         Write-Host "  caching extracted base WIM back to $baseCont/$baseWimBlob"
         & $ps 'upload-wim.ps1'          @('-Wim', $localBase, '-Container', $baseCont, '-Account', $account, '-BlobName', $baseWimBlob)
@@ -612,7 +612,7 @@ if ($Stages -contains 'publish') {
 if ($Stages -contains 'iso') {
     Write-Host "`n### iso #########################################################"
     $localSrcIso = Join-Path $work $baseIso
-    & $ps 'download-wim.ps1' @('-Blob', "$baseCont/$baseIsoBlob", '-Dest', $localSrcIso, '-Account', $account)
+    & $ps 'download-wim.ps1' @('-Blob', "$baseCont/$baseIsoBlob", '-Dest', $localSrcIso, '-Account', $account, '-SkipSidecar')
     # oscdimg (ADK Deployment Tools) is needed to repackage a bootable ISO and isn't native;
     # pull it from our blob (resources/tools) instead of the MS CDN at build time.
     & $ps 'ensure-oscdimg.ps1' @('-Account', $account)
