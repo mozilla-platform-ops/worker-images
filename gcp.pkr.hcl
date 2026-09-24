@@ -30,11 +30,11 @@ variable "gecko_hg_seed_revision" {
 
 variable "gecko_hg_seed_checkout" {
   type        = string
-  default     = ""
-  description = "WIP: select full or sparse for the target Linux pool. Required when seeding."
+  default     = "full"
+  description = "Linux cache to seed. Full is the default for the Hg trial."
   validation {
-    condition     = contains(["", "full", "sparse"], var.gecko_hg_seed_checkout)
-    error_message = "Choose full or sparse, or leave empty when seeding is disabled."
+    condition     = contains(["full", "sparse"], var.gecko_hg_seed_checkout)
+    error_message = "The checkout cache must be full or sparse."
   }
 }
 

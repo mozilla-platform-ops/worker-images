@@ -54,7 +54,8 @@ class SeedTest(unittest.TestCase):
                     with patch.object(seed, "urlopen", return_value=open(wrapper, "rb")):
                         seed.build(revision, mode, 3, image, "hg", checkout)
                 else:
-                    seed.build(revision, mode, 3, image, "hg", checkout)
+                    options = {} if checkout == "full" else {"checkout": checkout}
+                    seed.build(revision, mode, 3, image, "hg", **options)
             spec = json.loads((image / "manifest.json").read_text())
             self.assertTrue((image / "cache.tar.gz").is_file())
             self.assertFalse((image / "cache").exists())
@@ -132,7 +133,7 @@ class SeedTest(unittest.TestCase):
                 seed.build("tip", "windows-x64", 1, root / "shared", "hg")
             self.assertFalse((root / "shared").exists())
             with self.assertRaises(ValueError):
-                seed.build("a" * 40, "linux-native", 1, root / "image", "hg")
+                seed.build("a" * 40, "linux-native", 1, root / "image", "hg", "invalid")
             self.assertFalse((root / "image").exists())
 
     def test_broken_archive_does_not_register_cache(self):

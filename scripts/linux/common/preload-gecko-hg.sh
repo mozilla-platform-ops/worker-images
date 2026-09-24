@@ -6,7 +6,8 @@ if [[ -z "${GECKO_HG_SEED_REVISION:-}" ]]; then
     exit 0
 fi
 
-if [[ "${GECKO_HG_SEED_CHECKOUT:-}" != full && "${GECKO_HG_SEED_CHECKOUT:-}" != sparse ]]; then
+GECKO_HG_SEED_CHECKOUT=${GECKO_HG_SEED_CHECKOUT:-full}
+if [[ "$GECKO_HG_SEED_CHECKOUT" != full && "$GECKO_HG_SEED_CHECKOUT" != sparse ]]; then
     echo 'Select GECKO_HG_SEED_CHECKOUT=full or sparse for the target pool' >&2
     exit 1
 fi

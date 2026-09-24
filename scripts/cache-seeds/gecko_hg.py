@@ -72,7 +72,7 @@ def cache_names(mode, level, digest=None):
     return [f"gecko-level-{level}-{name}{suffix}" for name in ("checkouts", "checkouts-sparse")]
 
 
-def build(revision, mode, level, seed_root, hg, checkout=None):
+def build(revision, mode, level, seed_root, hg, checkout="full"):
     if not NODE.fullmatch(revision):
         raise ValueError("Use a full Hg changeset from the latest autoland decision task")
     if mode.startswith("linux-") and checkout not in ("full", "sparse"):
@@ -171,7 +171,7 @@ def main():
     bake.add_argument("--level", type=int, choices=(1, 3), default=1)
     bake.add_argument("--seed-root", type=Path, required=True)
     bake.add_argument("--hg", default="hg")
-    bake.add_argument("--checkout", choices=("full", "sparse"), help="Required for Linux; select one cache")
+    bake.add_argument("--checkout", choices=("full", "sparse"), default="full", help="Linux cache to seed (default: full)")
     boot = commands.add_parser("install")
     boot.add_argument("--seed-root", type=Path, required=True)
     boot.add_argument("--destination-root", type=Path, required=True)

@@ -42,13 +42,18 @@ older D: pools or change tasksDir, cachesDir, or downloadsDir.
 
 ## Linux images
 
-Select exactly one cache that the target pool uses:
+Linux seeds the full-checkout cache by default. No checkout option is needed
+for the Hg trial. Autoland decision `W2W5EeeBSJu1jaEnKQkzAw` has 3,435 Linux
+Docker-style Hg task definitions using the full cache and 453 using the sparse
+cache. These are task definitions, not measured task volume or cache-hit rates.
+Both checkout types work; only the full cache is preloaded by default.
+
+For a later sparse-only trial, the override is:
 
 ```text
 -var 'gecko_hg_seed_checkout=sparse'
 ```
 
-Use `full` instead for a full-checkout cache. There is no default selection.
 Other cache names continue to use the normal cold-checkout path.
 
 The image contains one gzip archive at
