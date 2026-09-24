@@ -168,6 +168,7 @@ build {
       "CLOUD=google",
       "TC_ARCH=${var.tc_arch}",
       "TASKCLUSTER_VERSION=${var.taskcluster_version}",
+      "PRELOADED_CACHE_STATE_FILE=/var/local/generic-worker/directory-caches.json",
       "NUM_LOOPBACK_AUDIO_DEVICES=8",
       "NUM_LOOPBACK_VIDEO_DEVICES=8"
     ]

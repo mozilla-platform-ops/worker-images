@@ -29,6 +29,16 @@ stage_cache_seeds () {
     fi
 }
 
+write_directory_cache_state () {
+    cat > /var/local/generic-worker/directory-caches.json <<'JSON'
+{
+  "gecko-level-1-pip": [{"key":"gecko-level-1-pip","location":"/mnt/generic-worker/cache-seeds/gecko-level-1-pip"}],
+  "gecko-level-3-pip": [{"key":"gecko-level-3-pip","location":"/mnt/generic-worker/cache-seeds/gecko-level-3-pip"}]
+}
+JSON
+    chmod 600 /var/local/generic-worker/directory-caches.json
+}
+
 # temp: install fio so we can check for perf of SSDs
 apt-get install -y fio
 
@@ -49,6 +59,7 @@ else
         echo "No google-local-nvme-ssd devices found! Exiting..."
         makedirs
         stage_cache_seeds
+        write_directory_cache_state
         exit 0
     fi
 
@@ -93,6 +104,7 @@ fi
 
 makedirs
 stage_cache_seeds
+write_directory_cache_state
 
 EOF
 

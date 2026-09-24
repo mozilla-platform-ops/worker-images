@@ -77,7 +77,7 @@ retry curl -fsSL "https://github.com/taskcluster/taskcluster/releases/download/v
 chmod a+x generic-worker start-worker taskcluster-proxy livelog
 
 mkdir -p /etc/generic-worker
-mkdir -p /var/local/generic-worker
+mkdir -p /var/local/generic-worker/caches /var/local/generic-worker/downloads
 /usr/local/bin/generic-worker --version
 /usr/local/bin/generic-worker new-ed25519-keypair --file /etc/generic-worker/ed25519_key
 
@@ -94,6 +94,7 @@ After=network-online.target docker.service
 
 [Service]
 Type=simple
+WorkingDirectory=/var/local/generic-worker
 ExecStart=/usr/local/bin/start-worker /etc/start-worker.yml
 # log to console to make output visible in cloud consoles, and syslog for ease of
 # redirecting to external logging services
@@ -113,11 +114,8 @@ worker:
     path: /usr/local/bin/generic-worker
     configPath: /etc/generic-worker/config
 workerConfig:
-    preloadedDirectoryCaches:
-        - cacheName: gecko-level-1-pip
-          location: /usr/local/share/generic-worker/cache-seeds/gecko-level-1-pip
-        - cacheName: gecko-level-3-pip
-          location: /usr/local/share/generic-worker/cache-seeds/gecko-level-3-pip
+    cachesDir: /var/local/generic-worker/caches
+    downloadsDir: /var/local/generic-worker/downloads
 cacheOverRestarts: /etc/start-worker-cache.json
 EOF
 
