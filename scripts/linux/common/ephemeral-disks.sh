@@ -20,6 +20,15 @@ makedirs () {
     mkdir -p /mnt/var/lib/docker
 }
 
+stage_cache_seeds () {
+    local source=/usr/local/share/generic-worker/cache-seeds
+    local destination=/mnt/generic-worker/cache-seeds
+    if [ -d "\$source" ]; then
+        mkdir -p "\$destination"
+        cp -a "\$source/." "\$destination/"
+    fi
+}
+
 # temp: install fio so we can check for perf of SSDs
 apt-get install -y fio
 
@@ -39,6 +48,7 @@ else
     if [ -z "\$NVME_DEVICES" ]; then
         echo "No google-local-nvme-ssd devices found! Exiting..."
         makedirs
+        stage_cache_seeds
         exit 0
     fi
 
@@ -82,6 +92,7 @@ END
 fi
 
 makedirs
+stage_cache_seeds
 
 EOF
 

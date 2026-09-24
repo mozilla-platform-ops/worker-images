@@ -121,6 +121,14 @@ build {
     restart_timeout = "60m"
   }
 
+  # Build pip cache seeds on the image volume. Generic Worker will register them
+  # at startup and set task-user access when a task mounts a cache.
+  provisioner "powershell" {
+    elevated_user     = var.winrm_username
+    elevated_password = var.winrm_password
+    scripts           = ["${path.root}/scripts/preload-generic-worker-pip-caches.ps1"]
+  }
+
   # ---- 3b. Release notes / SBOM (same mechanism as the Azure gallery images) ----
   # azure.pkr.hcl drops the BootStrap module into the guest's module path, calls
   # Set-ReleaseNotes, and downloads the markdown it writes; the workflow then commits it

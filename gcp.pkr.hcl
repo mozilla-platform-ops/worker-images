@@ -175,6 +175,7 @@ build {
     scripts = [
       "${path.cwd}/scripts/linux/common/papertrail.sh",
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/bootstrap.sh",
+      "${path.cwd}/scripts/linux/common/preload-pip-caches.sh",
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/additional-packages.sh",
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/wayland.sh",
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/pipewire.sh",
@@ -199,6 +200,7 @@ build {
     scripts = [
       "${path.cwd}/scripts/linux/common/papertrail.sh",
       "${path.cwd}/scripts/linux/common/bootstrap.sh",
+      "${path.cwd}/scripts/linux/common/preload-pip-caches.sh",
       "${path.cwd}/scripts/linux/common/additional-packages.sh",
       "${path.cwd}/scripts/linux/common/aslr.sh",
       "${path.cwd}/scripts/linux/common/docker-config.sh",

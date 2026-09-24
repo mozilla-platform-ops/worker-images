@@ -112,6 +112,12 @@ worker:
     implementation: generic-worker
     path: /usr/local/bin/generic-worker
     configPath: /etc/generic-worker/config
+workerConfig:
+    preloadedDirectoryCaches:
+        - cacheName: gecko-level-1-pip
+          location: /usr/local/share/generic-worker/cache-seeds/gecko-level-1-pip
+        - cacheName: gecko-level-3-pip
+          location: /usr/local/share/generic-worker/cache-seeds/gecko-level-3-pip
 cacheOverRestarts: /etc/start-worker-cache.json
 EOF
 
