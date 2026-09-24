@@ -42,11 +42,28 @@ older D: pools or change tasksDir, cachesDir, or downloadsDir.
 
 ## Linux images
 
-The image contains one seed at `/usr/local/share/gecko-hg-seed`. Before Worker
-Runner starts, its ExecStartPre hook installs independent full and sparse caches at
-`/home/generic-worker/caches`, after the task disk is mounted. It writes initial
+Select exactly one cache that the target pool uses:
+
+```text
+-var 'gecko_hg_seed_checkout=sparse'
+```
+
+Use `full` instead for a full-checkout cache. There is no default selection.
+Other cache names continue to use the normal cold-checkout path.
+
+The image contains one gzip archive at
+`/usr/local/share/gecko-hg-seed/cache.tar.gz`, outside `/home`. The unarchived
+build copy is removed before image capture. Before Worker Runner starts, its
+ExecStartPre hook extracts the selected cache directly into a temporary directory
+under `/home/generic-worker/caches`, after the task disk is mounted. It renames
+the completed directory on that same filesystem and writes initial
 state to `/directory-caches.json`, because the existing worker service has no
 WorkingDirectory and starts in `/`. It does not change either setting.
+The existing local-SSD setup and ext4 filesystem stay unchanged. The archive is
+not copied onto the SSD before extraction. D2G ownership is stored in the archive;
+there is no separate recursive ownership pass at boot. Restore logs include the
+archive size and elapsed time. This still transfers one store per new worker;
+compression and end-to-end speed gains have not been measured on Gecko history.
 
 Native tasks use `checkouts/hg-shared`. D2G tasks use `checkouts/hg-store` and
 cache names with the `-hg58-v3-<run-task-hash>` suffix. The builder obtains
@@ -70,8 +87,8 @@ new seed. Image creation fails if cache state is already present. Cache records
 retain the seed's build time so later purge requests still apply. On POSIX,
 the host cache parent is private (0700); tasks can access only mounted caches.
 An interrupted install that leaves cache directories without state
-fails closed; reimage that worker. Reserve disk space for two runtime stores,
-the image seed, task checkouts, and subsequent changes.
+fails closed; reimage that worker. Reserve disk space for one Linux runtime
+store (two on Windows ARM64), the image seed, task checkouts, and subsequent changes.
 
 Local checks:
 
@@ -85,6 +102,12 @@ RUN_TASK=/path/to/run-task ROBUSTCHECKOUT=/path/to/robustcheckout.py \
 The integration check uses a small local Hg repository. It checks the real
 run-task cache requirements, UID/GID, full and sparse store reuse, later
 revisions, and preservation of live state. It is not a full image test.
+
+For the Linux trial, use a pool with local SSD and confirm its exact Hg cache
+name, run-task hash, and UID/GID before building. Compare an unseeded image and
+a seeded image with the same task and machine type. Record VM-request-to-first-
+task-completion time, restore time, checkout time, later task times, and peak
+disk use. Do not infer a speed gain from worker readiness alone.
 
 Keep the PR in draft until cloud images pass validation. Use the latest
 autoland decision task as the baseline. All tier-1 tasks must pass before a

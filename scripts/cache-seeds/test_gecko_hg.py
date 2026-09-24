@@ -21,6 +21,11 @@ import gecko_hg as seed
 
 class SeedTest(unittest.TestCase):
     def test_store_and_registration(self):
+        for checkout in ("full", "sparse"):
+            with self.subTest(checkout=checkout):
+                self.check_store_and_registration(checkout)
+
+    def check_store_and_registration(self, checkout):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             root.chmod(0o755)
@@ -47,24 +52,27 @@ class SeedTest(unittest.TestCase):
             with patch.object(seed, "SOURCE", str(source)):
                 if wrapper:
                     with patch.object(seed, "urlopen", return_value=open(wrapper, "rb")):
-                        seed.build(revision, mode, 3, image, "hg")
+                        seed.build(revision, mode, 3, image, "hg", checkout)
                 else:
-                    seed.build(revision, mode, 3, image, "hg")
+                    seed.build(revision, mode, 3, image, "hg", checkout)
             spec = json.loads((image / "manifest.json").read_text())
+            self.assertTrue((image / "cache.tar.gz").is_file())
+            self.assertFalse((image / "cache").exists())
             # The task needs a later revision than the image seed.
             (source / "tracked").write_text("second\n")
             seed.hg_command("hg", "-R", source, "commit", "-u", "test", "-m", "second")
             head = seed.hg_command("hg", "-R", source, "log", "-r", ".", "-T", "{node}", capture=True)
             if wrapper:
                 digest = hashlib.sha256(Path(wrapper).read_bytes()).hexdigest()
-                self.assertEqual(spec["cache_names"], seed.cache_names(mode, 3, digest))
+                self.assertEqual(spec["cache_names"], [seed.cache_names(mode, 3, digest)[checkout == "sparse"]])
             self.assertEqual(spec["root_node"], revision)
             state = root / "directory-caches.json"
             seed.install(image, root / "caches", state)
             entries = json.loads(state.read_text())
             if os.name == "posix":
                 self.assertEqual((root / "caches").stat().st_mode & 0o777, 0o700)
-            self.assertEqual(len(entries), 2)
+            self.assertEqual(len(entries), 1)
+            self.assertEqual("sparse" in next(iter(entries)), checkout == "sparse")
             saved = state.read_bytes()
             seed.install(image, root / "caches", state)
             self.assertEqual(state.read_bytes(), saved)
@@ -123,6 +131,23 @@ class SeedTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 seed.build("tip", "windows-x64", 1, root / "shared", "hg")
             self.assertFalse((root / "shared").exists())
+            with self.assertRaises(ValueError):
+                seed.build("a" * 40, "linux-native", 1, root / "image", "hg")
+            self.assertFalse((root / "image").exists())
+
+    def test_broken_archive_does_not_register_cache(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            image = root / "image"
+            image.mkdir()
+            (image / "manifest.json").write_text(json.dumps({
+                "mode": "linux-native", "cache_names": ["gecko-level-1-checkouts"],
+            }))
+            (image / "cache.tar.gz").write_bytes(b"incomplete archive")
+            with self.assertRaises(subprocess.CalledProcessError):
+                seed.install(image, root / "caches", root / "state.json")
+            self.assertFalse((root / "state.json").exists())
+            self.assertEqual(list((root / "caches").iterdir()), [])
 
 
 if __name__ == "__main__":

@@ -28,6 +28,16 @@ variable "gecko_hg_seed_revision" {
   description = "WIP: full autoland Hg changeset to seed. Empty disables seeding."
 }
 
+variable "gecko_hg_seed_checkout" {
+  type        = string
+  default     = ""
+  description = "WIP: select full or sparse for the target Linux pool. Required when seeding."
+  validation {
+    condition     = contains(["", "full", "sparse"], var.gecko_hg_seed_checkout)
+    error_message = "Choose full or sparse, or leave empty when seeding is disabled."
+  }
+}
+
 variable "use_keyvault" {
   type        = bool
   default     = false
@@ -367,6 +377,7 @@ build {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     environment_vars = [
       "GECKO_HG_SEED_REVISION=${var.gecko_hg_seed_revision}",
+      "GECKO_HG_SEED_CHECKOUT=${var.gecko_hg_seed_checkout}",
       "GECKO_HG_SEED_MODE=${source.name == "gw-fxci-gcp-l1-2404-gui-alpha" ? "linux-native" : "linux-d2g"}",
       "GECKO_HG_SEED_LEVEL=${startswith(source.name, "trusted-") ? "3" : "1"}",
     ]

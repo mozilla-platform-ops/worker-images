@@ -11,7 +11,9 @@ import re
 import runpy
 import shutil
 import subprocess
+import tarfile
 import tempfile
+import time
 from types import SimpleNamespace
 from urllib.request import urlopen
 
@@ -70,9 +72,11 @@ def cache_names(mode, level, digest=None):
     return [f"gecko-level-{level}-{name}{suffix}" for name in ("checkouts", "checkouts-sparse")]
 
 
-def build(revision, mode, level, seed_root, hg):
+def build(revision, mode, level, seed_root, hg, checkout=None):
     if not NODE.fullmatch(revision):
         raise ValueError("Use a full Hg changeset from the latest autoland decision task")
+    if mode.startswith("linux-") and checkout not in ("full", "sparse"):
+        raise ValueError("Select one Linux checkout cache: full or sparse")
     if mode == "windows-x64":
         seed_store(SOURCE, revision, seed_root, hg)
         return
@@ -97,6 +101,17 @@ def build(revision, mode, level, seed_root, hg):
         spec["store_subdir"] = store
         spec["root_node"] = seed_store(SOURCE, revision, cache / store, hg)
         spec["cache_names"] = cache_names(mode, level, spec.get("run_task_sha256"))
+        if mode.startswith("linux-"):
+            spec["cache_names"] = [spec["cache_names"][checkout == "sparse"]]
+            # Store numeric ownership in the archive, not in a boot-time tree walk.
+            def archive_owner(member):
+                if mode == "linux-d2g":
+                    member.uid = member.gid = 1000
+                    member.uname = member.gname = ""
+                return member
+            with tarfile.open(staging / "cache.tar.gz", "w:gz", compresslevel=1) as archive:
+                archive.add(cache, arcname=".", filter=archive_owner)
+            shutil.rmtree(cache)
         (staging / "manifest.json").write_text(json.dumps(spec, indent=2) + "\n")
         staging.rename(seed_root)
     print(f"Gecko Hg seed ready: {seed_root}", flush=True)
@@ -119,17 +134,23 @@ def install(seed_root, destination_root, state_file):
         destination = destination_root / name
         if destination.exists():
             raise FileExistsError(f"Cache directory exists without worker state: {destination}")
+        started = time.monotonic()
         print(f"Installing Gecko Hg cache: {name}", flush=True)
         with tempfile.TemporaryDirectory(prefix=".install-", dir=destination_root) as temp:
             cache = Path(temp) / "cache"
-            shutil.copytree(seed_root / "cache", cache)
-            if spec["mode"] == "linux-d2g":
-                # Generic Worker preserves container ownership for D2G mounts.
-                for directory, _, files in os.walk(cache):
-                    os.chown(directory, 1000, 1000)
-                    for entry in files:
-                        os.chown(Path(directory) / entry, 1000, 1000)
+            if spec["mode"].startswith("linux-"):
+                if spec["mode"] == "linux-d2g" and os.geteuid() != 0:
+                    raise PermissionError("Restore D2G seeds as root to preserve UID/GID 1000")
+                cache.mkdir()
+                archive = seed_root / "cache.tar.gz"
+                print(f"Restoring {archive.stat().st_size} archive bytes onto the task disk", flush=True)
+                # This archive is built into the trusted image, outside task-writable paths.
+                subprocess.run(["tar", "-xzf", str(archive), "--numeric-owner",
+                                "-C", str(cache)], check=True)
+            else:
+                shutil.copytree(seed_root / "cache", cache)
             cache.rename(destination)
+        print(f"Installed {name} in {time.monotonic() - started:.1f}s", flush=True)
         state[name] = [{"key": name, "location": str(destination.resolve()),
                         "created": spec["created"]}]
     state_file.parent.mkdir(parents=True, exist_ok=True)
@@ -150,13 +171,14 @@ def main():
     bake.add_argument("--level", type=int, choices=(1, 3), default=1)
     bake.add_argument("--seed-root", type=Path, required=True)
     bake.add_argument("--hg", default="hg")
+    bake.add_argument("--checkout", choices=("full", "sparse"), help="Required for Linux; select one cache")
     boot = commands.add_parser("install")
     boot.add_argument("--seed-root", type=Path, required=True)
     boot.add_argument("--destination-root", type=Path, required=True)
     boot.add_argument("--state-file", type=Path, required=True)
     args = parser.parse_args()
     if args.command == "build":
-        build(args.revision, args.mode, args.level, args.seed_root, args.hg)
+        build(args.revision, args.mode, args.level, args.seed_root, args.hg, args.checkout)
     else:
         install(args.seed_root, args.destination_root, args.state_file)
 

@@ -6,6 +6,11 @@ if [[ -z "${GECKO_HG_SEED_REVISION:-}" ]]; then
     exit 0
 fi
 
+if [[ "${GECKO_HG_SEED_CHECKOUT:-}" != full && "${GECKO_HG_SEED_CHECKOUT:-}" != sparse ]]; then
+    echo 'Select GECKO_HG_SEED_CHECKOUT=full or sparse for the target pool' >&2
+    exit 1
+fi
+
 if [[ -e /directory-caches.json ]]; then
     echo 'Build the seed on a fresh image without Generic Worker cache state' >&2
     exit 1
@@ -16,9 +21,10 @@ install -D -m 0755 /tmp/gecko_hg.py /usr/local/lib/worker-images/gecko_hg.py
 python3 /usr/local/lib/worker-images/gecko_hg.py build \
     --revision "$GECKO_HG_SEED_REVISION" --mode "$GECKO_HG_SEED_MODE" \
     --level "$GECKO_HG_SEED_LEVEL" \
+    --checkout "$GECKO_HG_SEED_CHECKOUT" \
     --seed-root /usr/local/share/gecko-hg-seed
 
-# Install after the task disk is mounted. Keep the worker's existing paths.
+# Restore one cache directly onto the mounted task disk before the worker starts.
 disk_dependency=''
 if [[ "$GECKO_HG_SEED_MODE" == linux-d2g ]]; then
     disk_dependency='Requires=generic-worker-disk-setup.service
@@ -31,7 +37,6 @@ ${disk_dependency}
 RequiresMountsFor=/home
 
 [Service]
-# Copying both Hg stores can exceed the default service start timeout.
 TimeoutStartSec=infinity
 ExecStartPre=/usr/bin/python3 /usr/local/lib/worker-images/gecko_hg.py install --seed-root /usr/local/share/gecko-hg-seed --destination-root /home/generic-worker/caches --state-file /directory-caches.json
 EOF
