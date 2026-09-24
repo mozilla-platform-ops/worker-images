@@ -32,7 +32,7 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: "preload-gecko-pip-caches-alpha-20260924"
-    deploymentId: "cd04bbf"
+    deploymentId: "NA"
     managed_by: packer
 tests:
   - win11_sdk_tests.ps1
