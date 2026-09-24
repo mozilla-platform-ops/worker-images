@@ -90,11 +90,10 @@ cat > /lib/systemd/system/worker.service << EOF
 Description=Start TC worker
 # start once networking is online
 Wants=network-online.target
-After=network-online.target docker.service generic-worker-disk-setup.service
+After=network-online.target docker.service
 
 [Service]
 Type=simple
-WorkingDirectory=/var/local/generic-worker
 ExecStart=/usr/local/bin/start-worker /etc/start-worker.yml
 # log to console to make output visible in cloud consoles, and syslog for ease of
 # redirecting to external logging services
@@ -113,9 +112,6 @@ worker:
     implementation: generic-worker
     path: /usr/local/bin/generic-worker
     configPath: /etc/generic-worker/config
-workerConfig:
-    cachesDir: /mnt/generic-worker/caches
-    downloadsDir: /mnt/generic-worker/downloads
 cacheOverRestarts: /etc/start-worker-cache.json
 EOF
 

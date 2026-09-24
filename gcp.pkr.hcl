@@ -22,6 +22,12 @@ variable "image_name" {
   default = "${env("IMAGE_NAME")}"
 }
 
+variable "gecko_hg_seed_revision" {
+  type        = string
+  default     = ""
+  description = "WIP: full autoland Hg changeset to seed. Empty disables seeding."
+}
+
 variable "use_keyvault" {
   type        = bool
   default     = false
@@ -168,7 +174,6 @@ build {
       "CLOUD=google",
       "TC_ARCH=${var.tc_arch}",
       "TASKCLUSTER_VERSION=${var.taskcluster_version}",
-      "PRELOADED_CACHE_STATE_FILE=/var/local/generic-worker/directory-caches.json",
       "NUM_LOOPBACK_AUDIO_DEVICES=8",
       "NUM_LOOPBACK_VIDEO_DEVICES=8"
     ]
@@ -176,7 +181,6 @@ build {
     scripts = [
       "${path.cwd}/scripts/linux/common/papertrail.sh",
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/bootstrap.sh",
-      "${path.cwd}/scripts/linux/common/preload-pip-caches.sh",
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/additional-packages.sh",
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/wayland.sh",
       "${path.cwd}/scripts/linux/ubuntu-2404-amd64-gui/fxci/pipewire.sh",
@@ -201,7 +205,6 @@ build {
     scripts = [
       "${path.cwd}/scripts/linux/common/papertrail.sh",
       "${path.cwd}/scripts/linux/common/bootstrap.sh",
-      "${path.cwd}/scripts/linux/common/preload-pip-caches.sh",
       "${path.cwd}/scripts/linux/common/additional-packages.sh",
       "${path.cwd}/scripts/linux/common/aslr.sh",
       "${path.cwd}/scripts/linux/common/docker-config.sh",
@@ -352,6 +355,22 @@ build {
     direction   = "download"
     max_retries = 3
     source      = "/etc/worker-images/SBOM.md"
+  }
+
+  # Add the seed after the last build-time reboot. Install it on the first boot.
+  provisioner "file" {
+    source      = "${path.cwd}/scripts/cache-seeds/gecko_hg.py"
+    destination = "/tmp/gecko_hg.py"
+  }
+
+  provisioner "shell" {
+    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    environment_vars = [
+      "GECKO_HG_SEED_REVISION=${var.gecko_hg_seed_revision}",
+      "GECKO_HG_SEED_MODE=${source.name == "gw-fxci-gcp-l1-2404-gui-alpha" ? "linux-native" : "linux-d2g"}",
+      "GECKO_HG_SEED_LEVEL=${startswith(source.name, "trusted-") ? "3" : "1"}",
+    ]
+    script = "${path.cwd}/scripts/linux/common/preload-gecko-hg.sh"
   }
 
   post-processor "manifest" {
