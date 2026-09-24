@@ -22,9 +22,13 @@ try {
 
     Copy-Item -LiteralPath $cache -Destination (Join-Path $seedRoot 'gecko-level-1-pip') -Recurse
 
+    & icacls.exe $seedRoot /setowner '*S-1-5-18' /T
+    if ($LASTEXITCODE -ne 0) {
+        throw "Setting cache seed owner failed: $LASTEXITCODE"
+    }
+
     & icacls.exe $seedRoot /inheritance:r `
-        /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' `
-        /setowner '*S-1-5-18' /T /C
+        /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' /T
     if ($LASTEXITCODE -ne 0) {
         throw "Setting cache seed ACLs failed: $LASTEXITCODE"
     }
