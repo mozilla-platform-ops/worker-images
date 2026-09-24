@@ -51,6 +51,7 @@ def seed_store(source, revision, sharebase, hg="hg"):
         if not NODE.fullmatch(root):
             raise ValueError("Mercurial did not return a root changeset")
         hg_command(hg, "-R", clone, "verify")
+        (clone / ".hg/worker-image-seed").write_text(revision + "\n")
         destination = sharebase / root
         if destination.exists():
             raise FileExistsError(f"Refusing to replace Hg store: {destination}")

@@ -82,6 +82,49 @@ the new names. There are no wildcard cache names.
 
 ## State and validation
 
+The automatic OS integration suite is not a cache benchmark. Its replication
+step changes cache names to `relops-level-1-*`. Linux startup tests also use a
+sparse cache, while this trial seeds a full cache. Do not report an image cache
+hit or a speed gain from those tests.
+
+Use a targeted task from the latest autoland decision for the cache trial.
+Keep its Gecko cache name, Hg `run-task` command, cache mount, and container
+UID/GID. Select a Linux full-checkout task for the local-SSD alpha pool. Its
+cache level and run-task hash must match the image manifest. Do not rename a
+level-3 cache to level 1 just to make this check pass. Windows x64 uses
+`C:\hg-shared`; ARM64 needs an exact directory-cache name match.
+
+Each baked Hg store has a `.hg/worker-image-seed` file with its revision. Run
+the following wrapper inside the task, after the cache mount, around its actual
+Hg `run-task` checkout command. End that command with a no-op task command so
+the measurement covers checkout, not a build or test suite:
+
+```sh
+uv run scripts/cache-seeds/benchmark.py \
+  --store <mounted-sharebase/root-node> --checkout <checkout-path> \
+  --seed-revision <revision-from-image-manifest> -- <run-task-command>
+```
+
+Use the Python already in the task if uv is not present. Do not install uv at
+worker startup. Supply this script as a task artifact, outside the Gecko
+checkout that the command creates.
+
+The wrapper fails if the checkout is already present, the image seed is absent
+or has the wrong revision, the command replaces the seed marker, or the checkout
+does not share the specified store. It prints an `HG_CACHE_BENCHMARK` JSON record
+with checkout time and the reuse result. It does not remove or reset a cache.
+For the unseeded baseline, omit `--seed-revision`; the store and checkout must
+both be absent. Use the same command, source revision, machine type, and disk
+layout for both runs.
+
+This wrapper does not prove that the worker is fresh or verify its cloud image
+ID. Record the actual image ID and worker history separately. Use the first
+cache task on a new worker. Also record VM-request-to-task-completion time and
+Linux archive restore time; checkout time alone excludes the SSD restore cost.
+The targeted task submission and these cloud checks are still required before
+the draft can be merged. The regular OS suite remains a separate correctness
+check, not a substitute for this measurement.
+
 The seed stores history only. `robustcheckout` creates the task checkout and
 fetches missing changes. No absolute `.hg/sharedpath` from the image build is
 stored in the seed. Full and sparse caches do not share mutable store files.
@@ -98,6 +141,7 @@ Local checks:
 
 ```sh
 uv run scripts/cache-seeds/test_gecko_hg.py
+uv run scripts/cache-seeds/test_benchmark.py
 # On Linux as root, test with Gecko's pinned helpers too:
 RUN_TASK=/path/to/run-task ROBUSTCHECKOUT=/path/to/robustcheckout.py \
   uv run scripts/cache-seeds/test_gecko_hg.py

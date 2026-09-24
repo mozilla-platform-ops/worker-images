@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 import runpy
 import subprocess
+import sys
 import tempfile
 from types import SimpleNamespace
 import unittest
@@ -90,6 +91,7 @@ class SeedTest(unittest.TestCase):
                 self.assertEqual(caches[0]["created"], spec["created"])
                 self.assertIsNotNone(datetime.fromisoformat(caches[0]["created"]).tzinfo)
                 store = cache / spec["store_subdir"] / revision
+                self.assertEqual((store / ".hg/worker-image-seed").read_text().strip(), revision)
                 self.assertFalse((store / ".hg/sharedpath").exists())
                 self.assertFalse((store / "tracked").exists())
                 self.assertEqual(seed.hg_command("hg", "-R", store, "log", "-r", revision, "-T", "{node}", capture=True), revision)
@@ -111,12 +113,18 @@ class SeedTest(unittest.TestCase):
                     command = ["--config", f"extensions.robustcheckout={extension}",
                                "--config", "extensions.share=", "--config", "extensions.sparse=",
                                "robustcheckout", "--sharebase", pool, "--purge", "--revision", revision]
-                    def checkout():
-                        subprocess.run(["hg", *map(str, command), str(source), str(task_cache / "gecko")],
+                    def checkout(check_seed=False):
+                        checkout_command = ["hg", *map(str, command), str(source), str(task_cache / "gecko")]
+                        if check_seed:
+                            checkout_command = [sys.executable, str(Path(__file__).with_name("benchmark.py")),
+                                                "--store", str(pool / revision),
+                                                "--checkout", str(task_cache / "gecko"),
+                                                "--seed-revision", revision, "--", *checkout_command]
+                        subprocess.run(checkout_command,
                                        check=True, user=1000 if wrapper else None,
                                        group=1000 if wrapper else None,
                                        env=dict(os.environ, HGPLAIN="1", HGRCPATH=os.devnull))
-                    checkout()
+                    checkout(check_seed=True)
                     self.assertTrue(sentinel.exists(), "robustcheckout replaced the seeded store")
                     self.assertEqual((task_cache / "gecko/tracked").read_text(), "first\n")
                     command[command.index("--revision") + 1] = head
