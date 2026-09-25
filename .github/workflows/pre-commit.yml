@@ -7,7 +7,7 @@ on:
 
 jobs:
   pre-commit:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
     - name: Checkout code
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -33,7 +33,7 @@ jobs:
 
     - name: Check image cache seeds
       run: |
-        # Match the Ubuntu image package, including Ubuntu's patches.
+        # Test the runner's Mercurial package, including Ubuntu's patches.
         sudo apt-get update
         sudo apt-get install -y mercurial
         hg version

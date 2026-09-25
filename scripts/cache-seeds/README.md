@@ -224,8 +224,8 @@ The Hg check downloads a fixed test version of robustcheckout unless
 `ROBUSTCHECKOUT` points to a local copy. Image builds instead obtain the helper
 from the autoland revision selected for that build.
 CI checks upstream Hg 6.2.1 and 6.9, the executable versions configured by
-Puppet for Windows ARM64 and x64. It also checks Ubuntu 24.04's Mercurial apt
-package, which includes distribution patches. Do not replace that check with
+Puppet for Windows ARM64 and x64. It also checks the `ubuntu-latest` runner's
+Mercurial apt package, which includes distribution patches. Do not replace that check with
 the unpatched upstream 6.7.2 package. These checks do not replace tests of the
 Windows executables or the Mercurial package in each task container.
 The integration check uses a small local Hg repository. It checks the real
