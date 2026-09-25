@@ -92,9 +92,9 @@ Write-BakeLog ("network profile(s): " + ((Get-NetConnectionProfile -ErrorAction 
 cmd.exe /c 'sc config WinRM start= auto' | Out-Null
 cmd.exe /c 'net start WinRM' 2>$null | Out-Null
 cmd.exe /c 'winrm create winrm/config/Listener?Address=*+Transport=HTTP' 2>$null | Out-Null
-# Allow the build host even if Windows still classifies the NAT link as Public.
-# The host IP remains the only allowed source; sysprep removes this rule before capture.
-netsh advfirewall firewall add rule name="WinRM-HTTP-In-5985" dir=in action=allow protocol=TCP localport=5985 remoteip=$gw profile=any | Out-Null
+# Match the original build rule's source scope to test whether the host-IP filter blocks Packer.
+# This rule is on the isolated build NAT and is removed before WIM capture.
+netsh advfirewall firewall add rule name="WinRM-HTTP-In-5985" dir=in action=allow protocol=TCP localport=5985 profile=any | Out-Null
 
 $ok = $false
 try { $ok = [bool](Get-NetFirewallRule -DisplayName 'WinRM-HTTP-In-5985' -ErrorAction SilentlyContinue) } catch {}
