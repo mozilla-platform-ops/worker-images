@@ -13,7 +13,7 @@
 ## Operating system
 
 - OS: Ubuntu 24.04.5 LTS (Noble Numbat)
-- Kernel: Linux 7.0.0-1011-gcp aarch64 GNU/Linux
+- Kernel: Linux 7.0.0-1013-gcp aarch64 GNU/Linux
 - Machine architecture: aarch64
 
 ## Taskcluster tools
@@ -115,7 +115,7 @@
 | Name | Version | Architecture |
 | --- | --- | --- |
 | adduser | 3.137ubuntu1 | all |
-| apparmor | 4.0.1really4.0.1-0ubuntu0.24.04.7 | arm64 |
+| apparmor | 4.0.1really4.0.1-0ubuntu0.24.04.8 | arm64 |
 | apport | 2.28.3-0ubuntu0.1 | all |
 | apport-core-dump-handler | 2.28.3-0ubuntu0.1 | all |
 | apport-symptoms | 0.25 | all |
@@ -166,7 +166,7 @@
 | cryptsetup | 2:2.7.0-1ubuntu4.2 | arm64 |
 | cryptsetup-bin | 2:2.7.0-1ubuntu4.2 | arm64 |
 | cryptsetup-initramfs | 2:2.7.0-1ubuntu4.2 | all |
-| curl | 8.5.0-2ubuntu10.13 | arm64 |
+| curl | 8.5.0-2ubuntu10.15 | arm64 |
 | dash | 0.5.12-6ubuntu5 | arm64 |
 | dbus | 1.14.10-4ubuntu4.1 | arm64 |
 | dbus-bin | 1.14.10-4ubuntu4.1 | arm64 |
@@ -185,7 +185,7 @@
 | distro-info-data | 0.72-0ubuntu0.24.04.1 | all |
 | dkms | 3.0.11-1ubuntu13 | all |
 | dmeventd | 2:1.02.185-3ubuntu3.2 | arm64 |
-| dmidecode | 3.5-3ubuntu0.1 | arm64 |
+| dmidecode | 3.5-3ubuntu0.2 | arm64 |
 | dmsetup | 2:1.02.185-3ubuntu3.2 | arm64 |
 | docker-buildx-plugin | 0.37.1-1~ubuntu.24.04~noble | arm64 |
 | docker-ce | 5:29.5.3-1~ubuntu.24.04~noble | arm64 |
@@ -294,7 +294,7 @@
 | libalgorithm-diff-xs-perl:arm64 | 0.04-8build3 | arm64 |
 | libalgorithm-merge-perl | 0.08-5 | all |
 | libaom3:arm64 | 3.8.2-2ubuntu0.2 | arm64 |
-| libapparmor1:arm64 | 4.0.1really4.0.1-0ubuntu0.24.04.7 | arm64 |
+| libapparmor1:arm64 | 4.0.1really4.0.1-0ubuntu0.24.04.8 | arm64 |
 | libappstream5:arm64 | 1.0.2-1build6 | arm64 |
 | libapt-pkg6.0t64:arm64 | 2.8.3 | arm64 |
 | libargon2-1:arm64 | 0~20190702+dfsg-4build1 | arm64 |
@@ -303,8 +303,8 @@
 | libatm1t64:arm64 | 1:2.5.1-5.1build1 | arm64 |
 | libatomic1:arm64 | 14.2.0-4ubuntu2~24.04.1 | arm64 |
 | libattr1:arm64 | 1:2.5.2-1ubuntu0.1 | arm64 |
-| libaudit-common | 1:3.1.2-2.1build1.1 | all |
-| libaudit1:arm64 | 1:3.1.2-2.1build1.1 | arm64 |
+| libaudit-common | 1:3.1.2-2.1ubuntu0.1 | all |
+| libaudit1:arm64 | 1:3.1.2-2.1ubuntu0.1 | arm64 |
 | libbinutils:arm64 | 2.42-4ubuntu2.10 | arm64 |
 | libblkid1:arm64 | 2.39.3-9ubuntu6.6 | arm64 |
 | libboost-iostreams1.83.0:arm64 | 1.83.0-2.1ubuntu3.2 | arm64 |
@@ -332,8 +332,8 @@
 | libcryptsetup12:arm64 | 2:2.7.0-1ubuntu4.2 | arm64 |
 | libctf-nobfd0:arm64 | 2.42-4ubuntu2.10 | arm64 |
 | libctf0:arm64 | 2.42-4ubuntu2.10 | arm64 |
-| libcurl3t64-gnutls:arm64 | 8.5.0-2ubuntu10.13 | arm64 |
-| libcurl4t64:arm64 | 8.5.0-2ubuntu10.13 | arm64 |
+| libcurl3t64-gnutls:arm64 | 8.5.0-2ubuntu10.15 | arm64 |
+| libcurl4t64:arm64 | 8.5.0-2ubuntu10.15 | arm64 |
 | libdaxctl1:arm64 | 77-2ubuntu2 | arm64 |
 | libdb5.3t64:arm64 | 5.3.28+dfsg2-7 | arm64 |
 | libdbus-1-3:arm64 | 1.14.10-4ubuntu4.1 | arm64 |
@@ -357,8 +357,8 @@
 | libestr0:arm64 | 0.1.11-1build1 | arm64 |
 | libevdev2:arm64 | 1.13.1+dfsg-1build1 | arm64 |
 | libevent-core-2.1-7t64:arm64 | 2.1.12-stable-9ubuntu2.1 | arm64 |
-| libexpat1-dev:arm64 | 2.6.1-2ubuntu0.5 | arm64 |
-| libexpat1:arm64 | 2.6.1-2ubuntu0.5 | arm64 |
+| libexpat1-dev:arm64 | 2.6.1-2ubuntu0.6 | arm64 |
+| libexpat1:arm64 | 2.6.1-2ubuntu0.6 | arm64 |
 | libext2fs2t64:arm64 | 1.47.0-2.4~exp1ubuntu4.1 | arm64 |
 | libfakeroot:arm64 | 1.33-1 | arm64 |
 | libfastjson4:arm64 | 1.2304.0-1build1 | arm64 |
@@ -482,7 +482,7 @@
 | libpam-systemd:arm64 | 255.4-1ubuntu8.17 | arm64 |
 | libpam0g:arm64 | 1.5.3-5ubuntu5.7 | arm64 |
 | libparted2t64:arm64 | 3.6-4build1 | arm64 |
-| libpcap0.8t64:arm64 | 1.10.4-4.1ubuntu3 | arm64 |
+| libpcap0.8t64:arm64 | 1.10.4-4.1ubuntu3.1 | arm64 |
 | libpci3:arm64 | 1:3.10.0-2build1 | arm64 |
 | libpcre2-8-0:arm64 | 10.42-4ubuntu2.1 | arm64 |
 | libperl5.38t64:arm64 | 5.38.2-3.2ubuntu0.6 | arm64 |
@@ -580,19 +580,25 @@
 | libyaml-0-2:arm64 | 0.2.5-1build1 | arm64 |
 | libzstd1:arm64 | 1.5.5+dfsg2-2build1.1 | arm64 |
 | linux-base | 4.5ubuntu9+24.04.2 | all |
-| linux-gcp | 7.0.0-1011.11~24.04.1 | arm64 |
+| linux-gcp | 7.0.0-1013.13~24.04.1 | arm64 |
 | linux-gcp-7.0-headers-7.0.0-1011 | 7.0.0-1011.11~24.04.1 | arm64 |
+| linux-gcp-7.0-headers-7.0.0-1013 | 7.0.0-1013.13~24.04.1 | arm64 |
 | linux-gcp-7.0-tools-7.0.0-1011 | 7.0.0-1011.11~24.04.1 | arm64 |
+| linux-gcp-7.0-tools-7.0.0-1013 | 7.0.0-1013.13~24.04.1 | arm64 |
 | linux-headers-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | arm64 |
-| linux-headers-gcp | 7.0.0-1011.11~24.04.1 | arm64 |
+| linux-headers-7.0.0-1013-gcp | 7.0.0-1013.13~24.04.1 | arm64 |
+| linux-headers-gcp | 7.0.0-1013.13~24.04.1 | arm64 |
 | linux-image-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | arm64 |
-| linux-image-gcp | 7.0.0-1011.11~24.04.1 | arm64 |
+| linux-image-7.0.0-1013-gcp | 7.0.0-1013.13~24.04.1 | arm64 |
+| linux-image-gcp | 7.0.0-1013.13~24.04.1 | arm64 |
 | linux-libc-dev:arm64 | 6.8.0-142.142 | arm64 |
 | linux-modules-6.17.0-1022-gcp | 6.17.0-1022.25 | arm64 |
 | linux-modules-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | arm64 |
+| linux-modules-7.0.0-1013-gcp | 7.0.0-1013.13~24.04.1 | arm64 |
 | linux-modules-extra-6.17.0-1022-gcp | 6.17.0-1022.25 | arm64 |
 | linux-modules-extra-gcp | 6.17.0-1022.25 | arm64 |
 | linux-tools-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | arm64 |
+| linux-tools-7.0.0-1013-gcp | 7.0.0-1013.13~24.04.1 | arm64 |
 | linux-tools-common | 6.8.0-142.142 | all |
 | locales | 2.39-0ubuntu8.9 | all |
 | login | 1:4.13+dfsg1-4ubuntu3.2 | arm64 |

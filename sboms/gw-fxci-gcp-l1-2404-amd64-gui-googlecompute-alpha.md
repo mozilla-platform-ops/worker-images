@@ -147,7 +147,7 @@
 | alsa-utils | 1.2.9-1ubuntu5 | amd64 |
 | anacron | 2.3-39ubuntu2 | amd64 |
 | apg | 2.2.3.dfsg.1-5build3 | amd64 |
-| apparmor | 4.0.1really4.0.1-0ubuntu0.24.04.8 | amd64 |
+| apparmor | 4.0.1really4.0.1-0ubuntu0.24.04.7 | amd64 |
 | apport | 2.28.3-0ubuntu0.1 | all |
 | apport-core-dump-handler | 2.28.3-0ubuntu0.1 | all |
 | apport-gtk | 2.28.3-0ubuntu0.1 | all |
@@ -577,7 +577,7 @@
 | libao-common | 1.2.2+20180113-1.1ubuntu4 | all |
 | libao4:amd64 | 1.2.2+20180113-1.1ubuntu4 | amd64 |
 | libaom3:amd64 | 3.8.2-2ubuntu0.2 | amd64 |
-| libapparmor1:amd64 | 4.0.1really4.0.1-0ubuntu0.24.04.8 | amd64 |
+| libapparmor1:amd64 | 4.0.1really4.0.1-0ubuntu0.24.04.7 | amd64 |
 | libappstream5:amd64 | 1.0.2-1build6 | amd64 |
 | libapt-pkg6.0t64:amd64 | 2.8.3 | amd64 |
 | libarchive13t64:amd64 | 3.7.2-2ubuntu0.8 | amd64 |
@@ -599,8 +599,8 @@
 | libatopology2t64:amd64 | 1.2.11-1ubuntu0.3 | amd64 |
 | libatspi2.0-0t64:amd64 | 2.52.0-1build1 | amd64 |
 | libattr1:amd64 | 1:2.5.2-1ubuntu0.1 | amd64 |
-| libaudit-common | 1:3.1.2-2.1ubuntu0.1 | all |
-| libaudit1:amd64 | 1:3.1.2-2.1ubuntu0.1 | amd64 |
+| libaudit-common | 1:3.1.2-2.1build1.1 | all |
+| libaudit1:amd64 | 1:3.1.2-2.1build1.1 | amd64 |
 | libauthen-sasl-perl | 2.1700-1 | all |
 | libavahi-client3:amd64 | 0.8-13ubuntu6.2 | amd64 |
 | libavahi-common-data:amd64 | 0.8-13ubuntu6.2 | amd64 |
