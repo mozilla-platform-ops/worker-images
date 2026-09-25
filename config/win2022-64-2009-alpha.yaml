@@ -22,8 +22,8 @@ vm:
     worker_pool_id: win2022-64-2009-alpha
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "preload-gecko-pip-caches-alpha-20260924"
-    deploymentId: "NA"
+    sourceBranch: "default"
+    deploymentId: "default"
     managed_by: packer
 tests:
   - netframework_core.tests.ps1

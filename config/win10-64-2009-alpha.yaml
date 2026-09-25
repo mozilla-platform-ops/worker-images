@@ -31,8 +31,8 @@ vm:
     worker_pool_id: win10-64-2009-alpha
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "preload-gecko-pip-caches-alpha-20260924"
-    deploymentId: "NA"
+    sourceBranch: "default"
+    deploymentId: "default"
     managed_by: packer
 tests:
   - microsoft_vcc_win10_win11_x64.tests.ps1

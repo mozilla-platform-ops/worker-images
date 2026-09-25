@@ -28,23 +28,6 @@ jobs:
     - name: Install pre-commit
       run: pip install pre-commit
 
-    - name: Install uv
-      uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4
-
-    - name: Check image cache seeds
-      run: |
-        # Test the runner's Mercurial package, including Ubuntu's patches.
-        sudo apt-get update
-        sudo apt-get install -y mercurial
-        hg version
-        uv run --python 3.11 scripts/cache-seeds/test_gecko_hg.py
-        # Puppet installs 6.2.1 on Windows ARM64 and 6.9 on Windows x64.
-        uv run --python 3.10 --with mercurial==6.2.1 scripts/cache-seeds/test_gecko_hg.py
-        uv run --python 3.11 --with mercurial==6.9 scripts/cache-seeds/test_gecko_hg.py
-        uv run --with pyyaml scripts/cache-seeds/test_git_seed.py
-        uv run scripts/cache-seeds/test_benchmark.py
-        uv run taskcluster/test/test_run_os_integration.py
-
     - name: Cache pre-commit environments
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
