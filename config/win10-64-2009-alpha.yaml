@@ -31,8 +31,8 @@ vm:
     worker_pool_id: win10-64-2009-alpha
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "default"
-    deploymentId: "default"
+    sourceBranch: "relops-2581-windows-privileged-paths"
+    deploymentId: "9f684f4"
     managed_by: packer
 tests:
   - microsoft_vcc_win10_win11_x64.tests.ps1

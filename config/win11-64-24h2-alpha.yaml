@@ -35,8 +35,8 @@ vm:
     worker_pool_id: win11-64-24h2-alpha
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "default"
-    deploymentId: "default"
+    sourceBranch: "relops-2581-windows-privileged-paths"
+    deploymentId: "9f684f4"
     managed_by: packer
 tests:
   - win11_sdk_tests.ps1
