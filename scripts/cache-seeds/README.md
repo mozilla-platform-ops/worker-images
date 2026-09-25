@@ -79,7 +79,7 @@ There are no extra network clones and no cache copies at worker startup.
 The directories do not share hardlinks or junctions: a task can change or purge
 one cache without changing the others. This costs one extra Hg store on the
 image disk. Windows x64 needs no RelOps copy because both task types use
-`C:\hg-shared` directly. Linux registration is unchanged.
+`C:\hg-shared` directly.
 
 ## Git caches
 
@@ -116,17 +116,19 @@ older D: pools or change tasksDir, cachesDir, or downloadsDir.
 
 ## Linux images
 
-Linux seeds one full-checkout cache. No checkout option is needed
+Linux seeds one Gecko full-checkout cache. D2G images also register
+`relops-level-3-checkouts-sparse-hg58-v3-<run-task-hash>` for the OS integration
+startup test. No checkout option is needed
 for the Hg trial. Autoland decision `W2W5EeeBSJu1jaEnKQkzAw` has 3,435 Linux
 Docker-style Hg task definitions using the full cache and 453 using the sparse
 cache. These are task definitions, not measured task volume or cache-hit rates.
-Both checkout types work; only the full cache is preloaded.
+Both checkout types work; the Gecko sparse cache is not preloaded.
 Other cache names continue to use the normal cold-checkout path.
 
 The image contains one gzip archive at
 `/usr/local/share/gecko-hg-seed/cache.tar.gz`, outside `/home`. The unarchived
 build copy is removed before image capture. Before Worker Runner starts, its
-ExecStartPre hook extracts the selected cache directly into a temporary directory
+ExecStartPre hook extracts each cache directly into a temporary directory
 under `/home/generic-worker/caches`, after the task disk is mounted. It renames
 the completed directory on that same filesystem and writes initial
 state to `/directory-caches.json`, because the existing worker service has no
@@ -134,7 +136,11 @@ WorkingDirectory and starts in `/`. It does not change either setting.
 The existing local-SSD setup and ext4 filesystem stay unchanged. The archive is
 not copied onto the SSD before extraction. D2G ownership is stored in the archive;
 there is no separate recursive ownership pass at boot. Restore logs include the
-archive size and elapsed time. This still transfers one store per new worker;
+archive size and elapsed time. D2G restores the same archive into two independent
+stores: Gecko full and RelOps sparse. Native Linux restores one store.
+There is no extra network clone or image archive, but the RelOps cache adds one
+store's disk use and extraction time at startup. The stores do not share mutable
+files. This still transfers history to the task disk for each new worker;
 compression and end-to-end speed gains have not been measured on Gecko history.
 
 Native tasks use `checkouts/hg-shared`. D2G tasks use `checkouts/hg-store` and
@@ -152,9 +158,10 @@ the new names. There are no wildcard cache names.
 
 The automatic OS integration suite is not a cache benchmark. Its replication
 step changes cache names to `relops-level-3-*` in the deployed main-branch hook.
-The ARM64 seed now includes the matching sparse cache. Linux startup tests use a
-sparse cache, while this trial seeds a full cache. Do not report an image cache
-hit or a speed gain from those tests.
+The Windows ARM64 and Linux D2G seeds include the matching RelOps sparse cache.
+The run-task hash must match on Linux. A passing startup test alone does not
+prove seed reuse or a speed gain; check the seed marker and checkout log.
+Most OS tests use downloaded test artifacts and do not request a Gecko checkout.
 
 Use a targeted task from the latest autoland decision for the cache trial.
 Keep its Gecko cache name, Hg `run-task` command, cache mount, and container
@@ -203,8 +210,9 @@ new seed. Image creation fails if cache state is already present. Cache records
 retain the seed's build time so later purge requests still apply. On POSIX,
 the host cache parent is private (0700); tasks can access only mounted caches.
 An interrupted install that leaves cache directories without state
-fails closed; reimage that worker. Reserve disk space for one Linux runtime
-store (three on Windows ARM64), the image seed, task checkouts, and subsequent changes.
+fails closed; reimage that worker. Reserve disk space for two Linux D2G Hg runtime
+stores (one on native Linux, three on Windows ARM64), the Git stores, image seeds,
+task checkouts, and subsequent changes.
 
 Local checks:
 

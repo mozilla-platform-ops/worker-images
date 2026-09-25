@@ -91,8 +91,10 @@ def initialize_run_task_cache(run_task, cache):
 def cache_names(mode, level, digest=None):
     suffix = f"-hg58-v3-{digest[:20]}" if mode == "linux-d2g" else ""
     names = [f"gecko-level-{level}-{name}{suffix}" for name in ("checkouts", "checkouts-sparse")]
-    if mode == "windows-arm64":
-        names.append("relops-level-3-checkouts-sparse")
+    if mode.startswith("linux-"):
+        names = names[:1]
+    if mode in ("windows-arm64", "linux-d2g"):
+        names.append(f"relops-level-3-checkouts-sparse{suffix}")
     return names
 
 
@@ -203,7 +205,6 @@ def build(revision, mode, level, seed_root, hg, robustcheckout=None):
         spec["root_node"] = seed_store(SOURCE, revision, cache / store, hg, robustcheckout, upstream=UPSTREAM)
         spec["cache_names"] = cache_names(mode, level, spec.get("run_task_sha256"))
         if mode.startswith("linux-"):
-            spec["cache_names"] = spec["cache_names"][:1]
             archive_cache(cache, mode)
         (staging / "manifest.json").write_text(json.dumps(spec, indent=2) + "\n")
         staging.rename(seed_root)
@@ -231,7 +232,8 @@ def install(seed_root, destination_root, state_file, extra_seeds=()):
         # Idle caches must not be accessible without a scoped task mount.
         destination_root.chmod(0o700)
     for seed_root, spec, name, source in entries:
-        relops_cache = spec["mode"] == "windows-arm64" and name == "relops-level-3-checkouts-sparse"
+        relops_cache = (spec["mode"] in ("windows-arm64", "linux-d2g")
+                        and re.fullmatch(r"relops-level-3-checkouts-sparse(?:-hg58-v3-[0-9a-f]{20})?", name))
         git_cache = re.fullmatch(r"(?:gecko-level-[13]|relops-level-3)-checkouts-git(?:-shallow)?(?:-v3-[0-9a-f]{20})?", name)
         if not (relops_cache or git_cache) and not re.fullmatch(r"gecko-level-[13]-checkouts(?:-sparse)?(?:-hg58-v3-[0-9a-f]{20})?", name):
             raise ValueError("Invalid cache name in seed manifest")
