@@ -19,6 +19,7 @@ from urllib.request import urlopen
 
 
 SOURCE = "https://hg.mozilla.org/integration/autoland"
+UPSTREAM = "https://hg.mozilla.org/mozilla-unified"
 GIT_SOURCE = "https://github.com/mozilla-firefox/firefox"
 QUEUE = "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task"
 NODE = re.compile(r"[0-9a-f]{40}")
@@ -39,7 +40,7 @@ def hg_command(hg, *args, capture=False):
                           stdout=subprocess.PIPE if capture else None).stdout
 
 
-def seed_store(source, revision, sharebase, hg="hg", robustcheckout=None):
+def seed_store(source, revision, sharebase, hg="hg", robustcheckout=None, upstream=None):
     """Create robustcheckout's root-node-keyed pool, without absolute share links."""
     sharebase.mkdir(parents=True, exist_ok=True)
     if any(sharebase.iterdir()):
@@ -59,6 +60,7 @@ def seed_store(source, revision, sharebase, hg="hg", robustcheckout=None):
         hg_command(hg, "--config", f"extensions.robustcheckout={robustcheckout}",
                    "--config", "ui.clonebundles=true", "--config", "ui.clonebundlefallback=false",
                    "robustcheckout", "--noupdate", "--sharebase", sharebase.resolve(),
+                   *(["--upstream", upstream] if upstream else []),
                    "--revision", revision, source, clone)
         resolved = hg_command(hg, "-R", clone, "log", "-r", revision, "-T", "{node}", capture=True).strip()
         if resolved != revision:
@@ -177,7 +179,7 @@ def build(revision, mode, level, seed_root, hg, robustcheckout=None):
     if not NODE.fullmatch(revision):
         raise ValueError("Use a full Hg changeset from the latest autoland decision task")
     if mode == "windows-x64":
-        seed_store(SOURCE, revision, seed_root, hg, robustcheckout)
+        seed_store(SOURCE, revision, seed_root, hg, robustcheckout, upstream=UPSTREAM)
         return
     if seed_root.exists():
         raise FileExistsError(f"Refusing to replace seed directory: {seed_root}")
@@ -198,7 +200,7 @@ def build(revision, mode, level, seed_root, hg, robustcheckout=None):
             initialize_run_task_cache(wrapper, cache)
         store = "hg-shared" if mode == "linux-native" else "hg-store"
         spec["store_subdir"] = store
-        spec["root_node"] = seed_store(SOURCE, revision, cache / store, hg, robustcheckout)
+        spec["root_node"] = seed_store(SOURCE, revision, cache / store, hg, robustcheckout, upstream=UPSTREAM)
         spec["cache_names"] = cache_names(mode, level, spec.get("run_task_sha256"))
         if mode.startswith("linux-"):
             spec["cache_names"] = spec["cache_names"][:1]

@@ -127,11 +127,20 @@ class SeedTest(unittest.TestCase):
             seed.hg_command("hg", "-R", source, "add")
             seed.hg_command("hg", "-R", source, "commit", "-u", "test", "-m", "first")
             revision = seed.hg_command("hg", "-R", source, "log", "-r", ".", "-T", "{node}", capture=True)
-            with patch.object(seed, "SOURCE", str(source)):
+            upstream = root / "upstream"
+            seed.hg_command("hg", "clone", source, upstream)
+            seed.hg_command("hg", "-R", upstream, "branch", "other-project")
+            (upstream / "tracked").write_text("upstream-only\n")
+            seed.hg_command("hg", "-R", upstream, "commit", "-u", "test", "-m", "upstream-only")
+            upstream_revision = seed.hg_command("hg", "-R", upstream, "log", "-r", ".", "-T", "{node}", capture=True)
+            with patch.object(seed, "SOURCE", str(source)), patch.object(seed, "UPSTREAM", str(upstream)):
                 seed.build(revision, "windows-x64", 1, root / "hg-shared", "hg", self.extension)
                 seed.build(revision, "windows-arm64", 1, root / "arm-seed", "hg", self.extension)
             self.assertTrue((root / "hg-shared" / revision / ".hg").is_dir())
             self.assertFalse((root / "hg-shared/manifest.json").exists())
+            self.assertEqual(seed.hg_command("hg", "-R", root / "hg-shared" / revision,
+                                            "log", "-r", upstream_revision, "-T", "{node}", capture=True),
+                             upstream_revision)
             seed.install(root / "arm-seed", root / "arm-caches", root / "arm-state.json")
             arm_state = json.loads((root / "arm-state.json").read_text())
             self.assertEqual(set(arm_state), set(seed.cache_names("windows-arm64", 1)))
@@ -150,7 +159,7 @@ class SeedTest(unittest.TestCase):
             mode = "linux-d2g" if wrapper else "linux-native"
             image = root / "image-seed"
             # Only substitute the download/source; build and install are real.
-            with patch.object(seed, "SOURCE", str(source)):
+            with patch.object(seed, "SOURCE", str(source)), patch.object(seed, "UPSTREAM", str(upstream)):
                 if wrapper:
                     with patch.object(seed, "urlopen", return_value=open(wrapper, "rb")):
                         seed.build(revision, mode, 3, image, "hg", self.extension)
@@ -202,9 +211,12 @@ class SeedTest(unittest.TestCase):
                     pool = task_cache / spec["store_subdir"]
                     sentinel = pool / revision / ".hg/seed-was-reused"
                     sentinel.touch()
+                    history = seed.hg_command("hg", "-R", pool / revision, "log", "-T", "{node}\n", capture=True)
+                    self.assertIn(upstream_revision, history)
                     command = ["--config", f"extensions.robustcheckout={extension}",
                                "--config", "extensions.share=", "--config", "extensions.sparse=",
-                               "robustcheckout", "--sharebase", pool, "--purge", "--revision", revision]
+                               "robustcheckout", "--sharebase", pool, "--upstream", upstream,
+                               "--purge", "--revision", revision]
                     def checkout(check_seed=False):
                         checkout_command = ["hg", *map(str, command), str(source), str(task_cache / "gecko")]
                         if check_seed:
@@ -217,6 +229,8 @@ class SeedTest(unittest.TestCase):
                                        group=1000 if wrapper else None,
                                        env=dict(os.environ, HGPLAIN="1", HGRCPATH=os.devnull))
                     checkout(check_seed=True)
+                    self.assertEqual(seed.hg_command("hg", "-R", pool / revision,
+                                                     "log", "-T", "{node}\n", capture=True), history)
                     self.assertTrue(sentinel.exists(), "robustcheckout replaced the seeded store")
                     self.assertEqual((task_cache / "gecko/tracked").read_text(), "first\n")
                     command[command.index("--revision") + 1] = head

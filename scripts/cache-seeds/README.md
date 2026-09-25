@@ -11,6 +11,9 @@ for all images in that run. The next run resolves the latest decision again.
 The seed stays fixed after image creation; tasks fetch later changes normally.
 
 Hg uses `robustcheckout --noupdate` from the selected autoland revision.
+It uses `--upstream https://hg.mozilla.org/mozilla-unified`, as real tasks do.
+This includes upstream history during image creation, so the first task does
+not need to fetch history that is absent from an autoland-only seed.
 It requests stream clones, uses server-advertised clone bundles, and retries
 transport failures through robustcheckout. It then fetches any missing changes.
 The `--revision` option selects the target after the initial clone; it does not
