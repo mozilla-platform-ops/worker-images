@@ -15,7 +15,7 @@ if [[ -e /directory-caches.json ]]; then
     exit 1
 fi
 
-apt-get install -y mercurial git
+apt-get install -y mercurial git python3-yaml
 install -D -m 0755 /tmp/gecko_hg.py /usr/local/lib/worker-images/gecko_hg.py
 python3 /usr/local/lib/worker-images/gecko_hg.py build \
     --revision "$GECKO_HG_SEED_REVISION" --mode "$GECKO_HG_SEED_MODE" \

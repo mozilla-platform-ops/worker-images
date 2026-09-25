@@ -209,7 +209,7 @@ Local checks:
 uv run --python 3.10 --with mercurial==6.2.1 scripts/cache-seeds/test_gecko_hg.py
 uv run --python 3.11 --with mercurial==6.9 scripts/cache-seeds/test_gecko_hg.py
 uv run scripts/cache-seeds/test_benchmark.py
-uv run scripts/cache-seeds/test_git_seed.py
+uv run --with pyyaml scripts/cache-seeds/test_git_seed.py
 # Test updates with the decision artifact's actual Git helper:
 RUN_TASK_GIT=/path/to/run-task-git uv run scripts/cache-seeds/test_git_seed.py
 # On Linux as root, test with Gecko's pinned helpers too:

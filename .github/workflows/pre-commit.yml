@@ -41,7 +41,7 @@ jobs:
         # Puppet installs 6.2.1 on Windows ARM64 and 6.9 on Windows x64.
         uv run --python 3.10 --with mercurial==6.2.1 scripts/cache-seeds/test_gecko_hg.py
         uv run --python 3.11 --with mercurial==6.9 scripts/cache-seeds/test_gecko_hg.py
-        uv run scripts/cache-seeds/test_git_seed.py
+        uv run --with pyyaml scripts/cache-seeds/test_git_seed.py
         uv run scripts/cache-seeds/test_benchmark.py
         uv run taskcluster/test/test_run_os_integration.py
 

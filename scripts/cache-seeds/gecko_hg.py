@@ -119,12 +119,14 @@ def build_git(revision, mode, level, seed_root, decision, git_executable="git"):
         suffix = ""
         wrapper = staging / "run-task-git"
         if mode == "linux-d2g":
+            import yaml
+
             artifact = f"{QUEUE}/{decision}/artifacts/public"
             with urlopen(f"{artifact}/run-task-git", timeout=120) as response:
                 git_script = response.read()
             wrapper.write_bytes(git_script)
-            with urlopen(f"{artifact}/parameters.json", timeout=120) as response:
-                repository_type = json.load(response)["repository_type"]
+            with urlopen(f"{artifact}/parameters.yml", timeout=120) as response:
+                repository_type = yaml.safe_load(response)["repository_type"]
             # Gecko hashes the decision's VCS helper, not each task's clone type.
             if repository_type == "hg":
                 with urlopen(f"{artifact}/run-task-hg", timeout=120) as response:

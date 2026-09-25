@@ -1,4 +1,4 @@
-"""uv run scripts/cache-seeds/test_git_seed.py
+"""uv run --with pyyaml scripts/cache-seeds/test_git_seed.py
 
 Set RUN_TASK_GIT to test with Gecko's actual helper. On Linux as root, also
 set RUN_TASK to test Docker-style cache requirements and archive ownership.
@@ -42,8 +42,8 @@ class GitSeedTest(unittest.TestCase):
             for mode in modes:
                 image = root / (mode + "-seed")
                 def download(url, **kwargs):
-                    if url.endswith("parameters.json"):
-                        return io.BytesIO(b'{"repository_type":"hg"}')
+                    if url.endswith("parameters.yml"):
+                        return io.BytesIO(b'repository_type: hg\n')
                     return io.BytesIO(Path(helper if url.endswith("run-task-git") else hg_helper).read_bytes())
                 with patch.object(seed, "GIT_SOURCE", source.as_uri()), patch.object(seed, "urlopen", download):
                     seed.build_git(revision, mode, 1, image, "a" * 22)
