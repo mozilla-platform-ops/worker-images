@@ -45,7 +45,12 @@ def seed_store(source, revision, sharebase, hg="hg"):
     with tempfile.TemporaryDirectory(prefix=".seed-", dir=sharebase) as temp:
         clone = Path(temp) / "repository"
         print(f"Cloning Gecko history at {revision}", flush=True)
-        hg_command(hg, "clone", "--pull", "--noupdate", "--rev", revision, source, clone)
+        # --rev disables clone bundles. Fetch bundled history, then check the target.
+        hg_command(hg, "--config", "ui.clonebundles=true", "--config", "ui.clonebundlefallback=false",
+                   "clone", "--pull", "--noupdate", source, clone)
+        resolved = hg_command(hg, "-R", clone, "log", "-r", revision, "-T", "{node}", capture=True).strip()
+        if resolved != revision:
+            raise ValueError("The Hg seed does not contain the selected autoland revision")
         requirements = set((clone / ".hg/requires").read_text().splitlines())
         if requirements - REQUIREMENTS or not {"dotencode", "fncache", "store"} <= requirements:
             raise ValueError(f"Unsupported Hg store requirements: {sorted(requirements)}")

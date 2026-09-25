@@ -5,6 +5,8 @@ As root on Linux, set RUN_TASK and ROBUSTCHECKOUT to test Gecko's real helpers.
 """
 
 import hashlib
+from functools import partial
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from datetime import datetime
 import json
 import os
@@ -13,14 +15,75 @@ import runpy
 import subprocess
 import sys
 import tempfile
+import threading
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
+from urllib.parse import urlsplit
 
 import gecko_hg as seed
 
 
 class SeedTest(unittest.TestCase):
+    def test_bundle_clone_and_revision_check(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source"
+            seed.hg_command("hg", "init", source)
+            (source / "tracked").write_text("first\n")
+            seed.hg_command("hg", "-R", source, "add")
+            seed.hg_command("hg", "-R", source, "commit", "-u", "test", "-m", "first")
+            revision = seed.hg_command("hg", "-R", source, "log", "-r", ".", "-T", "{node}", capture=True)
+            seed.hg_command("hg", "-R", source, "bundle", "--all", "--type", "gzip-v2", root / "seed.hg")
+            (source / "tracked").write_text("second\n")
+            seed.hg_command("hg", "-R", source, "commit", "-u", "test", "-m", "second")
+            downloads = []
+            class Handler(SimpleHTTPRequestHandler):
+                def do_GET(self):
+                    downloads.append(self.path)
+                    super().do_GET()
+            with ThreadingHTTPServer(("127.0.0.1", 0), partial(Handler, directory=str(root))) as server:
+                thread = threading.Thread(target=server.serve_forever, daemon=True)
+                thread.start()
+                bundle_url = f"http://127.0.0.1:{server.server_port}/seed.hg"
+                (source / ".hg/clonebundles.manifest").write_text(f"{bundle_url} BUNDLESPEC=gzip-v2\n")
+                try:
+                    with subprocess.Popen(
+                        ["hg", "--config", "extensions.clonebundles=", "-R", str(source),
+                         "serve", "--address", "127.0.0.1", "--port", "0", "--print-url"],
+                        stdout=subprocess.PIPE, text=True,
+                        env=dict(os.environ, HGRCPATH=os.devnull, PYTHONUNBUFFERED="1"),
+                    ) as remote:
+                        try:
+                            url = remote.stdout.readline().strip()
+                            self.assertTrue(url.startswith("http://"), url)
+                            url = f"http://127.0.0.1:{urlsplit(url).port}/"
+                            with patch.object(seed, "hg_command", wraps=seed.hg_command) as command:
+                                node = seed.seed_store(url, revision, root / "pool")
+                            (root / "seed.hg").write_bytes(b"broken bundle")
+                            with self.assertRaises(subprocess.CalledProcessError):
+                                seed.seed_store(url, revision, root / "broken")
+                            self.assertEqual(list((root / "broken").iterdir()), [])
+                        finally:
+                            remote.terminate()
+                            remote.wait(timeout=10)
+                finally:
+                    server.shutdown()
+                    thread.join(timeout=10)
+            self.assertIn("/seed.hg", downloads)
+            clone_args = next(call.args for call in command.call_args_list if "clone" in call.args)
+            self.assertIn("ui.clonebundles=true", clone_args)
+            self.assertIn("ui.clonebundlefallback=false", clone_args)
+            self.assertNotIn("--rev", clone_args)
+            store = root / "pool" / node
+            self.assertEqual((store / ".hg/worker-image-seed").read_text().strip(), revision)
+            self.assertFalse((store / "tracked").exists())
+            self.assertNotEqual(seed.hg_command("hg", "-R", store, "log", "-r", "tip",
+                                               "-T", "{node}", capture=True), revision)
+            with self.assertRaises(subprocess.CalledProcessError):
+                seed.seed_store(str(source), "e" * 40, root / "missing")
+            self.assertEqual(list((root / "missing").iterdir()), [])
+
     def test_latest_autoland_revision(self):
         resolve = runpy.run_path(str(Path(__file__).resolve().parents[2] / "ci/resolve-gecko-hg-seed.py"))["hg_revision"]
         def task(repo, revision):

@@ -10,6 +10,21 @@ workflow resolves it once, logs the decision and revisions, and uses those revis
 for all images in that run. The next run resolves the latest decision again.
 The seed stays fixed after image creation; tasks fetch later changes normally.
 
+Hg uses Mercurial's server-advertised clone bundles to download pre-generated
+history, then fetches the remaining changes. The clone must not use `--rev`:
+that option skips clone bundles and requests the history from the Hg server.
+The builder checks that the selected autoland revision is present before it
+writes the seed marker. The store can also contain newer revisions. A failed
+bundle download stops the build; it does not fall back to a full server clone.
+The store format checks and `hg verify` still run before registration.
+
+Source tarballs, such as GitHub source archives, do not contain `.hg` or `.git`
+history. They cannot replace these seeds without changes to task checkouts.
+Linux still stores the completed Hg seed as `cache.tar.gz` for SSD extraction.
+
+Windows alpha images also require ronin_puppet PR #1431's removal of the old
+`D:\pip-cache` cleanup rule. On images without D:, that rule fails before seeding.
+
 For a direct Packer build, set `gecko_hg_seed_revision` to the full 40-character
 `GECKO_HEAD_REV` from an Hg task in the latest autoland decision task graph:
 `gecko.v2.autoland.latest.taskgraph.decision`. The source is fixed to
