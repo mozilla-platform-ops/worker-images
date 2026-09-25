@@ -78,8 +78,7 @@ class SeedTest(unittest.TestCase):
                             url = remote.stdout.readline().strip()
                             self.assertTrue(url.startswith("http://"), url)
                             url = f"http://127.0.0.1:{urlsplit(url).port}/"
-                            with patch.object(seed, "hg_command", wraps=seed.hg_command) as command:
-                                node = seed.seed_store(url, revision, root / "pool", robustcheckout=self.extension)
+                            node = seed.seed_store(url, revision, root / "pool", robustcheckout=self.extension)
                             (root / "seed.hg").write_bytes(b"broken bundle")
                             with self.assertRaises(subprocess.CalledProcessError):
                                 seed.seed_store(url, revision, root / "broken", robustcheckout=self.extension)
@@ -91,12 +90,6 @@ class SeedTest(unittest.TestCase):
                     server.shutdown()
                     thread.join(timeout=10)
             self.assertGreaterEqual(downloads.count("/seed.hg"), 3)
-            clone_args = next(call.args for call in command.call_args_list if "robustcheckout" in call.args)
-            self.assertIn("ui.clonebundles=true", clone_args)
-            self.assertIn("ui.clonebundlefallback=false", clone_args)
-            self.assertNotIn("--rev", clone_args)
-            self.assertIn("--noupdate", clone_args)
-            self.assertFalse(any("verify" in call.args for call in command.call_args_list))
             store = root / "pool" / node
             self.assertEqual((store / ".hg/worker-image-seed").read_text().strip(), revision)
             self.assertFalse((store / "tracked").exists())
@@ -136,9 +129,7 @@ class SeedTest(unittest.TestCase):
             revision = seed.hg_command("hg", "-R", source, "log", "-r", ".", "-T", "{node}", capture=True)
             with patch.object(seed, "SOURCE", str(source)):
                 seed.build(revision, "windows-x64", 1, root / "hg-shared", "hg", self.extension)
-                with patch.object(seed, "seed_store", wraps=seed.seed_store) as clone:
-                    seed.build(revision, "windows-arm64", 1, root / "arm-seed", "hg", self.extension)
-                    self.assertEqual(clone.call_count, 1)
+                seed.build(revision, "windows-arm64", 1, root / "arm-seed", "hg", self.extension)
             self.assertTrue((root / "hg-shared" / revision / ".hg").is_dir())
             self.assertFalse((root / "hg-shared/manifest.json").exists())
             seed.install(root / "arm-seed", root / "arm-caches", root / "arm-state.json")

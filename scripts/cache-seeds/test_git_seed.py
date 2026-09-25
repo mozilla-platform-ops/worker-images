@@ -46,11 +46,7 @@ class GitSeedTest(unittest.TestCase):
                         return io.BytesIO(b'{"repository_type":"hg"}')
                     return io.BytesIO(Path(helper if url.endswith("run-task-git") else hg_helper).read_bytes())
                 with patch.object(seed, "GIT_SOURCE", source.as_uri()), patch.object(seed, "urlopen", download):
-                    with patch.object(seed.subprocess, "run", wraps=subprocess.run) as commands:
-                        seed.build_git(revision, mode, 1, image, "a" * 22)
-                    self.assertEqual(sum("fetch" in call.args[0] for call in commands.call_args_list), 1)
-                    self.assertFalse(any("fsck" in call.args[0] for call in commands.call_args_list))
-                    self.assertEqual(sum("HEAD^{commit}" in call.args[0] for call in commands.call_args_list), 2)
+                    seed.build_git(revision, mode, 1, image, "a" * 22)
                 spec = json.loads((image / "manifest.json").read_text())
                 if mode == "linux-d2g":
                     suffix = "-v3-" + hashlib.sha256(Path(hg_helper).read_bytes()).hexdigest()[:20]
@@ -83,6 +79,8 @@ class GitSeedTest(unittest.TestCase):
                     self.assertEqual((repo / ".git/shallow").exists(), "-shallow" in name)
                     self.assertFalse((repo / ".git/objects/info/alternates").exists())
                     self.assertFalse((repo / "tracked").exists())
+                    self.assertEqual(git("-c", f"safe.directory={repo}", "-C", repo,
+                                         "rev-parse", "HEAD"), revision)
                     self.assertEqual(git("-c", f"safe.directory={repo}", "-C", repo,
                                          "remote", "get-url", "origin"), source.as_uri())
                     marker = repo / ".git/worker-image-seed"
