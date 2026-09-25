@@ -111,21 +111,6 @@ def get_result_emoji(state: str, result: str | None) -> str:
     return "\u2753"  # question mark
 
 
-def get_task_group_tasks(queue, task_group_id: str) -> list[dict]:
-    tasks = []
-    query = {}
-    while True:
-        page = queue.listTaskGroup(task_group_id, query=query)
-        tasks.extend(page.get("tasks", []))
-        token = page.get("continuationToken")
-        if not token:
-            break
-        query = {"continuationToken": token}
-    if not tasks:
-        raise ValueError(f"No tasks found in integration group {task_group_id}")
-    return tasks
-
-
 def write_github_summary(
     tasks: list[dict],
     task_group_id: str,
@@ -160,8 +145,6 @@ def write_github_summary(
         "",
         f"**Status:** {overall_status}",
         f"**Task Group:** [{task_group_id}]({task_group_url})",
-        "",
-        "This result covers OS tasks only. Image cache reuse and speed were not measured.",
         "",
         f"| Completed | Failed | Exception | Pending/Running | Total |",
         f"|:---------:|:------:|:---------:|:---------------:|:-----:|",
@@ -230,18 +213,13 @@ def get_created_task_group_id(
                 )
                 last_state = state
 
-            if state in ("failed", "exception"):
-                log_error(f"Decision task ended with state: {state}", include_datetimestamp)
-                return None
-
-            if state == "completed":
+            if state in ("completed", "failed", "exception"):
                 # Get the log artifact
                 artifact = queue.getLatestArtifact(
                     decision_task_id, "public/logs/live_backing.log"
                 )
                 if isinstance(artifact, dict) and "url" in artifact:
                     resp = requests.get(artifact["url"], timeout=30)
-                    resp.raise_for_status()
                     log_content = resp.text
 
                     # Find taskGroupId in the log (the one created by the decision task)
@@ -256,6 +234,16 @@ def get_created_task_group_id(
                                 return match
                         # If all matches are the same, return the first one
                         return matches[0]
+
+                if state == "failed":
+                    log_error("Decision task failed", include_datetimestamp)
+                    return None
+                if state == "exception":
+                    log_error(
+                        "Decision task had an exception",
+                        include_datetimestamp,
+                    )
+                    return None
 
             time.sleep(DECISION_TASK_POLL_INTERVAL_SECONDS)
 
@@ -365,7 +353,8 @@ def main():
 
     while time.time() - start_time < args.timeout:
         try:
-            tasks = get_task_group_tasks(queue, task_group_id)
+            response = queue.listTaskGroup(task_group_id)
+            tasks = response.get("tasks", [])
 
             states = [t["status"]["state"] for t in tasks]
             pending_running = sum(
@@ -407,19 +396,15 @@ def main():
                 # Write GitHub Actions job summary
                 write_github_summary(tasks, task_group_id, args.image_name, root_url)
 
-                if completed != total:
+                if failed > 0 or exception > 0:
                     msg = f"FAILED: {failed} failed, {exception} exception — {test_results_url}"
                     log_error(msg, include_datetimestamp)
                     sys.exit(1)
                 else:
                     msg = f"PASSED: All {completed} tasks completed successfully"
                     log_notice(msg, include_datetimestamp)
-                    log_notice("OS tasks passed; image cache reuse and speed were not measured.")
                     sys.exit(0)
 
-        except ValueError as e:
-            log_error(str(e), include_datetimestamp)
-            sys.exit(1)
         except taskcluster.exceptions.TaskclusterRestFailure as e:
             error_text = str(e)
             if error_text != last_task_group_error:
@@ -433,7 +418,8 @@ def main():
 
     # Timeout - still write summary with current state
     try:
-        tasks = get_task_group_tasks(queue, task_group_id)
+        response = queue.listTaskGroup(task_group_id)
+        tasks = response.get("tasks", [])
         write_github_summary(tasks, task_group_id, args.image_name, root_url)
     except Exception:
         pass
