@@ -88,7 +88,7 @@ Remove-Item 'C:\Windows\Temp\bake-network.log' -Force -ErrorAction SilentlyConti
 Unregister-ScheduledTask -TaskName 'BakeNetwork' -Confirm:$false -ErrorAction SilentlyContinue
 
 # --- Remove build-only WinRM exposure ---
-# SECURITY: the bake uses NTLM-only WinRM through an isolated VLAN/NAT. None of its
+# SECURITY: the bake uses temporary WinRM through an isolated VLAN/NAT. None of its
 # listener, firewall, or remote-admin policy may ship in the deployed worker image.
 Step 'Removing build-only WinRM configuration'
 Remove-NetFirewallRule -Name 'WinRM-HTTP-In-5985' -ErrorAction SilentlyContinue
