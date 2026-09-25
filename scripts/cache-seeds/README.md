@@ -42,8 +42,9 @@ For example, add these arguments to the normal Packer build command:
 -var 'gecko_seed_decision=<autoland-decision-task-id>'
 ```
 
-For Azure ARM64, also set `-var 'gecko_hg_seed_level=3'` for a level-3 image;
-the default is level 1. GCP selects level 1 or 3 from the Packer source name.
+The cache level comes from the image name: `trusted-` selects level 3;
+other images use level 1. Azure uses the configuration name, and GCP uses the
+Packer source name. No separate seed-level input is needed.
 Do not enable this WIP on a pool with a different cache layout or trust domain.
 Omit the Git revision to retain the Hg-only trial. Git seeding requires the
 paired Hg revision. It is not enabled in hardware WIMs or other build workflows.

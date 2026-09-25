@@ -49,16 +49,6 @@ variable "gecko_seed_decision" {
   default = ""
 }
 
-variable "gecko_hg_seed_level" {
-  type        = number
-  default     = 1
-  description = "Gecko trust level (1 or 3) for the ARM64 checkout caches."
-  validation {
-    condition     = contains([1, 3], var.gecko_hg_seed_level)
-    error_message = "Use Gecko trust level 1 or 3."
-  }
-}
-
 variable "vault_name" {
   type    = string
   default = "${env("vault_name")}"
@@ -493,7 +483,7 @@ build {
       "GECKO_HG_SEED_REVISION=${var.gecko_hg_seed_revision}",
       "GECKO_GIT_SEED_REVISION=${var.gecko_git_seed_revision}",
       "GECKO_SEED_DECISION=${var.gecko_seed_decision}",
-      "GECKO_HG_SEED_LEVEL=${var.gecko_hg_seed_level}",
+      "GECKO_HG_SEED_LEVEL=${startswith(var.config, "trusted-") ? "3" : "1"}",
     ]
     script = "${path.cwd}/scripts/windows/preload-gecko-hg.ps1"
   }
