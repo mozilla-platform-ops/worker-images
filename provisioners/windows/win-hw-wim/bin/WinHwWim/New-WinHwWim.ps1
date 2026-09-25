@@ -536,6 +536,12 @@ sbom_path        = "$($sbomMd -replace '\\','/')"
                         # Itself diagnostic: 'credential invalid' means the guest is mid-boot
                         # or the account is gone, not that PS Direct is broken.
                         Write-Wd "  PowerShell Direct snapshot failed: $($_.Exception.Message)"
+                        $heartbeat = Get-VMIntegrationService -VMName $vm -Name Heartbeat -ErrorAction SilentlyContinue
+                        Write-Wd "  guest heartbeat: $($heartbeat.PrimaryStatusDescription) / $($heartbeat.SecondaryStatusDescription)"
+                        $adapter = Get-VMNetworkAdapter -VMName $vm -ErrorAction SilentlyContinue
+                        Write-Wd "  guest IPs: $($adapter.IPAddresses -join ', ')"
+                        $reachable = Test-NetConnection -ComputerName '192.168.234.10' -Port 5985 -InformationLevel Quiet -WarningAction SilentlyContinue
+                        Write-Wd "  host to guest TCP/5985: $reachable"
                     }
                 }
             }
