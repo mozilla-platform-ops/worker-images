@@ -86,7 +86,7 @@ ronin:
   org: default
   repo: default
   branch: relops-2581-windows-privileged-paths
-  hash: "9f684f4"
+  hash: "ef9c0ad"
   bake_role: win116424h2hwbake  # trimmed hw role that performs the one-time AppX/catalog bake
 
 vm:

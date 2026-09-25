@@ -32,15 +32,13 @@ pools:
     Description: "NUC12 Hardware Reference Staging/Testing Pool"
     # RELOPS-2584: run this pool's deploy from the hardening branch alongside
     # win11-64-24h2-hw-alpha. This retires both the paused RELOPS-2487 nuc-wim-pipeline
-    # canary and the ronin_puppet#1408 pin. Puppet is
-    # ronin_puppet#relops-2584-no-hw-obs-alpha, which is mainline with
-    # hardware_observability (nsclient + fleetbench) commented out on this role.
+    # canary and the ronin_puppet#1408 pin. Puppet tests RELOPS-2581.
     dev: "relops-2584-windows-hw-deployment-hardening"
     image: "win11-24h2-hw-20260908-172915"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "relops-2584-no-hw-obs-alpha"
-    hash: "e997775"
+    src_Branch: "relops-2581-windows-privileged-paths"
+    hash: "ef9c0ad"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -149,15 +147,13 @@ pools:
     git_version: "2.50.1"
     Description: "NUC12 Hardware Performance Staging/Testing Pool"
     # RELOPS-2584: run this pool's deploy from the hardening branch so the nodes pull
-    # OS-deploy/Get-Bootstrap/bootstrap and the new sshd_config from it. Puppet is
-    # ronin_puppet#relops-2584-no-hw-obs-alpha, which is mainline with
-    # hardware_observability (nsclient + fleetbench) commented out on this role.
+    # OS-deploy/Get-Bootstrap/bootstrap and the new sshd_config from it. Puppet tests RELOPS-2581.
     dev: "relops-2584-windows-hw-deployment-hardening"
     image: "win11-24h2-hw-20260908-172915"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "relops-2584-no-hw-obs-alpha"
-    hash: "e997775"
+    src_Branch: "relops-2581-windows-privileged-paths"
+    hash: "ef9c0ad"
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
