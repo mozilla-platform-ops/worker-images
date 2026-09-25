@@ -13,7 +13,7 @@
 ## Operating system
 
 - OS: Ubuntu 24.04.5 LTS (Noble Numbat)
-- Kernel: Linux 7.0.0-1011-gcp x86_64 GNU/Linux
+- Kernel: Linux 7.0.0-1013-gcp x86_64 GNU/Linux
 - Machine architecture: x86_64
 
 ## Taskcluster tools
@@ -147,7 +147,7 @@
 | alsa-utils | 1.2.9-1ubuntu5 | amd64 |
 | anacron | 2.3-39ubuntu2 | amd64 |
 | apg | 2.2.3.dfsg.1-5build3 | amd64 |
-| apparmor | 4.0.1really4.0.1-0ubuntu0.24.04.7 | amd64 |
+| apparmor | 4.0.1really4.0.1-0ubuntu0.24.04.8 | amd64 |
 | apport | 2.28.3-0ubuntu0.1 | all |
 | apport-core-dump-handler | 2.28.3-0ubuntu0.1 | all |
 | apport-gtk | 2.28.3-0ubuntu0.1 | all |
@@ -240,7 +240,7 @@
 | cups-pk-helper | 0.2.6-1ubuntu8 | amd64 |
 | cups-ppdc | 2.4.7-1.2ubuntu7.14 | amd64 |
 | cups-server-common | 2.4.7-1.2ubuntu7.14 | all |
-| curl | 8.5.0-2ubuntu10.13 | amd64 |
+| curl | 8.5.0-2ubuntu10.15 | amd64 |
 | dash | 0.5.12-6ubuntu5 | amd64 |
 | dbus | 1.14.10-4ubuntu4.1 | amd64 |
 | dbus-bin | 1.14.10-4ubuntu4.1 | amd64 |
@@ -265,7 +265,7 @@
 | distro-info-data | 0.72-0ubuntu0.24.04.1 | all |
 | dkms | 3.0.11-1ubuntu13 | all |
 | dmeventd | 2:1.02.185-3ubuntu3.2 | amd64 |
-| dmidecode | 3.5-3ubuntu0.1 | amd64 |
+| dmidecode | 3.5-3ubuntu0.2 | amd64 |
 | dmsetup | 2:1.02.185-3ubuntu3.2 | amd64 |
 | dmz-cursor-theme | 0.4.5ubuntu1 | all |
 | dns-root-data | 2024071801~ubuntu0.24.04.1 | all |
@@ -438,8 +438,8 @@
 | gnome-session-common | 46.0-1ubuntu4 | all |
 | gnome-settings-daemon | 46.0-1ubuntu1.24.04.1 | amd64 |
 | gnome-settings-daemon-common | 46.0-1ubuntu1.24.04.1 | all |
-| gnome-shell | 46.0-0ubuntu6~24.04.14 | amd64 |
-| gnome-shell-common | 46.0-0ubuntu6~24.04.14 | all |
+| gnome-shell | 46.0-0ubuntu6~24.04.15 | amd64 |
+| gnome-shell-common | 46.0-0ubuntu6~24.04.15 | all |
 | gnome-shell-extension-appindicator | 58-1ubuntu24.04.1 | all |
 | gnome-shell-extension-desktop-icons-ng | 46+really47.0.9-1ubuntu5 | all |
 | gnome-shell-extension-ubuntu-dock | 90ubuntu3 | all |
@@ -577,7 +577,7 @@
 | libao-common | 1.2.2+20180113-1.1ubuntu4 | all |
 | libao4:amd64 | 1.2.2+20180113-1.1ubuntu4 | amd64 |
 | libaom3:amd64 | 3.8.2-2ubuntu0.2 | amd64 |
-| libapparmor1:amd64 | 4.0.1really4.0.1-0ubuntu0.24.04.7 | amd64 |
+| libapparmor1:amd64 | 4.0.1really4.0.1-0ubuntu0.24.04.8 | amd64 |
 | libappstream5:amd64 | 1.0.2-1build6 | amd64 |
 | libapt-pkg6.0t64:amd64 | 2.8.3 | amd64 |
 | libarchive13t64:amd64 | 3.7.2-2ubuntu0.8 | amd64 |
@@ -599,8 +599,8 @@
 | libatopology2t64:amd64 | 1.2.11-1ubuntu0.3 | amd64 |
 | libatspi2.0-0t64:amd64 | 2.52.0-1build1 | amd64 |
 | libattr1:amd64 | 1:2.5.2-1ubuntu0.1 | amd64 |
-| libaudit-common | 1:3.1.2-2.1build1.1 | all |
-| libaudit1:amd64 | 1:3.1.2-2.1build1.1 | amd64 |
+| libaudit-common | 1:3.1.2-2.1ubuntu0.1 | all |
+| libaudit1:amd64 | 1:3.1.2-2.1ubuntu0.1 | amd64 |
 | libauthen-sasl-perl | 2.1700-1 | all |
 | libavahi-client3:amd64 | 0.8-13ubuntu6.2 | amd64 |
 | libavahi-common-data:amd64 | 0.8-13ubuntu6.2 | amd64 |
@@ -703,8 +703,8 @@
 | libcupsfilters2-common | 2.0.0-0ubuntu7.2 | all |
 | libcupsfilters2t64:amd64 | 2.0.0-0ubuntu7.2 | amd64 |
 | libcupsimage2t64:amd64 | 2.4.7-1.2ubuntu7.14 | amd64 |
-| libcurl3t64-gnutls:amd64 | 8.5.0-2ubuntu10.13 | amd64 |
-| libcurl4t64:amd64 | 8.5.0-2ubuntu10.13 | amd64 |
+| libcurl3t64-gnutls:amd64 | 8.5.0-2ubuntu10.15 | amd64 |
+| libcurl4t64:amd64 | 8.5.0-2ubuntu10.15 | amd64 |
 | libdaemon0:amd64 | 0.14-7.1ubuntu4 | amd64 |
 | libdata-dump-perl | 1.25-1 | all |
 | libdatrie1:amd64 | 0.2.13-3build1 | amd64 |
@@ -778,8 +778,8 @@
 | libexempi8:amd64 | 2.6.5-1build1 | amd64 |
 | libexif12:amd64 | 0.6.24-1ubuntu0.24.04.1 | amd64 |
 | libexiv2-27:amd64 | 0.27.6-1ubuntu0.3 | amd64 |
-| libexpat1-dev:amd64 | 2.6.1-2ubuntu0.5 | amd64 |
-| libexpat1:amd64 | 2.6.1-2ubuntu0.5 | amd64 |
+| libexpat1-dev:amd64 | 2.6.1-2ubuntu0.6 | amd64 |
+| libexpat1:amd64 | 2.6.1-2ubuntu0.6 | amd64 |
 | libext2fs2t64:amd64 | 1.47.0-2.4~exp1ubuntu4.1 | amd64 |
 | libexttextcat-2.0-0:amd64 | 3.4.7-1build1 | amd64 |
 | libexttextcat-data | 3.4.7-1build1 | all |
@@ -1167,10 +1167,10 @@
 | libpaper1:amd64 | 1.1.29build1 | amd64 |
 | libparted2t64:amd64 | 3.6-4build1 | amd64 |
 | libpath-utils1t64:amd64 | 0.6.2-2.1build1 | amd64 |
-| libpcap0.8t64:amd64 | 1.10.4-4.1ubuntu3 | amd64 |
+| libpcap0.8t64:amd64 | 1.10.4-4.1ubuntu3.1 | amd64 |
 | libpcaudio0:amd64 | 1.2-2build3 | amd64 |
 | libpci3:amd64 | 1:3.10.0-2build1 | amd64 |
-| libpciaccess0:amd64 | 0.17-3ubuntu0.24.04.2 | amd64 |
+| libpciaccess0:amd64 | 0.17-3ubuntu0.24.04.3 | amd64 |
 | libpcre2-32-0:amd64 | 10.42-4ubuntu2.1 | amd64 |
 | libpcre2-8-0:amd64 | 10.42-4ubuntu2.1 | amd64 |
 | libpcsclite1:amd64 | 2.0.3-1build1 | amd64 |
@@ -1576,20 +1576,26 @@
 | libzvbi-common | 0.2.42-2 | all |
 | libzvbi0t64:amd64 | 0.2.42-2 | amd64 |
 | linux-base | 4.5ubuntu9+24.04.2 | all |
-| linux-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
+| linux-gcp | 7.0.0-1013.13~24.04.1 | amd64 |
 | linux-gcp-7.0-headers-7.0.0-1011 | 7.0.0-1011.11~24.04.1 | amd64 |
+| linux-gcp-7.0-headers-7.0.0-1013 | 7.0.0-1013.13~24.04.1 | amd64 |
 | linux-gcp-7.0-tools-7.0.0-1011 | 7.0.0-1011.11~24.04.1 | amd64 |
+| linux-gcp-7.0-tools-7.0.0-1013 | 7.0.0-1013.13~24.04.1 | amd64 |
 | linux-headers-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
-| linux-headers-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
+| linux-headers-7.0.0-1013-gcp | 7.0.0-1013.13~24.04.1 | amd64 |
+| linux-headers-gcp | 7.0.0-1013.13~24.04.1 | amd64 |
 | linux-image-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
-| linux-image-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
+| linux-image-7.0.0-1013-gcp | 7.0.0-1013.13~24.04.1 | amd64 |
+| linux-image-gcp | 7.0.0-1013.13~24.04.1 | amd64 |
 | linux-libc-dev:amd64 | 6.8.0-142.142 | amd64 |
 | linux-modules-6.17.0-1022-gcp | 6.17.0-1022.25 | amd64 |
 | linux-modules-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
+| linux-modules-7.0.0-1013-gcp | 7.0.0-1013.13~24.04.1 | amd64 |
 | linux-modules-extra-6.17.0-1022-gcp | 6.17.0-1022.25 | amd64 |
 | linux-modules-extra-gcp | 6.17.0-1022.25 | amd64 |
 | linux-sound-base | 1.0.25+dfsg-0ubuntu7 | all |
 | linux-tools-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
+| linux-tools-7.0.0-1013-gcp | 7.0.0-1013.13~24.04.1 | amd64 |
 | linux-tools-common | 6.8.0-142.142 | all |
 | llvm | 1:18.0-59~exp2 | amd64 |
 | llvm-18 | 1:18.1.3-1ubuntu1 | amd64 |
@@ -2071,14 +2077,14 @@
 | xorg | 1:7.7+23ubuntu3 | amd64 |
 | xorg-docs-core | 1:1.7.1-1.2 | all |
 | xorriso | 1:1.5.6-1.1ubuntu3 | amd64 |
-| xserver-common | 2:21.1.12-1ubuntu1.6 | all |
-| xserver-xephyr | 2:21.1.12-1ubuntu1.6 | amd64 |
+| xserver-common | 2:21.1.12-1ubuntu1.8 | all |
+| xserver-xephyr | 2:21.1.12-1ubuntu1.8 | amd64 |
 | xserver-xorg | 1:7.7+23ubuntu3 | amd64 |
-| xserver-xorg-core | 2:21.1.12-1ubuntu1.6 | amd64 |
+| xserver-xorg-core | 2:21.1.12-1ubuntu1.8 | amd64 |
 | xserver-xorg-input-all | 1:7.7+23ubuntu3 | amd64 |
 | xserver-xorg-input-libinput | 1.4.0-1ubuntu24.04.1 | amd64 |
 | xserver-xorg-input-wacom | 1:1.2.0-1ubuntu2 | amd64 |
-| xserver-xorg-legacy | 2:21.1.12-1ubuntu1.6 | amd64 |
+| xserver-xorg-legacy | 2:21.1.12-1ubuntu1.8 | amd64 |
 | xserver-xorg-video-all | 1:7.7+23ubuntu3 | amd64 |
 | xserver-xorg-video-amdgpu | 23.0.0-1ubuntu0.24.04.1 | amd64 |
 | xserver-xorg-video-ati | 1:22.0.0-1build1 | amd64 |
@@ -2089,7 +2095,7 @@
 | xserver-xorg-video-radeon | 1:22.0.0-1build1 | amd64 |
 | xserver-xorg-video-vesa | 1:2.6.0-1ubuntu0.1 | amd64 |
 | xserver-xorg-video-vmware | 1:13.4.0-1build1 | amd64 |
-| xvfb | 2:21.1.12-1ubuntu1.6 | amd64 |
+| xvfb | 2:21.1.12-1ubuntu1.8 | amd64 |
 | xwayland | 2:23.2.6-1ubuntu0.8 | amd64 |
 | xxd | 2:9.1.0016-1ubuntu7.20 | amd64 |
 | xz-utils | 5.6.1+really5.4.5-1ubuntu0.3 | amd64 |
