@@ -10,7 +10,7 @@ sharedimage:
   image_version: "1.3.10"
 azure:
   managed_image_resource_group_name: "default"
-  managed_image_storage_account_type: "default"
+  managed_image_storage_account_type: Premium_LRS
 vm:
   puppet_version: "default"
   git_version: "default"

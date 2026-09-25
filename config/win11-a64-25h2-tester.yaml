@@ -11,7 +11,7 @@ sharedimage:
 azure:
   build_location: eastus
   managed_image_resource_group_name: "default"
-  managed_image_storage_account_type: "default"
+  managed_image_storage_account_type: Premium_LRS
 vm:
   spot: true
   puppet_version: "default"

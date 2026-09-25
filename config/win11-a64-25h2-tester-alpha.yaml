@@ -10,7 +10,7 @@ sharedimage:
   image_version: 1.0.0
 azure:
   managed_image_resource_group_name: rg-packer-worker-images
-  managed_image_storage_account_type: Standard_LRS
+  managed_image_storage_account_type: Premium_LRS
   build_location: eastus
   locations:
     - centralindia

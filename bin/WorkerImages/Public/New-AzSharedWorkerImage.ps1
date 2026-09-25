@@ -92,6 +92,7 @@ function New-AzSharedWorkerImage {
     $ENV:PKR_VAR_image_sku = $Y.image["sku"]
     $ENV:PKR_VAR_image_version = $Y.image["version"]
     $ENV:PKR_VAR_resource_group = $Y.azure["managed_image_resource_group_name"]
+    $ENV:PKR_VAR_managed_image_storage_account_type = $Y.azure["managed_image_storage_account_type"]
     $ENV:PKR_VAR_vm_size = $Y.vm["size"]
     $ENV:PKR_VAR_use_spot = ($Y.vm["spot"] -eq $true).ToString().ToLowerInvariant()
     $BuildLocation = $Y.azure["build_location"]
