@@ -92,9 +92,9 @@ Write-BakeLog ("network profile(s): " + ((Get-NetConnectionProfile -ErrorAction 
 cmd.exe /c 'sc config WinRM start= auto' | Out-Null
 cmd.exe /c 'net start WinRM' 2>$null | Out-Null
 cmd.exe /c 'winrm create winrm/config/Listener?Address=*+Transport=HTTP' 2>$null | Out-Null
-# SECURITY: this build-only listener is reachable only from the Hyper-V host on the
-# isolated build VLAN/NAT. sysprep-generalize.ps1 removes it before capture.
-netsh advfirewall firewall add rule name="WinRM-HTTP-In-5985" dir=in action=allow protocol=TCP localport=5985 remoteip=$gw profile=private | Out-Null
+# Allow the build host even if Windows still classifies the NAT link as Public.
+# The host IP remains the only allowed source; sysprep removes this rule before capture.
+netsh advfirewall firewall add rule name="WinRM-HTTP-In-5985" dir=in action=allow protocol=TCP localport=5985 remoteip=$gw profile=any | Out-Null
 
 $ok = $false
 try { $ok = [bool](Get-NetFirewallRule -DisplayName 'WinRM-HTTP-In-5985' -ErrorAction SilentlyContinue) } catch {}
