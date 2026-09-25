@@ -10,12 +10,12 @@ sharedimage:
   image_version: "1.3.10"
 azure:
   managed_image_resource_group_name: "default"
-  managed_image_storage_account_type: "default"
+  managed_image_storage_account_type: Premium_LRS
 vm:
   puppet_version: "default"
   git_version: "default"
   openvox_version: "default"
-  size: Standard_D32ads_v5
+  size: Standard_D32ads_v7
   tags:
     base_image: win2022642009azure
     worker_pool_id: trusted-win2022-64-2009

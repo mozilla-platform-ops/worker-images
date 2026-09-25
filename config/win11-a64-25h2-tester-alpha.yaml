@@ -10,7 +10,7 @@ sharedimage:
   image_version: 1.0.0
 azure:
   managed_image_resource_group_name: rg-packer-worker-images
-  managed_image_storage_account_type: Standard_LRS
+  managed_image_storage_account_type: Premium_LRS
   build_location: eastus
   locations:
     - centralindia
@@ -22,7 +22,7 @@ vm:
   puppet_version: 8.10.0
   openvox_version: "default"
   git_version: "default"
-  size: Standard_D8pds_v5
+  size: Standard_D8pds_v6
   tags:
     base_image: win11a6425h2azuretester
     worker_pool_id: win11-a64-25h2-tester-alpha

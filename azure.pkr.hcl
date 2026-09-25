@@ -249,10 +249,12 @@ source "azure-arm" "sig" {
   image_version   = "${var.image_version}"
 
   # Destination
-  temp_resource_group_name   = "${var.temp_resource_group_name}"
-  location                   = "${var.build_location}"
-  vm_size                    = "${var.vm_size}"
-  async_resourcegroup_delete = true
+  temp_resource_group_name = "${var.temp_resource_group_name}"
+  location                 = "${var.build_location}"
+  vm_size                  = "${var.vm_size}"
+  # The plugin uses this setting for the temporary build VM OS disk.
+  managed_image_storage_account_type = "${var.managed_image_storage_account_type}"
+  async_resourcegroup_delete         = true
 
   dynamic "spot" {
     for_each = var.use_spot ? [1] : []
@@ -264,12 +266,13 @@ source "azure-arm" "sig" {
 
   # Shared image gallery https:github.com/mozilla-platform-ops/relops_infra_as_code/blob/master/terraform/azure_fx_nonci/worker-images.tf
   shared_image_gallery_destination {
-    subscription        = "${var.subscription_id}"
-    resource_group      = "${var.resource_group}"
-    gallery_name        = "${var.gallery_name}"
-    image_name          = "${var.image_name}"
-    image_version       = "${var.sharedimage_version}"
-    replication_regions = var.replication_regions
+    subscription         = "${var.subscription_id}"
+    resource_group       = "${var.resource_group}"
+    gallery_name         = "${var.gallery_name}"
+    image_name           = "${var.image_name}"
+    image_version        = "${var.sharedimage_version}"
+    storage_account_type = "Standard_LRS"
+    replication_regions  = var.replication_regions
   }
 
   # Tags

@@ -10,14 +10,14 @@ sharedimage:
   image_version: "1.0.10"
 azure:
   managed_image_resource_group_name: "default"
-  managed_image_storage_account_type: "default"
+  managed_image_storage_account_type: Premium_LRS
   build_location: westus2
 vm:
   spot: true
   puppet_version: "default"
   git_version: "default"
   openvox_version: "default"
-  size: Standard_D16pds_v5
+  size: Standard_D16pds_v6
   tags:
     base_image: win11a6425h2azurebuilder
     worker_pool_id: trusted-win11-a64-25h2-builder
