@@ -10,13 +10,16 @@ workflow resolves it once, logs the decision and revisions, and uses those revis
 for all images in that run. The next run resolves the latest decision again.
 The seed stays fixed after image creation; tasks fetch later changes normally.
 
-Hg uses Mercurial's server-advertised clone bundles to download pre-generated
-history, then fetches the remaining changes. The clone must not use `--rev`:
-that option skips clone bundles and requests the history from the Hg server.
-The builder checks that the selected autoland revision is present before it
-writes the seed marker. The store can also contain newer revisions. A failed
-bundle download stops the build; it does not fall back to a full server clone.
-The store format checks and `hg verify` still run before registration.
+Hg uses `robustcheckout --noupdate` from the selected autoland revision.
+It requests stream clones, uses server-advertised clone bundles, and retries
+transport failures through robustcheckout. It then fetches any missing changes.
+The `--revision` option selects the target after the initial clone; it does not
+restrict the clone or disable bundles. No source files are checked out.
+The builder checks the store format and selected revision before it writes the
+seed marker. It accepts zstd stores and does not force recompression to zlib.
+It does not run a separate full-history `hg verify`. A failed build does not
+register caches or publish an image. A failed direct-store build can leave an
+incomplete store; use a fresh image build rather than that partial store.
 
 Source tarballs, such as GitHub source archives, do not contain `.hg` or `.git`
 history. They cannot replace these seeds without changes to task checkouts.
@@ -53,8 +56,11 @@ after Puppet as SYSTEM, with Worker Runner stopped.
 
 On x64, the image builder writes the Hg store directly under
 `C:\hg-shared\<root-changeset>`. This is the pool that Gecko's `run-task` already
-uses. Hg needs no directory-cache state file or copy to D:. The builder restores
-inherited ACLs on the new store and sets its owner to SYSTEM.
+uses. Hg needs no directory-cache state file or copy to D:. The builder requires
+SYSTEM and creates the store under Puppet's configured parent directory. Files
+inherit task-user access when they are created. The private temporary checkout
+is outside the pool and is removed after seeding. The builder checks ownership
+and inherited access on sample files; it does not run recursive ACL or owner repairs.
 
 On ARM64, Gecko uses `build/hg-store` inside a Generic Worker checkout cache.
 The builder prepares independent full and sparse caches under `C:\caches` and
@@ -78,6 +84,8 @@ The builder fetches Git history once from
 It creates a depth-1 seed through local Git transport. Both seeds contain a
 normal `.git` directory without checked-out files, alternates, or hardlinked
 objects. Each task can fetch a newer revision with `run-task-git`.
+Both seeds must resolve `HEAD` to the selected commit. Fetch failures stop the
+build. The builder does not run a separate full-history `git fsck --full`.
 
 Git uses independent `gecko-level-<level>-checkouts-git` and
 `gecko-level-<level>-checkouts-git-shallow` caches. The repository is at `src`
@@ -197,7 +205,8 @@ store (three on Windows ARM64), the image seed, task checkouts, and subsequent c
 Local checks:
 
 ```sh
-uv run scripts/cache-seeds/test_gecko_hg.py
+uv run --python 3.10 --with mercurial==6.2.1 scripts/cache-seeds/test_gecko_hg.py
+uv run --python 3.11 --with mercurial==6.9 scripts/cache-seeds/test_gecko_hg.py
 uv run scripts/cache-seeds/test_benchmark.py
 uv run scripts/cache-seeds/test_git_seed.py
 # Test updates with the decision artifact's actual Git helper:
@@ -210,6 +219,14 @@ RUN_TASK=/path/to/run-task ROBUSTCHECKOUT=/path/to/robustcheckout.py \
 The worker scripts use the Python already installed in the image. Startup does
 not install uv or fetch a Python environment.
 
+The Hg check downloads a fixed test version of robustcheckout unless
+`ROBUSTCHECKOUT` points to a local copy. Image builds instead obtain the helper
+from the autoland revision selected for that build.
+CI checks upstream Hg 6.2.1 and 6.9, the executable versions configured by
+Puppet for Windows ARM64 and x64. It also checks Ubuntu 24.04's Mercurial apt
+package, which includes distribution patches. Do not replace that check with
+the unpatched upstream 6.7.2 package. These checks do not replace tests of the
+Windows executables or the Mercurial package in each task container.
 The integration check uses a small local Hg repository. It checks the real
 run-task cache requirements, UID/GID, full-store reuse, Windows cache layouts, later
 revisions, and preservation of live state. It is not a full image test.

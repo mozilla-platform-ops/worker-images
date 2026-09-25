@@ -20,11 +20,24 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 from urllib.parse import urlsplit
+from urllib.request import urlopen
 
 import gecko_hg as seed
 
 
 class SeedTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.helpers = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(cls.helpers.cleanup)
+        cls.extension = os.environ.get("ROBUSTCHECKOUT")
+        if not cls.extension:
+            cls.extension = Path(cls.helpers.name) / "robustcheckout.py"
+            url = (f"{seed.SOURCE}/raw-file/6978ac4b671864859416a7e5487211832eba1498/"
+                   "taskcluster/scripts/robustcheckout.py")
+            with urlopen(url, timeout=120) as response:
+                cls.extension.write_bytes(response.read())
+
     def test_bundle_clone_and_revision_check(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -34,19 +47,26 @@ class SeedTest(unittest.TestCase):
             seed.hg_command("hg", "-R", source, "add")
             seed.hg_command("hg", "-R", source, "commit", "-u", "test", "-m", "first")
             revision = seed.hg_command("hg", "-R", source, "log", "-r", ".", "-T", "{node}", capture=True)
-            seed.hg_command("hg", "-R", source, "bundle", "--all", "--type", "gzip-v2", root / "seed.hg")
+            seed.hg_command("hg", "-R", source, "bundle", "--all", "--type", "none-v2;stream=v2", root / "seed.hg")
             (source / "tracked").write_text("second\n")
             seed.hg_command("hg", "-R", source, "commit", "-u", "test", "-m", "second")
             downloads = []
             class Handler(SimpleHTTPRequestHandler):
                 def do_GET(self):
                     downloads.append(self.path)
+                    if len(downloads) == 1:
+                        content = (root / "seed.hg").read_bytes()
+                        self.send_response(200)
+                        self.send_header("Content-Length", str(len(content)))
+                        self.end_headers()
+                        self.wfile.write(content[:len(content) // 2])
+                        return
                     super().do_GET()
             with ThreadingHTTPServer(("127.0.0.1", 0), partial(Handler, directory=str(root))) as server:
                 thread = threading.Thread(target=server.serve_forever, daemon=True)
                 thread.start()
                 bundle_url = f"http://127.0.0.1:{server.server_port}/seed.hg"
-                (source / ".hg/clonebundles.manifest").write_text(f"{bundle_url} BUNDLESPEC=gzip-v2\n")
+                (source / ".hg/clonebundles.manifest").write_text(f"{bundle_url} BUNDLESPEC=none-v2;stream=v2\n")
                 try:
                     with subprocess.Popen(
                         ["hg", "--config", "extensions.clonebundles=", "-R", str(source),
@@ -59,30 +79,35 @@ class SeedTest(unittest.TestCase):
                             self.assertTrue(url.startswith("http://"), url)
                             url = f"http://127.0.0.1:{urlsplit(url).port}/"
                             with patch.object(seed, "hg_command", wraps=seed.hg_command) as command:
-                                node = seed.seed_store(url, revision, root / "pool")
+                                node = seed.seed_store(url, revision, root / "pool", robustcheckout=self.extension)
                             (root / "seed.hg").write_bytes(b"broken bundle")
                             with self.assertRaises(subprocess.CalledProcessError):
-                                seed.seed_store(url, revision, root / "broken")
-                            self.assertEqual(list((root / "broken").iterdir()), [])
+                                seed.seed_store(url, revision, root / "broken", robustcheckout=self.extension)
+                            self.assertEqual(list((root / "broken").glob("*/.hg/worker-image-seed")), [])
                         finally:
                             remote.terminate()
                             remote.wait(timeout=10)
                 finally:
                     server.shutdown()
                     thread.join(timeout=10)
-            self.assertIn("/seed.hg", downloads)
-            clone_args = next(call.args for call in command.call_args_list if "clone" in call.args)
+            self.assertGreaterEqual(downloads.count("/seed.hg"), 3)
+            clone_args = next(call.args for call in command.call_args_list if "robustcheckout" in call.args)
             self.assertIn("ui.clonebundles=true", clone_args)
             self.assertIn("ui.clonebundlefallback=false", clone_args)
             self.assertNotIn("--rev", clone_args)
+            self.assertIn("--noupdate", clone_args)
+            self.assertFalse(any("verify" in call.args for call in command.call_args_list))
             store = root / "pool" / node
             self.assertEqual((store / ".hg/worker-image-seed").read_text().strip(), revision)
             self.assertFalse((store / "tracked").exists())
+            self.assertIn("revlog-compression-zstd", (store / ".hg/requires").read_text())
             self.assertNotEqual(seed.hg_command("hg", "-R", store, "log", "-r", "tip",
                                                "-T", "{node}", capture=True), revision)
             with self.assertRaises(subprocess.CalledProcessError):
-                seed.seed_store(str(source), "e" * 40, root / "missing")
-            self.assertEqual(list((root / "missing").iterdir()), [])
+                seed.seed_store(str(source), "e" * 40, root / "missing", robustcheckout=self.extension)
+            self.assertEqual(list((root / "missing").glob("*/.hg/worker-image-seed")), [])
+            with self.assertRaises(FileExistsError):
+                seed.seed_store(str(source), revision, root / "pool", robustcheckout=self.extension)
 
     def test_latest_autoland_revision(self):
         resolve = runpy.run_path(str(Path(__file__).resolve().parents[2] / "ci/resolve-gecko-hg-seed.py"))["hg_revision"]
@@ -110,9 +135,9 @@ class SeedTest(unittest.TestCase):
             seed.hg_command("hg", "-R", source, "commit", "-u", "test", "-m", "first")
             revision = seed.hg_command("hg", "-R", source, "log", "-r", ".", "-T", "{node}", capture=True)
             with patch.object(seed, "SOURCE", str(source)):
-                seed.build(revision, "windows-x64", 1, root / "hg-shared", "hg")
+                seed.build(revision, "windows-x64", 1, root / "hg-shared", "hg", self.extension)
                 with patch.object(seed, "seed_store", wraps=seed.seed_store) as clone:
-                    seed.build(revision, "windows-arm64", 1, root / "arm-seed", "hg")
+                    seed.build(revision, "windows-arm64", 1, root / "arm-seed", "hg", self.extension)
                     self.assertEqual(clone.call_count, 1)
             self.assertTrue((root / "hg-shared" / revision / ".hg").is_dir())
             self.assertFalse((root / "hg-shared/manifest.json").exists())
@@ -137,9 +162,9 @@ class SeedTest(unittest.TestCase):
             with patch.object(seed, "SOURCE", str(source)):
                 if wrapper:
                     with patch.object(seed, "urlopen", return_value=open(wrapper, "rb")):
-                        seed.build(revision, mode, 3, image, "hg")
+                        seed.build(revision, mode, 3, image, "hg", self.extension)
                 else:
-                    seed.build(revision, mode, 3, image, "hg")
+                    seed.build(revision, mode, 3, image, "hg", self.extension)
             spec = json.loads((image / "manifest.json").read_text())
             self.assertTrue((image / "cache.tar.gz").is_file())
             self.assertFalse((image / "cache").exists())
@@ -178,7 +203,7 @@ class SeedTest(unittest.TestCase):
                     for parent, _, files in os.walk(cache):
                         for item in [Path(parent)] + [Path(parent) / f for f in files]:
                             self.assertEqual((item.stat().st_uid, item.stat().st_gid), (1000, 1000))
-                extension = os.environ.get("ROBUSTCHECKOUT")
+                extension = self.extension
                 if extension:
                     # Match Generic Worker's move into the task directory.
                     task_cache = root / name

@@ -25,9 +25,9 @@ NODE = re.compile(r"[0-9a-f]{40}")
 FORMATS = [
     "format.use-share-safe=no", "format.use-dirstate-v2=no",
     "format.use-persistent-nodemap=no", "format.use-delta-info-flags=no",
-    "format.revlog-compression=zlib",
 ]
-REQUIREMENTS = {"dotencode", "fncache", "generaldelta", "revlogv1", "store", "sparserevlog"}
+REQUIREMENTS = {"dotencode", "fncache", "generaldelta", "revlogv1", "store", "sparserevlog",
+                "revlog-compression-zstd"}
 
 
 def hg_command(hg, *args, capture=False):
@@ -35,34 +35,45 @@ def hg_command(hg, *args, capture=False):
     for setting in FORMATS:
         command += ["--config", setting]
     return subprocess.run(command + list(map(str, args)), check=True, text=True,
-                          env=dict(os.environ, HGPLAIN="1", HGRCPATH=os.devnull),
+                          env=dict(os.environ, HGPLAIN="1", HGRCPATH=os.devnull, PYTHONUNBUFFERED="1"),
                           stdout=subprocess.PIPE if capture else None).stdout
 
 
-def seed_store(source, revision, sharebase, hg="hg"):
+def seed_store(source, revision, sharebase, hg="hg", robustcheckout=None):
     """Create robustcheckout's root-node-keyed pool, without absolute share links."""
     sharebase.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix=".seed-", dir=sharebase) as temp:
+    if any(sharebase.iterdir()):
+        raise FileExistsError(f"Seed directory must be empty: {sharebase}")
+    started = time.monotonic()
+    # Only the disposable checkout is private. The store inherits its pool's ACL.
+    with tempfile.TemporaryDirectory(prefix=".seed-") as temp:
         clone = Path(temp) / "repository"
+        if robustcheckout is None:
+            robustcheckout = Path(temp) / "robustcheckout.py"
+            url = f"{SOURCE}/raw-file/{revision}/taskcluster/scripts/robustcheckout.py"
+            with urlopen(url, timeout=120) as response:
+                robustcheckout.write_bytes(response.read())
         print(f"Cloning Gecko history at {revision}", flush=True)
-        # --rev disables clone bundles. Fetch bundled history, then check the target.
-        hg_command(hg, "--config", "ui.clonebundles=true", "--config", "ui.clonebundlefallback=false",
-                   "clone", "--pull", "--noupdate", source, clone)
+        # robustcheckout requests a stream clone and retries transport failures.
+        # Its --revision selects the target after cloning; it does not limit clone.
+        hg_command(hg, "--config", f"extensions.robustcheckout={robustcheckout}",
+                   "--config", "ui.clonebundles=true", "--config", "ui.clonebundlefallback=false",
+                   "robustcheckout", "--noupdate", "--sharebase", sharebase.resolve(),
+                   "--revision", revision, source, clone)
         resolved = hg_command(hg, "-R", clone, "log", "-r", revision, "-T", "{node}", capture=True).strip()
         if resolved != revision:
             raise ValueError("The Hg seed does not contain the selected autoland revision")
-        requirements = set((clone / ".hg/requires").read_text().splitlines())
-        if requirements - REQUIREMENTS or not {"dotencode", "fncache", "store"} <= requirements:
-            raise ValueError(f"Unsupported Hg store requirements: {sorted(requirements)}")
         root = hg_command(hg, "-R", clone, "log", "-r", "0", "-T", "{node}", capture=True).strip()
         if not NODE.fullmatch(root):
             raise ValueError("Mercurial did not return a root changeset")
-        hg_command(hg, "-R", clone, "verify")
-        (clone / ".hg/worker-image-seed").write_text(revision + "\n")
         destination = sharebase / root
-        if destination.exists():
-            raise FileExistsError(f"Refusing to replace Hg store: {destination}")
-        clone.rename(destination)
+        requirements = set((destination / ".hg/requires").read_text().splitlines())
+        if requirements - REQUIREMENTS or not {"dotencode", "fncache", "store"} <= requirements:
+            raise ValueError(f"Unsupported Hg store requirements: {sorted(requirements)}")
+        if (destination / ".hg/sharedpath").exists():
+            raise ValueError("The seed store must not depend on another repository")
+        (destination / ".hg/worker-image-seed").write_text(revision + "\n")
+    print(f"Hg seed ready in {time.monotonic() - started:.1f}s", flush=True)
     return root
 
 
@@ -124,10 +135,11 @@ def build_git(revision, mode, level, seed_root, decision, git_executable="git"):
                 raise ValueError("Unknown decision repository type")
             suffix = "-v3-" + hashlib.sha256(cache_script).hexdigest()[:20]
 
-        def git(*args):
-            subprocess.run([git_executable, *map(str, args)], check=True,
+        def git(*args, capture=False):
+            return subprocess.run([git_executable, *map(str, args)], check=True, text=True,
+                           stdout=subprocess.PIPE if capture else None,
                            env=dict(os.environ, GIT_CONFIG_NOSYSTEM="1",
-                                    GIT_CONFIG_GLOBAL=os.devnull, GIT_TERMINAL_PROMPT="0"))
+                                    GIT_CONFIG_GLOBAL=os.devnull, GIT_TERMINAL_PROMPT="0")).stdout
 
         checkout = "src" if mode.startswith("windows-") else "gecko"
         full = staging / "full" / checkout
@@ -145,7 +157,8 @@ def build_git(revision, mode, level, seed_root, decision, git_executable="git"):
         git("clone", "--progress", "--no-checkout", "--no-hardlinks", "--depth=1", full.resolve().as_uri(), shallow)
         git("-C", shallow, "remote", "set-url", "origin", GIT_SOURCE)
         for name, repo in (("full", full), ("shallow", shallow)):
-            git("-C", repo, "fsck", "--full")
+            if git("-C", repo, "rev-parse", "--verify", "HEAD^{commit}", capture=True).strip() != revision:
+                raise ValueError("The Git seed does not contain the selected autoland revision at HEAD")
             (repo / ".git/worker-image-seed").write_text(revision + "\n")
             cache_name = "checkouts-git" + ("-shallow" if name == "shallow" else "")
             spec["cache_sources"][f"gecko-level-{level}-{cache_name}{suffix}"] = name
@@ -158,11 +171,11 @@ def build_git(revision, mode, level, seed_root, decision, git_executable="git"):
         staging.rename(seed_root)
 
 
-def build(revision, mode, level, seed_root, hg):
+def build(revision, mode, level, seed_root, hg, robustcheckout=None):
     if not NODE.fullmatch(revision):
         raise ValueError("Use a full Hg changeset from the latest autoland decision task")
     if mode == "windows-x64":
-        seed_store(SOURCE, revision, seed_root, hg)
+        seed_store(SOURCE, revision, seed_root, hg, robustcheckout)
         return
     if seed_root.exists():
         raise FileExistsError(f"Refusing to replace seed directory: {seed_root}")
@@ -183,7 +196,7 @@ def build(revision, mode, level, seed_root, hg):
             initialize_run_task_cache(wrapper, cache)
         store = "hg-shared" if mode == "linux-native" else "hg-store"
         spec["store_subdir"] = store
-        spec["root_node"] = seed_store(SOURCE, revision, cache / store, hg)
+        spec["root_node"] = seed_store(SOURCE, revision, cache / store, hg, robustcheckout)
         spec["cache_names"] = cache_names(mode, level, spec.get("run_task_sha256"))
         if mode.startswith("linux-"):
             spec["cache_names"] = spec["cache_names"][:1]

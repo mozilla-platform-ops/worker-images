@@ -49,6 +49,8 @@ class GitSeedTest(unittest.TestCase):
                     with patch.object(seed.subprocess, "run", wraps=subprocess.run) as commands:
                         seed.build_git(revision, mode, 1, image, "a" * 22)
                     self.assertEqual(sum("fetch" in call.args[0] for call in commands.call_args_list), 1)
+                    self.assertFalse(any("fsck" in call.args[0] for call in commands.call_args_list))
+                    self.assertEqual(sum("HEAD^{commit}" in call.args[0] for call in commands.call_args_list), 2)
                 spec = json.loads((image / "manifest.json").read_text())
                 if mode == "linux-d2g":
                     suffix = "-v3-" + hashlib.sha256(Path(hg_helper).read_bytes()).hexdigest()[:20]
