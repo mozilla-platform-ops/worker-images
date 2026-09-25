@@ -415,8 +415,8 @@ sbom_path        = "$($sbomMd -replace '\\','/')"
         # min in "Waiting for machine to restart" and we never learned whether Windows was
         # applying updates or was simply wedged). PowerShell Direct talks over the Hyper-V
         # VMBus, so it needs neither network nor WinRM - it works precisely when the normal
-        # channels are gone. Dump the guest's recent event log plus a few boot/servicing
-        # signals into $wdLog, which is streamed to the GH job.
+        # channels are gone. Dump the guest's network/WinRM state and recent events
+        # into $wdLog, which is streamed to the GH job.
         function Get-GuestSnapshot {
             # PSAvoidUsingConvertToSecureStringWithPlainText is unavoidable here: PSCredential
             # needs a SecureString and this is the build-scoped packer password, which is
@@ -432,6 +432,28 @@ sbom_path        = "$($sbomMd -replace '\\','/')"
                     'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired'
                 ) | Where-Object { Test-Path $_ }
                 if ($pending) { "reboot pending: $($pending -join ', ')" } else { 'reboot pending: no' }
+                'bake-network.log:'
+                if (Test-Path 'C:\Windows\Temp\bake-network.log') {
+                    Get-Content 'C:\Windows\Temp\bake-network.log' -Tail 30 | ForEach-Object { "  $_" }
+                } else { '  <missing>' }
+                'IPv4 addresses:'
+                Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+                    Where-Object { $_.IPAddress -ne '127.0.0.1' } |
+                    ForEach-Object { "  $($_.InterfaceAlias): $($_.IPAddress)/$($_.PrefixLength)" }
+                'network profiles:'
+                Get-NetConnectionProfile -ErrorAction SilentlyContinue |
+                    ForEach-Object { "  $($_.InterfaceAlias): $($_.NetworkCategory)" }
+                $winrm = Get-Service WinRM -ErrorAction SilentlyContinue
+                "WinRM service: $($winrm.Status) (startup: $($winrm.StartType))"
+                'WinRM listeners:'
+                Get-ChildItem WSMan:\localhost\Listener -ErrorAction SilentlyContinue |
+                    ForEach-Object { "  $($_.Name)" }
+                'WinRM firewall rules:'
+                Get-NetFirewallRule -DisplayName 'WinRM-HTTP-In-5985' -ErrorAction SilentlyContinue |
+                    ForEach-Object {
+                        $remote = ($_ | Get-NetFirewallAddressFilter -ErrorAction SilentlyContinue).RemoteAddress -join ','
+                        "  enabled=$($_.Enabled) profile=$($_.Profile) remote=$remote"
+                    }
                 'recent events:'
                 Get-WinEvent -MaxEvents 25 -ErrorAction SilentlyContinue -FilterHashtable @{
                     LogName = 'System', 'Application'; StartTime = (Get-Date).AddMinutes(-20)
