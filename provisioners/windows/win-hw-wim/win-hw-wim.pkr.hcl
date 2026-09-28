@@ -42,9 +42,8 @@ source "hyperv-vmcx" "nuc" {
 
   # WinRM — the HTTP listener + static NAT IP are set up at first logon by
   # scripts/unattend/set-bake-network.ps1 (dropped in by prepare-base-vhdx.ps1).
-  # Use NTLM (message-encrypted), never Basic or unencrypted WinRM. The build-only
-  # listener is restricted to the Hyper-V host on the isolated build VLAN/NAT and
-  # is removed before WIM capture by sysprep-generalize.ps1.
+  # Packer uses NTLM. For this bake test, the first-logon script restores the
+  # original Basic/unencrypted service policy; sysprep removes it before capture.
   communicator   = "winrm"
   winrm_username = var.winrm_username
   winrm_password = var.winrm_password
