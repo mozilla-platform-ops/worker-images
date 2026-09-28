@@ -154,7 +154,7 @@
 | command-not-found | 23.04.0 | all |
 | console-setup | 1.226ubuntu1.1 | all |
 | console-setup-linux | 1.226ubuntu1.1 | all |
-| containerd.io | 2.3.5-1~ubuntu.24.04~noble | arm64 |
+| containerd.io | 2.3.6-1~ubuntu.24.04~noble | arm64 |
 | coreutils | 9.4-3ubuntu6.3 | arm64 |
 | cpio | 2.15+dfsg-1ubuntu2.1 | arm64 |
 | cpp | 4:13.2.0-7ubuntu1 | arm64 |
@@ -195,7 +195,7 @@
 | dosfstools | 4.2-1.1build1 | arm64 |
 | dpkg | 1.22.6ubuntu6.6 | arm64 |
 | dpkg-dev | 1.22.6ubuntu6.6 | all |
-| dracut-install | 060+5-1ubuntu3.3 | arm64 |
+| dracut-install | 060+5-1ubuntu3.4 | arm64 |
 | e2fsprogs | 1.47.0-2.4~exp1ubuntu4.1 | arm64 |
 | e2fsprogs-l10n | 1.47.0-2.4~exp1ubuntu4.1 | all |
 | eatmydata | 131-1ubuntu1 | all |
@@ -712,7 +712,7 @@
 | python3-json-pointer | 2.0-0ubuntu1 | all |
 | python3-jsonpatch | 1.32-3 | all |
 | python3-jsonschema | 4.10.3-2ubuntu1 | all |
-| python3-jwt | 2.7.0-1ubuntu0.1 | all |
+| python3-jwt | 2.7.0-1ubuntu0.2 | all |
 | python3-launchpadlib | 1.11.0-6 | all |
 | python3-lazr.restfulclient | 0.14.6-1 | all |
 | python3-lazr.uri | 1.0.6-3 | all |
@@ -740,7 +740,7 @@
 | python3-pygments | 2.17.2+dfsg-1 | all |
 | python3-pyparsing | 3.1.1-1 | all |
 | python3-pyrsistent:arm64 | 0.20.0-1build2 | arm64 |
-| python3-requests | 2.31.0+dfsg-1ubuntu1.1 | all |
+| python3-requests | 2.31.0+dfsg-1ubuntu1.2 | all |
 | python3-rich | 13.7.1-1 | all |
 | python3-s3transfer | 0.10.1-1ubuntu2 | all |
 | python3-serial | 3.5-2 | all |
