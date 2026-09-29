@@ -17,6 +17,11 @@ local "cotkey" {
   sensitive  = true
 }
 
+locals {
+  # RELOPS-2608: keep the kernel used before the cgroup writeback regression.
+  kernel_version = "6.17.0-1022-gcp"
+}
+
 variable "image_name" {
   type    = string
   default = "${env("IMAGE_NAME")}"
@@ -143,6 +148,27 @@ build {
     "source.googlecompute.trusted-gw-fxci-gcp-l3-2404-headless-alpha",
     "source.googlecompute.trusted-gw-fxci-gcp-l3-2404-arm64-headless-alpha"
   ]
+
+  # Boot the selected kernel before any script builds or loads kernel modules.
+  provisioner "shell" {
+    execute_command  = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    environment_vars = ["KERNEL_VERSION=${local.kernel_version}"]
+    scripts          = ["${path.cwd}/scripts/linux/common/select-kernel.sh"]
+  }
+
+  provisioner "shell" {
+    execute_command     = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    expect_disconnect   = true
+    pause_after         = "90s"
+    start_retry_timeout = "30m"
+    scripts             = ["${path.cwd}/scripts/linux/common/reboot.sh"]
+  }
+
+  provisioner "shell" {
+    execute_command  = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    environment_vars = ["KERNEL_VERSION=${local.kernel_version}"]
+    inline           = ["test \"$(uname -r)\" = \"$KERNEL_VERSION\""]
+  }
 
   ## Every image has tests, so create the tests directory
   provisioner "shell" {
@@ -325,6 +351,13 @@ build {
   provisioner "file" {
     source      = "${path.cwd}/scripts/linux/common/generate-sbom.sh"
     destination = "/tmp/generate-linux-sbom.sh"
+  }
+
+  # Check again after all package installs, reboots, and package cleanup.
+  provisioner "shell" {
+    execute_command  = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    environment_vars = ["KERNEL_VERSION=${local.kernel_version}"]
+    scripts          = ["${path.cwd}/tests/linux/test_kernel.sh"]
   }
 
   provisioner "shell" {
