@@ -83,8 +83,13 @@ for ($j = 0; $j -lt 30; $j++) {
 }
 Write-BakeLog ("network profile(s): " + ((Get-NetConnectionProfile -ErrorAction SilentlyContinue | ForEach-Object { $_.Name + '=' + $_.NetworkCategory }) -join ', '))
 
-# SECURITY: Packer uses NTLM message encryption. Basic authentication and unencrypted
-# WinRM must never be enabled, even on the isolated build VLAN/NAT.
+# Packer's NTLM client authenticates without message encryption over HTTP.
+# Allow this on the isolated build NAT; sysprep-generalize.ps1 removes these policies.
+# Basic authentication stays disabled.
+$winrmPolicy = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service'
+New-Item -Path $winrmPolicy -Force -ErrorAction Stop | Out-Null
+New-ItemProperty -Path $winrmPolicy -Name AllowBasic -Value 0 -PropertyType DWord -Force -ErrorAction Stop | Out-Null
+New-ItemProperty -Path $winrmPolicy -Name AllowUnencryptedTraffic -Value 1 -PropertyType DWord -Force -ErrorAction Stop | Out-Null
 
 # Bring up the WinRM HTTP listener. Explicit `winrm create Listener` (unlike
 # Enable-PSRemoting / winrm quickconfig) does NOT check the network-connection profile,
