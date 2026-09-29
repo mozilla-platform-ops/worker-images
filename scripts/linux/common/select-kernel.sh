@@ -2,13 +2,27 @@
 
 set -euxo pipefail
 
+# APT can still be busy during the first boot of the build VM.
+retry() {
+  local attempt
+  for attempt in 1 2 3 4 5; do
+    if "$@"; then
+      return 0
+    fi
+    if [ "$attempt" -lt 5 ]; then
+      sleep 30
+    fi
+  done
+  return 1
+}
+
 # RELOPS-2608: use the same kernel ABI as the September 3 images.
 # Keep other kernels installed, but select this kernel on every boot.
 : "${KERNEL_VERSION:?KERNEL_VERSION must name the required kernel ABI}"
 export DEBIAN_FRONTEND=noninteractive
 export LC_ALL=C
-apt-get update
-apt-get install -y "linux-image-${KERNEL_VERSION}" \
+retry apt-get update
+retry apt-get -o DPkg::Lock::Timeout=300 install -y "linux-image-${KERNEL_VERSION}" \
   "linux-headers-${KERNEL_VERSION}" "linux-modules-extra-${KERNEL_VERSION}"
 
 mkdir -p /etc/default/grub.d
