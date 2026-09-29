@@ -1,4 +1,5 @@
 # Opt in only for images pinned to Ronin's privileged-path hardening.
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'Hiera', Justification = 'Pester consumes Hiera in BeforeDiscovery.')]
 param([hashtable]$Hiera)
 
 Describe "Ronin privileged-path permissions" {
