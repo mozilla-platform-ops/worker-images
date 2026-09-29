@@ -1,4 +1,5 @@
 # For images using Ronin's hardened package staging directory.
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSReviewUnusedParameter', 'Hiera', Justification = 'Pester consumes Hiera in BeforeAll.')]
 param([hashtable]$Hiera)
 
 Describe "Nvidia GPU Drivers Downloaded" {
