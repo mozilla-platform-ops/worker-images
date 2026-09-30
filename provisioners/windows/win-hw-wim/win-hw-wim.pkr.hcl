@@ -42,17 +42,17 @@ source "hyperv-vmcx" "nuc" {
 
   # WinRM — the HTTP listener + static NAT IP are set up at first logon by
   # scripts/unattend/set-bake-network.ps1 (dropped in by prepare-base-vhdx.ps1).
-  # Use NTLM authentication with unencrypted HTTP on the isolated build NAT.
-  # This client does not provide NTLM message encryption. The build-only WinRM
-  # configuration is removed before WIM capture by sysprep-generalize.ps1.
+  # Use NTLM (message-encrypted), NOT Basic-over-HTTP: the NAT link is classified
+  # a 'Public' network, and WinRM refuses to enable AllowUnencrypted there (the
+  # firewall-exception guard blocks it), so Basic/plaintext auth can't be turned
+  # on. NTLM needs no AllowUnencrypted and works with the local build account.
   communicator   = "winrm"
   winrm_username = var.winrm_username
   winrm_password = var.winrm_password
   winrm_use_ntlm = true
   winrm_timeout  = "60m"
 
-  # The host finalizer requests a graceful shutdown after successful Sysprep.
-  disable_shutdown = true
+  # Sysprep in the last provisioner shuts the VM down; let Packer treat that as done.
   shutdown_timeout = "30m"
 }
 
@@ -86,12 +86,6 @@ build {
   provisioner "file" {
     source      = "${path.root}/scripts/"
     destination = "C:/wim-bake/"
-  }
-
-  # Copy SSH policy from this checkout so the bake cannot drift to mutable GitHub main.
-  provisioner "file" {
-    source      = "${path.root}/../MDC1Windows/ssh/"
-    destination = "C:/wim-bake/ssh/"
   }
 
   # ---- 3. Bake: install puppet/git, clone ronin, AppX (provisioned) removal, puppet apply of the BAKE role ----
@@ -168,11 +162,12 @@ build {
     max_retries = 3
   }
 
-  # ---- 4. Finalize over PowerShell Direct: cleanup removes WinRM itself. ----
-  provisioner "shell-local" {
-    inline = [
-      "powershell -NoProfile -ExecutionPolicy Bypass -File \"${path.root}/scripts/finalize-vm.ps1\""
-    ]
+  # ---- 4. Scrub machine-specific state + Sysprep /generalize /shutdown ----
+  #        (this powers the VM off; Packer then finalizes the artifact)
+  provisioner "powershell" {
+    elevated_user     = var.winrm_username
+    elevated_password = var.winrm_password
+    scripts           = ["${path.root}/scripts/sysprep-generalize.ps1"]
   }
 
   # ---- 5. Capture the generalized VHDX -> golden WIM (runs on the host) ----

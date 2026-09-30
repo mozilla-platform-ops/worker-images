@@ -24,19 +24,11 @@ your base install.wim
   2. packer build win-hw-wim    Hyper-V boots VHDX
   3.   bake-bootstrap.ps1    install puppet/git, clone ronin, AppX (provisioned) removal,
                              WU/choco, puppet apply of the BAKE role
-  4.   finalize-vm.ps1       PowerShell Direct cleanup + Sysprep /generalize /quit,
-                             verify ImageState, then graceful Hyper-V shutdown
+  4.   sysprep-generalize    scrub machine state + Sysprep /generalize /shutdown
   5.   capture-wim.ps1       mount generalized VHDX -> DISM /Capture-Image -> install.wim + SHA256
   6. publish                 copy install.wim to the MDT/WDS deployment share
   7. deploy                  existing PXE dance -> first-boot personalization + worker registration
 ```
-
-Finalization uses PowerShell Direct on the Hyper-V host, so it can remove WinRM
-without losing its control connection. `New-WinHwWim.ps1` supplies the build password
-in the temporary `WIM_BUILD_PASSWORD` process environment variable; direct Packer
-invocations must supply it too. The host requests graceful shutdown only after
-Sysprep succeeds and reports a generalized OOBE image. Capture verifies the offline
-`Windows/Setup/State/State.ini` before running DISM.
 
 ## Layout
 
@@ -52,8 +44,7 @@ Sysprep succeeds and reports a generalized OOBE image. Capture verifies the offl
 | `example.pkrvars.hcl` | Reference only — the orchestrator generates the real var-file per build |
 | `scripts/prepare-base-vhdx.ps1` | BYO WIM → bootable VHDX (Windows host, admin) |
 | `scripts/bake-bootstrap.ps1` | Build-time bake (runs inside the VM via Packer) |
-| `scripts/sysprep-generalize.ps1` | Scrub + Sysprep (runs inside the VM over PowerShell Direct) |
-| `scripts/finalize-vm.ps1` | Host finalizer; shuts down only after successful cleanup and generalization |
+| `scripts/sysprep-generalize.ps1` | Scrub + Sysprep (runs inside the VM) |
 | `scripts/capture-wim.ps1` | Capture WIM from generalized VHDX (Windows host, admin) |
 | `scripts/download-wim.ps1` / `upload-wim.ps1` | Move WIMs to/from the private store (Entra auth) |
 | `scripts/extract-wim-from-iso.ps1` | Extract `sources\install.wim` from a base ISO (prep's `base.iso` fallback when no base WIM exists) |

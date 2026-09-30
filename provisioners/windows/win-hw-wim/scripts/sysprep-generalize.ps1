@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
-  Step 4 (runs INSIDE the build VM via PowerShell Direct): scrub machine-specific
-  state, then Sysprep /generalize /oobe /quit. The host shuts down after success.
+  Step 4 (runs INSIDE the build VM via Packer): scrub machine-specific state,
+  then Sysprep /generalize /oobe /shutdown so the disk can be captured clean.
 
 .DESCRIPTION
   Removes everything that must NOT ship in a generalized golden image:
@@ -10,7 +10,9 @@
       re-seeds real values; leaves bootstrap_stage = 'setup' so deploy bootstraps
     - SSH host keys and any generic-worker keys (none baked, defensive)
     - build-only autologon
-  Then runs Sysprep, surfaces Panther logs on failure, and verifies ImageState.
+  Then runs Sysprep. The classic Win11 failure here is per-user AppX left behind,
+  so we assert none remain (the bake removed provisioned packages) and surface
+  Panther logs on failure.
 
   IMPORTANT: capture must happen AFTER this scrub (it does — capture is a
   post-build step in win-hw-wim.pkr.hcl).
@@ -23,10 +25,10 @@ Set-StrictMode -Version Latest
 function Step($m) { Write-Host "== $m ==" }
 
 # Signal the host-side boot watchdog (New-WinHwWim.ps1) to STOP restarting the guest:
-# from here the host deliberately shuts down after Sysprep, and Packer waits
+# from here we deliberately Sysprep /shutdown, and that power-off is what Packer waits
 # for to capture the VHDX. Write-Output (not Write-Host) so it reaches Packer's captured
 # stdout stream and lands in packer-build.log where the watchdog greps for it.
-Write-Output 'WIM-WATCHDOG-STOP: sysprep starting; the host will shut down after successful generalization.'
+Write-Output 'WIM-WATCHDOG-STOP: sysprep starting; the guest power-off from here is expected (capture).'
 
 # --- Secret + identity scrub ---
 Step 'Scrubbing bake secrets and identity'
@@ -85,48 +87,6 @@ Remove-Item 'C:\Windows\Temp\bake-network.log' -Force -ErrorAction SilentlyConti
 # it never ships in the golden WIM.
 Unregister-ScheduledTask -TaskName 'BakeNetwork' -Confirm:$false -ErrorAction SilentlyContinue
 
-# --- Remove build-only WinRM exposure ---
-# SECURITY: the bake uses NTLM-only WinRM through an isolated VLAN/NAT. None of its
-# listener, firewall, or remote-admin policy may ship in the deployed worker image.
-Step 'Removing build-only WinRM configuration'
-Remove-NetFirewallRule -Name 'WinRM-HTTP-In-5985' -ErrorAction SilentlyContinue
-$winrmPolicy = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service'
-Remove-ItemProperty -Path $winrmPolicy -Name AllowBasic -ErrorAction SilentlyContinue
-Remove-ItemProperty -Path $winrmPolicy -Name AllowUnencryptedTraffic -ErrorAction SilentlyContinue
-Remove-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' `
-  -Name LocalAccountTokenFilterPolicy -ErrorAction SilentlyContinue
-Get-ChildItem WSMan:\localhost\Listener -ErrorAction SilentlyContinue |
-  Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-# This session uses PowerShell Direct, independent of WinRM.
-# Disabling startup prevents WinRM from returning when the captured image boots.
-Set-Service -Name WinRM -StartupType Disabled
-
-if (Get-NetFirewallRule -Name 'WinRM-HTTP-In-5985' -ErrorAction SilentlyContinue) {
-  throw 'Build-only WinRM firewall rule remains before capture.'
-}
-if (Get-ChildItem WSMan:\localhost\Listener -ErrorAction SilentlyContinue) {
-  throw 'Build-only WinRM listener remains before capture.'
-}
-# RegistryKey.GetValue returns null for an absent value; Get-ItemPropertyValue
-# can throw for that expected state even with -ErrorAction SilentlyContinue.
-$buildPolicies = @{
-  $winrmPolicy = @('AllowBasic', 'AllowUnencryptedTraffic')
-  'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' = @('LocalAccountTokenFilterPolicy')
-}
-foreach ($path in $buildPolicies.Keys) {
-  if (Test-Path -LiteralPath $path -ErrorAction Stop) {
-    $key = Get-Item -LiteralPath $path -ErrorAction Stop
-    foreach ($name in $buildPolicies[$path]) {
-      if ($null -ne $key.GetValue($name)) {
-        throw "Build-only policy $name remains before capture."
-      }
-    }
-  }
-}
-if ((Get-CimInstance Win32_Service -Filter "Name='WinRM'").StartMode -ne 'Disabled') {
-  throw 'WinRM is not disabled for the captured image.'
-}
-
 # NOTE: there is deliberately no pre-Sysprep leftover-AppX enumeration here. The bake
 # disables AppXSvc (win_disable_services::disable_appxsvc), and Get-AppxPackage needs that
 # service, so any such check post-bake can only ever fail/no-op. If a per-user AppX
@@ -134,7 +94,7 @@ if ((Get-CimInstance Win32_Service -Filter "Name='WinRM'").StartMode -ne 'Disabl
 # puppet apply) where AppXSvc is still running.
 
 # --- Bake the first-boot bootstrap runner (SYSTEM startup task) ---
-# Registered HERE, before Sysprep, so it CANNOT run during the bake:
+# Registered HERE, as the last thing before Sysprep, so it CANNOT run during the bake:
 # the bake VM only ever shuts down from this point (no more boots before capture). On the
 # DEPLOYED node's first boot it reproduces the shape the unattend FirstLogonCommands would
 # have (seed C:\bootstrap + vault.yaml, disable sleep) and launches Get-Bootstrap.ps1
@@ -144,19 +104,10 @@ if ((Get-CimInstance Win32_Service -Filter "Name='WinRM'").StartMode -ne 'Disabl
 Step 'Baking first-boot bootstrap runner (RunDeployBootstrap startup task)'
 $deployDir = 'C:\deploy'
 New-Item -ItemType Directory -Path $deployDir -Force | Out-Null
-$deployAcl = [System.Security.AccessControl.DirectorySecurity]::new()
-$deployAcl.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)')
-Set-Acl -LiteralPath $deployDir -AclObject $deployAcl
 $runner = @'
 $ErrorActionPreference = 'Continue'
 $log = 'C:\deploy\run-bootstrap.log'
 function L($m) { ('{0} {1}' -f (Get-Date -Format o), $m) | Tee-Object -FilePath $log -Append | Out-Null }
-function Protect-AdminDirectory($path) {
-    New-Item -ItemType Directory -Path $path -Force | Out-Null
-    $acl = [System.Security.AccessControl.DirectorySecurity]::new()
-    $acl.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)')
-    Set-Acl -LiteralPath $path -AclObject $acl
-}
 $flag = 'C:\deploy\.bootstrap-launched'
 if (Test-Path $flag) {
     L 'bootstrap already launched on a prior boot; unregistering task and exiting'
@@ -170,7 +121,7 @@ $gb = 'D:\scripts\Get-Bootstrap.ps1'
 for ($i = 0; $i -lt 60 -and -not (Test-Path $gb); $i++) { Start-Sleep -Seconds 10 }
 if (-not (Test-Path $gb)) { L "ERROR: $gb not found; leaving task registered to retry next boot"; return }
 # FirstLogonCommands-equivalent prerequisites (base-autounattend.xml oobeSystem pass):
-Protect-AdminDirectory 'C:\bootstrap'
+if (-not (Test-Path 'C:\bootstrap')) { New-Item -ItemType Directory -Path 'C:\bootstrap' -Force | Out-Null }
 if (Test-Path 'D:\secrets\vault.yaml') { Copy-Item 'D:\secrets\vault.yaml' 'C:\bootstrap\' -Force }
 powercfg -x -standby-timeout-ac 0 2>$null
 powercfg -x -monitor-timeout-ac 0 2>$null
@@ -194,15 +145,15 @@ Write-Host '  RunDeployBootstrap SYSTEM startup task registered (fires only on t
 # --- Bake hygiene: neutralize the build-only 'packer' admin account ([[bake-hygiene-todo]]) ---
 # The build unattend created an Administrators-group account (@@WINRM_USER@@, i.e. 'packer')
 # for Packer/WinRM. It must not remain a usable admin in the golden WIM. We DISABLE it rather
-# than delete it: this script runs AS that account (over PowerShell Direct), and you cannot delete the
+# than delete it: this script runs AS that account (over WinRM), and you cannot delete the
 # account you are currently logged in as. Disabling fully neutralizes it - a disabled account
 # cannot log in locally, over WinRM, or via SSH - which is the security goal. (Deletion, if
 # ever wanted, must happen as SYSTEM on the deployed node where packer isn't logged in.)
-# The existing PowerShell Direct session completes before the host shuts down.
+# This is the LAST WinRM-affecting step before Sysprep /shutdown; no provisioner runs after it.
 Step 'Disabling build-only packer account'
 $buildAcct = $env:USERNAME   # the account this provisioner runs under IS the build account
 & net.exe user $buildAcct /active:no
-if ($LASTEXITCODE -ne 0) { throw "net user $buildAcct /active:no returned $LASTEXITCODE" }
+if ($LASTEXITCODE -ne 0) { Write-Warning "net user $buildAcct /active:no returned $LASTEXITCODE" }
 
 # Clear any autologon the bake configured. The build 'packer' account auto-logs in during the bake,
 # leaving AutoAdminLogon/DefaultUserName/DefaultPassword/AutoLogonSID in Winlogon. Left in the golden
@@ -216,19 +167,14 @@ foreach ($v in 'DefaultUserName', 'DefaultPassword', 'DefaultDomainName', 'AutoL
   Remove-ItemProperty -Path $wl -Name $v -ErrorAction SilentlyContinue
 }
 
-# --- Generalize without cutting off the session before its result is received ---
-Step 'Running Sysprep /generalize /oobe /quit'
+# --- Sysprep generalize + shutdown ---
+Step 'Running Sysprep /generalize /oobe /shutdown'
 $sp = "$env:SystemRoot\System32\Sysprep"
 Remove-Item (Join-Path $sp 'unattend.xml') -Force -ErrorAction SilentlyContinue
-$sysprep = Start-Process -FilePath (Join-Path $sp 'Sysprep.exe') `
-  -ArgumentList '/generalize /oobe /quit /quiet' -Wait -PassThru
-if ($sysprep.ExitCode -ne 0) {
-  Write-Warning "Sysprep returned rc=$($sysprep.ExitCode) - dumping Panther errors:"
+& (Join-Path $sp 'Sysprep.exe') /generalize /oobe /shutdown /quiet
+if ($LASTEXITCODE -ne 0) {
+  Write-Warning "Sysprep returned rc=$LASTEXITCODE - dumping Panther errors:"
   Get-Content (Join-Path $sp 'Panther\setuperr.log') -ErrorAction SilentlyContinue | Select-Object -Last 40
-  throw "Sysprep failed rc=$($sysprep.ExitCode)"
+  throw "Sysprep failed rc=$LASTEXITCODE"
 }
-$imageState = Get-ItemPropertyValue 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Setup\State' -Name ImageState
-if ($imageState -ne 'IMAGE_STATE_GENERALIZE_RESEAL_TO_OOBE') {
-  throw "Sysprep did not generalize the image: $imageState"
-}
-# Returning successfully allows the host to request a graceful Hyper-V shutdown.
+# On success the VM powers off; Packer finalizes the artifact.

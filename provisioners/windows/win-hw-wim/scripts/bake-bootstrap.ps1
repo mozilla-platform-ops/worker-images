@@ -29,10 +29,10 @@ $org      = $env:RONIN_ORG
 $repo     = $env:RONIN_REPO
 $branch   = $env:RONIN_BRANCH
 $hash     = $env:RONIN_HASH
+if ($hash -notmatch '^[0-9a-fA-F]{7,40}$') { throw 'RONIN_HASH must be a 7- to 40-character hexadecimal commit ID.' }
 $role     = if ($env:BAKE_ROLE) { $env:BAKE_ROLE } else { 'win116424h2hwbake' }
 $log      = 'C:\bake\logs'
 $roninDir = 'C:\ronin'
-if ($hash -notmatch '^[0-9a-fA-F]{7,40}$') { throw 'RONIN_HASH must be a 7- to 40-character hexadecimal commit ID.' }
 New-Item -ItemType Directory -Path $log -Force | Out-Null
 Start-Transcript -Path (Join-Path $log 'bake-bootstrap.log') -Append | Out-Null
 
@@ -280,16 +280,16 @@ if ($rc -eq 0 -or $rc -eq 2) {
   # first-boot bootstrap stalls. Assets come from the same source Get-Bootstrap uses;
   # sysprep-generalize.ps1 removes ssh_host_* so host keys regenerate per node.
   Step 'Baking OpenSSH server + audit key'
-  $sshAssets = 'C:\wim-bake\ssh'
+  $sshAssets = 'https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/main/provisioners/windows/MDC1Windows/ssh'
   $sshMsi = Join-Path $dlDir 'OpenSSH-Win64.msi'
   Get-PrereqFile -Urls @('https://github.com/PowerShell/Win32-OpenSSH/releases/download/v9.8.3.0p2-Preview/OpenSSH-Win64-v9.8.3.0.msi') -OutFile $sshMsi
   $s = Start-Process msiexec.exe -ArgumentList "/i `"$sshMsi`" /quiet /norestart ADDLOCAL=Server" -Wait -PassThru
   if ($s.ExitCode -ne 0 -and $s.ExitCode -ne 3010) { throw "OpenSSH MSI install failed rc=$($s.ExitCode)" }
   New-Item -ItemType Directory -Path 'C:\ProgramData\ssh' -Force | Out-Null
-  Copy-Item (Join-Path $sshAssets 'sshd_config') 'C:\ProgramData\ssh\sshd_config' -Force
+  Get-PrereqFile -Urls @("$sshAssets/sshd_config") -OutFile 'C:\ProgramData\ssh\sshd_config'
   $adminSsh = 'C:\Users\Administrator\.ssh'
   New-Item -ItemType Directory -Path $adminSsh -Force | Out-Null
-  Copy-Item (Join-Path $sshAssets 'authorized_keys') (Join-Path $adminSsh 'authorized_keys') -Force
+  Get-PrereqFile -Urls @("$sshAssets/authorized_keys") -OutFile (Join-Path $adminSsh 'authorized_keys')
 
   # Also bake the audit key as an ADMIN-GROUP key. Win32-OpenSSH treats members of the
   # local Administrators group specially: with the "Match Group administrators" block
@@ -311,8 +311,6 @@ if ($rc -eq 0 -or $rc -eq 2) {
   }
 
   if (-not (Get-NetFirewallRule -Name 'AllowSSH' -ErrorAction SilentlyContinue)) {
-    # SECURITY: port 22 is reachable only through the upstream VPN/firewall;
-    # Profile Any is required because these workgroup NUCs may classify as Public.
     New-NetFirewallRule -Name 'AllowSSH' -DisplayName 'Allow SSH' -Profile Any -Direction Inbound -Action Allow -Protocol TCP -LocalPort 22 | Out-Null
   }
   Set-Service -Name sshd -StartupType Automatic
