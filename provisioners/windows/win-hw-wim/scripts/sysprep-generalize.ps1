@@ -107,16 +107,21 @@ if (Get-NetFirewallRule -Name 'WinRM-HTTP-In-5985' -ErrorAction SilentlyContinue
 if (Get-ChildItem WSMan:\localhost\Listener -ErrorAction SilentlyContinue) {
   throw 'Build-only WinRM listener remains before capture.'
 }
-$allowBasic = Get-ItemPropertyValue -Path $winrmPolicy -Name AllowBasic -ErrorAction SilentlyContinue
-$allowUnencrypted = Get-ItemPropertyValue -Path $winrmPolicy -Name AllowUnencryptedTraffic -ErrorAction SilentlyContinue
-if (($null -ne $allowBasic) -or ($null -ne $allowUnencrypted)) {
-  throw 'Basic or unencrypted WinRM policy remains before capture.'
+# RegistryKey.GetValue returns null for an absent value; Get-ItemPropertyValue
+# can throw for that expected state even with -ErrorAction SilentlyContinue.
+$buildPolicies = @{
+  $winrmPolicy = @('AllowBasic', 'AllowUnencryptedTraffic')
+  'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' = @('LocalAccountTokenFilterPolicy')
 }
-$remoteAdminPolicy = Get-ItemPropertyValue `
-  -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' `
-  -Name LocalAccountTokenFilterPolicy -ErrorAction SilentlyContinue
-if ($null -ne $remoteAdminPolicy) {
-  throw 'LocalAccountTokenFilterPolicy remains before capture.'
+foreach ($path in $buildPolicies.Keys) {
+  if (Test-Path -LiteralPath $path -ErrorAction Stop) {
+    $key = Get-Item -LiteralPath $path -ErrorAction Stop
+    foreach ($name in $buildPolicies[$path]) {
+      if ($null -ne $key.GetValue($name)) {
+        throw "Build-only policy $name remains before capture."
+      }
+    }
+  }
 }
 if ((Get-CimInstance Win32_Service -Filter "Name='WinRM'").StartMode -ne 'Disabled') {
   throw 'WinRM is not disabled for the captured image.'
