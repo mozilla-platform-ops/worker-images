@@ -27,7 +27,29 @@ function retry {
 start_time="$(date '+%s')"
 
 
+# Mesa .3 crashes GNOME's Wayland session in dri2_bind_wayland_display_wl
+# (strdup(NULL)) on vkms. Keep the tested .2 packages until a fix is validated.
+# These reports track restoring the legacy Wayland code path, not this crash:
+# https://bugs.launchpad.net/bugs/2163501
+# https://github.com/canonical/mesa-2404/issues/127
+# Apply the pin before upgrades, including when the base image contains .3.
+MESA_VERSION='25.2.8-0ubuntu0.24.04.2'
+cat > /etc/apt/preferences.d/mesa-wayland << EOF
+Package: libegl-mesa0 libgbm1 libgl1-mesa-dri libglx-mesa0 mesa-libgallium mesa-va-drivers mesa-vdpau-drivers mesa-vulkan-drivers
+Pin: version ${MESA_VERSION}
+Pin-Priority: 1001
+EOF
+
 retry apt-get update
+retry apt-get install -y --allow-downgrades \
+  "libegl-mesa0=${MESA_VERSION}" \
+  "libgbm1=${MESA_VERSION}" \
+  "libgl1-mesa-dri=${MESA_VERSION}" \
+  "libglx-mesa0=${MESA_VERSION}" \
+  "mesa-libgallium=${MESA_VERSION}" \
+  "mesa-va-drivers=${MESA_VERSION}" \
+  "mesa-vdpau-drivers=${MESA_VERSION}" \
+  "mesa-vulkan-drivers=${MESA_VERSION}"
 DEBIAN_FRONTEND=noninteractive retry apt-get upgrade -yq
 retry apt-get -y remove docker docker.io containerd runc
 # build-essential is needed for running `go test -race` with the -vet=off flag as of go1.19
