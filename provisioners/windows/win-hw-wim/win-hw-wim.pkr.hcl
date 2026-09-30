@@ -51,7 +51,8 @@ source "hyperv-vmcx" "nuc" {
   winrm_use_ntlm = true
   winrm_timeout  = "60m"
 
-  # Sysprep in the last provisioner shuts the VM down; let Packer treat that as done.
+  # The host finalizer requests a graceful shutdown after successful Sysprep.
+  disable_shutdown = true
   shutdown_timeout = "30m"
 }
 
@@ -167,12 +168,11 @@ build {
     max_retries = 3
   }
 
-  # ---- 4. Scrub machine-specific state + Sysprep /generalize /shutdown ----
-  #        (this powers the VM off; Packer then finalizes the artifact)
-  provisioner "powershell" {
-    elevated_user     = var.winrm_username
-    elevated_password = var.winrm_password
-    scripts           = ["${path.root}/scripts/sysprep-generalize.ps1"]
+  # ---- 4. Finalize over PowerShell Direct: cleanup removes WinRM itself. ----
+  provisioner "shell-local" {
+    inline = [
+      "powershell -NoProfile -ExecutionPolicy Bypass -File \"${path.root}/scripts/finalize-vm.ps1\""
+    ]
   }
 
   # ---- 5. Capture the generalized VHDX -> golden WIM (runs on the host) ----

@@ -543,6 +543,9 @@ sbom_path        = "$($sbomMd -replace '\\','/')"
         }
     } -ArgumentList $cloneVm, $pkrLog, $wdLog, 'packer', $WinRMPassword
 
+    # Inherited by the host finalizer; never interpolate the password into shell commands.
+    $previousFinalizePassword = $env:WIM_BUILD_PASSWORD
+    $env:WIM_BUILD_PASSWORD = $WinRMPassword
     Push-Location $Root
     try {
         # Pass the DIRECTORY (.), not a single file: `packer build foo.pkr.hcl` loads
@@ -598,6 +601,7 @@ sbom_path        = "$($sbomMd -replace '\\','/')"
         }
     }
     finally {
+        $env:WIM_BUILD_PASSWORD = $previousFinalizePassword
         Pop-Location
         if ($watchdog) { Stop-Job $watchdog -ErrorAction SilentlyContinue; Remove-Job $watchdog -Force -ErrorAction SilentlyContinue }
     }
