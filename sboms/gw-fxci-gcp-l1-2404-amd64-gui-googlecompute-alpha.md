@@ -498,12 +498,12 @@
 | gtk-update-icon-cache | 3.24.41-4ubuntu1.3 | amd64 |
 | gtk2-engines-murrine:amd64 | 0.98.2-4 | amd64 |
 | gtk2-engines-pixbuf:amd64 | 2.24.33-4ubuntu1.1 | amd64 |
-| gvfs-backends | 1.54.4-0ubuntu1~24.04.2 | amd64 |
-| gvfs-common | 1.54.4-0ubuntu1~24.04.2 | all |
-| gvfs-daemons | 1.54.4-0ubuntu1~24.04.2 | amd64 |
-| gvfs-fuse | 1.54.4-0ubuntu1~24.04.2 | amd64 |
-| gvfs-libs:amd64 | 1.54.4-0ubuntu1~24.04.2 | amd64 |
-| gvfs:amd64 | 1.54.4-0ubuntu1~24.04.2 | amd64 |
+| gvfs-backends | 1.54.4-0ubuntu1~24.04.4 | amd64 |
+| gvfs-common | 1.54.4-0ubuntu1~24.04.4 | all |
+| gvfs-daemons | 1.54.4-0ubuntu1~24.04.4 | amd64 |
+| gvfs-fuse | 1.54.4-0ubuntu1~24.04.4 | amd64 |
+| gvfs-libs:amd64 | 1.54.4-0ubuntu1~24.04.4 | amd64 |
+| gvfs:amd64 | 1.54.4-0ubuntu1~24.04.4 | amd64 |
 | gzip | 1.12-1ubuntu3.2 | amd64 |
 | hdparm | 9.65+ds-1build1 | amd64 |
 | heif-gdk-pixbuf:amd64 | 1.17.6-1ubuntu4.9 | amd64 |
@@ -516,7 +516,6 @@
 | humanity-icon-theme | 0.6.16 | all |
 | hunspell-en-us | 1:2020.12.07-2 | all |
 | hwdata | 0.379-1 | all |
-| i965-va-driver:amd64 | 2.4.1+dfsg1-1ubuntu0.2 | amd64 |
 | ibus | 1.5.29-2 | amd64 |
 | ibus-data | 1.5.29-2 | all |
 | ibus-gtk3:amd64 | 1.5.29-2 | amd64 |
@@ -537,7 +536,6 @@
 | initramfs-tools-core | 0.142ubuntu25.8 | all |
 | inputattach | 1:1.8.1-2build1 | amd64 |
 | install-info | 7.1-3build2 | amd64 |
-| intel-media-va-driver:amd64 | 24.1.0+dfsg1-1ubuntu0.2 | amd64 |
 | ipp-usb | 0.9.24-0ubuntu3.3 | amd64 |
 | iproute2 | 6.1.0-1ubuntu6.4 | amd64 |
 | iptables | 1.8.10-3ubuntu2 | amd64 |
@@ -601,7 +599,7 @@
 | libattr1:amd64 | 1:2.5.2-1ubuntu0.1 | amd64 |
 | libaudit-common | 1:3.1.2-2.1ubuntu0.1 | all |
 | libaudit1:amd64 | 1:3.1.2-2.1ubuntu0.1 | amd64 |
-| libauthen-sasl-perl | 2.1700-1 | all |
+| libauthen-sasl-perl | 2.1700-1ubuntu0.1 | all |
 | libavahi-client3:amd64 | 0.8-13ubuntu6.2 | amd64 |
 | libavahi-common-data:amd64 | 0.8-13ubuntu6.2 | amd64 |
 | libavahi-common3:amd64 | 0.8-13ubuntu6.2 | amd64 |
@@ -756,7 +754,7 @@
 | libeditorconfig0:amd64 | 0.12.7-0.1ubuntu0.1 | amd64 |
 | libefiboot1t64:amd64 | 38-3.1build1 | amd64 |
 | libefivar1t64:amd64 | 38-3.1build1 | amd64 |
-| libegl-mesa0:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
+| libegl-mesa0:amd64 | 25.2.8-0ubuntu0.24.04.2 | amd64 |
 | libegl1:amd64 | 1.7.0-1build1 | amd64 |
 | libei1:amd64 | 1.2.1-1 | amd64 |
 | libeis1:amd64 | 1.2.1-1 | amd64 |
@@ -820,7 +818,7 @@
 | libgail18t64:amd64 | 2.24.33-4ubuntu1.1 | amd64 |
 | libgamemode0:amd64 | 1.8.1-2build1 | amd64 |
 | libgamemodeauto0:amd64 | 1.8.1-2build1 | amd64 |
-| libgbm1:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
+| libgbm1:amd64 | 25.2.8-0ubuntu0.24.04.2 | amd64 |
 | libgcc-13-dev:amd64 | 13.3.0-6ubuntu2~24.04.1 | amd64 |
 | libgcc-s1:amd64 | 14.2.0-4ubuntu2~24.04.1 | amd64 |
 | libgck-1-0:amd64 | 3.41.2-1build3 | amd64 |
@@ -846,7 +844,7 @@
 | libgif7:amd64 | 5.2.2-1ubuntu1.2 | amd64 |
 | libgirepository-1.0-1:amd64 | 1.80.1-1 | amd64 |
 | libgjs0g:amd64 | 1.80.2-1build2 | amd64 |
-| libgl1-mesa-dri:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
+| libgl1-mesa-dri:amd64 | 25.2.8-0ubuntu0.24.04.2 | amd64 |
 | libgl1:amd64 | 1.7.0-1build1 | amd64 |
 | libgles2:amd64 | 1.7.0-1build1 | amd64 |
 | libglib-object-introspection-perl | 0.051-1build3 | amd64 |
@@ -857,7 +855,7 @@
 | libglibmm-2.68-1t64:amd64 | 2.78.1-2.2build2 | amd64 |
 | libglu1-mesa:amd64 | 9.0.2-1.1build1 | amd64 |
 | libglvnd0:amd64 | 1.7.0-1build1 | amd64 |
-| libglx-mesa0:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
+| libglx-mesa0:amd64 | 25.2.8-0ubuntu0.24.04.2 | amd64 |
 | libglx0:amd64 | 1.7.0-1build1 | amd64 |
 | libgme0:amd64 | 0.6.3-7build1 | amd64 |
 | libgmp10:amd64 | 2:6.3.0+dfsg-2ubuntu6.1 | amd64 |
@@ -966,7 +964,6 @@
 | libidn2-0:amd64 | 2.3.7-2build1.1 | amd64 |
 | libiec61883-0:amd64 | 1.2.0-6build1 | amd64 |
 | libieee1284-3t64:amd64 | 0.2.11-14.1build1 | amd64 |
-| libigdgmm12:amd64 | 22.3.17+ds1-1ubuntu1 | amd64 |
 | libijs-0.35:amd64 | 0.35-15.1build1 | amd64 |
 | libimagequant0:amd64 | 2.18.0-1build1 | amd64 |
 | libimobiledevice6:amd64 | 1.3.0-8.1build3 | amd64 |
@@ -1587,7 +1584,7 @@
 | linux-image-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
 | linux-image-7.0.0-1013-gcp | 7.0.0-1013.13~24.04.1 | amd64 |
 | linux-image-gcp | 7.0.0-1013.13~24.04.1 | amd64 |
-| linux-libc-dev:amd64 | 6.8.0-142.142 | amd64 |
+| linux-libc-dev:amd64 | 6.8.0-146.146 | amd64 |
 | linux-modules-6.17.0-1022-gcp | 6.17.0-1022.25 | amd64 |
 | linux-modules-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
 | linux-modules-7.0.0-1013-gcp | 7.0.0-1013.13~24.04.1 | amd64 |
@@ -1596,7 +1593,7 @@
 | linux-sound-base | 1.0.25+dfsg-0ubuntu7 | all |
 | linux-tools-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
 | linux-tools-7.0.0-1013-gcp | 7.0.0-1013.13~24.04.1 | amd64 |
-| linux-tools-common | 6.8.0-142.142 | all |
+| linux-tools-common | 6.8.0-146.146 | all |
 | llvm | 1:18.0-59~exp2 | amd64 |
 | llvm-18 | 1:18.1.3-1ubuntu1 | amd64 |
 | llvm-18-dev | 1:18.1.3-1ubuntu1 | amd64 |
@@ -1629,10 +1626,10 @@
 | memtest86+ | 7.00-1build1 | amd64 |
 | mercurial | 6.7.2-1ubuntu2.2 | amd64 |
 | mercurial-common | 6.7.2-1ubuntu2.2 | all |
-| mesa-libgallium:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
-| mesa-va-drivers:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
-| mesa-vdpau-drivers:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
-| mesa-vulkan-drivers:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
+| mesa-libgallium:amd64 | 25.2.8-0ubuntu0.24.04.2 | amd64 |
+| mesa-va-drivers:amd64 | 25.2.8-0ubuntu0.24.04.2 | amd64 |
+| mesa-vdpau-drivers:amd64 | 25.2.8-0ubuntu0.24.04.2 | amd64 |
+| mesa-vulkan-drivers:amd64 | 25.2.8-0ubuntu0.24.04.2 | amd64 |
 | mobile-broadband-provider-info | 20230416-1 | all |
 | modemmanager | 1.23.4-0ubuntu2 | amd64 |
 | mokutil | 0.6.0-2build3 | amd64 |
@@ -1686,7 +1683,7 @@
 | openssh-server | 1:9.6p1-3ubuntu13.19 | amd64 |
 | openssh-sftp-server | 1:9.6p1-3ubuntu13.19 | amd64 |
 | openssl | 3.0.13-0ubuntu3.16 | amd64 |
-| openvpn | 2.6.19-0ubuntu0.24.04.3 | amd64 |
+| openvpn | 2.6.19-0ubuntu0.24.04.4 | amd64 |
 | orca | 46.1-1ubuntu1 | all |
 | os-prober | 1.81ubuntu4 | amd64 |
 | overlayroot | 0.49~24.04.1 | all |
@@ -2028,8 +2025,6 @@
 | usbutils | 1:017-3build1 | amd64 |
 | util-linux | 2.39.3-9ubuntu6.6 | amd64 |
 | uuid-runtime | 2.39.3-9ubuntu6.6 | amd64 |
-| va-driver-all:amd64 | 2.20.0-2ubuntu0.2 | amd64 |
-| vdpau-driver-all:amd64 | 1.5-2build1 | amd64 |
 | vim | 2:9.1.0016-1ubuntu7.20 | amd64 |
 | vim-common | 2:9.1.0016-1ubuntu7.20 | all |
 | vim-runtime | 2:9.1.0016-1ubuntu7.20 | all |
