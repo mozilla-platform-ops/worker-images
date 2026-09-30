@@ -176,9 +176,6 @@ $wimStages = ($Stages -contains 'prep') -or ($Stages -contains 'build')
 if ($wimStages -and -not $baseWim) { throw "config/$Image.yaml: base.wim is required." }
 if ($wimStages -and -not $edition) { throw "config/$Image.yaml: base.edition is required (the WIM edition name; empty would silently default to index 1)." }
 if (($Stages -contains 'build') -and -not $bakeRole) { throw "config/$Image.yaml: ronin.bake_role is required." }
-if (($Stages -contains 'build') -and $roninHash -notmatch '^[0-9a-fA-F]{7,40}$') {
-    throw "config/$Image.yaml: ronin.hash must be a 7- to 40-character hexadecimal commit ID."
-}
 if ($drvInject -and $drvCabUrls.Count -eq 0) { throw "config/$Image.yaml: drivers.inject is true but drivers.cabs is empty." }
 if (($Stages -contains 'iso') -and -not $baseIso) { throw "config/$Image.yaml: base.iso is required for the iso stage." }
 # Provisioning is EITHER ronin (bake_role) OR scripts, not both.
@@ -299,12 +296,12 @@ if ($Stages -contains 'prep') {
     # <os>-base-install.wim), and cache it back to resources/WIMs/ so later bakes reuse it — so a WIM
     # bake can start from just an uploaded ISO.
     if (Test-BlobExists $account $baseCont $baseWimBlob) {
-        & $ps 'download-wim.ps1' @('-Blob', "$baseCont/$baseWimBlob", '-Dest', $localBase, '-Account', $account, '-SkipSidecar')
+        & $ps 'download-wim.ps1' @('-Blob', "$baseCont/$baseWimBlob", '-Dest', $localBase, '-Account', $account)
     }
     elseif ($baseIso) {
         Write-Host "  $baseCont/$baseWimBlob not present -> extracting it from $baseCont/$baseIsoBlob"
         $localSrcIso = Join-Path $work $baseIso
-        & $ps 'download-wim.ps1'        @('-Blob', "$baseCont/$baseIsoBlob", '-Dest', $localSrcIso, '-Account', $account, '-SkipSidecar')
+        & $ps 'download-wim.ps1'        @('-Blob', "$baseCont/$baseIsoBlob", '-Dest', $localSrcIso, '-Account', $account)
         & $ps 'extract-wim-from-iso.ps1' @('-SourceIso', $localSrcIso, '-OutWim', $localBase)
         Write-Host "  caching extracted base WIM back to $baseCont/$baseWimBlob"
         & $ps 'upload-wim.ps1'          @('-Wim', $localBase, '-Container', $baseCont, '-Account', $account, '-BlobName', $baseWimBlob)
@@ -415,8 +412,8 @@ sbom_path        = "$($sbomMd -replace '\\','/')"
         # min in "Waiting for machine to restart" and we never learned whether Windows was
         # applying updates or was simply wedged). PowerShell Direct talks over the Hyper-V
         # VMBus, so it needs neither network nor WinRM - it works precisely when the normal
-        # channels are gone. Dump the guest's network/WinRM state and recent events
-        # into $wdLog, which is streamed to the GH job.
+        # channels are gone. Dump the guest's recent event log plus a few boot/servicing
+        # signals into $wdLog, which is streamed to the GH job.
         function Get-GuestSnapshot {
             # PSAvoidUsingConvertToSecureStringWithPlainText is unavoidable here: PSCredential
             # needs a SecureString and this is the build-scoped packer password, which is
@@ -432,28 +429,6 @@ sbom_path        = "$($sbomMd -replace '\\','/')"
                     'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired'
                 ) | Where-Object { Test-Path $_ }
                 if ($pending) { "reboot pending: $($pending -join ', ')" } else { 'reboot pending: no' }
-                'bake-network.log:'
-                if (Test-Path 'C:\Windows\Temp\bake-network.log') {
-                    Get-Content 'C:\Windows\Temp\bake-network.log' -Tail 30 | ForEach-Object { "  $_" }
-                } else { '  <missing>' }
-                'IPv4 addresses:'
-                Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |
-                    Where-Object { $_.IPAddress -ne '127.0.0.1' } |
-                    ForEach-Object { "  $($_.InterfaceAlias): $($_.IPAddress)/$($_.PrefixLength)" }
-                'network profiles:'
-                Get-NetConnectionProfile -ErrorAction SilentlyContinue |
-                    ForEach-Object { "  $($_.InterfaceAlias): $($_.NetworkCategory)" }
-                $winrm = Get-Service WinRM -ErrorAction SilentlyContinue
-                "WinRM service: $($winrm.Status) (startup: $($winrm.StartType))"
-                'WinRM listeners:'
-                Get-ChildItem WSMan:\localhost\Listener -ErrorAction SilentlyContinue |
-                    ForEach-Object { "  $($_.Name)" }
-                'WinRM firewall rules:'
-                Get-NetFirewallRule -DisplayName 'WinRM-HTTP-In-5985' -ErrorAction SilentlyContinue |
-                    ForEach-Object {
-                        $remote = ($_ | Get-NetFirewallAddressFilter -ErrorAction SilentlyContinue).RemoteAddress -join ','
-                        "  enabled=$($_.Enabled) profile=$($_.Profile) remote=$remote"
-                    }
                 'recent events:'
                 Get-WinEvent -MaxEvents 25 -ErrorAction SilentlyContinue -FilterHashtable @{
                     LogName = 'System', 'Application'; StartTime = (Get-Date).AddMinutes(-20)
@@ -543,9 +518,6 @@ sbom_path        = "$($sbomMd -replace '\\','/')"
         }
     } -ArgumentList $cloneVm, $pkrLog, $wdLog, 'packer', $WinRMPassword
 
-    # Inherited by the host finalizer; never interpolate the password into shell commands.
-    $previousFinalizePassword = $env:WIM_BUILD_PASSWORD
-    $env:WIM_BUILD_PASSWORD = $WinRMPassword
     Push-Location $Root
     try {
         # Pass the DIRECTORY (.), not a single file: `packer build foo.pkr.hcl` loads
@@ -601,7 +573,6 @@ sbom_path        = "$($sbomMd -replace '\\','/')"
         }
     }
     finally {
-        $env:WIM_BUILD_PASSWORD = $previousFinalizePassword
         Pop-Location
         if ($watchdog) { Stop-Job $watchdog -ErrorAction SilentlyContinue; Remove-Job $watchdog -Force -ErrorAction SilentlyContinue }
     }
@@ -638,7 +609,7 @@ if ($Stages -contains 'publish') {
 if ($Stages -contains 'iso') {
     Write-Host "`n### iso #########################################################"
     $localSrcIso = Join-Path $work $baseIso
-    & $ps 'download-wim.ps1' @('-Blob', "$baseCont/$baseIsoBlob", '-Dest', $localSrcIso, '-Account', $account, '-SkipSidecar')
+    & $ps 'download-wim.ps1' @('-Blob', "$baseCont/$baseIsoBlob", '-Dest', $localSrcIso, '-Account', $account)
     # oscdimg (ADK Deployment Tools) is needed to repackage a bootable ISO and isn't native;
     # pull it from our blob (resources/tools) instead of the MS CDN at build time.
     & $ps 'ensure-oscdimg.ps1' @('-Account', $account)
