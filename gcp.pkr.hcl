@@ -151,12 +151,20 @@ build {
 
   # Boot the selected kernel before any script builds or loads kernel modules.
   provisioner "shell" {
+    only = [
+      "googlecompute.gw-fxci-gcp-l1-2404-headless-alpha",
+      "googlecompute.trusted-gw-fxci-gcp-l3-2404-headless-alpha"
+    ]
     execute_command  = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     environment_vars = ["KERNEL_VERSION=${local.kernel_version}"]
     scripts          = ["${path.cwd}/scripts/linux/common/select-kernel.sh"]
   }
 
   provisioner "shell" {
+    only = [
+      "googlecompute.gw-fxci-gcp-l1-2404-headless-alpha",
+      "googlecompute.trusted-gw-fxci-gcp-l3-2404-headless-alpha"
+    ]
     execute_command     = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     expect_disconnect   = true
     pause_after         = "90s"
@@ -165,6 +173,10 @@ build {
   }
 
   provisioner "shell" {
+    only = [
+      "googlecompute.gw-fxci-gcp-l1-2404-headless-alpha",
+      "googlecompute.trusted-gw-fxci-gcp-l3-2404-headless-alpha"
+    ]
     execute_command  = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     environment_vars = ["KERNEL_VERSION=${local.kernel_version}"]
     inline           = ["test \"$(uname -r)\" = \"$KERNEL_VERSION\""]
@@ -355,6 +367,10 @@ build {
 
   # Check again after all package installs, reboots, and package cleanup.
   provisioner "shell" {
+    only = [
+      "googlecompute.gw-fxci-gcp-l1-2404-headless-alpha",
+      "googlecompute.trusted-gw-fxci-gcp-l3-2404-headless-alpha"
+    ]
     execute_command  = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     environment_vars = ["KERNEL_VERSION=${local.kernel_version}"]
     scripts          = ["${path.cwd}/tests/linux/test_kernel.sh"]

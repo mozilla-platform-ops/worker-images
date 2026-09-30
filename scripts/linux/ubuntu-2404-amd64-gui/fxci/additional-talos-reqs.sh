@@ -23,7 +23,7 @@ kernel_version=$(uname -r)
 header_package="linux-headers-$kernel_version"
 
 sudo apt-get update
-sudo apt-get -y reinstall "$header_package"
+sudo apt-get -y reinstall linux-headers-gcp $header_package
 #
 # apt packages
 #
@@ -39,7 +39,7 @@ apt-get install -y dkms kmod llvm sox libxcb1 nodejs xvfb apt-utils
 #
 
 # Required in GCP.
-apt-get install "linux-modules-extra-$kernel_version" -y
+apt-get install linux-modules-extra-gcp -y
 
 # Configure video loopback devices
 echo "options v4l2loopback devices=$NUM_LOOPBACK_VIDEO_DEVICES" > /etc/modprobe.d/v4l2loopback.conf

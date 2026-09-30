@@ -28,7 +28,7 @@ kernel_version=$(uname -r)
 header_package="linux-headers-$kernel_version"
 
 retry apt-get update
-retry apt-get -y reinstall "$header_package"
+retry apt-get -y reinstall linux-headers-gcp $header_package
 
 # Ubuntu's v4l2loopback-dkms package does not build with kernel 7.0.
 # Install a current upstream release with DKMS.
@@ -44,7 +44,7 @@ dkms install -m v4l2loopback -v "${V4L2LOOPBACK_VERSION}" -k "$kernel_version"
 # verify
 dkms status
 
-retry apt-get install "linux-modules-extra-$kernel_version" -y
+retry apt-get install linux-modules-extra-gcp -y
 
 # Configure video loopback devices
 echo "options v4l2loopback devices=$NUM_LOOPBACK_VIDEO_DEVICES" > /etc/modprobe.d/v4l2loopback.conf
