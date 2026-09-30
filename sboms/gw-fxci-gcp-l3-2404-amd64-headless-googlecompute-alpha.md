@@ -13,7 +13,7 @@
 ## Operating system
 
 - OS: Ubuntu 24.04.5 LTS (Noble Numbat)
-- Kernel: Linux 7.0.0-1013-gcp x86_64 GNU/Linux
+- Kernel: Linux 6.17.0-1022-gcp x86_64 GNU/Linux
 - Machine architecture: x86_64
 
 ## Taskcluster tools
@@ -358,7 +358,7 @@
 | liberror-perl | 0.17029-2 | all |
 | libestr0:amd64 | 0.1.11-1build1 | amd64 |
 | libevdev2:amd64 | 1.13.1+dfsg-1build1 | amd64 |
-| libevent-core-2.1-7t64:amd64 | 2.1.12-stable-9ubuntu2.1 | amd64 |
+| libevent-core-2.1-7t64:amd64 | 2.1.12-stable-9ubuntu2.2 | amd64 |
 | libexpat1-dev:amd64 | 2.6.1-2ubuntu0.6 | amd64 |
 | libexpat1:amd64 | 2.6.1-2ubuntu0.6 | amd64 |
 | libext2fs2t64:amd64 | 1.47.0-2.4~exp1ubuntu4.1 | amd64 |
@@ -395,9 +395,9 @@
 | libgprofng0:amd64 | 2.42-4ubuntu2.10 | amd64 |
 | libgssapi-krb5-2:amd64 | 1.20.1-6ubuntu2.10 | amd64 |
 | libgstreamer1.0-0:amd64 | 1.24.2-1ubuntu0.1 | amd64 |
-| libheif-plugin-aomdec:amd64 | 1.17.6-1ubuntu4.8 | amd64 |
-| libheif-plugin-aomenc:amd64 | 1.17.6-1ubuntu4.8 | amd64 |
-| libheif1:amd64 | 1.17.6-1ubuntu4.8 | amd64 |
+| libheif-plugin-aomdec:amd64 | 1.17.6-1ubuntu4.9 | amd64 |
+| libheif-plugin-aomenc:amd64 | 1.17.6-1ubuntu4.9 | amd64 |
+| libheif1:amd64 | 1.17.6-1ubuntu4.9 | amd64 |
 | libhogweed6t64:amd64 | 3.9.1-2.2build1.1 | amd64 |
 | libhunspell-1.7-0:amd64 | 1.7.2+really1.7.2-10build3 | amd64 |
 | libhunspell-dev:amd64 | 1.7.2+really1.7.2-10build3 | amd64 |
@@ -533,7 +533,7 @@
 | libsqlite3-0:amd64 | 3.45.1-1ubuntu2.8 | amd64 |
 | libss2:amd64 | 1.47.0-2.4~exp1ubuntu4.1 | amd64 |
 | libssh-4:amd64 | 0.10.6-2ubuntu0.5 | amd64 |
-| libssl3t64:amd64 | 3.0.13-0ubuntu3.15 | amd64 |
+| libssl3t64:amd64 | 3.0.13-0ubuntu3.16 | amd64 |
 | libstdc++-13-dev:amd64 | 13.3.0-6ubuntu2~24.04.1 | amd64 |
 | libstdc++6:amd64 | 14.2.0-4ubuntu2~24.04.1 | amd64 |
 | libstemmer0d:amd64 | 2.2.0-4build1 | amd64 |
@@ -584,23 +584,20 @@
 | libzstd1:amd64 | 1.5.5+dfsg2-2build1.1 | amd64 |
 | linux-base | 4.5ubuntu9+24.04.2 | all |
 | linux-gcp | 7.0.0-1013.13~24.04.1 | amd64 |
-| linux-gcp-7.0-headers-7.0.0-1011 | 7.0.0-1011.11~24.04.1 | amd64 |
+| linux-gcp-6.17-headers-6.17.0-1022 | 6.17.0-1022.25 | amd64 |
 | linux-gcp-7.0-headers-7.0.0-1013 | 7.0.0-1013.13~24.04.1 | amd64 |
-| linux-gcp-7.0-tools-7.0.0-1011 | 7.0.0-1011.11~24.04.1 | amd64 |
 | linux-gcp-7.0-tools-7.0.0-1013 | 7.0.0-1013.13~24.04.1 | amd64 |
-| linux-headers-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
+| linux-headers-6.17.0-1022-gcp | 6.17.0-1022.25 | amd64 |
 | linux-headers-7.0.0-1013-gcp | 7.0.0-1013.13~24.04.1 | amd64 |
 | linux-headers-gcp | 7.0.0-1013.13~24.04.1 | amd64 |
-| linux-image-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
+| linux-image-6.17.0-1022-gcp | 6.17.0-1022.25 | amd64 |
 | linux-image-7.0.0-1013-gcp | 7.0.0-1013.13~24.04.1 | amd64 |
 | linux-image-gcp | 7.0.0-1013.13~24.04.1 | amd64 |
 | linux-libc-dev:amd64 | 6.8.0-142.142 | amd64 |
 | linux-modules-6.17.0-1022-gcp | 6.17.0-1022.25 | amd64 |
-| linux-modules-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
 | linux-modules-7.0.0-1013-gcp | 7.0.0-1013.13~24.04.1 | amd64 |
 | linux-modules-extra-6.17.0-1022-gcp | 6.17.0-1022.25 | amd64 |
 | linux-modules-extra-gcp | 6.17.0-1022.25 | amd64 |
-| linux-tools-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
 | linux-tools-7.0.0-1013-gcp | 7.0.0-1013.13~24.04.1 | amd64 |
 | linux-tools-common | 6.8.0-142.142 | all |
 | locales | 2.39-0ubuntu8.9 | all |
@@ -648,7 +645,7 @@
 | openssh-client | 1:9.6p1-3ubuntu13.19 | amd64 |
 | openssh-server | 1:9.6p1-3ubuntu13.19 | amd64 |
 | openssh-sftp-server | 1:9.6p1-3ubuntu13.19 | amd64 |
-| openssl | 3.0.13-0ubuntu3.15 | amd64 |
+| openssl | 3.0.13-0ubuntu3.16 | amd64 |
 | os-prober | 1.81ubuntu4 | amd64 |
 | overlayroot | 0.49~24.04.1 | all |
 | packagekit | 1.2.8-2ubuntu1.5 | amd64 |

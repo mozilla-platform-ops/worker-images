@@ -506,8 +506,8 @@
 | gvfs:amd64 | 1.54.4-0ubuntu1~24.04.2 | amd64 |
 | gzip | 1.12-1ubuntu3.2 | amd64 |
 | hdparm | 9.65+ds-1build1 | amd64 |
-| heif-gdk-pixbuf:amd64 | 1.17.6-1ubuntu4.8 | amd64 |
-| heif-thumbnailer | 1.17.6-1ubuntu4.8 | amd64 |
+| heif-gdk-pixbuf:amd64 | 1.17.6-1ubuntu4.9 | amd64 |
+| heif-thumbnailer | 1.17.6-1ubuntu4.9 | amd64 |
 | hicolor-icon-theme | 0.17-2 | all |
 | hostname | 3.23+nmu2ubuntu2 | amd64 |
 | hplip | 3.23.12+dfsg0-0ubuntu5.1 | amd64 |
@@ -756,7 +756,7 @@
 | libeditorconfig0:amd64 | 0.12.7-0.1ubuntu0.1 | amd64 |
 | libefiboot1t64:amd64 | 38-3.1build1 | amd64 |
 | libefivar1t64:amd64 | 38-3.1build1 | amd64 |
-| libegl-mesa0:amd64 | 25.2.8-0ubuntu0.24.04.2 | amd64 |
+| libegl-mesa0:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
 | libegl1:amd64 | 1.7.0-1build1 | amd64 |
 | libei1:amd64 | 1.2.1-1 | amd64 |
 | libeis1:amd64 | 1.2.1-1 | amd64 |
@@ -772,8 +772,8 @@
 | libetonyek-0.1-1:amd64 | 0.1.10-5build1 | amd64 |
 | libevdev2:amd64 | 1.13.1+dfsg-1build1 | amd64 |
 | libevdocument3-4t64:amd64 | 46.3.1-0ubuntu1.1 | amd64 |
-| libevent-2.1-7t64:amd64 | 2.1.12-stable-9ubuntu2.1 | amd64 |
-| libevent-core-2.1-7t64:amd64 | 2.1.12-stable-9ubuntu2.1 | amd64 |
+| libevent-2.1-7t64:amd64 | 2.1.12-stable-9ubuntu2.2 | amd64 |
+| libevent-core-2.1-7t64:amd64 | 2.1.12-stable-9ubuntu2.2 | amd64 |
 | libevview3-3t64:amd64 | 46.3.1-0ubuntu1.1 | amd64 |
 | libexempi8:amd64 | 2.6.5-1build1 | amd64 |
 | libexif12:amd64 | 0.6.24-1ubuntu0.24.04.1 | amd64 |
@@ -820,7 +820,7 @@
 | libgail18t64:amd64 | 2.24.33-4ubuntu1.1 | amd64 |
 | libgamemode0:amd64 | 1.8.1-2build1 | amd64 |
 | libgamemodeauto0:amd64 | 1.8.1-2build1 | amd64 |
-| libgbm1:amd64 | 25.2.8-0ubuntu0.24.04.2 | amd64 |
+| libgbm1:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
 | libgcc-13-dev:amd64 | 13.3.0-6ubuntu2~24.04.1 | amd64 |
 | libgcc-s1:amd64 | 14.2.0-4ubuntu2~24.04.1 | amd64 |
 | libgck-1-0:amd64 | 3.41.2-1build3 | amd64 |
@@ -846,7 +846,7 @@
 | libgif7:amd64 | 5.2.2-1ubuntu1.2 | amd64 |
 | libgirepository-1.0-1:amd64 | 1.80.1-1 | amd64 |
 | libgjs0g:amd64 | 1.80.2-1build2 | amd64 |
-| libgl1-mesa-dri:amd64 | 25.2.8-0ubuntu0.24.04.2 | amd64 |
+| libgl1-mesa-dri:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
 | libgl1:amd64 | 1.7.0-1build1 | amd64 |
 | libgles2:amd64 | 1.7.0-1build1 | amd64 |
 | libglib-object-introspection-perl | 0.051-1build3 | amd64 |
@@ -857,7 +857,7 @@
 | libglibmm-2.68-1t64:amd64 | 2.78.1-2.2build2 | amd64 |
 | libglu1-mesa:amd64 | 9.0.2-1.1build1 | amd64 |
 | libglvnd0:amd64 | 1.7.0-1build1 | amd64 |
-| libglx-mesa0:amd64 | 25.2.8-0ubuntu0.24.04.2 | amd64 |
+| libglx-mesa0:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
 | libglx0:amd64 | 1.7.0-1build1 | amd64 |
 | libgme0:amd64 | 0.6.3-7build1 | amd64 |
 | libgmp10:amd64 | 2:6.3.0+dfsg-2ubuntu6.1 | amd64 |
@@ -936,9 +936,9 @@
 | libharfbuzz-gobject0:amd64 | 8.3.0-2build2 | amd64 |
 | libharfbuzz-icu0:amd64 | 8.3.0-2build2 | amd64 |
 | libharfbuzz0b:amd64 | 8.3.0-2build2 | amd64 |
-| libheif-plugin-aomdec:amd64 | 1.17.6-1ubuntu4.8 | amd64 |
-| libheif-plugin-aomenc:amd64 | 1.17.6-1ubuntu4.8 | amd64 |
-| libheif1:amd64 | 1.17.6-1ubuntu4.8 | amd64 |
+| libheif-plugin-aomdec:amd64 | 1.17.6-1ubuntu4.9 | amd64 |
+| libheif-plugin-aomenc:amd64 | 1.17.6-1ubuntu4.9 | amd64 |
+| libheif1:amd64 | 1.17.6-1ubuntu4.9 | amd64 |
 | libhogweed6t64:amd64 | 3.9.1-2.2build1.1 | amd64 |
 | libhpmud0:amd64 | 3.23.12+dfsg0-0ubuntu5.1 | amd64 |
 | libhtml-form-perl | 6.11-1 | all |
@@ -1342,7 +1342,7 @@
 | libss2:amd64 | 1.47.0-2.4~exp1ubuntu4.1 | amd64 |
 | libssh-4:amd64 | 0.10.6-2ubuntu0.5 | amd64 |
 | libssh-gcrypt-4:amd64 | 0.10.6-2ubuntu0.5 | amd64 |
-| libssl3t64:amd64 | 3.0.13-0ubuntu3.15 | amd64 |
+| libssl3t64:amd64 | 3.0.13-0ubuntu3.16 | amd64 |
 | libsss-certmap0 | 2.9.4-1.1ubuntu6.8 | amd64 |
 | libsss-idmap0 | 2.9.4-1.1ubuntu6.8 | amd64 |
 | libsss-nss-idmap0 | 2.9.4-1.1ubuntu6.8 | amd64 |
@@ -1629,10 +1629,10 @@
 | memtest86+ | 7.00-1build1 | amd64 |
 | mercurial | 6.7.2-1ubuntu2.2 | amd64 |
 | mercurial-common | 6.7.2-1ubuntu2.2 | all |
-| mesa-libgallium:amd64 | 25.2.8-0ubuntu0.24.04.2 | amd64 |
-| mesa-va-drivers:amd64 | 25.2.8-0ubuntu0.24.04.2 | amd64 |
-| mesa-vdpau-drivers:amd64 | 25.2.8-0ubuntu0.24.04.2 | amd64 |
-| mesa-vulkan-drivers:amd64 | 25.2.8-0ubuntu0.24.04.2 | amd64 |
+| mesa-libgallium:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
+| mesa-va-drivers:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
+| mesa-vdpau-drivers:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
+| mesa-vulkan-drivers:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
 | mobile-broadband-provider-info | 20230416-1 | all |
 | modemmanager | 1.23.4-0ubuntu2 | amd64 |
 | mokutil | 0.6.0-2build3 | amd64 |
@@ -1685,7 +1685,7 @@
 | openssh-client | 1:9.6p1-3ubuntu13.19 | amd64 |
 | openssh-server | 1:9.6p1-3ubuntu13.19 | amd64 |
 | openssh-sftp-server | 1:9.6p1-3ubuntu13.19 | amd64 |
-| openssl | 3.0.13-0ubuntu3.15 | amd64 |
+| openssl | 3.0.13-0ubuntu3.16 | amd64 |
 | openvpn | 2.6.19-0ubuntu0.24.04.3 | amd64 |
 | orca | 46.1-1ubuntu1 | all |
 | os-prober | 1.81ubuntu4 | amd64 |

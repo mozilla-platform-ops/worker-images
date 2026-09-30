@@ -356,7 +356,7 @@
 | liberror-perl | 0.17029-2 | all |
 | libestr0:arm64 | 0.1.11-1build1 | arm64 |
 | libevdev2:arm64 | 1.13.1+dfsg-1build1 | arm64 |
-| libevent-core-2.1-7t64:arm64 | 2.1.12-stable-9ubuntu2.1 | arm64 |
+| libevent-core-2.1-7t64:arm64 | 2.1.12-stable-9ubuntu2.2 | arm64 |
 | libexpat1-dev:arm64 | 2.6.1-2ubuntu0.6 | arm64 |
 | libexpat1:arm64 | 2.6.1-2ubuntu0.6 | arm64 |
 | libext2fs2t64:arm64 | 1.47.0-2.4~exp1ubuntu4.1 | arm64 |
@@ -393,9 +393,9 @@
 | libgprofng0:arm64 | 2.42-4ubuntu2.10 | arm64 |
 | libgssapi-krb5-2:arm64 | 1.20.1-6ubuntu2.10 | arm64 |
 | libgstreamer1.0-0:arm64 | 1.24.2-1ubuntu0.1 | arm64 |
-| libheif-plugin-aomdec:arm64 | 1.17.6-1ubuntu4.8 | arm64 |
-| libheif-plugin-aomenc:arm64 | 1.17.6-1ubuntu4.8 | arm64 |
-| libheif1:arm64 | 1.17.6-1ubuntu4.8 | arm64 |
+| libheif-plugin-aomdec:arm64 | 1.17.6-1ubuntu4.9 | arm64 |
+| libheif-plugin-aomenc:arm64 | 1.17.6-1ubuntu4.9 | arm64 |
+| libheif1:arm64 | 1.17.6-1ubuntu4.9 | arm64 |
 | libhogweed6t64:arm64 | 3.9.1-2.2build1.1 | arm64 |
 | libhunspell-1.7-0:arm64 | 1.7.2+really1.7.2-10build3 | arm64 |
 | libhunspell-dev:arm64 | 1.7.2+really1.7.2-10build3 | arm64 |
@@ -532,7 +532,7 @@
 | libsqlite3-0:arm64 | 3.45.1-1ubuntu2.8 | arm64 |
 | libss2:arm64 | 1.47.0-2.4~exp1ubuntu4.1 | arm64 |
 | libssh-4:arm64 | 0.10.6-2ubuntu0.5 | arm64 |
-| libssl3t64:arm64 | 3.0.13-0ubuntu3.15 | arm64 |
+| libssl3t64:arm64 | 3.0.13-0ubuntu3.16 | arm64 |
 | libstdc++-13-dev:arm64 | 13.3.0-6ubuntu2~24.04.1 | arm64 |
 | libstdc++6:arm64 | 14.2.0-4ubuntu2~24.04.1 | arm64 |
 | libstemmer0d:arm64 | 2.2.0-4build1 | arm64 |
@@ -649,7 +649,7 @@
 | openssh-client | 1:9.6p1-3ubuntu13.19 | arm64 |
 | openssh-server | 1:9.6p1-3ubuntu13.19 | arm64 |
 | openssh-sftp-server | 1:9.6p1-3ubuntu13.19 | arm64 |
-| openssl | 3.0.13-0ubuntu3.15 | arm64 |
+| openssl | 3.0.13-0ubuntu3.16 | arm64 |
 | os-prober | 1.81ubuntu4 | arm64 |
 | overlayroot | 0.49~24.04.1 | all |
 | packagekit | 1.2.8-2ubuntu1.5 | arm64 |
