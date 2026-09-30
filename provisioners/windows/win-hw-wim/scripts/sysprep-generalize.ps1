@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
-  Step 4 (runs INSIDE the build VM via Packer): scrub machine-specific state,
-  then Sysprep /generalize /oobe /shutdown so the disk can be captured clean.
+  Step 4 (runs INSIDE the build VM via PowerShell Direct): scrub machine-specific
+  state, then Sysprep /generalize /oobe /quit. The host shuts down after success.
 
 .DESCRIPTION
   Removes everything that must NOT ship in a generalized golden image:
@@ -10,9 +10,7 @@
       re-seeds real values; leaves bootstrap_stage = 'setup' so deploy bootstraps
     - SSH host keys and any generic-worker keys (none baked, defensive)
     - build-only autologon
-  Then runs Sysprep. The classic Win11 failure here is per-user AppX left behind,
-  so we assert none remain (the bake removed provisioned packages) and surface
-  Panther logs on failure.
+  Then runs Sysprep, surfaces Panther logs on failure, and verifies ImageState.
 
   IMPORTANT: capture must happen AFTER this scrub (it does — capture is a
   post-build step in win-hw-wim.pkr.hcl).
@@ -25,10 +23,10 @@ Set-StrictMode -Version Latest
 function Step($m) { Write-Host "== $m ==" }
 
 # Signal the host-side boot watchdog (New-WinHwWim.ps1) to STOP restarting the guest:
-# from here we deliberately Sysprep /shutdown, and that power-off is what Packer waits
+# from here the host deliberately shuts down after Sysprep, and Packer waits
 # for to capture the VHDX. Write-Output (not Write-Host) so it reaches Packer's captured
 # stdout stream and lands in packer-build.log where the watchdog greps for it.
-Write-Output 'WIM-WATCHDOG-STOP: sysprep starting; the guest power-off from here is expected (capture).'
+Write-Output 'WIM-WATCHDOG-STOP: sysprep starting; the host will shut down after successful generalization.'
 
 # --- Secret + identity scrub ---
 Step 'Scrubbing bake secrets and identity'
@@ -99,8 +97,8 @@ Remove-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Polic
   -Name LocalAccountTokenFilterPolicy -ErrorAction SilentlyContinue
 Get-ChildItem WSMan:\localhost\Listener -ErrorAction SilentlyContinue |
   Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-# Do not stop WinRM here: this script is running inside the final Packer WinRM session.
-# Disabling startup prevents it from returning when the captured image boots.
+# This session uses PowerShell Direct, independent of WinRM.
+# Disabling startup prevents WinRM from returning when the captured image boots.
 Set-Service -Name WinRM -StartupType Disabled
 
 if (Get-NetFirewallRule -Name 'WinRM-HTTP-In-5985' -ErrorAction SilentlyContinue) {
@@ -131,7 +129,7 @@ if ((Get-CimInstance Win32_Service -Filter "Name='WinRM'").StartMode -ne 'Disabl
 # puppet apply) where AppXSvc is still running.
 
 # --- Bake the first-boot bootstrap runner (SYSTEM startup task) ---
-# Registered HERE, as the last thing before Sysprep, so it CANNOT run during the bake:
+# Registered HERE, before Sysprep, so it CANNOT run during the bake:
 # the bake VM only ever shuts down from this point (no more boots before capture). On the
 # DEPLOYED node's first boot it reproduces the shape the unattend FirstLogonCommands would
 # have (seed C:\bootstrap + vault.yaml, disable sleep) and launches Get-Bootstrap.ps1
@@ -191,15 +189,15 @@ Write-Host '  RunDeployBootstrap SYSTEM startup task registered (fires only on t
 # --- Bake hygiene: neutralize the build-only 'packer' admin account ([[bake-hygiene-todo]]) ---
 # The build unattend created an Administrators-group account (@@WINRM_USER@@, i.e. 'packer')
 # for Packer/WinRM. It must not remain a usable admin in the golden WIM. We DISABLE it rather
-# than delete it: this script runs AS that account (over WinRM), and you cannot delete the
+# than delete it: this script runs AS that account (over PowerShell Direct), and you cannot delete the
 # account you are currently logged in as. Disabling fully neutralizes it - a disabled account
 # cannot log in locally, over WinRM, or via SSH - which is the security goal. (Deletion, if
 # ever wanted, must happen as SYSTEM on the deployed node where packer isn't logged in.)
-# This is the LAST WinRM-affecting step before Sysprep /shutdown; no provisioner runs after it.
+# The existing PowerShell Direct session completes before the host shuts down.
 Step 'Disabling build-only packer account'
 $buildAcct = $env:USERNAME   # the account this provisioner runs under IS the build account
 & net.exe user $buildAcct /active:no
-if ($LASTEXITCODE -ne 0) { Write-Warning "net user $buildAcct /active:no returned $LASTEXITCODE" }
+if ($LASTEXITCODE -ne 0) { throw "net user $buildAcct /active:no returned $LASTEXITCODE" }
 
 # Clear any autologon the bake configured. The build 'packer' account auto-logs in during the bake,
 # leaving AutoAdminLogon/DefaultUserName/DefaultPassword/AutoLogonSID in Winlogon. Left in the golden
@@ -213,14 +211,19 @@ foreach ($v in 'DefaultUserName', 'DefaultPassword', 'DefaultDomainName', 'AutoL
   Remove-ItemProperty -Path $wl -Name $v -ErrorAction SilentlyContinue
 }
 
-# --- Sysprep generalize + shutdown ---
-Step 'Running Sysprep /generalize /oobe /shutdown'
+# --- Generalize without cutting off the session before its result is received ---
+Step 'Running Sysprep /generalize /oobe /quit'
 $sp = "$env:SystemRoot\System32\Sysprep"
 Remove-Item (Join-Path $sp 'unattend.xml') -Force -ErrorAction SilentlyContinue
-& (Join-Path $sp 'Sysprep.exe') /generalize /oobe /shutdown /quiet
-if ($LASTEXITCODE -ne 0) {
-  Write-Warning "Sysprep returned rc=$LASTEXITCODE - dumping Panther errors:"
+$sysprep = Start-Process -FilePath (Join-Path $sp 'Sysprep.exe') `
+  -ArgumentList '/generalize /oobe /quit /quiet' -Wait -PassThru
+if ($sysprep.ExitCode -ne 0) {
+  Write-Warning "Sysprep returned rc=$($sysprep.ExitCode) - dumping Panther errors:"
   Get-Content (Join-Path $sp 'Panther\setuperr.log') -ErrorAction SilentlyContinue | Select-Object -Last 40
-  throw "Sysprep failed rc=$LASTEXITCODE"
+  throw "Sysprep failed rc=$($sysprep.ExitCode)"
 }
-# On success the VM powers off; Packer finalizes the artifact.
+$imageState = Get-ItemPropertyValue 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Setup\State' -Name ImageState
+if ($imageState -ne 'IMAGE_STATE_GENERALIZE_RESEAL_TO_OOBE') {
+  throw "Sysprep did not generalize the image: $imageState"
+}
+# Returning successfully allows the host to request a graceful Hyper-V shutdown.

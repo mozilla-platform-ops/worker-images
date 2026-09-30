@@ -60,6 +60,11 @@ try {
     $root = "$($win.DriveLetter):\"
     Write-Host "== Windows volume: $root =="
 
+    $stateFile = Join-Path $root 'Windows\Setup\State\State.ini'
+    if (-not (Select-String -LiteralPath $stateFile -Pattern '^\s*ImageState\s*=\s*"?IMAGE_STATE_GENERALIZE_RESEAL_TO_OOBE"?\s*$' -Quiet -ErrorAction Stop)) {
+        throw 'Refusing to capture a Windows image that has not completed generalization.'
+    }
+
     Write-Host "== DISM /Capture-Image -> $OutWim =="
     New-WindowsImage -ImagePath $OutWim -CapturePath $root -Name $Name `
         -Description "Baked Windows HW CI image (ronin bake role)" -CompressionType Max -Verify | Out-Null
