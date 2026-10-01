@@ -66,7 +66,7 @@ class GitSeedTest(unittest.TestCase):
                 seed.install(image, destination, state)
                 self.assertEqual(state.read_bytes(), saved)
                 entries = json.loads(saved)
-                self.assertEqual(len(entries), 5 if mode.startswith("windows-") else 3)
+                self.assertEqual(len(entries), 3)
                 entries.pop("gecko-level-1-checkouts")
                 # A later task revision must use the existing seed, not clone again.
                 (source / "tracked").write_text(mode + " later")

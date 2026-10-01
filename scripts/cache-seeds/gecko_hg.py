@@ -168,8 +168,6 @@ def build_git(revision, mode, level, seed_root, decision, git_executable="git"):
             (repo / ".git/worker-image-seed").write_text(revision + "\n")
             cache_name = "checkouts-git" + ("-shallow" if name == "shallow" else "")
             spec["cache_sources"][f"gecko-level-{level}-{cache_name}{suffix}"] = name
-            if mode.startswith("windows-"):
-                spec["cache_sources"][f"relops-level-3-{cache_name}"] = name
             if mode.startswith("linux-"):
                 archive_cache(staging / name, mode)
         spec["cache_names"] = list(spec["cache_sources"])
@@ -234,7 +232,7 @@ def install(seed_root, destination_root, state_file, extra_seeds=()):
     for seed_root, spec, name, source in entries:
         relops_cache = (spec["mode"] in ("windows-arm64", "linux-d2g")
                         and re.fullmatch(r"relops-level-3-checkouts-sparse(?:-hg58-v3-[0-9a-f]{20})?", name))
-        git_cache = re.fullmatch(r"(?:gecko-level-[13]|relops-level-3)-checkouts-git(?:-shallow)?(?:-v3-[0-9a-f]{20})?", name)
+        git_cache = re.fullmatch(r"gecko-level-[13]-checkouts-git(?:-shallow)?(?:-v3-[0-9a-f]{20})?", name)
         if not (relops_cache or git_cache) and not re.fullmatch(r"gecko-level-[13]-checkouts(?:-sparse)?(?:-hg58-v3-[0-9a-f]{20})?", name):
             raise ValueError("Invalid cache name in seed manifest")
         destination = destination_root / name

@@ -12,6 +12,7 @@ import json
 import os
 from pathlib import Path
 import runpy
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -120,6 +121,11 @@ class SeedTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             root.chmod(0o755)
+            # UID 1000 cannot traverse the GitHub runner checkout or helper temp dir.
+            benchmark = root / "benchmark.py"
+            shutil.copyfile(Path(__file__).with_name("benchmark.py"), benchmark)
+            extension = root / "robustcheckout.py"
+            shutil.copyfile(self.extension, extension)
             source = root / "source"
             seed.hg_command("hg", "init", source)
             (source / "tracked").write_text("first\n")
@@ -211,7 +217,6 @@ class SeedTest(unittest.TestCase):
                     for parent, _, files in os.walk(cache):
                         for item in [Path(parent)] + [Path(parent) / f for f in files]:
                             self.assertEqual((item.stat().st_uid, item.stat().st_gid), (1000, 1000))
-                extension = self.extension
                 if extension:
                     # Match Generic Worker's move into the task directory.
                     task_cache = root / name
@@ -230,12 +235,12 @@ class SeedTest(unittest.TestCase):
                     def checkout(check_seed=False):
                         checkout_command = ["hg", *map(str, command), str(source), str(task_cache / "gecko")]
                         if check_seed:
-                            checkout_command = [sys.executable, str(Path(__file__).with_name("benchmark.py")),
+                            checkout_command = [sys.executable, str(benchmark),
                                                 "--store", str(pool / revision),
                                                 "--checkout", str(task_cache / "gecko"),
                                                 "--seed-revision", revision, "--", *checkout_command]
                         subprocess.run(checkout_command,
-                                       check=True, user=1000 if wrapper else None,
+                                       check=True, cwd=root, user=1000 if wrapper else None,
                                        group=1000 if wrapper else None,
                                        env=dict(os.environ, HGPLAIN="1", HGRCPATH=os.devnull))
                     checkout(check_seed=True)

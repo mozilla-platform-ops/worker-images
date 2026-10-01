@@ -93,9 +93,9 @@ build. The builder does not run a separate full-history `git fsck --full`.
 
 Git uses independent `gecko-level-<level>-checkouts-git` and
 `gecko-level-<level>-checkouts-git-shallow` caches. The repository is at `src`
-inside Windows caches and `gecko` inside Linux caches. Windows also registers
-independent `relops-level-3-checkouts-git` and `relops-level-3-checkouts-git-shallow`
-copies. Both Windows architectures use directory-cache state for Git; neither
+inside Windows caches and `gecko` inside Linux caches. The RelOps startup test
+uses Hg, so no RelOps Git caches are created. Both Windows architectures use
+directory-cache state for Git; neither
 uses `C:\hg-shared` for Git. Hg and Git registrations are written together.
 
 Linux restores two extra archives, full and shallow, directly onto the task

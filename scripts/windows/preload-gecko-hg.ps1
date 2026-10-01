@@ -69,10 +69,8 @@ if ($mode -eq 'windows-arm64') {
     & $python $helper install --seed-root $seed @extraSeed --destination-root 'C:\caches' `
         --state-file 'C:\worker-runner\directory-caches.json'
     if ($LASTEXITCODE -ne 0) { throw 'Gecko Hg cache registration failed' }
-} else {
-    if ($env:GECKO_GIT_SEED_REVISION) {
-        & $python $helper install --seed-root 'C:\gecko-git-seed' --destination-root 'C:\caches' `
-            --state-file 'C:\worker-runner\directory-caches.json'
-        if ($LASTEXITCODE -ne 0) { throw 'Gecko Git cache registration failed' }
-    }
+} elseif ($env:GECKO_GIT_SEED_REVISION) {
+    & $python $helper install --seed-root 'C:\gecko-git-seed' --destination-root 'C:\caches' `
+        --state-file 'C:\worker-runner\directory-caches.json'
+    if ($LASTEXITCODE -ne 0) { throw 'Gecko Git cache registration failed' }
 }
