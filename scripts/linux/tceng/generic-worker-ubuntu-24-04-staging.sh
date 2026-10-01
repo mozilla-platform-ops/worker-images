@@ -69,6 +69,13 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docke
   $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
 retry apt-get update
 retry apt-get install -y docker-ce docker-ce-cli containerd.io
+
+mkdir -p /etc/docker
+cat > /etc/docker/daemon.json <<'EOF'
+{
+  "mtu": 1400
+}
+EOF
 retry docker run hello-world
 
 # configure kvm vmware backdoor
