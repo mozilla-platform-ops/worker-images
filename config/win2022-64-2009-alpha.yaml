@@ -48,3 +48,4 @@ tests:
   - mercurial.tests.ps1
   - mozilla_build.tests.ps1
   - windows_worker_runner.tests.ps1
+  - ronin_hardening.tests.ps1

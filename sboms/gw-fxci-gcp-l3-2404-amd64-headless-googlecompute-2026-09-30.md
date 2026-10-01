@@ -1,3 +1,12 @@
+# Production deployment record
+
+- Production image name: `gw-fxci-gcp-l3-2404-amd64-headless-googlecompute-2026-09-30`
+- Alpha source image name: `gw-fxci-gcp-l3-2404-amd64-headless-googlecompute-alpha`
+- Promotion timestamp: `2026-09-30T19:32:24Z`
+- Promotion copied the alpha image without rebuilding the filesystem.
+- SHA-256 of the unmodified alpha SBOM: `3d2c5b0ed53665c75a238a45cc424d1964e15da910df9d00891c0689f05df93d`
+
+---
 # Linux worker image SBOM
 
 ## Build provenance

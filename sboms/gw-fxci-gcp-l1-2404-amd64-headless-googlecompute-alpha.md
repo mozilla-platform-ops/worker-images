@@ -13,7 +13,7 @@
 ## Operating system
 
 - OS: Ubuntu 24.04.5 LTS (Noble Numbat)
-- Kernel: Linux 7.0.0-1011-gcp x86_64 GNU/Linux
+- Kernel: Linux 6.17.0-1022-gcp x86_64 GNU/Linux
 - Machine architecture: x86_64
 
 ## Taskcluster tools
@@ -119,7 +119,7 @@
 | aardvark-dns | 1.4.0-5 | amd64 |
 | adduser | 3.137ubuntu1 | all |
 | adwaita-icon-theme | 46.0-1 | all |
-| apparmor | 4.0.1really4.0.1-0ubuntu0.24.04.7 | amd64 |
+| apparmor | 4.0.1really4.0.1-0ubuntu0.24.04.8 | amd64 |
 | apport | 2.28.3-0ubuntu0.1 | all |
 | apport-core-dump-handler | 2.28.3-0ubuntu0.1 | all |
 | apport-symptoms | 0.25 | all |
@@ -163,7 +163,7 @@
 | conmon | 2.1.10+ds1-1build2 | amd64 |
 | console-setup | 1.226ubuntu1.1 | all |
 | console-setup-linux | 1.226ubuntu1.1 | all |
-| containerd.io | 2.3.5-1~ubuntu.24.04~noble | amd64 |
+| containerd.io | 2.3.6-1~ubuntu.24.04~noble | amd64 |
 | containernetworking-plugins | 1.1.1+ds1-3ubuntu0.24.04.3 | amd64 |
 | coreutils | 9.4-3ubuntu6.3 | amd64 |
 | cpio | 2.15+dfsg-1ubuntu2.1 | amd64 |
@@ -182,7 +182,7 @@
 | cudnn9 | 9.10.1-1 | amd64 |
 | cudnn9-cuda-12 | 9.10.1.4-1 | amd64 |
 | cudnn9-cuda-12-9 | 9.10.1.4-1 | amd64 |
-| curl | 8.5.0-2ubuntu10.13 | amd64 |
+| curl | 8.5.0-2ubuntu10.15 | amd64 |
 | dash | 0.5.12-6ubuntu5 | amd64 |
 | dbus | 1.14.10-4ubuntu4.1 | amd64 |
 | dbus-bin | 1.14.10-4ubuntu4.1 | amd64 |
@@ -203,7 +203,7 @@
 | distro-info-data | 0.72-0ubuntu0.24.04.1 | all |
 | dkms | 3.0.11-1ubuntu13 | all |
 | dmeventd | 2:1.02.185-3ubuntu3.2 | amd64 |
-| dmidecode | 3.5-3ubuntu0.1 | amd64 |
+| dmidecode | 3.5-3ubuntu0.2 | amd64 |
 | dmsetup | 2:1.02.185-3ubuntu3.2 | amd64 |
 | docker-buildx-plugin | 0.37.1-1~ubuntu.24.04~noble | amd64 |
 | docker-ce | 5:29.5.3-1~ubuntu.24.04~noble | amd64 |
@@ -213,7 +213,7 @@
 | dosfstools | 4.2-1.1build1 | amd64 |
 | dpkg | 1.22.6ubuntu6.6 | amd64 |
 | dpkg-dev | 1.22.6ubuntu6.6 | all |
-| dracut-install | 060+5-1ubuntu3.3 | amd64 |
+| dracut-install | 060+5-1ubuntu3.4 | amd64 |
 | e2fsprogs | 1.47.0-2.4~exp1ubuntu4.1 | amd64 |
 | e2fsprogs-l10n | 1.47.0-2.4~exp1ubuntu4.1 | all |
 | eatmydata | 131-1ubuntu1 | all |
@@ -322,7 +322,7 @@
 | libalgorithm-diff-xs-perl:amd64 | 0.04-8build3 | amd64 |
 | libalgorithm-merge-perl | 0.08-5 | all |
 | libaom3:amd64 | 3.8.2-2ubuntu0.2 | amd64 |
-| libapparmor1:amd64 | 4.0.1really4.0.1-0ubuntu0.24.04.7 | amd64 |
+| libapparmor1:amd64 | 4.0.1really4.0.1-0ubuntu0.24.04.8 | amd64 |
 | libappstream5:amd64 | 1.0.2-1build6 | amd64 |
 | libapt-pkg6.0t64:amd64 | 2.8.3 | amd64 |
 | libargon2-1:amd64 | 0~20190702+dfsg-4build1 | amd64 |
@@ -334,8 +334,8 @@
 | libatomic1:amd64 | 14.2.0-4ubuntu2~24.04.1 | amd64 |
 | libatspi2.0-0t64:amd64 | 2.52.0-1build1 | amd64 |
 | libattr1:amd64 | 1:2.5.2-1ubuntu0.1 | amd64 |
-| libaudit-common | 1:3.1.2-2.1build1.1 | all |
-| libaudit1:amd64 | 1:3.1.2-2.1build1.1 | amd64 |
+| libaudit-common | 1:3.1.2-2.1ubuntu0.1 | all |
+| libaudit1:amd64 | 1:3.1.2-2.1ubuntu0.1 | amd64 |
 | libavahi-client3:amd64 | 0.8-13ubuntu6.2 | amd64 |
 | libavahi-common-data:amd64 | 0.8-13ubuntu6.2 | amd64 |
 | libavahi-common3:amd64 | 0.8-13ubuntu6.2 | amd64 |
@@ -375,8 +375,8 @@
 | libcudnn9-samples | 9.10.1.4-1 | all |
 | libcudnn9-static-cuda-12 | 9.10.1.4-1 | amd64 |
 | libcups2t64:amd64 | 2.4.7-1.2ubuntu7.14 | amd64 |
-| libcurl3t64-gnutls:amd64 | 8.5.0-2ubuntu10.13 | amd64 |
-| libcurl4t64:amd64 | 8.5.0-2ubuntu10.13 | amd64 |
+| libcurl3t64-gnutls:amd64 | 8.5.0-2ubuntu10.15 | amd64 |
+| libcurl4t64:amd64 | 8.5.0-2ubuntu10.15 | amd64 |
 | libdatrie1:amd64 | 0.2.13-3build1 | amd64 |
 | libdaxctl1:amd64 | 77-2ubuntu2 | amd64 |
 | libdb5.3t64:amd64 | 5.3.28+dfsg2-7 | amd64 |
@@ -399,16 +399,16 @@
 | libedit2:amd64 | 3.1-20230828-1build1 | amd64 |
 | libefiboot1t64:amd64 | 38-3.1build1 | amd64 |
 | libefivar1t64:amd64 | 38-3.1build1 | amd64 |
-| libegl-mesa0:amd64 | 25.2.8-0ubuntu0.24.04.2 | amd64 |
+| libegl-mesa0:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
 | libegl1:amd64 | 1.7.0-1build1 | amd64 |
 | libelf1t64:amd64 | 0.190-1.1ubuntu0.1 | amd64 |
 | libepoxy0:amd64 | 1.5.10-1build1 | amd64 |
 | liberror-perl | 0.17029-2 | all |
 | libestr0:amd64 | 0.1.11-1build1 | amd64 |
 | libevdev2:amd64 | 1.13.1+dfsg-1build1 | amd64 |
-| libevent-core-2.1-7t64:amd64 | 2.1.12-stable-9ubuntu2.1 | amd64 |
-| libexpat1-dev:amd64 | 2.6.1-2ubuntu0.5 | amd64 |
-| libexpat1:amd64 | 2.6.1-2ubuntu0.5 | amd64 |
+| libevent-core-2.1-7t64:amd64 | 2.1.12-stable-9ubuntu2.2 | amd64 |
+| libexpat1-dev:amd64 | 2.6.1-2ubuntu0.6 | amd64 |
+| libexpat1:amd64 | 2.6.1-2ubuntu0.6 | amd64 |
 | libext2fs2t64:amd64 | 1.47.0-2.4~exp1ubuntu4.1 | amd64 |
 | libfakeroot:amd64 | 1.33-1 | amd64 |
 | libfastjson4:amd64 | 1.2304.0-1build1 | amd64 |
@@ -423,7 +423,7 @@
 | libfuse3-3:amd64 | 3.14.0-5build1 | amd64 |
 | libgail-common:amd64 | 2.24.33-4ubuntu1.1 | amd64 |
 | libgail18t64:amd64 | 2.24.33-4ubuntu1.1 | amd64 |
-| libgbm1:amd64 | 25.2.8-0ubuntu0.24.04.2 | amd64 |
+| libgbm1:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
 | libgcc-13-dev:amd64 | 13.3.0-6ubuntu2~24.04.1 | amd64 |
 | libgcc-s1:amd64 | 14.2.0-4ubuntu2~24.04.1 | amd64 |
 | libgcrypt20:amd64 | 1.10.3-2ubuntu0.2 | amd64 |
@@ -437,14 +437,14 @@
 | libgfrpc0:amd64 | 11.1-4ubuntu0.1 | amd64 |
 | libgfxdr0:amd64 | 11.1-4ubuntu0.1 | amd64 |
 | libgirepository-1.0-1:amd64 | 1.80.1-1 | amd64 |
-| libgl1-mesa-dri:amd64 | 25.2.8-0ubuntu0.24.04.2 | amd64 |
+| libgl1-mesa-dri:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
 | libgl1:amd64 | 1.7.0-1build1 | amd64 |
 | libglib2.0-0t64:amd64 | 2.80.0-6ubuntu3.9 | amd64 |
 | libglib2.0-bin | 2.80.0-6ubuntu3.9 | amd64 |
 | libglib2.0-data | 2.80.0-6ubuntu3.9 | all |
 | libglusterfs0:amd64 | 11.1-4ubuntu0.1 | amd64 |
 | libglvnd0:amd64 | 1.7.0-1build1 | amd64 |
-| libglx-mesa0:amd64 | 25.2.8-0ubuntu0.24.04.2 | amd64 |
+| libglx-mesa0:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
 | libglx0:amd64 | 1.7.0-1build1 | amd64 |
 | libgmp10:amd64 | 2:6.3.0+dfsg-2ubuntu6.1 | amd64 |
 | libgnutls30t64:amd64 | 3.8.3-1.1ubuntu3.6 | amd64 |
@@ -464,9 +464,9 @@
 | libgtk2.0-bin | 2.24.33-4ubuntu1.1 | amd64 |
 | libgtk2.0-common | 2.24.33-4ubuntu1.1 | all |
 | libharfbuzz0b:amd64 | 8.3.0-2build2 | amd64 |
-| libheif-plugin-aomdec:amd64 | 1.17.6-1ubuntu4.8 | amd64 |
-| libheif-plugin-aomenc:amd64 | 1.17.6-1ubuntu4.8 | amd64 |
-| libheif1:amd64 | 1.17.6-1ubuntu4.8 | amd64 |
+| libheif-plugin-aomdec:amd64 | 1.17.6-1ubuntu4.9 | amd64 |
+| libheif-plugin-aomenc:amd64 | 1.17.6-1ubuntu4.9 | amd64 |
+| libheif1:amd64 | 1.17.6-1ubuntu4.9 | amd64 |
 | libhogweed6t64:amd64 | 3.9.1-2.2build1.1 | amd64 |
 | libhunspell-1.7-0:amd64 | 1.7.2+really1.7.2-10build3 | amd64 |
 | libhunspell-dev:amd64 | 1.7.2+really1.7.2-10build3 | amd64 |
@@ -570,9 +570,9 @@
 | libpangocairo-1.0-0:amd64 | 1.52.1+ds-1build1 | amd64 |
 | libpangoft2-1.0-0:amd64 | 1.52.1+ds-1build1 | amd64 |
 | libparted2t64:amd64 | 3.6-4build1 | amd64 |
-| libpcap0.8t64:amd64 | 1.10.4-4.1ubuntu3 | amd64 |
+| libpcap0.8t64:amd64 | 1.10.4-4.1ubuntu3.1 | amd64 |
 | libpci3:amd64 | 1:3.10.0-2build1 | amd64 |
-| libpciaccess0:amd64 | 0.17-3ubuntu0.24.04.2 | amd64 |
+| libpciaccess0:amd64 | 0.17-3ubuntu0.24.04.3 | amd64 |
 | libpcre2-8-0:amd64 | 10.42-4ubuntu2.1 | amd64 |
 | libperl5.38t64:amd64 | 5.38.2-3.2ubuntu0.6 | amd64 |
 | libpipeline1:amd64 | 1.5.7-2 | amd64 |
@@ -626,7 +626,7 @@
 | libsqlite3-0:amd64 | 3.45.1-1ubuntu2.8 | amd64 |
 | libss2:amd64 | 1.47.0-2.4~exp1ubuntu4.1 | amd64 |
 | libssh-4:amd64 | 0.10.6-2ubuntu0.5 | amd64 |
-| libssl3t64:amd64 | 3.0.13-0ubuntu3.15 | amd64 |
+| libssl3t64:amd64 | 3.0.13-0ubuntu3.16 | amd64 |
 | libstdc++-13-dev:amd64 | 13.3.0-6ubuntu2~24.04.1 | amd64 |
 | libstdc++6:amd64 | 14.2.0-4ubuntu2~24.04.1 | amd64 |
 | libstemmer0d:amd64 | 2.2.0-4build1 | amd64 |
@@ -712,19 +712,22 @@
 | libyaml-0-2:amd64 | 0.2.5-1build1 | amd64 |
 | libzstd1:amd64 | 1.5.5+dfsg2-2build1.1 | amd64 |
 | linux-base | 4.5ubuntu9+24.04.2 | all |
-| linux-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
-| linux-gcp-7.0-headers-7.0.0-1011 | 7.0.0-1011.11~24.04.1 | amd64 |
-| linux-gcp-7.0-tools-7.0.0-1011 | 7.0.0-1011.11~24.04.1 | amd64 |
-| linux-headers-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
-| linux-headers-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
-| linux-image-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
-| linux-image-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
+| linux-gcp | 7.0.0-1013.13~24.04.1 | amd64 |
+| linux-gcp-6.17-headers-6.17.0-1022 | 6.17.0-1022.25 | amd64 |
+| linux-gcp-7.0-headers-7.0.0-1013 | 7.0.0-1013.13~24.04.1 | amd64 |
+| linux-gcp-7.0-tools-7.0.0-1013 | 7.0.0-1013.13~24.04.1 | amd64 |
+| linux-headers-6.17.0-1022-gcp | 6.17.0-1022.25 | amd64 |
+| linux-headers-7.0.0-1013-gcp | 7.0.0-1013.13~24.04.1 | amd64 |
+| linux-headers-gcp | 7.0.0-1013.13~24.04.1 | amd64 |
+| linux-image-6.17.0-1022-gcp | 6.17.0-1022.25 | amd64 |
+| linux-image-7.0.0-1013-gcp | 7.0.0-1013.13~24.04.1 | amd64 |
+| linux-image-gcp | 7.0.0-1013.13~24.04.1 | amd64 |
 | linux-libc-dev:amd64 | 6.8.0-142.142 | amd64 |
 | linux-modules-6.17.0-1022-gcp | 6.17.0-1022.25 | amd64 |
-| linux-modules-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
+| linux-modules-7.0.0-1013-gcp | 7.0.0-1013.13~24.04.1 | amd64 |
 | linux-modules-extra-6.17.0-1022-gcp | 6.17.0-1022.25 | amd64 |
 | linux-modules-extra-gcp | 6.17.0-1022.25 | amd64 |
-| linux-tools-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | amd64 |
+| linux-tools-7.0.0-1013-gcp | 7.0.0-1013.13~24.04.1 | amd64 |
 | linux-tools-common | 6.8.0-142.142 | all |
 | locales | 2.39-0ubuntu8.9 | all |
 | login | 1:4.13+dfsg1-4ubuntu3.2 | amd64 |
@@ -747,9 +750,9 @@
 | media-types | 10.1.0 | all |
 | mercurial | 6.7.2-1ubuntu2.2 | amd64 |
 | mercurial-common | 6.7.2-1ubuntu2.2 | all |
-| mesa-libgallium:amd64 | 25.2.8-0ubuntu0.24.04.2 | amd64 |
-| mesa-vdpau-drivers:amd64 | 25.2.8-0ubuntu0.24.04.2 | amd64 |
-| mesa-vulkan-drivers:amd64 | 25.2.8-0ubuntu0.24.04.2 | amd64 |
+| mesa-libgallium:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
+| mesa-vdpau-drivers:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
+| mesa-vulkan-drivers:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
 | mokutil | 0.6.0-2build3 | amd64 |
 | motd-news-config | 13ubuntu10.5 | all |
 | mount | 2.39.3-9ubuntu6.6 | amd64 |
@@ -789,7 +792,7 @@
 | openssh-client | 1:9.6p1-3ubuntu13.19 | amd64 |
 | openssh-server | 1:9.6p1-3ubuntu13.19 | amd64 |
 | openssh-sftp-server | 1:9.6p1-3ubuntu13.19 | amd64 |
-| openssl | 3.0.13-0ubuntu3.15 | amd64 |
+| openssl | 3.0.13-0ubuntu3.16 | amd64 |
 | os-prober | 1.81ubuntu4 | amd64 |
 | overlayroot | 0.49~24.04.1 | all |
 | packagekit | 1.2.8-2ubuntu1.5 | amd64 |
@@ -864,7 +867,7 @@
 | python3-json-pointer | 2.0-0ubuntu1 | all |
 | python3-jsonpatch | 1.32-3 | all |
 | python3-jsonschema | 4.10.3-2ubuntu1 | all |
-| python3-jwt | 2.7.0-1ubuntu0.1 | all |
+| python3-jwt | 2.7.0-1ubuntu0.2 | all |
 | python3-launchpadlib | 1.11.0-6 | all |
 | python3-lazr.restfulclient | 0.14.6-1 | all |
 | python3-lazr.uri | 1.0.6-3 | all |
@@ -892,7 +895,7 @@
 | python3-pygments | 2.17.2+dfsg-1 | all |
 | python3-pyparsing | 3.1.1-1 | all |
 | python3-pyrsistent:amd64 | 0.20.0-1build2 | amd64 |
-| python3-requests | 2.31.0+dfsg-1ubuntu1.1 | all |
+| python3-requests | 2.31.0+dfsg-1ubuntu1.2 | all |
 | python3-rich | 13.7.1-1 | all |
 | python3-s3transfer | 0.10.1-1ubuntu2 | all |
 | python3-serial | 3.5-2 | all |
@@ -1000,8 +1003,8 @@
 | xfsprogs | 6.6.0-1ubuntu2.1 | amd64 |
 | xkb-data | 2.41-2ubuntu1.1 | all |
 | xml-core | 0.19 | all |
-| xserver-common | 2:21.1.12-1ubuntu1.6 | all |
-| xserver-xorg-core | 2:21.1.12-1ubuntu1.6 | amd64 |
+| xserver-common | 2:21.1.12-1ubuntu1.8 | all |
+| xserver-xorg-core | 2:21.1.12-1ubuntu1.8 | amd64 |
 | xserver-xorg-video-nvidia-580 | 580.178.04-0ubuntu0.24.04.1 | amd64 |
 | xxd | 2:9.1.0016-1ubuntu7.20 | amd64 |
 | xz-utils | 5.6.1+really5.4.5-1ubuntu0.3 | amd64 |

@@ -1,13 +1,22 @@
+# Production deployment record
+
+- Production image name: `gw-fxci-gcp-l1-2404-arm64-headless-googlecompute-2026-09-30`
+- Alpha source image name: `gw-fxci-gcp-l1-2404-arm64-headless-googlecompute-alpha`
+- Promotion timestamp: `2026-09-30T19:32:55Z`
+- Promotion copied the alpha image without rebuilding the filesystem.
+- SHA-256 of the unmodified alpha SBOM: `83a0ae7540eaa9a6e391772e5a867fde5987dcb1697fba2557606beae7643bde`
+
+---
 # Linux worker image SBOM
 
 ## Build provenance
 
-- Image name: gw-fxci-gcp-l3-2404-arm64-headless-googlecompute-alpha
+- Image name: gw-fxci-gcp-l1-2404-arm64-headless-googlecompute-alpha
 - Taskcluster version: 110.1.0
 - Taskcluster ref: unknown
 - Architecture: ARM64
 - Source image family: ubuntu-2404-lts-arm64
-- GCP project: fxci-production-level3-workers
+- GCP project: taskcluster-imaging
 - GCP zone: us-central1-a
 
 ## Operating system
@@ -470,6 +479,8 @@
 | libnss-systemd:arm64 | 255.4-1ubuntu8.17 | arm64 |
 | libntfs-3g89t64:arm64 | 1:2022.10.3-1.2ubuntu3.2 | arm64 |
 | libnuma1:arm64 | 2.0.18-1ubuntu0.24.04.1 | arm64 |
+| libnvidia-container-tools | 1.20.1-1 | arm64 |
+| libnvidia-container1:arm64 | 1.20.1-1 | arm64 |
 | libnvme1t64 | 1.8-3ubuntu1 | arm64 |
 | libonig5:arm64 | 6.9.9-1build1 | arm64 |
 | libopeniscsiusr | 2.1.9-3ubuntu5.4 | arm64 |
@@ -639,6 +650,8 @@
 | nftables | 1.0.9-1ubuntu0.1 | arm64 |
 | ntfs-3g | 1:2022.10.3-1.2ubuntu3.2 | arm64 |
 | numactl | 2.0.18-1ubuntu0.24.04.1 | arm64 |
+| nvidia-container-toolkit | 1.20.1-1 | arm64 |
+| nvidia-container-toolkit-base | 1.20.1-1 | arm64 |
 | nvme-cli | 2.8-1ubuntu0.1 | arm64 |
 | open-iscsi | 2.1.9-3ubuntu5.4 | arm64 |
 | open-vm-tools | 2:13.0.10-0ubuntu0.24.04.1 | arm64 |

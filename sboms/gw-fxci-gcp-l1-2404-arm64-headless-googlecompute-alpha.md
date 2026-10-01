@@ -13,7 +13,7 @@
 ## Operating system
 
 - OS: Ubuntu 24.04.5 LTS (Noble Numbat)
-- Kernel: Linux 7.0.0-1011-gcp aarch64 GNU/Linux
+- Kernel: Linux 7.0.0-1013-gcp aarch64 GNU/Linux
 - Machine architecture: aarch64
 
 ## Taskcluster tools
@@ -115,7 +115,7 @@
 | Name | Version | Architecture |
 | --- | --- | --- |
 | adduser | 3.137ubuntu1 | all |
-| apparmor | 4.0.1really4.0.1-0ubuntu0.24.04.7 | arm64 |
+| apparmor | 4.0.1really4.0.1-0ubuntu0.24.04.8 | arm64 |
 | apport | 2.28.3-0ubuntu0.1 | all |
 | apport-core-dump-handler | 2.28.3-0ubuntu0.1 | all |
 | apport-symptoms | 0.25 | all |
@@ -154,7 +154,7 @@
 | command-not-found | 23.04.0 | all |
 | console-setup | 1.226ubuntu1.1 | all |
 | console-setup-linux | 1.226ubuntu1.1 | all |
-| containerd.io | 2.3.5-1~ubuntu.24.04~noble | arm64 |
+| containerd.io | 2.3.6-1~ubuntu.24.04~noble | arm64 |
 | coreutils | 9.4-3ubuntu6.3 | arm64 |
 | cpio | 2.15+dfsg-1ubuntu2.1 | arm64 |
 | cpp | 4:13.2.0-7ubuntu1 | arm64 |
@@ -166,7 +166,7 @@
 | cryptsetup | 2:2.7.0-1ubuntu4.2 | arm64 |
 | cryptsetup-bin | 2:2.7.0-1ubuntu4.2 | arm64 |
 | cryptsetup-initramfs | 2:2.7.0-1ubuntu4.2 | all |
-| curl | 8.5.0-2ubuntu10.13 | arm64 |
+| curl | 8.5.0-2ubuntu10.15 | arm64 |
 | dash | 0.5.12-6ubuntu5 | arm64 |
 | dbus | 1.14.10-4ubuntu4.1 | arm64 |
 | dbus-bin | 1.14.10-4ubuntu4.1 | arm64 |
@@ -185,7 +185,7 @@
 | distro-info-data | 0.72-0ubuntu0.24.04.1 | all |
 | dkms | 3.0.11-1ubuntu13 | all |
 | dmeventd | 2:1.02.185-3ubuntu3.2 | arm64 |
-| dmidecode | 3.5-3ubuntu0.1 | arm64 |
+| dmidecode | 3.5-3ubuntu0.2 | arm64 |
 | dmsetup | 2:1.02.185-3ubuntu3.2 | arm64 |
 | docker-buildx-plugin | 0.37.1-1~ubuntu.24.04~noble | arm64 |
 | docker-ce | 5:29.5.3-1~ubuntu.24.04~noble | arm64 |
@@ -195,7 +195,7 @@
 | dosfstools | 4.2-1.1build1 | arm64 |
 | dpkg | 1.22.6ubuntu6.6 | arm64 |
 | dpkg-dev | 1.22.6ubuntu6.6 | all |
-| dracut-install | 060+5-1ubuntu3.3 | arm64 |
+| dracut-install | 060+5-1ubuntu3.4 | arm64 |
 | e2fsprogs | 1.47.0-2.4~exp1ubuntu4.1 | arm64 |
 | e2fsprogs-l10n | 1.47.0-2.4~exp1ubuntu4.1 | all |
 | eatmydata | 131-1ubuntu1 | all |
@@ -294,7 +294,7 @@
 | libalgorithm-diff-xs-perl:arm64 | 0.04-8build3 | arm64 |
 | libalgorithm-merge-perl | 0.08-5 | all |
 | libaom3:arm64 | 3.8.2-2ubuntu0.2 | arm64 |
-| libapparmor1:arm64 | 4.0.1really4.0.1-0ubuntu0.24.04.7 | arm64 |
+| libapparmor1:arm64 | 4.0.1really4.0.1-0ubuntu0.24.04.8 | arm64 |
 | libappstream5:arm64 | 1.0.2-1build6 | arm64 |
 | libapt-pkg6.0t64:arm64 | 2.8.3 | arm64 |
 | libargon2-1:arm64 | 0~20190702+dfsg-4build1 | arm64 |
@@ -303,8 +303,8 @@
 | libatm1t64:arm64 | 1:2.5.1-5.1build1 | arm64 |
 | libatomic1:arm64 | 14.2.0-4ubuntu2~24.04.1 | arm64 |
 | libattr1:arm64 | 1:2.5.2-1ubuntu0.1 | arm64 |
-| libaudit-common | 1:3.1.2-2.1build1.1 | all |
-| libaudit1:arm64 | 1:3.1.2-2.1build1.1 | arm64 |
+| libaudit-common | 1:3.1.2-2.1ubuntu0.1 | all |
+| libaudit1:arm64 | 1:3.1.2-2.1ubuntu0.1 | arm64 |
 | libbinutils:arm64 | 2.42-4ubuntu2.10 | arm64 |
 | libblkid1:arm64 | 2.39.3-9ubuntu6.6 | arm64 |
 | libboost-iostreams1.83.0:arm64 | 1.83.0-2.1ubuntu3.2 | arm64 |
@@ -332,8 +332,8 @@
 | libcryptsetup12:arm64 | 2:2.7.0-1ubuntu4.2 | arm64 |
 | libctf-nobfd0:arm64 | 2.42-4ubuntu2.10 | arm64 |
 | libctf0:arm64 | 2.42-4ubuntu2.10 | arm64 |
-| libcurl3t64-gnutls:arm64 | 8.5.0-2ubuntu10.13 | arm64 |
-| libcurl4t64:arm64 | 8.5.0-2ubuntu10.13 | arm64 |
+| libcurl3t64-gnutls:arm64 | 8.5.0-2ubuntu10.15 | arm64 |
+| libcurl4t64:arm64 | 8.5.0-2ubuntu10.15 | arm64 |
 | libdaxctl1:arm64 | 77-2ubuntu2 | arm64 |
 | libdb5.3t64:arm64 | 5.3.28+dfsg2-7 | arm64 |
 | libdbus-1-3:arm64 | 1.14.10-4ubuntu4.1 | arm64 |
@@ -356,9 +356,9 @@
 | liberror-perl | 0.17029-2 | all |
 | libestr0:arm64 | 0.1.11-1build1 | arm64 |
 | libevdev2:arm64 | 1.13.1+dfsg-1build1 | arm64 |
-| libevent-core-2.1-7t64:arm64 | 2.1.12-stable-9ubuntu2.1 | arm64 |
-| libexpat1-dev:arm64 | 2.6.1-2ubuntu0.5 | arm64 |
-| libexpat1:arm64 | 2.6.1-2ubuntu0.5 | arm64 |
+| libevent-core-2.1-7t64:arm64 | 2.1.12-stable-9ubuntu2.2 | arm64 |
+| libexpat1-dev:arm64 | 2.6.1-2ubuntu0.6 | arm64 |
+| libexpat1:arm64 | 2.6.1-2ubuntu0.6 | arm64 |
 | libext2fs2t64:arm64 | 1.47.0-2.4~exp1ubuntu4.1 | arm64 |
 | libfakeroot:arm64 | 1.33-1 | arm64 |
 | libfastjson4:arm64 | 1.2304.0-1build1 | arm64 |
@@ -393,9 +393,9 @@
 | libgprofng0:arm64 | 2.42-4ubuntu2.10 | arm64 |
 | libgssapi-krb5-2:arm64 | 1.20.1-6ubuntu2.10 | arm64 |
 | libgstreamer1.0-0:arm64 | 1.24.2-1ubuntu0.1 | arm64 |
-| libheif-plugin-aomdec:arm64 | 1.17.6-1ubuntu4.8 | arm64 |
-| libheif-plugin-aomenc:arm64 | 1.17.6-1ubuntu4.8 | arm64 |
-| libheif1:arm64 | 1.17.6-1ubuntu4.8 | arm64 |
+| libheif-plugin-aomdec:arm64 | 1.17.6-1ubuntu4.9 | arm64 |
+| libheif-plugin-aomenc:arm64 | 1.17.6-1ubuntu4.9 | arm64 |
+| libheif1:arm64 | 1.17.6-1ubuntu4.9 | arm64 |
 | libhogweed6t64:arm64 | 3.9.1-2.2build1.1 | arm64 |
 | libhunspell-1.7-0:arm64 | 1.7.2+really1.7.2-10build3 | arm64 |
 | libhunspell-dev:arm64 | 1.7.2+really1.7.2-10build3 | arm64 |
@@ -484,7 +484,7 @@
 | libpam-systemd:arm64 | 255.4-1ubuntu8.17 | arm64 |
 | libpam0g:arm64 | 1.5.3-5ubuntu5.7 | arm64 |
 | libparted2t64:arm64 | 3.6-4build1 | arm64 |
-| libpcap0.8t64:arm64 | 1.10.4-4.1ubuntu3 | arm64 |
+| libpcap0.8t64:arm64 | 1.10.4-4.1ubuntu3.1 | arm64 |
 | libpci3:arm64 | 1:3.10.0-2build1 | arm64 |
 | libpcre2-8-0:arm64 | 10.42-4ubuntu2.1 | arm64 |
 | libperl5.38t64:arm64 | 5.38.2-3.2ubuntu0.6 | arm64 |
@@ -532,7 +532,7 @@
 | libsqlite3-0:arm64 | 3.45.1-1ubuntu2.8 | arm64 |
 | libss2:arm64 | 1.47.0-2.4~exp1ubuntu4.1 | arm64 |
 | libssh-4:arm64 | 0.10.6-2ubuntu0.5 | arm64 |
-| libssl3t64:arm64 | 3.0.13-0ubuntu3.15 | arm64 |
+| libssl3t64:arm64 | 3.0.13-0ubuntu3.16 | arm64 |
 | libstdc++-13-dev:arm64 | 13.3.0-6ubuntu2~24.04.1 | arm64 |
 | libstdc++6:arm64 | 14.2.0-4ubuntu2~24.04.1 | arm64 |
 | libstemmer0d:arm64 | 2.2.0-4build1 | arm64 |
@@ -582,19 +582,25 @@
 | libyaml-0-2:arm64 | 0.2.5-1build1 | arm64 |
 | libzstd1:arm64 | 1.5.5+dfsg2-2build1.1 | arm64 |
 | linux-base | 4.5ubuntu9+24.04.2 | all |
-| linux-gcp | 7.0.0-1011.11~24.04.1 | arm64 |
+| linux-gcp | 7.0.0-1013.13~24.04.1 | arm64 |
 | linux-gcp-7.0-headers-7.0.0-1011 | 7.0.0-1011.11~24.04.1 | arm64 |
+| linux-gcp-7.0-headers-7.0.0-1013 | 7.0.0-1013.13~24.04.1 | arm64 |
 | linux-gcp-7.0-tools-7.0.0-1011 | 7.0.0-1011.11~24.04.1 | arm64 |
+| linux-gcp-7.0-tools-7.0.0-1013 | 7.0.0-1013.13~24.04.1 | arm64 |
 | linux-headers-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | arm64 |
-| linux-headers-gcp | 7.0.0-1011.11~24.04.1 | arm64 |
+| linux-headers-7.0.0-1013-gcp | 7.0.0-1013.13~24.04.1 | arm64 |
+| linux-headers-gcp | 7.0.0-1013.13~24.04.1 | arm64 |
 | linux-image-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | arm64 |
-| linux-image-gcp | 7.0.0-1011.11~24.04.1 | arm64 |
+| linux-image-7.0.0-1013-gcp | 7.0.0-1013.13~24.04.1 | arm64 |
+| linux-image-gcp | 7.0.0-1013.13~24.04.1 | arm64 |
 | linux-libc-dev:arm64 | 6.8.0-142.142 | arm64 |
 | linux-modules-6.17.0-1022-gcp | 6.17.0-1022.25 | arm64 |
 | linux-modules-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | arm64 |
+| linux-modules-7.0.0-1013-gcp | 7.0.0-1013.13~24.04.1 | arm64 |
 | linux-modules-extra-6.17.0-1022-gcp | 6.17.0-1022.25 | arm64 |
 | linux-modules-extra-gcp | 6.17.0-1022.25 | arm64 |
 | linux-tools-7.0.0-1011-gcp | 7.0.0-1011.11~24.04.1 | arm64 |
+| linux-tools-7.0.0-1013-gcp | 7.0.0-1013.13~24.04.1 | arm64 |
 | linux-tools-common | 6.8.0-142.142 | all |
 | locales | 2.39-0ubuntu8.9 | all |
 | login | 1:4.13+dfsg1-4ubuntu3.2 | arm64 |
@@ -643,7 +649,7 @@
 | openssh-client | 1:9.6p1-3ubuntu13.19 | arm64 |
 | openssh-server | 1:9.6p1-3ubuntu13.19 | arm64 |
 | openssh-sftp-server | 1:9.6p1-3ubuntu13.19 | arm64 |
-| openssl | 3.0.13-0ubuntu3.15 | arm64 |
+| openssl | 3.0.13-0ubuntu3.16 | arm64 |
 | os-prober | 1.81ubuntu4 | arm64 |
 | overlayroot | 0.49~24.04.1 | all |
 | packagekit | 1.2.8-2ubuntu1.5 | arm64 |
@@ -710,7 +716,7 @@
 | python3-json-pointer | 2.0-0ubuntu1 | all |
 | python3-jsonpatch | 1.32-3 | all |
 | python3-jsonschema | 4.10.3-2ubuntu1 | all |
-| python3-jwt | 2.7.0-1ubuntu0.1 | all |
+| python3-jwt | 2.7.0-1ubuntu0.2 | all |
 | python3-launchpadlib | 1.11.0-6 | all |
 | python3-lazr.restfulclient | 0.14.6-1 | all |
 | python3-lazr.uri | 1.0.6-3 | all |
@@ -738,7 +744,7 @@
 | python3-pygments | 2.17.2+dfsg-1 | all |
 | python3-pyparsing | 3.1.1-1 | all |
 | python3-pyrsistent:arm64 | 0.20.0-1build2 | arm64 |
-| python3-requests | 2.31.0+dfsg-1ubuntu1.1 | all |
+| python3-requests | 2.31.0+dfsg-1ubuntu1.2 | all |
 | python3-rich | 13.7.1-1 | all |
 | python3-s3transfer | 0.10.1-1ubuntu2 | all |
 | python3-serial | 3.5-2 | all |

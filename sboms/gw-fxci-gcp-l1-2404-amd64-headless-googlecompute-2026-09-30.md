@@ -1,13 +1,22 @@
+# Production deployment record
+
+- Production image name: `gw-fxci-gcp-l1-2404-amd64-headless-googlecompute-2026-09-30`
+- Alpha source image name: `gw-fxci-gcp-l1-2404-amd64-headless-googlecompute-alpha`
+- Promotion timestamp: `2026-09-30T19:33:33Z`
+- Promotion copied the alpha image without rebuilding the filesystem.
+- SHA-256 of the unmodified alpha SBOM: `9a855da1c425f0155195a59adb795d239df7fe73f3f99a0fa5ddd6b76c82899b`
+
+---
 # Linux worker image SBOM
 
 ## Build provenance
 
-- Image name: gw-fxci-gcp-l3-2404-amd64-headless-googlecompute-alpha
+- Image name: gw-fxci-gcp-l1-2404-amd64-headless-googlecompute-alpha
 - Taskcluster version: 110.1.0
 - Taskcluster ref: unknown
 - Architecture: AMD64
 - Source image family: ubuntu-2404-lts-amd64
-- GCP project: fxci-production-level3-workers
+- GCP project: taskcluster-imaging
 - GCP zone: us-west1-a
 
 ## Operating system
@@ -92,6 +101,7 @@
 | requests | 2.31.0 |
 | rich | 13.7.1 |
 | s3transfer | 0.10.1 |
+| screen-resolution-extra | 0.0.0 |
 | service-identity | 24.1.0 |
 | setuptools | 68.1.2 |
 | six | 1.16.0 |
@@ -106,6 +116,7 @@
 | urllib3 | 2.0.7 |
 | wadllib | 1.3.6 |
 | wheel | 0.42.0 |
+| xkit | 0.0.0 |
 | zope.interface | 6.1 |
 | zstandard | 0.22.0 |
 | zstd | 1.5.5.1 |
@@ -114,7 +125,9 @@
 
 | Name | Version | Architecture |
 | --- | --- | --- |
+| aardvark-dns | 1.4.0-5 | amd64 |
 | adduser | 3.137ubuntu1 | all |
+| adwaita-icon-theme | 46.0-1 | all |
 | apparmor | 4.0.1really4.0.1-0ubuntu0.24.04.8 | amd64 |
 | apport | 2.28.3-0ubuntu0.1 | all |
 | apport-core-dump-handler | 2.28.3-0ubuntu0.1 | all |
@@ -123,6 +136,8 @@
 | apt | 2.8.3 | amd64 |
 | apt-transport-https | 2.8.3 | all |
 | apt-utils | 2.8.3 | amd64 |
+| at-spi2-common | 2.52.0-1build1 | all |
+| at-spi2-core | 2.52.0-1build1 | amd64 |
 | base-files | 13ubuntu10.5 | amd64 |
 | base-passwd | 3.6.3build1 | amd64 |
 | bash | 5.2.21-2ubuntu4 | amd64 |
@@ -141,20 +156,24 @@
 | bsdutils | 1:2.39.3-9ubuntu6.6 | amd64 |
 | btrfs-progs | 6.6.3-1.1build2 | amd64 |
 | build-essential | 12.10ubuntu1 | amd64 |
+| buildah | 1.33.7+ds1-1ubuntu0.24.04.3 | amd64 |
 | busybox-initramfs | 1:1.36.1-6ubuntu3.1 | amd64 |
 | busybox-static | 1:1.36.1-6ubuntu3.1 | amd64 |
 | byobu | 6.11-0ubuntu1.1 | all |
 | bzip2 | 1.0.8-5.1ubuntu0.1 | amd64 |
 | ca-certificates | 20260601~24.04.1 | all |
+| catatonit | 0.1.7-1 | amd64 |
 | chrony | 4.5-1ubuntu4.2 | amd64 |
 | cloud-guest-utils | 0.33-1 | all |
 | cloud-init | 26.1-0ubuntu1~24.04.1 | all |
 | cloud-initramfs-copymods | 0.49~24.04.1 | all |
 | cloud-initramfs-dyn-netconf | 0.49~24.04.1 | all |
 | command-not-found | 23.04.0 | all |
+| conmon | 2.1.10+ds1-1build2 | amd64 |
 | console-setup | 1.226ubuntu1.1 | all |
 | console-setup-linux | 1.226ubuntu1.1 | all |
 | containerd.io | 2.3.6-1~ubuntu.24.04~noble | amd64 |
+| containernetworking-plugins | 1.1.1+ds1-3ubuntu0.24.04.3 | amd64 |
 | coreutils | 9.4-3ubuntu6.3 | amd64 |
 | cpio | 2.15+dfsg-1ubuntu2.1 | amd64 |
 | cpp | 4:13.2.0-7ubuntu1 | amd64 |
@@ -166,6 +185,12 @@
 | cryptsetup | 2:2.7.0-1ubuntu4.2 | amd64 |
 | cryptsetup-bin | 2:2.7.0-1ubuntu4.2 | amd64 |
 | cryptsetup-initramfs | 2:2.7.0-1ubuntu4.2 | all |
+| cuda-drivers-570 | 570.148.08-0ubuntu1 | amd64 |
+| cudnn | 9.10.1-1 | amd64 |
+| cudnn-local-repo-ubuntu2404-9.10.1 | 1.0-1 | amd64 |
+| cudnn9 | 9.10.1-1 | amd64 |
+| cudnn9-cuda-12 | 9.10.1.4-1 | amd64 |
+| cudnn9-cuda-12-9 | 9.10.1.4-1 | amd64 |
 | curl | 8.5.0-2ubuntu10.15 | amd64 |
 | dash | 0.5.12-6ubuntu5 | amd64 |
 | dbus | 1.14.10-4ubuntu4.1 | amd64 |
@@ -174,6 +199,8 @@
 | dbus-session-bus-common | 1.14.10-4ubuntu4.1 | all |
 | dbus-system-bus-common | 1.14.10-4ubuntu4.1 | all |
 | dbus-user-session | 1.14.10-4ubuntu4.1 | amd64 |
+| dconf-gsettings-backend:amd64 | 0.40.0-4ubuntu0.1 | amd64 |
+| dconf-service | 0.40.0-4ubuntu0.1 | amd64 |
 | debconf | 1.5.86ubuntu1 | all |
 | debconf-i18n | 1.5.86ubuntu1 | all |
 | debianutils | 5.17build1 | amd64 |
@@ -210,12 +237,14 @@
 | finalrd | 9build1 | all |
 | findutils | 4.9.0-5build1 | amd64 |
 | fio | 3.36-1ubuntu0.1 | amd64 |
+| fontconfig | 2.15.0-1.1ubuntu2 | amd64 |
 | fontconfig-config | 2.15.0-1.1ubuntu2 | amd64 |
 | fonts-dejavu-core | 2.37-8 | all |
 | fonts-dejavu-mono | 2.37-8 | all |
 | fonts-ubuntu-console | 0.869+git20240321-0ubuntu1 | all |
 | friendly-recovery | 0.2.42 | all |
 | ftp | 20230507-2build3 | all |
+| fuse-overlayfs | 1.13-1 | amd64 |
 | fuse3 | 3.14.0-5build1 | amd64 |
 | g++ | 4:13.2.0-7ubuntu1 | amd64 |
 | g++-13 | 13.3.0-6ubuntu2~24.04.1 | amd64 |
@@ -239,6 +268,8 @@
 | gnupg-agent | 2.4.4-2ubuntu17.6 | all |
 | gnupg-l10n | 2.4.4-2ubuntu17.6 | all |
 | gnupg-utils | 2.4.4-2ubuntu17.6 | amd64 |
+| golang-github-containers-common | 0.57.4+ds1-2ubuntu0.2 | all |
+| golang-github-containers-image | 5.29.2-2 | all |
 | google-compute-engine | 20260819.00-0ubuntu1~24.04.0 | all |
 | google-compute-engine-oslogin | 20260814.00-0ubuntu1~24.04.0 | amd64 |
 | google-guest-agent | 20250116.00-0ubuntu1~24.04.4 | amd64 |
@@ -258,10 +289,14 @@
 | grub-pc | 2.12-1ubuntu7.3 | amd64 |
 | grub-pc-bin | 2.12-1ubuntu7.3 | amd64 |
 | grub2-common | 2.12-1ubuntu7.3 | amd64 |
+| gsettings-desktop-schemas | 46.1-0ubuntu1 | all |
+| gtk-update-icon-cache | 3.24.41-4ubuntu1.3 | amd64 |
 | gzip | 1.12-1ubuntu3.2 | amd64 |
 | hdparm | 9.65+ds-1build1 | amd64 |
+| hicolor-icon-theme | 0.17-2 | all |
 | hostname | 3.23+nmu2ubuntu2 | amd64 |
 | htop | 3.3.0-4build1 | amd64 |
+| humanity-icon-theme | 0.6.16 | all |
 | hunspell-en-us | 1:2020.12.07-2 | all |
 | hwdata | 0.379-1 | all |
 | ibverbs-providers:amd64 | 50.0-2ubuntu0.2 | amd64 |
@@ -302,11 +337,17 @@
 | libargon2-1:amd64 | 0~20190702+dfsg-4build1 | amd64 |
 | libasan8:amd64 | 14.2.0-4ubuntu2~24.04.1 | amd64 |
 | libassuan0:amd64 | 2.5.6-1build1 | amd64 |
+| libatk-bridge2.0-0t64:amd64 | 2.52.0-1build1 | amd64 |
+| libatk1.0-0t64:amd64 | 2.52.0-1build1 | amd64 |
 | libatm1t64:amd64 | 1:2.5.1-5.1build1 | amd64 |
 | libatomic1:amd64 | 14.2.0-4ubuntu2~24.04.1 | amd64 |
+| libatspi2.0-0t64:amd64 | 2.52.0-1build1 | amd64 |
 | libattr1:amd64 | 1:2.5.2-1ubuntu0.1 | amd64 |
 | libaudit-common | 1:3.1.2-2.1ubuntu0.1 | all |
 | libaudit1:amd64 | 1:3.1.2-2.1ubuntu0.1 | amd64 |
+| libavahi-client3:amd64 | 0.8-13ubuntu6.2 | amd64 |
+| libavahi-common-data:amd64 | 0.8-13ubuntu6.2 | amd64 |
+| libavahi-common3:amd64 | 0.8-13ubuntu6.2 | amd64 |
 | libbinutils:amd64 | 2.42-4ubuntu2.10 | amd64 |
 | libblkid1:amd64 | 2.39.3-9ubuntu6.6 | amd64 |
 | libboost-iostreams1.83.0:amd64 | 1.83.0-2.1ubuntu3.2 | amd64 |
@@ -321,6 +362,8 @@
 | libc-devtools | 2.39-0ubuntu8.9 | amd64 |
 | libc6-dev:amd64 | 2.39-0ubuntu8.9 | amd64 |
 | libc6:amd64 | 2.39-0ubuntu8.9 | amd64 |
+| libcairo-gobject2:amd64 | 1.18.0-3build1 | amd64 |
+| libcairo2:amd64 | 1.18.0-3build1 | amd64 |
 | libcap-ng0:amd64 | 0.8.4-2build2 | amd64 |
 | libcap2-bin | 1:2.66-5ubuntu2.4 | amd64 |
 | libcap2:amd64 | 1:2.66-5ubuntu2.4 | amd64 |
@@ -328,17 +371,26 @@
 | libcc1-0:amd64 | 14.2.0-4ubuntu2~24.04.1 | amd64 |
 | libclang-cpp18 | 1:18.1.3-1ubuntu1 | amd64 |
 | libclang1-18 | 1:18.1.3-1ubuntu1 | amd64 |
+| libcolord2:amd64 | 1.4.7-1build2 | amd64 |
 | libcom-err2:amd64 | 1.47.0-2.4~exp1ubuntu4.1 | amd64 |
 | libcrypt-dev:amd64 | 1:4.4.36-4build1 | amd64 |
 | libcrypt1:amd64 | 1:4.4.36-4build1 | amd64 |
 | libcryptsetup12:amd64 | 2:2.7.0-1ubuntu4.2 | amd64 |
 | libctf-nobfd0:amd64 | 2.42-4ubuntu2.10 | amd64 |
 | libctf0:amd64 | 2.42-4ubuntu2.10 | amd64 |
+| libcudnn9-cuda-12 | 9.10.1.4-1 | amd64 |
+| libcudnn9-dev-cuda-12 | 9.10.1.4-1 | amd64 |
+| libcudnn9-headers-cuda-12 | 9.10.1.4-1 | amd64 |
+| libcudnn9-samples | 9.10.1.4-1 | all |
+| libcudnn9-static-cuda-12 | 9.10.1.4-1 | amd64 |
+| libcups2t64:amd64 | 2.4.7-1.2ubuntu7.14 | amd64 |
 | libcurl3t64-gnutls:amd64 | 8.5.0-2ubuntu10.15 | amd64 |
 | libcurl4t64:amd64 | 8.5.0-2ubuntu10.15 | amd64 |
+| libdatrie1:amd64 | 0.2.13-3build1 | amd64 |
 | libdaxctl1:amd64 | 77-2ubuntu2 | amd64 |
 | libdb5.3t64:amd64 | 5.3.28+dfsg2-7 | amd64 |
 | libdbus-1-3:amd64 | 1.14.10-4ubuntu4.1 | amd64 |
+| libdconf1:amd64 | 0.40.0-4ubuntu0.1 | amd64 |
 | libdebconfclient0:amd64 | 0.271ubuntu3 | amd64 |
 | libdebuginfod-common | 0.190-1.1ubuntu0.1 | all |
 | libdebuginfod1t64:amd64 | 0.190-1.1ubuntu0.1 | amd64 |
@@ -346,7 +398,9 @@
 | libdevmapper-event1.02.1:amd64 | 2:1.02.185-3ubuntu3.2 | amd64 |
 | libdevmapper1.02.1:amd64 | 2:1.02.185-3ubuntu3.2 | amd64 |
 | libdpkg-perl | 1.22.6ubuntu6.6 | all |
+| libdrm-amdgpu1:amd64 | 2.4.125-1ubuntu0.1~24.04.2 | amd64 |
 | libdrm-common | 2.4.125-1ubuntu0.1~24.04.2 | all |
+| libdrm-intel1:amd64 | 2.4.125-1ubuntu0.1~24.04.2 | amd64 |
 | libdrm2:amd64 | 2.4.125-1ubuntu0.1~24.04.2 | amd64 |
 | libduktape207:amd64 | 2.7.0+tests-0ubuntu3 | amd64 |
 | libdw1t64:amd64 | 0.190-1.1ubuntu0.1 | amd64 |
@@ -354,7 +408,10 @@
 | libedit2:amd64 | 3.1-20230828-1build1 | amd64 |
 | libefiboot1t64:amd64 | 38-3.1build1 | amd64 |
 | libefivar1t64:amd64 | 38-3.1build1 | amd64 |
+| libegl-mesa0:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
+| libegl1:amd64 | 1.7.0-1build1 | amd64 |
 | libelf1t64:amd64 | 0.190-1.1ubuntu0.1 | amd64 |
+| libepoxy0:amd64 | 1.5.10-1build1 | amd64 |
 | liberror-perl | 0.17029-2 | all |
 | libestr0:amd64 | 0.1.11-1build1 | amd64 |
 | libevdev2:amd64 | 1.13.1+dfsg-1build1 | amd64 |
@@ -369,32 +426,53 @@
 | libfido2-1:amd64 | 1.14.0-1build3 | amd64 |
 | libfile-fcntllock-perl | 0.22-4ubuntu5 | amd64 |
 | libfontconfig1:amd64 | 2.15.0-1.1ubuntu2 | amd64 |
+| libfontenc1:amd64 | 1:1.1.8-1build1 | amd64 |
 | libfreetype6:amd64 | 2.13.2+dfsg-1ubuntu0.1 | amd64 |
 | libfribidi0:amd64 | 1.0.13-3build1 | amd64 |
 | libfuse3-3:amd64 | 3.14.0-5build1 | amd64 |
+| libgail-common:amd64 | 2.24.33-4ubuntu1.1 | amd64 |
+| libgail18t64:amd64 | 2.24.33-4ubuntu1.1 | amd64 |
+| libgbm1:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
 | libgcc-13-dev:amd64 | 13.3.0-6ubuntu2~24.04.1 | amd64 |
 | libgcc-s1:amd64 | 14.2.0-4ubuntu2~24.04.1 | amd64 |
 | libgcrypt20:amd64 | 1.10.3-2ubuntu0.2 | amd64 |
 | libgd3:amd64 | 2.3.3-9ubuntu5 | amd64 |
 | libgdbm-compat4t64:amd64 | 1.23-5.1build1 | amd64 |
 | libgdbm6t64:amd64 | 1.23-5.1build1 | amd64 |
+| libgdk-pixbuf-2.0-0:amd64 | 2.42.10+dfsg-3ubuntu3.3 | amd64 |
+| libgdk-pixbuf2.0-bin | 2.42.10+dfsg-3ubuntu3.3 | amd64 |
+| libgdk-pixbuf2.0-common | 2.42.10+dfsg-3ubuntu3.3 | all |
 | libgfapi0:amd64 | 11.1-4ubuntu0.1 | amd64 |
 | libgfrpc0:amd64 | 11.1-4ubuntu0.1 | amd64 |
 | libgfxdr0:amd64 | 11.1-4ubuntu0.1 | amd64 |
 | libgirepository-1.0-1:amd64 | 1.80.1-1 | amd64 |
+| libgl1-mesa-dri:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
+| libgl1:amd64 | 1.7.0-1build1 | amd64 |
 | libglib2.0-0t64:amd64 | 2.80.0-6ubuntu3.9 | amd64 |
 | libglib2.0-bin | 2.80.0-6ubuntu3.9 | amd64 |
 | libglib2.0-data | 2.80.0-6ubuntu3.9 | all |
 | libglusterfs0:amd64 | 11.1-4ubuntu0.1 | amd64 |
+| libglvnd0:amd64 | 1.7.0-1build1 | amd64 |
+| libglx-mesa0:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
+| libglx0:amd64 | 1.7.0-1build1 | amd64 |
 | libgmp10:amd64 | 2:6.3.0+dfsg-2ubuntu6.1 | amd64 |
 | libgnutls30t64:amd64 | 3.8.3-1.1ubuntu3.6 | amd64 |
 | libgomp1:amd64 | 14.2.0-4ubuntu2~24.04.1 | amd64 |
 | libgpg-error-l10n | 1.47-3build2.1 | all |
 | libgpg-error0:amd64 | 1.47-3build2.1 | amd64 |
+| libgpgme11t64:amd64 | 1.18.0-4.1ubuntu4 | amd64 |
 | libgpm2:amd64 | 1.20.7-11 | amd64 |
 | libgprofng0:amd64 | 2.42-4ubuntu2.10 | amd64 |
+| libgraphite2-3:amd64 | 1.3.14-2ubuntu0.24.04.1 | amd64 |
 | libgssapi-krb5-2:amd64 | 1.20.1-6ubuntu2.10 | amd64 |
 | libgstreamer1.0-0:amd64 | 1.24.2-1ubuntu0.1 | amd64 |
+| libgtk-3-0t64:amd64 | 3.24.41-4ubuntu1.3 | amd64 |
+| libgtk-3-bin | 3.24.41-4ubuntu1.3 | amd64 |
+| libgtk-3-common | 3.24.41-4ubuntu1.3 | all |
+| libgtk2.0-0t64:amd64 | 2.24.33-4ubuntu1.1 | amd64 |
+| libgtk2.0-bin | 2.24.33-4ubuntu1.1 | amd64 |
+| libgtk2.0-common | 2.24.33-4ubuntu1.1 | all |
+| libharfbuzz0b:amd64 | 8.3.0-2build2 | amd64 |
 | libheif-plugin-aomdec:amd64 | 1.17.6-1ubuntu4.9 | amd64 |
 | libheif-plugin-aomenc:amd64 | 1.17.6-1ubuntu4.9 | amd64 |
 | libheif1:amd64 | 1.17.6-1ubuntu4.9 | amd64 |
@@ -403,6 +481,7 @@
 | libhunspell-dev:amd64 | 1.7.2+really1.7.2-10build3 | amd64 |
 | libhwasan0:amd64 | 14.2.0-4ubuntu2~24.04.1 | amd64 |
 | libibverbs1:amd64 | 50.0-2ubuntu0.2 | amd64 |
+| libice6:amd64 | 2:1.0.10-1build3 | amd64 |
 | libicu74:amd64 | 74.2-1ubuntu3.1 | amd64 |
 | libidn2-0:amd64 | 2.3.7-2build1.1 | amd64 |
 | libinih1:amd64 | 55-1ubuntu2 | amd64 |
@@ -429,11 +508,13 @@
 | libkrb5-3:amd64 | 1.20.1-6ubuntu2.10 | amd64 |
 | libkrb5support0:amd64 | 1.20.1-6ubuntu2.10 | amd64 |
 | libksba8:amd64 | 1.6.6-1build1 | amd64 |
+| liblcms2-2:amd64 | 2.14-2ubuntu0.1 | amd64 |
 | libldap-common | 2.6.10+dfsg-0ubuntu0.24.04.1 | all |
 | libldap2:amd64 | 2.6.10+dfsg-0ubuntu0.24.04.1 | amd64 |
 | liblerc4:amd64 | 4.0.0+ds-4ubuntu2 | amd64 |
 | libllvm18:amd64 | 1:18.1.3-1ubuntu1 | amd64 |
 | libllvm19:amd64 | 1:19.1.1-1ubuntu1~24.04.2 | amd64 |
+| libllvm20:amd64 | 1:20.1.2-0ubuntu1~24.04.3 | amd64 |
 | liblmdb0:amd64 | 0.9.31-1build1 | amd64 |
 | liblocale-gettext-perl | 1.07-6ubuntu5 | amd64 |
 | liblsan0:amd64 | 14.2.0-4ubuntu2~24.04.1 | amd64 |
@@ -472,6 +553,17 @@
 | libnss-systemd:amd64 | 255.4-1ubuntu8.17 | amd64 |
 | libntfs-3g89t64:amd64 | 1:2022.10.3-1.2ubuntu3.2 | amd64 |
 | libnuma1:amd64 | 2.0.18-1ubuntu0.24.04.1 | amd64 |
+| libnvidia-cfg1-580:amd64 | 580.178.04-0ubuntu0.24.04.1 | amd64 |
+| libnvidia-common-580 | 580.178.04-0ubuntu0.24.04.1 | all |
+| libnvidia-compute-580:amd64 | 580.178.04-0ubuntu0.24.04.1 | amd64 |
+| libnvidia-container-tools | 1.20.1-1 | amd64 |
+| libnvidia-container1:amd64 | 1.20.1-1 | amd64 |
+| libnvidia-decode-580:amd64 | 580.178.04-0ubuntu0.24.04.1 | amd64 |
+| libnvidia-egl-wayland1:amd64 | 1:1.1.19-0ubuntu1 | amd64 |
+| libnvidia-encode-580:amd64 | 580.178.04-0ubuntu0.24.04.1 | amd64 |
+| libnvidia-extra-580:amd64 | 580.178.04-0ubuntu0.24.04.1 | amd64 |
+| libnvidia-fbc1-580:amd64 | 580.178.04-0ubuntu0.24.04.1 | amd64 |
+| libnvidia-gl-580:amd64 | 580.178.04-0ubuntu0.24.04.1 | amd64 |
 | libnvme1t64 | 1.8-3ubuntu1 | amd64 |
 | libonig5:amd64 | 6.9.9-1build1 | amd64 |
 | libopeniscsiusr | 2.1.9-3ubuntu5.4 | amd64 |
@@ -483,12 +575,18 @@
 | libpam-runtime | 1.5.3-5ubuntu5.7 | all |
 | libpam-systemd:amd64 | 255.4-1ubuntu8.17 | amd64 |
 | libpam0g:amd64 | 1.5.3-5ubuntu5.7 | amd64 |
+| libpango-1.0-0:amd64 | 1.52.1+ds-1build1 | amd64 |
+| libpangocairo-1.0-0:amd64 | 1.52.1+ds-1build1 | amd64 |
+| libpangoft2-1.0-0:amd64 | 1.52.1+ds-1build1 | amd64 |
 | libparted2t64:amd64 | 3.6-4build1 | amd64 |
 | libpcap0.8t64:amd64 | 1.10.4-4.1ubuntu3.1 | amd64 |
 | libpci3:amd64 | 1:3.10.0-2build1 | amd64 |
+| libpciaccess0:amd64 | 0.17-3ubuntu0.24.04.3 | amd64 |
 | libpcre2-8-0:amd64 | 10.42-4ubuntu2.1 | amd64 |
 | libperl5.38t64:amd64 | 5.38.2-3.2ubuntu0.6 | amd64 |
 | libpipeline1:amd64 | 1.5.7-2 | amd64 |
+| libpixman-1-0:amd64 | 0.42.2-1build1 | amd64 |
+| libpkgconf3:amd64 | 1.8.1-2build1 | amd64 |
 | libplymouth5:amd64 | 24.004.60-1ubuntu7.2 | amd64 |
 | libpmem1:amd64 | 1.13.1-1.1ubuntu2 | amd64 |
 | libpmemobj1:amd64 | 1.13.1-1.1ubuntu2 | amd64 |
@@ -511,6 +609,8 @@
 | librdmacm1t64:amd64 | 50.0-2ubuntu0.2 | amd64 |
 | libreadline8t64:amd64 | 8.2-4build1 | amd64 |
 | libreiserfscore0t64 | 1:3.6.27-7.1build1 | amd64 |
+| librsvg2-2:amd64 | 2.58.0+dfsg-1build1 | amd64 |
+| librsvg2-common:amd64 | 2.58.0+dfsg-1build1 | amd64 |
 | librtmp1:amd64 | 2.4+20151223.gitfa8646d.1-2build7 | amd64 |
 | libsasl2-2:amd64 | 2.1.28+dfsg1-5ubuntu3.1 | amd64 |
 | libsasl2-modules-db:amd64 | 2.1.28+dfsg1-5ubuntu3.1 | amd64 |
@@ -527,6 +627,8 @@
 | libsharpyuv0:amd64 | 1.3.2-0.4build3 | amd64 |
 | libsigsegv2:amd64 | 2.14-1ubuntu2 | amd64 |
 | libslang2:amd64 | 2.3.3-3build2 | amd64 |
+| libslirp0:amd64 | 4.7.0-1ubuntu3.1 | amd64 |
+| libsm6:amd64 | 2:1.2.3-1build3 | amd64 |
 | libsmartcols1:amd64 | 2.39.3-9ubuntu6.6 | amd64 |
 | libsodium23:amd64 | 1.0.18-1ubuntu0.24.04.1 | amd64 |
 | libsort-naturally-perl | 1.03-4 | all |
@@ -537,6 +639,7 @@
 | libstdc++-13-dev:amd64 | 13.3.0-6ubuntu2~24.04.1 | amd64 |
 | libstdc++6:amd64 | 14.2.0-4ubuntu2~24.04.1 | amd64 |
 | libstemmer0d:amd64 | 2.2.0-4build1 | amd64 |
+| libsubid4:amd64 | 1:4.13+dfsg1-4ubuntu3.2 | amd64 |
 | libsystemd-shared:amd64 | 255.4-1ubuntu8.17 | amd64 |
 | libsystemd0:amd64 | 255.4-1ubuntu8.17 | amd64 |
 | libtasn1-6:amd64 | 4.19.0-3ubuntu0.24.04.2 | amd64 |
@@ -544,6 +647,8 @@
 | libtext-charwidth-perl:amd64 | 0.04-11build3 | amd64 |
 | libtext-iconv-perl:amd64 | 1.7-8build3 | amd64 |
 | libtext-wrapi18n-perl | 0.06-10 | all |
+| libthai-data | 0.1.29-2build1 | all |
+| libthai0:amd64 | 0.1.29-2build1 | amd64 |
 | libtiff6:amd64 | 4.5.1+git230720-4ubuntu2.5 | amd64 |
 | libtinfo6:amd64 | 6.4+20240113-1ubuntu2.2 | amd64 |
 | libtirpc-common | 1.3.4+ds-1.1build1 | all |
@@ -562,23 +667,56 @@
 | libutempter0:amd64 | 1.2.1-3build1 | amd64 |
 | libuuid1:amd64 | 2.39.3-9ubuntu6.6 | amd64 |
 | libuv1t64:amd64 | 1.48.0-1.1build1 | amd64 |
+| libvdpau1:amd64 | 1.5-2build1 | amd64 |
+| libvulkan1:amd64 | 1.3.275.0-1build1 | amd64 |
+| libwayland-client0:amd64 | 1.22.0-2.1build1 | amd64 |
+| libwayland-cursor0:amd64 | 1.22.0-2.1build1 | amd64 |
+| libwayland-egl1:amd64 | 1.22.0-2.1build1 | amd64 |
+| libwayland-server0:amd64 | 1.22.0-2.1build1 | amd64 |
 | libwebp7:amd64 | 1.3.2-0.4build3 | amd64 |
 | libwrap0:amd64 | 7.6.q-33 | amd64 |
 | libx11-6:amd64 | 2:1.8.7-1build1 | amd64 |
 | libx11-data | 2:1.8.7-1build1 | all |
+| libx11-xcb1:amd64 | 2:1.8.7-1build1 | amd64 |
 | libxau6:amd64 | 1:1.0.9-1build6 | amd64 |
+| libxaw7:amd64 | 2:1.0.14-1build2 | amd64 |
+| libxcb-dri3-0:amd64 | 1.15-1ubuntu2 | amd64 |
+| libxcb-glx0:amd64 | 1.15-1ubuntu2 | amd64 |
+| libxcb-present0:amd64 | 1.15-1ubuntu2 | amd64 |
+| libxcb-randr0:amd64 | 1.15-1ubuntu2 | amd64 |
+| libxcb-render0:amd64 | 1.15-1ubuntu2 | amd64 |
+| libxcb-shm0:amd64 | 1.15-1ubuntu2 | amd64 |
+| libxcb-sync1:amd64 | 1.15-1ubuntu2 | amd64 |
+| libxcb-xfixes0:amd64 | 1.15-1ubuntu2 | amd64 |
 | libxcb1:amd64 | 1.15-1ubuntu2 | amd64 |
+| libxcomposite1:amd64 | 1:0.4.5-1build3 | amd64 |
+| libxcursor1:amd64 | 1:1.2.1-1build1 | amd64 |
+| libxcvt0:amd64 | 0.1.2-1build1 | amd64 |
+| libxdamage1:amd64 | 1:1.1.6-1build1 | amd64 |
 | libxdmcp6:amd64 | 1:1.1.3-0ubuntu6 | amd64 |
 | libxext6:amd64 | 2:1.3.4-1build2 | amd64 |
+| libxfixes3:amd64 | 1:6.0.0-2build1 | amd64 |
+| libxfont2:amd64 | 1:2.0.6-1+deb13u1build0.24.04.2 | amd64 |
+| libxi6:amd64 | 2:1.8.1-1build1 | amd64 |
+| libxinerama1:amd64 | 2:1.1.4-3build1 | amd64 |
 | libxkbcommon0:amd64 | 1.6.0-1build1 | amd64 |
+| libxkbfile1:amd64 | 1:1.1.0-1build4 | amd64 |
 | libxml2:amd64 | 2.9.14+dfsg-1.3ubuntu3.9 | amd64 |
 | libxmlb2:amd64 | 0.3.24-1~ubuntu0.24.04.1 | amd64 |
 | libxmlsec1t64-openssl:amd64 | 1.2.39-5build2 | amd64 |
 | libxmlsec1t64:amd64 | 1.2.39-5build2 | amd64 |
+| libxmu6:amd64 | 2:1.1.3-3build2 | amd64 |
 | libxmuu1:amd64 | 2:1.1.3-3build2 | amd64 |
+| libxnvctrl0:amd64 | 570.148.08-0ubuntu1 | amd64 |
 | libxpm4:amd64 | 1:3.5.17-1ubuntu0.24.04.1 | amd64 |
+| libxrandr2:amd64 | 2:1.5.2-2build1 | amd64 |
+| libxrender1:amd64 | 1:0.9.10-1.1build1 | amd64 |
+| libxshmfence1:amd64 | 1.3-1build5 | amd64 |
 | libxslt1.1:amd64 | 1.1.39-0exp1ubuntu0.24.04.3 | amd64 |
+| libxt6t64:amd64 | 1:1.2.1-1.2build1 | amd64 |
 | libxtables12:amd64 | 1.8.10-3ubuntu2 | amd64 |
+| libxtst6:amd64 | 2:1.2.3-1.1build1 | amd64 |
+| libxxf86vm1:amd64 | 1:1.1.4-1build4 | amd64 |
 | libxxhash0:amd64 | 0.8.2-2build1 | amd64 |
 | libyaml-0-2:amd64 | 0.2.5-1build1 | amd64 |
 | libzstd1:amd64 | 1.5.5+dfsg2-2build1.1 | amd64 |
@@ -621,6 +759,9 @@
 | media-types | 10.1.0 | all |
 | mercurial | 6.7.2-1ubuntu2.2 | amd64 |
 | mercurial-common | 6.7.2-1ubuntu2.2 | all |
+| mesa-libgallium:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
+| mesa-vdpau-drivers:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
+| mesa-vulkan-drivers:amd64 | 25.2.8-0ubuntu0.24.04.3 | amd64 |
 | mokutil | 0.6.0-2build3 | amd64 |
 | motd-news-config | 13ubuntu10.5 | all |
 | mount | 2.39.3-9ubuntu6.6 | amd64 |
@@ -631,6 +772,7 @@
 | ncurses-bin | 6.4+20240113-1ubuntu2.2 | amd64 |
 | ncurses-term | 6.4+20240113-1ubuntu2.2 | all |
 | needrestart | 3.6-7ubuntu4.5 | all |
+| netavark | 1.4.0-4 | amd64 |
 | netbase | 6.4 | all |
 | netcat-openbsd | 1.226-1ubuntu2 | amd64 |
 | netplan-generator | 1.1.2-8ubuntu1~24.04.3 | amd64 |
@@ -639,7 +781,21 @@
 | nftables | 1.0.9-1ubuntu0.1 | amd64 |
 | ntfs-3g | 1:2022.10.3-1.2ubuntu3.2 | amd64 |
 | numactl | 2.0.18-1ubuntu0.24.04.1 | amd64 |
+| nvidia-compute-utils-580 | 580.178.04-0ubuntu0.24.04.1 | amd64 |
+| nvidia-container-toolkit | 1.20.1-1 | amd64 |
+| nvidia-container-toolkit-base | 1.20.1-1 | amd64 |
+| nvidia-dkms-580 | 580.178.04-0ubuntu0.24.04.1 | amd64 |
+| nvidia-driver-570 | 570.211.01-0ubuntu1.24.04.1 | amd64 |
+| nvidia-driver-580 | 580.178.04-0ubuntu0.24.04.1 | amd64 |
+| nvidia-driver-local-repo-ubuntu2404-570.148.08 | 1.0-1 | amd64 |
+| nvidia-firmware-580-580.178.04 | 580.178.04-0ubuntu0.24.04.1 | amd64 |
+| nvidia-kernel-common-580 | 580.178.04-0ubuntu0.24.04.1 | amd64 |
+| nvidia-kernel-source-580 | 580.178.04-0ubuntu0.24.04.1 | amd64 |
+| nvidia-prime | 0.8.17.2 | all |
+| nvidia-settings | 570.148.08-0ubuntu1 | amd64 |
+| nvidia-utils-580 | 580.178.04-0ubuntu0.24.04.1 | amd64 |
 | nvme-cli | 2.8-1ubuntu0.1 | amd64 |
+| ocl-icd-libopencl1:amd64 | 2.3.2-1build1 | amd64 |
 | open-iscsi | 2.1.9-3ubuntu5.4 | amd64 |
 | open-vm-tools | 2:13.0.10-0ubuntu0.24.04.1 | amd64 |
 | openssh-client | 1:9.6p1-3ubuntu13.19 | amd64 |
@@ -653,6 +809,7 @@
 | packages-microsoft-prod | 1.2-ubuntu24.04 | all |
 | parallel | 20231122+ds-1 | all |
 | parted | 3.6-4build1 | amd64 |
+| passt | 0.0~git20240220.1e6f92b-1 | amd64 |
 | passwd | 1:4.13+dfsg1-4ubuntu3.2 | amd64 |
 | pastebinit | 1.6.2-1 | all |
 | patch | 2.7.6-7build3 | amd64 |
@@ -663,8 +820,13 @@
 | perl-modules-5.38 | 5.38.2-3.2ubuntu0.6 | all |
 | pigz | 2.8-1 | amd64 |
 | pinentry-curses | 1.2.1-3ubuntu5 | amd64 |
+| pkexec | 124-2ubuntu1.24.04.4 | amd64 |
+| pkg-config:amd64 | 1.8.1-2build1 | amd64 |
+| pkgconf-bin | 1.8.1-2build1 | amd64 |
+| pkgconf:amd64 | 1.8.1-2build1 | amd64 |
 | plymouth | 24.004.60-1ubuntu7.2 | amd64 |
 | plymouth-theme-ubuntu-text | 24.004.60-1ubuntu7.2 | amd64 |
+| podman | 4.9.3+ds1-1ubuntu0.2 | amd64 |
 | polkitd | 124-2ubuntu1.24.04.4 | amd64 |
 | pollinate | 4.33-3.1ubuntu1.3 | all |
 | powermgmt-base | 1.37ubuntu0.1 | all |
@@ -760,6 +922,7 @@
 | python3-venv | 3.12.3-0ubuntu2.1 | amd64 |
 | python3-wadllib | 1.3.6-5 | all |
 | python3-wheel | 0.42.0-2 | all |
+| python3-xkit | 0.5.0ubuntu6 | all |
 | python3-yaml | 6.0.1-2build2 | amd64 |
 | python3-zope.interface | 6.1-1build1 | amd64 |
 | python3-zstandard | 0.22.0-1build1 | amd64 |
@@ -775,14 +938,17 @@
 | run-one | 1.17-0ubuntu2 | all |
 | sbsigntool | 0.9.4-3.1ubuntu7 | amd64 |
 | screen | 4.9.1-1ubuntu1 | amd64 |
+| screen-resolution-extra | 0.18.3ubuntu0.24.04.1 | all |
 | secureboot-db | 1.9build1 | amd64 |
 | sed | 4.9-2ubuntu0.24.04.1 | amd64 |
 | sensible-utils | 0.0.22 | all |
+| session-migration | 0.3.9build1 | amd64 |
 | sg3-utils | 1.46-3ubuntu4 | amd64 |
 | sg3-utils-udev | 1.46-3ubuntu4 | all |
 | sgml-base | 1.31 | all |
 | shared-mime-info | 2.4-4 | amd64 |
 | shim-signed | 1.58+15.8-0ubuntu1 | amd64 |
+| slirp4netns | 1.2.1-1build2 | amd64 |
 | snapd | 2.76.3+ubuntu24.04 | amd64 |
 | software-properties-common | 0.99.49.4 | all |
 | sosreport | 4.10.2-0ubuntu0~24.04.1 | amd64 |
@@ -810,6 +976,7 @@
 | ubuntu-kernel-accessories | 1.539.2 | amd64 |
 | ubuntu-keyring | 2023.11.28.1 | all |
 | ubuntu-minimal | 1.539.2 | amd64 |
+| ubuntu-mono | 24.04-0ubuntu1 | all |
 | ubuntu-pro-client | 37.2ubuntu~24.04.1 | amd64 |
 | ubuntu-pro-client-l10n | 37.2ubuntu~24.04.1 | amd64 |
 | ubuntu-release-upgrader-core | 1:24.04.29 | all |
@@ -818,6 +985,7 @@
 | ucf | 3.0043+nmu1 | all |
 | udev | 255.4-1ubuntu8.17 | amd64 |
 | ufw | 0.36.2-6 | all |
+| uidmap | 1:4.13+dfsg1-4ubuntu3.2 | amd64 |
 | unattended-upgrades | 2.9.1+nmu4ubuntu1 | all |
 | update-manager-core | 1:24.04.12 | all |
 | update-notifier-common | 3.192.68.2 | all |
@@ -825,6 +993,7 @@
 | usbutils | 1:017-3build1 | amd64 |
 | util-linux | 2.39.3-9ubuntu6.6 | amd64 |
 | uuid-runtime | 2.39.3-9ubuntu6.6 | amd64 |
+| vdpau-driver-all:amd64 | 1.5-2build1 | amd64 |
 | vim | 2:9.1.0016-1ubuntu7.20 | amd64 |
 | vim-common | 2:9.1.0016-1ubuntu7.20 | all |
 | vim-runtime | 2:9.1.0016-1ubuntu7.20 | all |
@@ -832,11 +1001,20 @@
 | wget | 1.21.4-1ubuntu4.5 | amd64 |
 | whiptail | 0.52.24-2ubuntu2 | amd64 |
 | wireless-regdb | 2026.05.30-0ubuntu1~24.04.1 | all |
+| x11-common | 1:7.7+23ubuntu3 | all |
+| x11-xkb-utils | 7.7+8build2 | amd64 |
 | xauth | 1:1.1.2-1build1 | amd64 |
+| xcvt | 0.1.2-1build1 | amd64 |
 | xdg-user-dirs | 0.18-1build1 | amd64 |
+| xfonts-base | 1:1.0.5+nmu1 | all |
+| xfonts-encodings | 1:1.0.5-0ubuntu2 | all |
+| xfonts-utils | 1:7.7+6build3 | amd64 |
 | xfsprogs | 6.6.0-1ubuntu2.1 | amd64 |
 | xkb-data | 2.41-2ubuntu1.1 | all |
 | xml-core | 0.19 | all |
+| xserver-common | 2:21.1.12-1ubuntu1.8 | all |
+| xserver-xorg-core | 2:21.1.12-1ubuntu1.8 | amd64 |
+| xserver-xorg-video-nvidia-580 | 580.178.04-0ubuntu0.24.04.1 | amd64 |
 | xxd | 2:9.1.0016-1ubuntu7.20 | amd64 |
 | xz-utils | 5.6.1+really5.4.5-1ubuntu0.3 | amd64 |
 | zerofree | 1.1.1-1build5 | amd64 |
