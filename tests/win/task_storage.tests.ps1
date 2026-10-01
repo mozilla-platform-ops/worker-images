@@ -1,14 +1,15 @@
-Describe "C: task storage" {
-    It "Configures task and cache paths on C:" {
+Describe "Task storage configuration" {
+    It "Configures direct task and cache paths" {
         $config = Get-Content 'C:\worker-runner\runner.yml' -Raw | ConvertFrom-Yaml
         $workVolume = (Get-ItemProperty 'HKLM:\SOFTWARE\Mozilla\ronin_puppet' -ErrorAction Stop).work_volume
-        $tasksDir = if ($workVolume -eq 1) { 'C:\tasks' } else { 'C:\Users' }
+        $tasksDir = if ($workVolume -eq 1) { 'D:\tasks' } else { 'C:\Users' }
+        $drive = if ($workVolume -eq 1) { 'D:' } else { 'C:' }
         $config.workerConfig.tasksDir | Should -BeExactly $tasksDir
         if ($workVolume -eq 1) {
             'C:\ProgramData\PuppetLabs\ronin\configure_work_volume.ps1' | Should -Exist
         }
-        $config.workerConfig.cachesDir | Should -BeExactly 'C:\caches'
-        $config.workerConfig.downloadsDir | Should -BeExactly 'C:\downloads'
+        $config.workerConfig.cachesDir | Should -BeExactly "$drive\caches"
+        $config.workerConfig.downloadsDir | Should -BeExactly "$drive\downloads"
         Get-ItemPropertyValue 'HKLM:\SOFTWARE\Mozilla\ronin_puppet' -Name task_drive | Should -BeExactly 'C:'
     }
 
