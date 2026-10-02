@@ -19,7 +19,7 @@ azure:
     - northcentralus
     - uksouth
 vm:
-  spot: true # Temporary until the East US dedicated quota increase is approved.
+  spot: true
   puppet_version: 8.10.0
   openvox_version: "default"
   git_version: "default"
