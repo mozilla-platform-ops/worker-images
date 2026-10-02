@@ -38,10 +38,6 @@ def _load_module():
     )
 
 
-HG_REPO = "https://hg.mozilla.org/mozilla-central"
-GIT_REPO = "https://github.com/mozilla-firefox/firefox"
-
-
 class TestIntegrationTestTransform(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -111,19 +107,30 @@ class TestIntegrationTestTransform(unittest.TestCase):
         self.assertEqual(result[0]["task"]["provisionerId"], "gecko-1")
         self.assertEqual(result[0]["task"]["workerType"], "b-win2022-alpha")
 
+        self.mod.get_worker_pool_images = lambda: {
+            "gecko-1/b-win2022-alpha": {"win2022_64_2009_alpha"},
+            "gecko-1/b-win2025-alpha": {"win2025_64_24h2_alpha"},
+        }
+        DummyConfig.params = {"images": ["win2025_64_24h2_alpha"]}
+        task = {"task": {"provisionerId": "gecko-3", "workerType": "b-win2022"}}
+
+        result = list(self.mod.change_worker_pool_to_alpha(DummyConfig(), [task]))
+
+        self.assertEqual(result[0]["task"]["workerType"], "b-win2025-alpha")
+
     def test_restore_gecko_revision_env_injects_revs_for_gecko_tasks(self):
         self.mod._fetch_gecko_revision_env = lambda: {
-            HG_REPO: {"GECKO_HEAD_REV": "deadbeefcafe"},
-            GIT_REPO: {"GECKO_HEAD_REV": "0123456789ab"},
+            "hg": {"GECKO_HEAD_REV": "deadbeefcafe"},
+            "git": {"GECKO_HEAD_REV": "0123456789ab"},
         }
 
         gecko_task = {
             "attributes": {"replicate": "gecko"},
-            "task": {"payload": {"env": {"FOO": "bar", "GECKO_HEAD_REPOSITORY": HG_REPO}}},
+            "task": {"payload": {"env": {"FOO": "bar", "GECKO_HEAD_REPOSITORY": "hg"}}},
         }
         git_task = {
             "attributes": {"replicate": "gecko"},
-            "task": {"payload": {"env": {"GECKO_HEAD_REPOSITORY": GIT_REPO}}},
+            "task": {"payload": {"env": {"GECKO_HEAD_REPOSITORY": "git"}}},
         }
         non_gecko_task = {
             "attributes": {"replicate": "other"},
@@ -148,19 +155,12 @@ class TestIntegrationTestTransform(unittest.TestCase):
 
     def test_restore_gecko_revision_env_does_not_overwrite_existing(self):
         self.mod._fetch_gecko_revision_env = lambda: {
-            HG_REPO: {"GECKO_HEAD_REV": "newrev"},
+            "hg": {"GECKO_HEAD_REV": "newrev"},
         }
 
         task = {
             "attributes": {"replicate": "gecko"},
-            "task": {
-                "payload": {
-                    "env": {
-                        "GECKO_HEAD_REPOSITORY": HG_REPO,
-                        "GECKO_HEAD_REV": "existingrev",
-                    }
-                }
-            },
+            "task": {"payload": {"env": {"GECKO_HEAD_REPOSITORY": "hg", "GECKO_HEAD_REV": "existingrev"}}},
         }
 
         result = list(self.mod.restore_gecko_revision_env(None, [task]))
