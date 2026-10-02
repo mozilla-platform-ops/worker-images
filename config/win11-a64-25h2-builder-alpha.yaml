@@ -17,6 +17,8 @@ azure:
     - centralus
     - eastus2
     - northcentralus
+    - westus2
+    - westus3
 vm:
   puppet_version: 8.10.0
   git_version: "default"
