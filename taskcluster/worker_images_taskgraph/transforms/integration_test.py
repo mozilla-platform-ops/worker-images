@@ -15,7 +15,7 @@ GECKO_OS_INTEGRATION_INDEX = (
 
 
 @cache
-def _fetch_gecko_revision_env() -> dict[str, str]:
+def _fetch_gecko_revision_env() -> dict[str, dict[str, str]]:
     """Return the gecko revision env vars from the mc os-integration decision.
 
     `mozilla_taskgraph.transforms.replicate` strips every `*_REV` env var from
@@ -31,13 +31,14 @@ def _fetch_gecko_revision_env() -> dict[str, str]:
         logger.warning(f"could not fetch gecko os-integration decision: {e}")
         return {}
 
+    revs_by_repo = {}
     for task in task_graph.values():
         env = task.get("task", {}).get("payload", {}).get("env", {})
         revs = {k: v for k, v in env.items() if k.endswith("_REV")}
         if revs:
-            return revs
+            revs_by_repo.setdefault(env.get("GECKO_HEAD_REPOSITORY"), revs)
 
-    return {}
+    return revs_by_repo
 
 
 def normalize_image_name(image_name: str) -> str:
@@ -55,6 +56,9 @@ def pool_matches_images(pool_images: set[str], requested_images: set[str]) -> bo
 
 
 def get_worker_pool_variant(worker_type: str) -> str | None:
+    if worker_type in {"b-win2022", "b-win2025"}:
+        return "b-win"
+
     parts = worker_type.split("-")
 
     if len(parts) == 3 and parts[0] == "win11" and parts[1] == "64":
@@ -114,9 +118,10 @@ def change_worker_pool_to_alpha(config, tasks):
     requested_images = get_normalized_images(list(config.params.get("images") or []))
 
     for task in tasks:
-        provisioner_id = task["task"]["provisionerId"]
+        old_provisioner_id = task["task"]["provisionerId"]
+        provisioner_id = "gecko-1" if old_provisioner_id == "gecko-3" else old_provisioner_id
         worker_type = task["task"]["workerType"]
-        old_pool = f"{provisioner_id}/{worker_type}"
+        old_pool = f"{old_provisioner_id}/{worker_type}"
         new_worker_type = get_image_compatible_alpha_worker_type(
             provisioner_id,
             worker_type,
@@ -131,6 +136,7 @@ def change_worker_pool_to_alpha(config, tasks):
             continue
 
         new_pool = f"{provisioner_id}/{new_worker_type}"
+        task["task"]["provisionerId"] = provisioner_id
         task["task"]["workerType"] = new_worker_type
         # Pool-bound scopes (eg. generic-worker:os-group:<pool>/<group>)
         # reference the original prod pool id. Rewrite them to the alpha
@@ -146,16 +152,13 @@ def change_worker_pool_to_alpha(config, tasks):
 @transforms.add
 def restore_gecko_revision_env(config, tasks):
     """Re-inject `*_REV` env vars stripped by mozilla_taskgraph's replicate."""
-    revs = None
     for task in tasks:
         if task.get("attributes", {}).get("replicate") != "gecko":
             yield task
             continue
 
-        if revs is None:
-            revs = _fetch_gecko_revision_env()
-
         env = task["task"].setdefault("payload", {}).setdefault("env", {})
+        revs = _fetch_gecko_revision_env().get(env.get("GECKO_HEAD_REPOSITORY"), {})
         for k, v in revs.items():
             env.setdefault(k, v)
         yield task
