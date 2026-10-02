@@ -22,6 +22,7 @@ azure:
     - westus2
     - westus3
 vm:
+  spot: true # Temporary until the East US dedicated quota increase is approved.
   puppet_version: 8.10.0
   git_version: "default"
   openvox_version: "default"
