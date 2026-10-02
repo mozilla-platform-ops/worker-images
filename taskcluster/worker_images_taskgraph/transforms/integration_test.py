@@ -13,16 +13,20 @@ GECKO_OS_INTEGRATION_INDEX = (
     "gecko.v2.mozilla-central.latest.taskgraph.decision-os-integration"
 )
 
+ALPHA_PROVISIONERS = {"gecko-3": "gecko-1"}
+
 
 @cache
-def _fetch_gecko_revision_env() -> dict[str, str]:
-    """Return the gecko revision env vars from the mc os-integration decision.
+def _fetch_gecko_revision_env() -> dict[str, dict[str, str]]:
+    """Return the gecko revision env vars from the mc os-integration decision,
+    keyed by `GECKO_HEAD_REPOSITORY`.
 
     `mozilla_taskgraph.transforms.replicate` strips every `*_REV` env var from
-    replicated tasks. `run-task-hg` then can't find the revision to check out
+    replicated tasks. `run-task` then can't find the revision to check out
     and refuses with "task should be defined in terms of non-symbolic
     revision". Re-fetch them from the decision task's `task-graph.json` so
     replicated tasks check out the same gecko revision the decision ran on.
+    The graph mixes hg and git checkouts, each with its own revision.
     """
     try:
         decision_task_id = find_task_id(GECKO_OS_INTEGRATION_INDEX)
@@ -31,13 +35,14 @@ def _fetch_gecko_revision_env() -> dict[str, str]:
         logger.warning(f"could not fetch gecko os-integration decision: {e}")
         return {}
 
+    revs_by_repo = {}
     for task in task_graph.values():
         env = task.get("task", {}).get("payload", {}).get("env", {})
         revs = {k: v for k, v in env.items() if k.endswith("_REV")}
-        if revs:
-            return revs
+        if revs and "GECKO_HEAD_REPOSITORY" in env:
+            revs_by_repo.setdefault(env["GECKO_HEAD_REPOSITORY"], revs)
 
-    return {}
+    return revs_by_repo
 
 
 def normalize_image_name(image_name: str) -> str:
@@ -114,9 +119,10 @@ def change_worker_pool_to_alpha(config, tasks):
     requested_images = get_normalized_images(list(config.params.get("images") or []))
 
     for task in tasks:
-        provisioner_id = task["task"]["provisionerId"]
+        old_provisioner_id = task["task"]["provisionerId"]
+        provisioner_id = ALPHA_PROVISIONERS.get(old_provisioner_id, old_provisioner_id)
         worker_type = task["task"]["workerType"]
-        old_pool = f"{provisioner_id}/{worker_type}"
+        old_pool = f"{old_provisioner_id}/{worker_type}"
         new_worker_type = get_image_compatible_alpha_worker_type(
             provisioner_id,
             worker_type,
@@ -131,6 +137,7 @@ def change_worker_pool_to_alpha(config, tasks):
             continue
 
         new_pool = f"{provisioner_id}/{new_worker_type}"
+        task["task"]["provisionerId"] = provisioner_id
         task["task"]["workerType"] = new_worker_type
         # Pool-bound scopes (eg. generic-worker:os-group:<pool>/<group>)
         # reference the original prod pool id. Rewrite them to the alpha
@@ -146,16 +153,13 @@ def change_worker_pool_to_alpha(config, tasks):
 @transforms.add
 def restore_gecko_revision_env(config, tasks):
     """Re-inject `*_REV` env vars stripped by mozilla_taskgraph's replicate."""
-    revs = None
     for task in tasks:
         if task.get("attributes", {}).get("replicate") != "gecko":
             yield task
             continue
 
-        if revs is None:
-            revs = _fetch_gecko_revision_env()
-
         env = task["task"].setdefault("payload", {}).setdefault("env", {})
+        revs = _fetch_gecko_revision_env().get(env.get("GECKO_HEAD_REPOSITORY"), {})
         for k, v in revs.items():
             env.setdefault(k, v)
         yield task
