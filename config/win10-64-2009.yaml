@@ -16,7 +16,6 @@ vm:
   puppet_version: "default"
   git_version: "default"
   openvox_version: "default"
-  spot: true
   size: Standard_F8alds_v7
   tags:
     base_image: win10642009azure
