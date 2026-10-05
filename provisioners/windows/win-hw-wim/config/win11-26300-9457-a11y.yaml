@@ -1,5 +1,5 @@
 ---
-# Plain single-edition WIM for the a11y-win pool; provisioning happens at deploy.
+# Plain single-edition WIM for the win11-26h2-a11y pool; provisioning happens at deploy.
 base:
   wim: win11-26300-9457-base-install.wim
   iso: Windows11_Client_x64_en-us_26300_9457.iso

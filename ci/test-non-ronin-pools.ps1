@@ -35,7 +35,7 @@ function Assert-Fails([scriptblock]$Action) {
     if (-not $failed) { throw 'Expected failure.' }
 }
 $legacy = @{ name = 'legacy'; nodes = @('nuc13-001') }
-$plain = @{ name = 'a11y-win'; nodes = @('a11y-win'); ronin = $false; bootstrap_script = 'a11y-win.ps1'; image = 'win11-a11y'; secret_date = '10-05-2026' }
+$plain = @{ name = 'win11-26h2-a11y'; nodes = @('a11y-win'); ronin = $false; bootstrap_script = 'a11y-win.ps1'; image = 'win11-a11y'; secret_date = '10-05-2026' }
 $pools = @($legacy, $plain)
 if ($null -ne (Get-NonRoninDeploymentPool $pools 'nuc13-001')) { throw 'Legacy pools must bypass the new selector.' }
 if ((Get-NonRoninDeploymentPool $pools 'a11y-win').ronin -ne $false) { throw 'Non-Ronin flag was lost.' }
@@ -79,7 +79,7 @@ try {
     # Run the real answer-file branch and verify no Ronin vault seed remains.
     $unattendXml = [xml][IO.File]::ReadAllText((Join-Path $root 'provisioners/windows/MDC1Windows/base-autounattend.xml'))
     $useRonin = $false
-    $WorkerPool = 'a11y-win'
+    $WorkerPool = 'win11-26h2-a11y'
     $workerImagesRevision = $revision
     $secret_YAML = @{ win_kms_server = 'kms.example.com'; win_kms_key = 'AAAAA-BBBBB-CCCCC-DDDDD-EEEEE' }
     $branch = $ast.Find({ param($node)
@@ -103,7 +103,7 @@ try {
 # zero but leaves Windows unlicensed. No installer, registry, or file deletion runs.
 $bootstrap = Join-Path $root 'provisioners/windows/MDC1Windows/non-ronin/a11y-win.ps1'
 $code = [IO.File]::ReadAllText($bootstrap)
-$script:configJson = '{"pool":"a11y-win","kms_server":"kms.example.com:1688","kms_key":"AAAAA-BBBBB-CCCCC-DDDDD-EEEEE","worker_images_revision":"test"}'
+$script:configJson = '{"pool":"win11-26h2-a11y","kms_server":"kms.example.com:1688","kms_key":"AAAAA-BBBBB-CCCCC-DDDDD-EEEEE","worker_images_revision":"test"}'
 function Get-Content { return $script:configJson }
 function cscript.exe {
     $script:kmsCalls += ,@($args)

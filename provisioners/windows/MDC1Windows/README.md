@@ -9,7 +9,7 @@ The existing deployment functions and Ronin pool matching/fallback logic are
 preserved; only explicitly non-Ronin pools use the new helpers. Ronin bootstrap
 still runs at its original point after formatting Windows.
 
-The `a11y-win` pool uses plain Windows media with a single-edition WIM at index
+The `win11-26h2-a11y` pool uses plain Windows media with a single-edition WIM at index
 1. Extract the staged `resources/ISOs/Windows11_Client_x64_en-us_26300_9457.iso`
 using `win-hw-wim/scripts/extract-wim-from-iso.ps1`, inspect its editions with
 `Get-WindowsImage`, and export the required KMS-capable edition using
@@ -35,7 +35,7 @@ the media and update the config as needed. This export retains the ISO's patch
 level and does not run Ronin or Windows Update. At PXE deployment, the pool's
 existing `dev` flag selects the implementation branch.
 
-Stage `secrets\a11y-win-10-05-2026.yaml` on the deployment share with
+Stage `secrets\win11-26h2-a11y-10-05-2026.yaml` on the deployment share with
 `win_adminpw`, `win_kms_server` (hostname, optionally `:1688`), and
 `win_kms_key` (the edition's KMS client setup key). Keep the values out of Git.
 The existing share `secrets\pat.txt` is still needed to fetch pinned scripts.
