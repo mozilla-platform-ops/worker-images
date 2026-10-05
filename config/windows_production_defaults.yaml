@@ -16,6 +16,7 @@ vm:
 images:
   production:
     - win10-64-2009
+    - win11-64-24h2
     - win11-64-25h2
     - win11-a64-25h2-tester
     - win11-a64-25h2-builder
