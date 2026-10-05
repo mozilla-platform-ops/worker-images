@@ -1,22 +1,11 @@
 # Local checks: no Azure calls, mounted media, or Windows servicing.
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-$select = Join-Path $PSScriptRoot 'select-wim-image.ps1'
 function Assert-Fails([scriptblock]$Action) {
     $failed = $false
     try { & $Action | Out-Null } catch { $failed = $true }
     if (-not $failed) { throw 'Expected failure.' }
 }
-function Import-Module { }
-function ConvertFrom-Yaml {
-    return @{ pools = @(@{ name = 'a11y-win'; image = 'win11-26300-9457-a11y' }) }
-}
-if ((& $select -Pool a11y-win -Image win11-24h2-hw) -ne 'win11-26300-9457-a11y') { throw 'Pool did not select its WIM config.' }
-if ((& $select -Pool image-config -Image win11-24h2-hw) -ne 'win11-24h2-hw') { throw 'Existing image selection changed.' }
-Assert-Fails { & $select -Pool unknown -Image win11-24h2-hw }
-Assert-Fails { & $select -Image '../outside' }
-Assert-Fails { & $select -Image missing-config }
-
 # Run the actual stage-selection statement from the orchestrator.
 $tokens = $null; $errors = $null
 $orchestrator = Join-Path $root 'provisioners/windows/win-hw-wim/bin/WinHwWim/New-WinHwWim.ps1'
@@ -101,4 +90,4 @@ try {
     Write-Host $_.ScriptStackTrace
     throw
 } finally { Remove-Item -LiteralPath $scratch -Recurse -Force }
-Write-Host 'WIM pool selection, stage routing, edition export, and existing extraction checks passed.'
+Write-Host 'WIM stage routing, edition export, and existing extraction checks passed.'

@@ -23,17 +23,17 @@ Stage the extracted ISO media under
 accepts `win11-26300-9457-a11y.wim` and its `.sha256` sidecar in that folder.
 The WIM artifact has not been created by adding the pool entry.
 
-To create it with the **Windows HW WIM Build** workflow, use the workflow from
-the implementation branch, select pool `a11y-win`, and set `pipeline_ref` to
-`relops-2612-non-ronin-pools`. The pool's `image` resolves to
+To create it with the **Windows HW WIM Build** workflow, select image
+`win11-26300-9457-a11y` and set `pipeline_ref` to
+`relops-2612-non-ronin-pools` while testing the implementation branch. This uses
 `win-hw-wim/config/win11-26300-9457-a11y.yaml`. Its `wim.plain: true` selects
 ISO extraction and single-edition export, followed by upload to
 `captured/WIMs/win11-26300-9457-a11y/<image>-<buildid>.wim` plus SHA-256.
 The initial edition selection is `Windows 11 Enterprise`; the build fails and
 lists available editions if that name is absent. Confirm the edition against
 the media and update the config as needed. This export retains the ISO's patch
-level and does not run Ronin or Windows Update. The existing `image-config`
-workflow choice keeps the original bake/ISO build selection.
+level and does not run Ronin or Windows Update. At PXE deployment, the pool's
+existing `dev` flag selects the implementation branch.
 
 Stage `secrets\a11y-win-10-05-2026.yaml` on the deployment share with
 `win_adminpw`, `win_kms_server` (hostname, optionally `:1688`), and

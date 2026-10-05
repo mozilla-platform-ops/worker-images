@@ -300,6 +300,11 @@ if ($Stages -contains 'plain') {
     $localSrcIso = Join-Path $work $baseIso
     & $ps 'download-wim.ps1' @('-Blob', "$baseCont/$baseIsoBlob", '-Dest', $localSrcIso, '-Account', $account)
     & $ps 'extract-wim-from-iso.ps1' @('-SourceIso', $localSrcIso, '-OutWim', $goldenWim, '-Edition', $edition)
+    # Use the existing release-notes handoff; plain exports have source provenance,
+    # without a Ronin software inventory.
+    @("# $Image", '', "Source ISO: $baseIso", "Edition: $edition", "Build: $BuildId",
+        'Plain ISO export; provisioning occurs at deployment.') |
+        Set-Content -LiteralPath $sbomMd -Encoding UTF8
 }
 
 # --- Stage: prep --------------------------------------------------------------
