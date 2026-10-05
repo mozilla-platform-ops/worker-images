@@ -245,6 +245,28 @@ function Update-PATSecret {
         Remove-PSDrive -Name Z -Scope Global -Force -ErrorAction SilentlyContinue
     }
 }
+function Get-DeploymentPool {
+    param([Parameter(Mandatory)]$Pools, [Parameter(Mandatory)][string]$Node)
+
+    $matches = @($Pools | Where-Object { @($_.nodes) -contains $Node })
+    if ($matches.Count -ne 1) { throw "Expected one deployment pool for '$Node'; found $($matches.Count)." }
+    $selected = $matches[0]
+    if ($selected.ContainsKey('ronin') -and $selected.ronin -isnot [bool]) {
+        throw "Pool '$($selected.name)': ronin must be a YAML boolean."
+    }
+    if ($selected.ronin -eq $false) {
+        foreach ($field in 'name', 'image', 'secret_date') {
+            if ([string]$selected[$field] -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]*$') {
+                throw "Non-Ronin pool: invalid or missing $field."
+            }
+        }
+        if ([string]$selected.bootstrap_script -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]*\.ps1$') {
+            throw "Pool '$($selected.name)': bootstrap_script must be a script filename under non-ronin/."
+        }
+    }
+    return $selected
+}
+
 function Update-GetBoot {
     param(
         [Parameter(Mandatory)][string]$revision
@@ -261,8 +283,9 @@ function Update-GetBoot {
         Remove-Item $Template_Get_Bootstrap -Force
     }
 
+    $bootstrapScript = if ($pool.ronin -eq $false) { "non-ronin/$($pool.bootstrap_script)" } else { 'Get-Bootstrap.ps1' }
     $bootstrapSplat = @{
-        URI     = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$revision/provisioners/windows/MDC1Windows/Get-Bootstrap.ps1"
+        URI     = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$revision/provisioners/windows/MDC1Windows/$bootstrapScript"
         OutFile = $Template_Get_Bootstrap
     }
     write-host checking
@@ -303,12 +326,12 @@ function Update-GetBoot {
         @{ OldString = "1git_version"; NewString = $git_version }
         @{ OldString = "WIRevisionPlaceholder"; NewString = $revision }
     )
-    $content = Get-Content -Path $Template_Get_Bootstrap
+    $content = Get-Content -Path $Template_Get_Bootstrap -ErrorAction Stop
     foreach ($replacement in $replacements) {
         $content = $content -replace $replacement.OldString, $replacement.NewString
     }
 
-    Set-Content -Path $Get_Bootstrap -Value $content
+    Set-Content -Path $Get_Bootstrap -Value $content -ErrorAction Stop
 }
 
 # Function to partition and format a single disk with both C and D
@@ -705,48 +728,48 @@ finally {
     Remove-PSDrive -Name Z -Scope Global -Force -ErrorAction SilentlyContinue
 }
 $YAML = Convertfrom-Yaml (Get-Content "pools.yml" -raw)
+$pool = Get-DeploymentPool -Pools $YAML.pools -Node $shortname
+$neededImage = $pool.image
+$WorkerPool = $pool.name
+$useRonin = $pool.ronin -ne $false
+$role = $WorkerPool -replace "-", ""
+$src_Organisation = $pool.src_Organisation
+$src_Repository = $pool.src_Repository
+$src_Branch = $pool.src_Branch
+$hash = $pool.hash
+$secret_date = $pool.secret_date
+$puppet_version = $pool.puppet_version
+$openvox_version = $pool.openvox_version
+$git_version = $pool.git_version
+Write-Output "The associated image for $shortname is: $neededImage (Ronin: $useRonin)"
+if ($pool.dev -and (-not $devlopment_script)) {
+    Write-Host "Dev mode is enabled."
+    Deploy-OS-Dev -Password $deploymentaccess -branch $pool.dev
+    exit
+}
 
-foreach ($pool in $YAML.pools) {
-    foreach ($node in $pool.nodes) {
-        if ($node -match $shortname) {
-            $neededImage = $pool.image
-            $WorkerPool = $pool.name
-            $role = $WorkerPool -replace "-", ""
-            $src_Organisation = $pool.src_Organisation
-            $src_Repository = $pool.src_Repository
-            $src_Branch = $pool.src_Branch
-            $hash = $pool.hash
-            $secret_date = $pool.secret_date
-            $puppet_version = $pool.puppet_version
-            $openvox_version = $pool.openvox_version
-            $git_version = $pool.git_version
-            Write-Output "The associated image for $shortname is: $neededImage"
-            if ($pool.dev -and (-not $devlopment_script)) {
-                Write-Host "Dev mode is enabled."
-                Deploy-OS-Dev -Password $deploymentaccess -branch $pool.dev
-                exit
+# Check a new non-Ronin pool's staged media and secrets before touching its disks.
+if (-not $useRonin) {
+    Mount-ZDrive
+    try {
+        foreach ($path in @("Z:\Images\$neededImage", "Z:\secrets\$WorkerPool-$secret_date.yaml")) {
+            if (-not (Test-Path -LiteralPath $path)) { throw "Non-Ronin deployment source missing: $path" }
+        }
+        $sourceWim = "Z:\Images\$neededImage\$neededImage.wim"
+        if (Test-Path -LiteralPath "Z:\Images\$neededImage\setup.exe") {
+            if (-not (Test-Path -LiteralPath "Z:\Images\$neededImage\sources\install.wim")) {
+                throw 'Non-Ronin Setup media must contain the exported sources\install.wim.'
             }
-            $found = $true
-            break
         }
-        if ($found) {
-            break
+        elseif (-not (Test-Path -LiteralPath $sourceWim) -or -not (Test-Path -LiteralPath "$sourceWim.sha256")) {
+            throw 'Non-Ronin direct deployment requires the WIM and its SHA-256 sidecar.'
         }
-        else {
-            $defaultPool = $YAML.pools | Where-Object { $_.name -eq "Default" }
-            $neededImage = $defaultPool.image
-            $WorkerPool = $pool.name
-            $WorkerPool = $pool.name
-            $role = $WorkerPool -replace "-", ""
-            $src_Organisation = $pool.src_Organisation
-            $src_Repository = $pool.src_Repository
-            $src_Branch = $pool.src_Branch
-            $secret_date = $pool.secret_date
-            $openvox_version = "8.19.2"
-            $git_version = "2.50.0"
-            $puppet_version = "6.28.0"
+        $sourceSecrets = ConvertFrom-Yaml (Get-Content -LiteralPath "Z:\secrets\$WorkerPool-$secret_date.yaml" -Raw)
+        foreach ($field in 'win_adminpw', 'win_kms_server', 'win_kms_key') {
+            if ([string]::IsNullOrWhiteSpace([string]$sourceSecrets[$field])) { throw "Non-Ronin deployment secrets missing $field." }
         }
     }
+    finally { Remove-PSDrive -Name Z -Scope Global -Force -ErrorAction SilentlyContinue }
 }
 
 Write-Host "Preparing local environment."
@@ -958,17 +981,34 @@ $unattendXml.LoadXml($content2)
 $passwordNodes = $unattendXml.SelectNodes("//*[local-name()='Value' and text()='NotARealPassword']")
 if ($passwordNodes.Count -eq 0) { throw 'No Administrator password placeholders found in the unattend template.' }
 foreach ($node in $passwordNodes) { $node.InnerText = $adminPassword }
+if (-not $useRonin) {
+    # A single-edition exported WIM is index 1. First boot runs only the pool's
+    # worker-images script; do not seed a Ronin vault or invoke its bootstrap.
+    $unattendXml.SelectSingleNode("//*[local-name()='MetaData']/*[local-name()='Value']").InnerText = '1'
+    $vaultCopy = $unattendXml.SelectSingleNode("//*[local-name()='SynchronousCommand'][*[local-name()='CommandLine' and contains(text(), 'vault.yaml')]]")
+    if ($vaultCopy) { $vaultCopy.ParentNode.RemoveChild($vaultCopy) | Out-Null }
+    foreach ($field in 'win_kms_server', 'win_kms_key') {
+        if ([string]::IsNullOrWhiteSpace([string]$secret_YAML[$field])) { throw "$field is missing from the non-Ronin deployment secrets." }
+    }
+    @{
+        pool = $WorkerPool
+        worker_images_revision = $workerImagesRevision
+        kms_server = $secret_YAML.win_kms_server
+        kms_key = $secret_YAML.win_kms_key
+    } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $local_scripts 'non-ronin.json') -Encoding UTF8 -ErrorAction Stop
+}
 $xmlSettings = New-Object System.Xml.XmlWriterSettings
 $xmlSettings.Encoding = New-Object System.Text.UTF8Encoding($false)
 $xmlWriter = [System.Xml.XmlWriter]::Create($unattend, $xmlSettings)
 try { $unattendXml.Save($xmlWriter) } finally { $xmlWriter.Dispose() }
 
+# Stage the selected bootstrap successfully before formatting Windows.
+Update-GetBoot -revision $workerImagesRevision
+
 if ((Get-ChildItem -Path C:\ -Force) -ne $null) {
     write-host "Previous installation detected. Formatting OS disk."
     Format-Volume -DriveLetter C -FileSystem NTFS -Force -ErrorAction Inquire | Out-Null
 }
-
-Update-GetBoot -revision $workerImagesRevision
 
 ## Update yaml files with recent changes
 Copy-Item -Path pools.yml  $local_yaml -Force
