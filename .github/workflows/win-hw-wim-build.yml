@@ -1,7 +1,8 @@
 name: Windows HW WIM Build
-run-name: "Windows HW WIM build - ${{ inputs.image }} @ ${{ inputs.pipeline_ref }}"
+run-name: "Windows HW WIM build - ${{ inputs.pool == 'image-config' && inputs.image || inputs.pool }} @ ${{ inputs.pipeline_ref }}"
 
-# Builds a baked Windows HW install.wim. Spins up an EPHEMERAL nested-virt Azure VM
+# Builds a baked Windows HW install.wim or a pool-selected plain edition export.
+# Spins up an EPHEMERAL nested-virt Azure VM
 # for the run, builds on it, and tears it down afterward (if: always()) — no idle cost,
 # no pre-provisioned host. The pipeline lives on main under
 # provisioners/windows/win-hw-wim/; pipeline_ref can select another branch for testing.
@@ -16,6 +17,13 @@ run-name: "Windows HW WIM build - ${{ inputs.image }} @ ${{ inputs.pipeline_ref 
 on:
   workflow_dispatch:
     inputs:
+      pool:
+        description: "Pool to build for, or image-config to use the image selector"
+        type: choice
+        default: image-config
+        options:
+          - image-config
+          - a11y-win
       image:
         description: "Image config to build (config/<image>.yaml)"
         type: choice
@@ -55,6 +63,9 @@ jobs:
     name: Build on ephemeral Azure VM
     needs: check-access
     runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.selection.outputs.image }}
+      release_notes: ${{ steps.release-notes.outputs.artifact-id }}
     permissions:
       id-token: write
       contents: read
@@ -67,6 +78,24 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ inputs.pipeline_ref }}
+
+      - name: Install YAML support
+        if: inputs.pool != 'image-config' && inputs.pool != ''
+        shell: pwsh
+        run: ./ci/install-powershell-yaml.ps1
+
+      - name: Select WIM image for pool
+        id: selection
+        shell: pwsh
+        env:
+          POOL: ${{ inputs.pool }}
+          IMAGE: ${{ inputs.image }}
+        run: |
+          $image = $env:IMAGE
+          if ($env:POOL -and $env:POOL -ne 'image-config') {
+            $image = ./ci/select-wim-image.ps1 -Pool $env:POOL -Image $env:IMAGE
+          }
+          "image=$image" >> $env:GITHUB_OUTPUT
 
       - name: Azure Login
         uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906
@@ -82,7 +111,7 @@ jobs:
       - name: Build (kick off + wait)
         shell: pwsh
         env:
-          IMAGE: ${{ inputs.image }}
+          IMAGE: ${{ steps.selection.outputs.image }}
           PIPELINE_REF: ${{ inputs.pipeline_ref }}
           BUILD_ID: ${{ inputs.build_id }}
         run: ./ci/kickoff-win-hw-wim-build.ps1
@@ -91,10 +120,11 @@ jobs:
       # the kickoff downloads the markdown the bake generated and exports its name as
       # sbom_file, mirroring how those workflows export sharedimageversion.
       - name: Upload Release Notes Artifact
+        id: release-notes
         if: success() && env.sbom_file != ''
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: release-notes-${{ inputs.image }}
+          name: release-notes-${{ steps.selection.outputs.image }}
           path: ${{ env.sbom_file }}
           overwrite: true
           retention-days: 1
@@ -112,10 +142,11 @@ jobs:
   # treats "nothing downloaded" as an error, which would just double-report the failure.
   sbom:
     needs: build
+    if: needs.build.outputs.release_notes != ''
     permissions:
       actions: read
       contents: write
     uses: ./.github/workflows/upload-release-notes.yml
     with:
-      artifact_pattern: release-notes-${{ inputs.image }}
-      commit_message: ${{ inputs.image }} - Release Notes
+      artifact_pattern: release-notes-${{ needs.build.outputs.image }}
+      commit_message: ${{ needs.build.outputs.image }} - Release Notes
