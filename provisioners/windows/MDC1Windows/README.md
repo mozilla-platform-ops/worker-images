@@ -5,6 +5,9 @@ Pools in `pools.yml` use Ronin by default. Set `ronin: false` and
 `non-ronin/` instead of `Get-Bootstrap.ps1`. Scripts come from the same pinned
 worker-images revision as the deployment. Non-Ronin pools need no Puppet/Git
 versions or Ronin repository/role settings.
+The existing deployment functions and Ronin pool matching/fallback logic are
+preserved; only explicitly non-Ronin pools use the new helpers. Ronin bootstrap
+still runs at its original point after formatting Windows.
 
 The `a11y-win` pool uses plain Windows media with a single-edition WIM at index
 1. Extract the staged `resources/ISOs/Windows11_Client_x64_en-us_26300_9457.iso`

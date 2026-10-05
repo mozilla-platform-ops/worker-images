@@ -245,26 +245,42 @@ function Update-PATSecret {
         Remove-PSDrive -Name Z -Scope Global -Force -ErrorAction SilentlyContinue
     }
 }
-function Get-DeploymentPool {
+function Get-NonRoninDeploymentPool {
     param([Parameter(Mandatory)]$Pools, [Parameter(Mandatory)][string]$Node)
 
-    $matches = @($Pools | Where-Object { @($_.nodes) -contains $Node })
-    if ($matches.Count -ne 1) { throw "Expected one deployment pool for '$Node'; found $($matches.Count)." }
-    $selected = $matches[0]
-    if ($selected.ContainsKey('ronin') -and $selected.ronin -isnot [bool]) {
-        throw "Pool '$($selected.name)': ronin must be a YAML boolean."
+    $matches = @($Pools | Where-Object { @($_.nodes) -contains $Node -and $_.ContainsKey('ronin') })
+    foreach ($candidate in $matches) {
+        if ($candidate.ronin -isnot [bool]) { throw "Pool '$($candidate.name)': ronin must be a YAML boolean." }
     }
-    if ($selected.ronin -eq $false) {
-        foreach ($field in 'name', 'image', 'secret_date') {
-            if ([string]$selected[$field] -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]*$') {
-                throw "Non-Ronin pool: invalid or missing $field."
-            }
+    $matches = @($matches | Where-Object { $_.ronin -eq $false })
+    if ($matches.Count -eq 0) { return $null }
+    if ($matches.Count -ne 1) { throw "Expected one non-Ronin deployment pool for '$Node'; found $($matches.Count)." }
+    $selected = $matches[0]
+    foreach ($field in 'name', 'image', 'secret_date') {
+        if ([string]$selected[$field] -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]*$') {
+            throw "Non-Ronin pool: invalid or missing $field."
         }
-        if ([string]$selected.bootstrap_script -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]*\.ps1$') {
-            throw "Pool '$($selected.name)': bootstrap_script must be a script filename under non-ronin/."
-        }
+    }
+    if ([string]$selected.bootstrap_script -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]*\.ps1$') {
+        throw "Pool '$($selected.name)': bootstrap_script must be a script filename under non-ronin/."
     }
     return $selected
+}
+
+function Update-NonRoninBoot {
+    param([Parameter(Mandatory)][string]$revision)
+
+    $splat = @{
+        Url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$revision/provisioners/windows/MDC1Windows/non-ronin/$($pool.bootstrap_script)"
+        Path = Join-Path $local_scripts 'Get-Bootstrap.ps1'
+    }
+    Remove-Item -LiteralPath $splat.Path -Force -ErrorAction SilentlyContinue
+    if (Test-Path -LiteralPath 'D:\Secrets\pat.txt') {
+        $splat.PAT = Get-Content -LiteralPath 'D:\Secrets\pat.txt' -Raw -ErrorAction Stop
+        Invoke-DownloadWithRetryGithub @splat
+    }
+    else { Invoke-DownloadWithRetry @splat }
+    if (-not (Test-Path -LiteralPath $splat.Path -PathType Leaf)) { throw 'Non-Ronin bootstrap was not staged.' }
 }
 
 function Update-GetBoot {
@@ -283,9 +299,8 @@ function Update-GetBoot {
         Remove-Item $Template_Get_Bootstrap -Force
     }
 
-    $bootstrapScript = if ($pool.ronin -eq $false) { "non-ronin/$($pool.bootstrap_script)" } else { 'Get-Bootstrap.ps1' }
     $bootstrapSplat = @{
-        URI     = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$revision/provisioners/windows/MDC1Windows/$bootstrapScript"
+        URI     = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$revision/provisioners/windows/MDC1Windows/Get-Bootstrap.ps1"
         OutFile = $Template_Get_Bootstrap
     }
     write-host checking
@@ -326,12 +341,12 @@ function Update-GetBoot {
         @{ OldString = "1git_version"; NewString = $git_version }
         @{ OldString = "WIRevisionPlaceholder"; NewString = $revision }
     )
-    $content = Get-Content -Path $Template_Get_Bootstrap -ErrorAction Stop
+    $content = Get-Content -Path $Template_Get_Bootstrap
     foreach ($replacement in $replacements) {
         $content = $content -replace $replacement.OldString, $replacement.NewString
     }
 
-    Set-Content -Path $Get_Bootstrap -Value $content -ErrorAction Stop
+    Set-Content -Path $Get_Bootstrap -Value $content
 }
 
 # Function to partition and format a single disk with both C and D
@@ -728,24 +743,65 @@ finally {
     Remove-PSDrive -Name Z -Scope Global -Force -ErrorAction SilentlyContinue
 }
 $YAML = Convertfrom-Yaml (Get-Content "pools.yml" -raw)
-$pool = Get-DeploymentPool -Pools $YAML.pools -Node $shortname
-$neededImage = $pool.image
-$WorkerPool = $pool.name
-$useRonin = $pool.ronin -ne $false
-$role = $WorkerPool -replace "-", ""
-$src_Organisation = $pool.src_Organisation
-$src_Repository = $pool.src_Repository
-$src_Branch = $pool.src_Branch
-$hash = $pool.hash
-$secret_date = $pool.secret_date
-$puppet_version = $pool.puppet_version
-$openvox_version = $pool.openvox_version
-$git_version = $pool.git_version
-Write-Output "The associated image for $shortname is: $neededImage (Ronin: $useRonin)"
-if ($pool.dev -and (-not $devlopment_script)) {
-    Write-Host "Dev mode is enabled."
-    Deploy-OS-Dev -Password $deploymentaccess -branch $pool.dev
-    exit
+# Only explicitly non-Ronin pools use the new selector. Existing pools retain
+# the original matching, fallback, and development-branch behavior below.
+$nonRoninPool = Get-NonRoninDeploymentPool -Pools $YAML.pools -Node $shortname
+$useRonin = $null -eq $nonRoninPool
+if ($nonRoninPool) {
+    $pool = $nonRoninPool
+    $neededImage = $pool.image
+    $WorkerPool = $pool.name
+    $secret_date = $pool.secret_date
+    if ($pool.dev -and (-not $devlopment_script)) {
+        Deploy-OS-Dev -Password $deploymentaccess -branch $pool.dev
+        exit
+    }
+}
+else {
+foreach ($pool in $YAML.pools) {
+    if ($pool.ronin -eq $false) { continue }
+    foreach ($node in $pool.nodes) {
+        if ($node -match $shortname) {
+            $neededImage = $pool.image
+            $WorkerPool = $pool.name
+            $role = $WorkerPool -replace "-", ""
+            $src_Organisation = $pool.src_Organisation
+            $src_Repository = $pool.src_Repository
+            $src_Branch = $pool.src_Branch
+            $hash = $pool.hash
+            $secret_date = $pool.secret_date
+            $puppet_version = $pool.puppet_version
+            $openvox_version = $pool.openvox_version
+            $git_version = $pool.git_version
+            Write-Output "The associated image for $shortname is: $neededImage"
+            if ($pool.dev -and (-not $devlopment_script)) {
+                Write-Host "Dev mode is enabled."
+                Deploy-OS-Dev -Password $deploymentaccess -branch $pool.dev
+                exit
+            }
+            $found = $true
+            break
+        }
+        if ($found) {
+            break
+        }
+        else {
+            $defaultPool = $YAML.pools | Where-Object { $_.name -eq "Default" }
+            $neededImage = $defaultPool.image
+            $WorkerPool = $pool.name
+            $WorkerPool = $pool.name
+            $role = $WorkerPool -replace "-", ""
+            $src_Organisation = $pool.src_Organisation
+            $src_Repository = $pool.src_Repository
+            $src_Branch = $pool.src_Branch
+            $secret_date = $pool.secret_date
+            $openvox_version = "8.19.2"
+            $git_version = "2.50.0"
+            $puppet_version = "6.28.0"
+        }
+    }
+}
+
 }
 
 # Check a new non-Ronin pool's staged media and secrets before touching its disks.
@@ -1002,12 +1058,16 @@ $xmlSettings.Encoding = New-Object System.Text.UTF8Encoding($false)
 $xmlWriter = [System.Xml.XmlWriter]::Create($unattend, $xmlSettings)
 try { $unattendXml.Save($xmlWriter) } finally { $xmlWriter.Dispose() }
 
-# Stage the selected bootstrap successfully before formatting Windows.
-Update-GetBoot -revision $workerImagesRevision
+# Stage only the new non-Ronin bootstrap before formatting Windows.
+if (-not $useRonin) { Update-NonRoninBoot -revision $workerImagesRevision }
 
 if ((Get-ChildItem -Path C:\ -Force) -ne $null) {
     write-host "Previous installation detected. Formatting OS disk."
     Format-Volume -DriveLetter C -FileSystem NTFS -Force -ErrorAction Inquire | Out-Null
+}
+
+if ($useRonin) {
+    Update-GetBoot -revision $workerImagesRevision
 }
 
 ## Update yaml files with recent changes

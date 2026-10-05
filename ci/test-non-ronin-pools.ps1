@@ -7,7 +7,25 @@ $tokens = $null
 $errors = $null
 $ast = [System.Management.Automation.Language.Parser]::ParseFile($deploy, [ref]$tokens, [ref]$errors)
 if ($errors.Count) { throw ($errors | Out-String) }
-foreach ($name in 'Get-DeploymentPool', 'Update-GetBoot') {
+# Keep every original deployment function byte-for-byte (apart from line endings).
+$baseline = (& git -C $root show '47ce934d:provisioners/windows/MDC1Windows/OS-deploy.ps1') -join "`n"
+if ($LASTEXITCODE -ne 0) { throw 'Could not load the original deployment script.' }
+$baseAst = [System.Management.Automation.Language.Parser]::ParseInput($baseline, [ref]$tokens, [ref]$errors)
+foreach ($original in $baseAst.FindAll({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true)) {
+    $current = $ast.Find({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq $original.Name }, $true)
+    if (-not $current -or ($current.Extent.Text -replace "`r", '') -cne ($original.Extent.Text -replace "`r", '')) {
+        throw "Existing deployment function changed: $($original.Name)"
+    }
+}
+$loopPredicate = { param($node) $node -is [System.Management.Automation.Language.ForEachStatementAst] -and $node.Extent.Text.StartsWith('foreach ($pool in $YAML.pools)') }
+$originalLoop = $baseAst.Find($loopPredicate, $true).Extent.Text -replace "`r", ''
+$currentLoop = $ast.Find($loopPredicate, $true).Extent.Text -replace "`r", ''
+$currentLoop = $currentLoop.Replace('    if ($pool.ronin -eq $false) { continue }' + "`n", '')
+if ($currentLoop -cne $originalLoop) { throw 'Existing pool matching/fallback/development behavior changed.' }
+if ($ast.Extent.Text -notmatch '(?s)if \(\$useRonin\) \{\s+Update-GetBoot -revision \$workerImagesRevision\s+\}') {
+    throw 'Existing Ronin bootstrap call must remain guarded in its original position.'
+}
+foreach ($name in 'Get-NonRoninDeploymentPool', 'Update-NonRoninBoot', 'Update-GetBoot') {
     $function = $ast.Find({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq $name }, $true)
     Invoke-Expression $function.Extent.Text
 }
@@ -19,21 +37,25 @@ function Assert-Fails([scriptblock]$Action) {
 $legacy = @{ name = 'legacy'; nodes = @('nuc13-001') }
 $plain = @{ name = 'a11y-win'; nodes = @('a11y-win'); ronin = $false; bootstrap_script = 'a11y-win.ps1'; image = 'win11-a11y'; secret_date = '10-05-2026' }
 $pools = @($legacy, $plain)
-if ((Get-DeploymentPool $pools 'nuc13-001').ronin -eq $false) { throw 'Legacy pools must default to Ronin.' }
-if ((Get-DeploymentPool $pools 'a11y-win').ronin -ne $false) { throw 'Non-Ronin flag was lost.' }
-Assert-Fails { Get-DeploymentPool $pools 'nuc13-00' }
-Assert-Fails { Get-DeploymentPool @($plain, $plain) 'a11y-win' }
+if ($null -ne (Get-NonRoninDeploymentPool $pools 'nuc13-001')) { throw 'Legacy pools must bypass the new selector.' }
+if ((Get-NonRoninDeploymentPool $pools 'a11y-win').ronin -ne $false) { throw 'Non-Ronin flag was lost.' }
+if ($null -ne (Get-NonRoninDeploymentPool $pools 'nuc13-00')) { throw 'Unmatched legacy nodes must retain the existing fallback.' }
+if ($null -ne (Get-NonRoninDeploymentPool @($legacy, $legacy) 'nuc13-001')) { throw 'Legacy matching rules were overridden.' }
+Assert-Fails { Get-NonRoninDeploymentPool @($plain, $plain) 'a11y-win' }
 $invalid = $plain.Clone(); $invalid.ronin = 'false'
-Assert-Fails { Get-DeploymentPool @($invalid) 'a11y-win' }
+Assert-Fails { Get-NonRoninDeploymentPool @($invalid) 'a11y-win' }
 $invalid = $plain.Clone(); $invalid.bootstrap_script = '../bootstrap.ps1'
-Assert-Fails { Get-DeploymentPool @($invalid) 'a11y-win' }
+Assert-Fails { Get-NonRoninDeploymentPool @($invalid) 'a11y-win' }
 
 # Record the actual first-boot script selection and revision substitution.
 $scratch = Join-Path ([IO.Path]::GetTempPath()) ('non-ronin-test-' + [guid]::NewGuid())
 New-Item -ItemType Directory -Path $scratch | Out-Null
 try {
     $local_scripts = $scratch + [IO.Path]::DirectorySeparatorChar
-    function Test-Path { return $false }
+    function Test-Path {
+        param($LiteralPath, $Path, $PathType)
+        return $LiteralPath -eq (Join-Path $local_scripts 'Get-Bootstrap.ps1')
+    }
     function Invoke-DownloadWithRetry {
         param($Url, $Path)
         $script:downloadUrl = $Url
@@ -45,13 +67,13 @@ try {
     }
     $revision = 'a' * 40
     $pool = $plain
-    Update-GetBoot -revision $revision
-    if ($script:downloadUrl -notlike "*/$revision/provisioners/windows/MDC1Windows/non-ronin/a11y-win.ps1" -or $script:stagedScript -ne $revision) {
+    Update-NonRoninBoot -revision $revision
+    if ($script:downloadUrl -notlike "*/$revision/provisioners/windows/MDC1Windows/non-ronin/a11y-win.ps1") {
         throw 'Non-Ronin bootstrap did not select its script from the pinned revision.'
     }
     $pool = $legacy
     Update-GetBoot -revision $revision
-    if ($script:downloadUrl -notlike '*/MDC1Windows/Get-Bootstrap.ps1') { throw 'Ronin bootstrap routing changed.' }
+    if ($script:downloadUrl -notlike '*/MDC1Windows/Get-Bootstrap.ps1' -or $script:stagedScript -ne $revision) { throw 'Ronin bootstrap routing changed.' }
     Remove-Item Function:\Set-Content
 
     # Run the real answer-file branch and verify no Ronin vault seed remains.
