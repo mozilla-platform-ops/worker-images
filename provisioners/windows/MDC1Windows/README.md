@@ -17,18 +17,18 @@ using `win-hw-wim/scripts/extract-wim-from-iso.ps1`, inspect its editions with
 release and edition before deployment; the pool name records the source build.
 
 Stage the extracted ISO media under
-`\\mdt2022.ad.mozilla.com\deployments\Images\win11-26300-9457-a11y`, replacing
+`\\mdt2022.ad.mozilla.com\deployments\Images\win11-26h2-a11y`, replacing
 `sources\install.wim` with the single-edition export and removing
 `sources\install.esd` if present. Alternatively, the existing direct-DISM path
-accepts `win11-26300-9457-a11y.wim` and its `.sha256` sidecar in that folder.
+accepts `win11-26h2-a11y.wim` and its `.sha256` sidecar in that folder.
 The WIM artifact has not been created by adding the pool entry.
 
 To create it with the **Windows HW WIM Build** workflow, select image
-`win11-26300-9457-a11y` and set `pipeline_ref` to
+`win11-26h2-a11y` and set `pipeline_ref` to
 `relops-2612-non-ronin-pools` while testing the implementation branch. This uses
-`win-hw-wim/config/win11-26300-9457-a11y.yaml`. Its `wim.plain: true` selects
+`win-hw-wim/config/win11-26h2-a11y.yaml`. Its `wim.plain: true` selects
 ISO extraction and single-edition export, followed by upload to
-`captured/WIMs/win11-26300-9457-a11y/<image>-<buildid>.wim` plus SHA-256.
+`captured/WIMs/win11-26h2-a11y/<image>-<buildid>.wim` plus SHA-256.
 The initial edition selection is `Windows 11 Enterprise`; the build fails and
 lists available editions if that name is absent. Confirm the edition against
 the media and update the config as needed. This export retains the ISO's patch
