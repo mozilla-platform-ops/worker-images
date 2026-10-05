@@ -14,7 +14,7 @@ import subprocess
 import requests
 import yaml
 
-import hw_failure_summary as summary
+import failure_summary as summary
 
 ROOT = "https://firefox-ci-tc.services.mozilla.com"
 SYSTEM = summary.SYSTEM.replace(

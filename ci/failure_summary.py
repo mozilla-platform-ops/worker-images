@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-"""Ask Claude why a hardware run's tasks failed, and say so in the summary.
+"""Shared AI failure analysis for hardware and Azure alpha runs.
 
 Two red runs can mean opposite things. On 2026-08-19 the perf-debug run failed
 because a Chrome-canary fetch artifact had expired hours earlier, and the
