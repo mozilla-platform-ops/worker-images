@@ -5,14 +5,14 @@ azure:
 vm:
   spot: false
   puppet_version: 8.10.0
-  git_version: 2.55.0.5
+  git_version: 2.56.0
   openvox_version: 8.29.0
   tags:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: master
     managed_by: packer
-    deploymentId: "084c19f"
+    deploymentId: "6a3f021"
 images:
   production:
     - win10-64-2009
