@@ -47,7 +47,7 @@ pools:
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "relops-2581-windows-privileged-paths"
-    hash: "f9c93e1a"
+    hash: "e4be51b1"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -160,7 +160,7 @@ pools:
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "relops-2581-windows-privileged-paths"
-    hash: "f9c93e1a"
+    hash: "e4be51b1"
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
