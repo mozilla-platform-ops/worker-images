@@ -31,6 +31,8 @@ pools:
     git_version: "2.50.0"
     Description: "NUC12 Hardware Reference Staging/Testing Pool"
     # RELOPS-2585: validated baseline WIM with the Ronin hardening feature branch.
+    # Keep the bootstrap scripts and pool settings on the same deployment branch.
+    dev: "relops-2585-hw-alpha-staged-wim"
     image: "win11-24h2-hw-test-20260930-201046"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
@@ -144,6 +146,8 @@ pools:
     git_version: "2.50.1"
     Description: "NUC12 Hardware Performance Staging/Testing Pool"
     # RELOPS-2585: validated baseline WIM with the Ronin hardening feature branch.
+    # Keep the bootstrap scripts and pool settings on the same deployment branch.
+    dev: "relops-2585-hw-alpha-staged-wim"
     image: "win11-24h2-hw-test-20260930-201046"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
