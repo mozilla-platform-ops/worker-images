@@ -28,7 +28,7 @@ on:
           - win11-24h2-hw-test
           - win11-25h2-hw
           - win11-25h2-iso
-          - win11-26300-9457-a11y
+          - win11-26h2-a11y
       pipeline_ref:
         description: "worker-images branch to build from (default: main)"
         type: string
