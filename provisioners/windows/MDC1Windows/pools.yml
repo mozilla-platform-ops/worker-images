@@ -2,12 +2,12 @@
 pools:
   # RELOPS-2612: route only a11y-win to the non-Ronin implementation branch.
   # Stage the single-edition WIM/media and deployment secrets before PXE testing.
-  - name: "a11y-win"
+  - name: "win11-26h2-a11y"
     Description: "Standalone accessibility Windows installation"
     dev: "relops-2612-non-ronin-pools"
     ronin: false
     bootstrap_script: "a11y-win.ps1"
-    image: "win11-26300-9457-a11y"
+    image: "win11-26h2-a11y"
     secret_date: "10-05-2026"
     domain_suffix: "corpdmz.mdc1.mozilla.com"
     nodes:
