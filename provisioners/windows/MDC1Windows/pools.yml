@@ -7,7 +7,7 @@ pools:
     dev: "relops-2612-non-ronin-pools"
     ronin: false
     bootstrap_script: "a11y-win.ps1"
-    image: "win11-26300-9457-a11y"
+    image: "win11-26h2-a11y"
     secret_date: "10-05-2026"
     domain_suffix: "corpdmz.mdc1.mozilla.com"
     nodes:
