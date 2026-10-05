@@ -1,9 +1,10 @@
 ---
 pools:
-  # RELOPS-2612: plain Windows media, no Ronin catalog. Stage the single-edition
-  # WIM/media folder and a11y-win-10-05-2026.yaml before deploying this pool.
+  # RELOPS-2612: route only a11y-win to the non-Ronin implementation branch.
+  # Stage the single-edition WIM/media and deployment secrets before PXE testing.
   - name: "a11y-win"
     Description: "Standalone accessibility Windows installation"
+    dev: "relops-2612-non-ronin-pools"
     ronin: false
     bootstrap_script: "a11y-win.ps1"
     image: "win11-26300-9457-a11y"
