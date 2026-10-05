@@ -159,8 +159,7 @@ jobs:
 
   os-integration:
     needs: [find-successful-builds]
-    # Validate 1.0.2 in separate pools; shared alpha pools use another candidate.
-    if: ${{ false }}
+    if: ${{ !cancelled() && needs.find-successful-builds.result == 'success' }}
     name: "OS Integration Tests - ${{ matrix.config }}"
     strategy:
       fail-fast: false

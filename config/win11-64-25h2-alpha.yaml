@@ -7,7 +7,7 @@ image:
 sharedimage:
   gallery_name: "win11_64_25h2_alpha"
   image_name: "win11_64_25h2_alpha"
-  image_version: 1.0.2
+  image_version: 1.0.0
 azure:
   managed_image_resource_group_name: rg-packer-worker-images
   managed_image_storage_account_type: Standard_LRS
@@ -32,7 +32,7 @@ vm:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
     sourceBranch: "fix-task-temp-permissions"
-    deploymentId: "c614970eb45de5a12566b8ca9a09540f112c9668"
+    deploymentId: "NA"
     managed_by: packer
 tests:
   - win11_sdk_tests.ps1
