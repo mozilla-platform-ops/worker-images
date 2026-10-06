@@ -32,8 +32,8 @@ vm:
     worker_pool_id: win10-64-2009-alpha
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "fix-task-temp-permissions"
-    deploymentId: "NA"
+    sourceBranch: "RELOPS-2610"
+    deploymentId: "40f4744b9768a86c56109c231c9b57eb1e2a5408"
     managed_by: packer
 tests:
   - microsoft_vcc_win10_win11_x64.tests.ps1
