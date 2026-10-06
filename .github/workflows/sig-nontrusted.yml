@@ -109,7 +109,6 @@ jobs:
       commit_message: ${{ github.event.inputs.config }} - Release Notes
   os-integration:
     needs: packer
-    if: ${{ !startsWith(github.event.inputs.config, 'win20') }}
     name: "OS Integration Tests"
     uses: ./.github/workflows/os-integration.yml
     with:
