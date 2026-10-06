@@ -4,6 +4,10 @@ name: FXCI - Azure
 on:
   workflow_dispatch:
     inputs:
+      run_os_integration:
+        type: boolean
+        description: Run automatic OS integration tests
+        default: true
       config:
         type: choice
         description: Choose which pool to build
@@ -109,7 +113,7 @@ jobs:
       commit_message: ${{ github.event.inputs.config }} - Release Notes
   os-integration:
     needs: packer
-    if: ${{ false }}
+    if: ${{ !startsWith(github.event.inputs.config, 'win20') && inputs.run_os_integration }}
     name: "OS Integration Tests"
     uses: ./.github/workflows/os-integration.yml
     with:
