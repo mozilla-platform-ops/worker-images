@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-"""Ask Claude why a hardware run's tasks failed, and say so in the summary.
+"""Shared AI failure analysis for hardware and Azure alpha runs.
 
 Two red runs can mean opposite things. On 2026-08-19 the perf-debug run failed
 because a Chrome-canary fetch artifact had expired hours earlier, and the
@@ -321,7 +321,7 @@ def build_prompt(runs: list[dict], failures: list[dict], drift: list[dict]) -> s
     return "\n".join(sections)
 
 
-def summarize(prompt: str, warn) -> dict | None:
+def summarize(prompt: str, warn, *, system: str = SYSTEM) -> dict | None:
     """The model's read of the failures, or None with a reason logged."""
     if not os.environ.get("ANTHROPIC_API_KEY"):
         return None
@@ -337,7 +337,7 @@ def summarize(prompt: str, warn) -> dict | None:
         response = client.messages.create(
             model=MODEL,
             max_tokens=MAX_TOKENS,
-            system=SYSTEM,
+            system=system,
             output_config={
                 "effort": EFFORT,
                 "format": {"type": "json_schema", "schema": SCHEMA},
@@ -388,7 +388,9 @@ def summary_lines(result: dict | None, root_url: str, failures: list[dict]) -> l
         failure = by_name.get(name)
         label = CATEGORY_LABEL.get(item.get("category"), CATEGORY_LABEL["unknown"])
         shown = name.split("/opt-")[-1] if "/opt-" in name else name
-        if failure and failure.get("task_id"):
+        if failure and failure.get("url"):
+            shown = f"[{shown}]({failure['url']})"
+        elif failure and failure.get("task_id"):
             shown = f"[{shown}]({root_url}/tasks/{failure['task_id']})"
         lines.append(f"| {shown} | {label} | {item.get('cause', '').strip()} |")
 

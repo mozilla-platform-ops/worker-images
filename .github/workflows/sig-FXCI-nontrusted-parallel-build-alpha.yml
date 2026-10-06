@@ -170,3 +170,23 @@ jobs:
     secrets:
       TASKCLUSTER_OS_INT_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
       TASKCLUSTER_OS_INT_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}
+
+  failure-summary:
+    name: Explain alpha failures
+    needs: [check-access, packer, os-integration]
+    if: ${{ !cancelled() && needs.check-access.result == 'success' && (needs.packer.result == 'failure' || needs.os-integration.result == 'failure') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Install uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
+      - name: Summarize build and integration failures
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: uv run ci/alpha_failure_summary.py
