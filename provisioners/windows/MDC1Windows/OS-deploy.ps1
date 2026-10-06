@@ -250,12 +250,18 @@ function Get-NonRoninDeploymentPool {
 
     $matches = @($Pools | Where-Object { @($_.nodes) -contains $Node -and $_.ContainsKey('ronin') })
     foreach ($candidate in $matches) {
-        if ($candidate.ronin -isnot [bool]) { throw "Pool '$($candidate.name)': ronin must be a YAML boolean." }
+        if ($candidate.ronin -isnot [bool] -and
+            ($candidate.ronin -isnot [System.Collections.IDictionary] -or $candidate.ronin.enabled -isnot [bool])) {
+            throw "Pool '$($candidate.name)': ronin.enabled must be a YAML boolean."
+        }
     }
-    $matches = @($matches | Where-Object { $_.ronin -eq $false })
+    $matches = @($matches | Where-Object { $_.ronin -eq $false -or $_.ronin.enabled -eq $false })
     if ($matches.Count -eq 0) { return $null }
     if ($matches.Count -ne 1) { throw "Expected one non-Ronin deployment pool for '$Node'; found $($matches.Count)." }
     $selected = $matches[0]
+    if ([string]$selected.ronin.win_kms_key -notmatch '^[A-Z0-9]{5}(-[A-Z0-9]{5}){4}$') {
+        throw "Pool '$($selected.name)': ronin.enabled is false but ronin.win_kms_key is missing or invalid."
+    }
     foreach ($field in 'name', 'image', 'secret_date') {
         if ([string]$selected[$field] -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]*$') {
             throw "Non-Ronin pool: invalid or missing $field."
@@ -759,7 +765,7 @@ if ($nonRoninPool) {
 }
 else {
 foreach ($pool in $YAML.pools) {
-    if ($pool.ronin -eq $false) { continue }
+    if ($pool.ronin -eq $false -or $pool.ronin.enabled -eq $false) { continue }
     foreach ($node in $pool.nodes) {
         if ($node -match $shortname) {
             $neededImage = $pool.image
@@ -821,7 +827,7 @@ if (-not $useRonin) {
             throw 'Non-Ronin direct deployment requires the WIM and its SHA-256 sidecar.'
         }
         $sourceSecrets = ConvertFrom-Yaml (Get-Content -LiteralPath "Z:\secrets\$WorkerPool-$secret_date.yaml" -Raw)
-        foreach ($field in 'win_adminpw', 'win_kms_server', 'win_kms_key') {
+        foreach ($field in 'win_adminpw', 'win_kms_server') {
             if ([string]::IsNullOrWhiteSpace([string]$sourceSecrets[$field])) { throw "Non-Ronin deployment secrets missing $field." }
         }
     }
@@ -1043,14 +1049,14 @@ if (-not $useRonin) {
     $unattendXml.SelectSingleNode("//*[local-name()='MetaData']/*[local-name()='Value']").InnerText = '1'
     $vaultCopy = $unattendXml.SelectSingleNode("//*[local-name()='SynchronousCommand'][*[local-name()='CommandLine' and contains(text(), 'vault.yaml')]]")
     if ($vaultCopy) { $vaultCopy.ParentNode.RemoveChild($vaultCopy) | Out-Null }
-    foreach ($field in 'win_kms_server', 'win_kms_key') {
-        if ([string]::IsNullOrWhiteSpace([string]$secret_YAML[$field])) { throw "$field is missing from the non-Ronin deployment secrets." }
+    if ([string]::IsNullOrWhiteSpace([string]$secret_YAML.win_kms_server)) {
+        throw 'win_kms_server is missing from the non-Ronin deployment secrets.'
     }
     @{
         pool = $WorkerPool
         worker_images_revision = $workerImagesRevision
         kms_server = $secret_YAML.win_kms_server
-        kms_key = $secret_YAML.win_kms_key
+        kms_key = $pool.ronin.win_kms_key
     } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $local_scripts 'non-ronin.json') -Encoding UTF8 -ErrorAction Stop
 }
 $xmlSettings = New-Object System.Xml.XmlWriterSettings

@@ -36,8 +36,10 @@ level and does not run Ronin or Windows Update. At PXE deployment, the pool's
 existing `dev` flag selects the implementation branch.
 
 Stage `secrets\win11-26h2-a11y-10-05-2026.yaml` on the deployment share with
-`win_adminpw`, `win_kms_server` (hostname, optionally `:1688`), and
-`win_kms_key` (the edition's KMS client setup key). Keep the values out of Git.
+`win_adminpw` and `win_kms_server` (hostname, optionally `:1688`). Keep these
+deployment values out of Git. The public Pro KMS client setup key is stored in
+the pool YAML under `ronin.win_kms_key`; `ronin.enabled: false` requires a valid
+key, checked before deployment touches any disks.
 The existing share `secrets\pat.txt` is still needed to fetch pinned scripts.
 WinPE injects the administrator password into the answer file and stages
 only KMS settings and provenance in `D:\scripts\non-ronin.json`. First boot

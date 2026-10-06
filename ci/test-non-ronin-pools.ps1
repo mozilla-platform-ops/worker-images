@@ -20,7 +20,7 @@ foreach ($original in $baseAst.FindAll({ param($node) $node -is [System.Manageme
 $loopPredicate = { param($node) $node -is [System.Management.Automation.Language.ForEachStatementAst] -and $node.Extent.Text.StartsWith('foreach ($pool in $YAML.pools)') }
 $originalLoop = $baseAst.Find($loopPredicate, $true).Extent.Text -replace "`r", ''
 $currentLoop = $ast.Find($loopPredicate, $true).Extent.Text -replace "`r", ''
-$currentLoop = $currentLoop.Replace('    if ($pool.ronin -eq $false) { continue }' + "`n", '')
+$currentLoop = $currentLoop.Replace('    if ($pool.ronin -eq $false -or $pool.ronin.enabled -eq $false) { continue }' + "`n", '')
 if ($currentLoop -cne $originalLoop) { throw 'Existing pool matching/fallback/development behavior changed.' }
 if ($ast.Extent.Text -notmatch '(?s)if \(\$useRonin\) \{\s+Update-GetBoot -revision \$workerImagesRevision\s+\}') {
     throw 'Existing Ronin bootstrap call must remain guarded in its original position.'
@@ -35,15 +35,21 @@ function Assert-Fails([scriptblock]$Action) {
     if (-not $failed) { throw 'Expected failure.' }
 }
 $legacy = @{ name = 'legacy'; nodes = @('nuc13-001') }
-$plain = @{ name = 'win11-26h2-a11y'; nodes = @('a11y-win'); ronin = $false; bootstrap_script = 'a11y-win.ps1'; image = 'win11-a11y'; secret_date = '10-05-2026' }
+$plain = @{ name = 'win11-26h2-a11y'; nodes = @('a11y-win'); ronin = @{ enabled = $false; win_kms_key = 'W269N-WFGWX-YVC9B-4J6C9-T83GX' }; bootstrap_script = 'a11y-win.ps1'; image = 'win11-a11y'; secret_date = '10-05-2026' }
 $pools = @($legacy, $plain)
 if ($null -ne (Get-NonRoninDeploymentPool $pools 'nuc13-001')) { throw 'Legacy pools must bypass the new selector.' }
-if ((Get-NonRoninDeploymentPool $pools 'a11y-win').ronin -ne $false) { throw 'Non-Ronin flag was lost.' }
+if ((Get-NonRoninDeploymentPool $pools 'a11y-win').ronin.enabled -ne $false) { throw 'Non-Ronin flag was lost.' }
 if ($null -ne (Get-NonRoninDeploymentPool $pools 'nuc13-00')) { throw 'Unmatched legacy nodes must retain the existing fallback.' }
 if ($null -ne (Get-NonRoninDeploymentPool @($legacy, $legacy) 'nuc13-001')) { throw 'Legacy matching rules were overridden.' }
 Assert-Fails { Get-NonRoninDeploymentPool @($plain, $plain) 'a11y-win' }
-$invalid = $plain.Clone(); $invalid.ronin = 'false'
+$invalid = $plain.Clone(); $invalid.ronin = @{ enabled = 'false' }
 Assert-Fails { Get-NonRoninDeploymentPool @($invalid) 'a11y-win' }
+foreach ($key in $null, '', 'invalid') {
+    $invalid = $plain.Clone(); $invalid.ronin = @{ enabled = $false; win_kms_key = $key }
+    Assert-Fails { Get-NonRoninDeploymentPool @($invalid) 'a11y-win' }
+}
+$invalid = $plain.Clone(); $invalid.ronin = @{ enabled = $true }
+if ($null -ne (Get-NonRoninDeploymentPool @($invalid) 'a11y-win')) { throw 'Enabled Ronin pool must bypass non-Ronin provisioning.' }
 $invalid = $plain.Clone(); $invalid.bootstrap_script = '../bootstrap.ps1'
 Assert-Fails { Get-NonRoninDeploymentPool @($invalid) 'a11y-win' }
 
@@ -81,7 +87,8 @@ try {
     $useRonin = $false
     $WorkerPool = 'win11-26h2-a11y'
     $workerImagesRevision = $revision
-    $secret_YAML = @{ win_kms_server = 'kms.example.com'; win_kms_key = 'AAAAA-BBBBB-CCCCC-DDDDD-EEEEE' }
+    $pool = $plain
+    $secret_YAML = @{ win_kms_server = 'kms.example.com' }
     $branch = $ast.Find({ param($node)
         $node -is [System.Management.Automation.Language.IfStatementAst] -and
         $node.Extent.Text -match 'if \(-not \$useRonin\)' -and $node.Extent.Text -match 'vaultCopy'
@@ -92,7 +99,7 @@ try {
         throw 'Non-Ronin answer file retained Ronin seeding or selected the wrong image index.'
     }
     $stagedConfig = [IO.File]::ReadAllText((Join-Path $scratch 'non-ronin.json')) | ConvertFrom-Json
-    if ($stagedConfig.pool -ne $WorkerPool -or $stagedConfig.worker_images_revision -ne $revision -or
+    if ($stagedConfig.kms_key -ne $plain.ronin.win_kms_key -or $stagedConfig.pool -ne $WorkerPool -or $stagedConfig.worker_images_revision -ne $revision -or
         $stagedConfig.PSObject.Properties.Name -contains 'win_adminpw') { throw 'Incorrect staged non-Ronin configuration.' }
 } finally {
     Remove-Item -LiteralPath $scratch -Recurse -Force
