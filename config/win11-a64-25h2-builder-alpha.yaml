@@ -29,8 +29,8 @@ vm:
     worker_pool_id: win11-a64-25h2-builder-alpha
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "relops-2581-windows-privileged-paths"
-    deploymentId: "e4be51b1"
+    sourceBranch: "fix-task-temp-permissions"
+    deploymentId: "NA"
     managed_by: packer
 tests:
   - microsoft_binscope.tests.ps1
