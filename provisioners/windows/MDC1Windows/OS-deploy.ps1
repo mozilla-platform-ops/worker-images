@@ -245,23 +245,6 @@ function Update-PATSecret {
         Remove-PSDrive -Name Z -Scope Global -Force -ErrorAction SilentlyContinue
     }
 }
-function Resolve-DeploymentHostname {
-    param([Parameter(Mandatory)][string[]]$IPAddresses)
-
-    $names = @(foreach ($address in ($IPAddresses | Select-Object -Unique)) {
-        try {
-            Resolve-DnsName -Name $address -Server '10.48.75.120' -Type PTR -ErrorAction Stop |
-                Select-Object -ExpandProperty NameHost -ErrorAction Stop
-        }
-        catch { Write-Warning "Reverse DNS failed for ${address}: $_" }
-    })
-    $names = @($names | ForEach-Object { ([string]$_).TrimEnd('.').ToLowerInvariant() } | Select-Object -Unique)
-    if ($names.Count -ne 1 -or $names[0] -notmatch '^[A-Za-z0-9][A-Za-z0-9-]*\.[A-Za-z0-9.-]+$') {
-        throw "Expected one deployment hostname for IP addresses [$($IPAddresses -join ', ')]; found [$($names -join ', ')]."
-    }
-    return $names[0]
-}
-
 function Get-NonRoninDeploymentPool {
     param([Parameter(Mandatory)]$Pools, [Parameter(Mandatory)][string]$Node)
 
@@ -727,7 +710,7 @@ else {
     Write-Host "No IP Address could be determined." -ForegroundColor Red
 }
 
-$ResolvedName = Resolve-DeploymentHostname -IPAddresses @($IPAddress)
+$ResolvedName = ((Resolve-DnsName -Name $IPAddress -Server "10.48.75.120").NameHost)
 write-host $ResolvedName
 
 $index = $ResolvedName.IndexOf('.')
