@@ -5,8 +5,12 @@ pools:
   - name: "win11-26h2-a11y"
     Description: "Standalone accessibility Windows installation"
     dev: "relops-2612-non-ronin-pools"
-    ronin: false
-    bootstrap_script: "a11y-win.ps1"
+    ronin:
+      enabled: false
+      # Public Microsoft Windows 11 Pro KMS client setup key (GVLK):
+      # https://learn.microsoft.com/en-us/windows-server/get-started/kms-client-activation-keys
+      win_kms_key: "W269N-WFGWX-YVC9B-4J6C9-T83GX"
+    bootstrap_script: "windows-kms.ps1"
     image: "win11-26h2-a11y"
     secret_date: "10-05-2026"
     domain_suffix: "corpdmz.mdc1.mozilla.com"

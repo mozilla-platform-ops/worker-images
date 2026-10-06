@@ -245,6 +245,50 @@ function Update-PATSecret {
         Remove-PSDrive -Name Z -Scope Global -Force -ErrorAction SilentlyContinue
     }
 }
+function Get-NonRoninDeploymentPool {
+    param([Parameter(Mandatory)]$Pools, [Parameter(Mandatory)][string]$Node)
+
+    $matches = @($Pools | Where-Object { @($_.nodes) -contains $Node -and $_.ContainsKey('ronin') })
+    foreach ($candidate in $matches) {
+        if ($candidate.ronin -isnot [bool] -and
+            ($candidate.ronin -isnot [System.Collections.IDictionary] -or $candidate.ronin.enabled -isnot [bool])) {
+            throw "Pool '$($candidate.name)': ronin.enabled must be a YAML boolean."
+        }
+    }
+    $matches = @($matches | Where-Object { $_.ronin -eq $false -or $_.ronin.enabled -eq $false })
+    if ($matches.Count -eq 0) { return $null }
+    if ($matches.Count -ne 1) { throw "Expected one non-Ronin deployment pool for '$Node'; found $($matches.Count)." }
+    $selected = $matches[0]
+    if ([string]$selected.ronin.win_kms_key -notmatch '^[A-Z0-9]{5}(-[A-Z0-9]{5}){4}$') {
+        throw "Pool '$($selected.name)': ronin.enabled is false but ronin.win_kms_key is missing or invalid."
+    }
+    foreach ($field in 'name', 'image', 'secret_date') {
+        if ([string]$selected[$field] -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]*$') {
+            throw "Non-Ronin pool: invalid or missing $field."
+        }
+    }
+    if ([string]$selected.bootstrap_script -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]*\.ps1$') {
+        throw "Pool '$($selected.name)': bootstrap_script must be a script filename under non-ronin/."
+    }
+    return $selected
+}
+
+function Update-NonRoninBoot {
+    param([Parameter(Mandatory)][string]$revision)
+
+    $splat = @{
+        Url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$revision/provisioners/windows/MDC1Windows/non-ronin/$($pool.bootstrap_script)"
+        Path = Join-Path $local_scripts 'Get-Bootstrap.ps1'
+    }
+    Remove-Item -LiteralPath $splat.Path -Force -ErrorAction SilentlyContinue
+    if (Test-Path -LiteralPath 'D:\Secrets\pat.txt') {
+        $splat.PAT = Get-Content -LiteralPath 'D:\Secrets\pat.txt' -Raw -ErrorAction Stop
+        Invoke-DownloadWithRetryGithub @splat
+    }
+    else { Invoke-DownloadWithRetry @splat }
+    if (-not (Test-Path -LiteralPath $splat.Path -PathType Leaf)) { throw 'Non-Ronin bootstrap was not staged.' }
+}
+
 function Update-GetBoot {
     param(
         [Parameter(Mandatory)][string]$revision
@@ -705,8 +749,23 @@ finally {
     Remove-PSDrive -Name Z -Scope Global -Force -ErrorAction SilentlyContinue
 }
 $YAML = Convertfrom-Yaml (Get-Content "pools.yml" -raw)
-
+# Only explicitly non-Ronin pools use the new selector. Existing pools retain
+# the original matching, fallback, and development-branch behavior below.
+$nonRoninPool = Get-NonRoninDeploymentPool -Pools $YAML.pools -Node $shortname
+$useRonin = $null -eq $nonRoninPool
+if ($nonRoninPool) {
+    $pool = $nonRoninPool
+    $neededImage = $pool.image
+    $WorkerPool = $pool.name
+    $secret_date = $pool.secret_date
+    if ($pool.dev -and (-not $devlopment_script)) {
+        Deploy-OS-Dev -Password $deploymentaccess -branch $pool.dev
+        exit
+    }
+}
+else {
 foreach ($pool in $YAML.pools) {
+    if ($pool.ronin -eq $false -or $pool.ronin.enabled -eq $false) { continue }
     foreach ($node in $pool.nodes) {
         if ($node -match $shortname) {
             $neededImage = $pool.image
@@ -747,6 +806,32 @@ foreach ($pool in $YAML.pools) {
             $puppet_version = "6.28.0"
         }
     }
+}
+
+}
+
+# Check a new non-Ronin pool's staged media and secrets before touching its disks.
+if (-not $useRonin) {
+    Mount-ZDrive
+    try {
+        foreach ($path in @("Z:\Images\$neededImage", "Z:\secrets\$WorkerPool-$secret_date.yaml")) {
+            if (-not (Test-Path -LiteralPath $path)) { throw "Non-Ronin deployment source missing: $path" }
+        }
+        $sourceWim = "Z:\Images\$neededImage\$neededImage.wim"
+        if (Test-Path -LiteralPath "Z:\Images\$neededImage\setup.exe") {
+            if (-not (Test-Path -LiteralPath "Z:\Images\$neededImage\sources\install.wim")) {
+                throw 'Non-Ronin Setup media must contain the exported sources\install.wim.'
+            }
+        }
+        elseif (-not (Test-Path -LiteralPath $sourceWim) -or -not (Test-Path -LiteralPath "$sourceWim.sha256")) {
+            throw 'Non-Ronin direct deployment requires the WIM and its SHA-256 sidecar.'
+        }
+        $sourceSecrets = ConvertFrom-Yaml (Get-Content -LiteralPath "Z:\secrets\$WorkerPool-$secret_date.yaml" -Raw)
+        foreach ($field in 'win_adminpw', 'win_kms_server') {
+            if ([string]::IsNullOrWhiteSpace([string]$sourceSecrets[$field])) { throw "Non-Ronin deployment secrets missing $field." }
+        }
+    }
+    finally { Remove-PSDrive -Name Z -Scope Global -Force -ErrorAction SilentlyContinue }
 }
 
 Write-Host "Preparing local environment."
@@ -958,17 +1043,38 @@ $unattendXml.LoadXml($content2)
 $passwordNodes = $unattendXml.SelectNodes("//*[local-name()='Value' and text()='NotARealPassword']")
 if ($passwordNodes.Count -eq 0) { throw 'No Administrator password placeholders found in the unattend template.' }
 foreach ($node in $passwordNodes) { $node.InnerText = $adminPassword }
+if (-not $useRonin) {
+    # A single-edition exported WIM is index 1. First boot runs only the pool's
+    # worker-images script; do not seed a Ronin vault or invoke its bootstrap.
+    $unattendXml.SelectSingleNode("//*[local-name()='MetaData']/*[local-name()='Value']").InnerText = '1'
+    $vaultCopy = $unattendXml.SelectSingleNode("//*[local-name()='SynchronousCommand'][*[local-name()='CommandLine' and contains(text(), 'vault.yaml')]]")
+    if ($vaultCopy) { $vaultCopy.ParentNode.RemoveChild($vaultCopy) | Out-Null }
+    if ([string]::IsNullOrWhiteSpace([string]$secret_YAML.win_kms_server)) {
+        throw 'win_kms_server is missing from the non-Ronin deployment secrets.'
+    }
+    @{
+        pool = $WorkerPool
+        worker_images_revision = $workerImagesRevision
+        kms_server = $secret_YAML.win_kms_server
+        kms_key = $pool.ronin.win_kms_key
+    } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $local_scripts 'non-ronin.json') -Encoding UTF8 -ErrorAction Stop
+}
 $xmlSettings = New-Object System.Xml.XmlWriterSettings
 $xmlSettings.Encoding = New-Object System.Text.UTF8Encoding($false)
 $xmlWriter = [System.Xml.XmlWriter]::Create($unattend, $xmlSettings)
 try { $unattendXml.Save($xmlWriter) } finally { $xmlWriter.Dispose() }
+
+# Stage only the new non-Ronin bootstrap before formatting Windows.
+if (-not $useRonin) { Update-NonRoninBoot -revision $workerImagesRevision }
 
 if ((Get-ChildItem -Path C:\ -Force) -ne $null) {
     write-host "Previous installation detected. Formatting OS disk."
     Format-Volume -DriveLetter C -FileSystem NTFS -Force -ErrorAction Inquire | Out-Null
 }
 
-Update-GetBoot -revision $workerImagesRevision
+if ($useRonin) {
+    Update-GetBoot -revision $workerImagesRevision
+}
 
 ## Update yaml files with recent changes
 Copy-Item -Path pools.yml  $local_yaml -Force
