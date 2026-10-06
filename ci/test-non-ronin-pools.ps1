@@ -25,7 +25,7 @@ if ($currentLoop -cne $originalLoop) { throw 'Existing pool matching/fallback/de
 if ($ast.Extent.Text -notmatch '(?s)if \(\$useRonin\) \{\s+Update-GetBoot -revision \$workerImagesRevision\s+\}') {
     throw 'Existing Ronin bootstrap call must remain guarded in its original position.'
 }
-foreach ($name in 'Get-NonRoninDeploymentPool', 'Update-NonRoninBoot', 'Update-GetBoot') {
+foreach ($name in 'Resolve-DeploymentHostname', 'Get-NonRoninDeploymentPool', 'Update-NonRoninBoot', 'Update-GetBoot') {
     $function = $ast.Find({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq $name }, $true)
     Invoke-Expression $function.Extent.Text
 }
@@ -34,6 +34,24 @@ function Assert-Fails([scriptblock]$Action) {
     try { & $Action | Out-Null } catch { $failed = $true }
     if (-not $failed) { throw 'Expected failure.' }
 }
+function Resolve-DnsName {
+    param($Name, $Server, $Type, $ErrorAction)
+    if ($Name -isnot [string] -or $Server -ne '10.48.75.120' -or $Type -ne 'PTR') { throw 'Incorrect reverse DNS request.' }
+    if (-not $script:ptrRecords.ContainsKey($Name)) { throw 'DNS name does not exist.' }
+    return [pscustomobject]@{ NameHost = $script:ptrRecords[$Name] }
+}
+$script:ptrRecords = @{ '10.49.64.99' = 'a11y.wintest2.releng.mdc1.mozilla.com.' }
+if ((Resolve-DeploymentHostname @('10.49.64.99', '10.49.67.195')) -ne 'a11y.wintest2.releng.mdc1.mozilla.com') {
+    throw 'Two IP addresses with one PTR record must resolve the deployment hostname.'
+}
+if ((Resolve-DeploymentHostname @('10.49.64.99')) -ne 'a11y.wintest2.releng.mdc1.mozilla.com') { throw 'Single-IP resolution changed.' }
+$script:ptrRecords['10.49.67.195'] = 'A11Y.wintest2.releng.mdc1.mozilla.com'
+if ((Resolve-DeploymentHostname @('10.49.64.99', '10.49.67.195')) -ne 'a11y.wintest2.releng.mdc1.mozilla.com') { throw 'Equivalent PTR records must resolve once.' }
+$script:ptrRecords['10.49.67.195'] = 'other.example.com'
+Assert-Fails { Resolve-DeploymentHostname @('10.49.64.99', '10.49.67.195') }
+Assert-Fails { Resolve-DeploymentHostname @('10.49.67.196') }
+Remove-Item Function:\Resolve-DnsName
+
 $legacy = @{ name = 'legacy'; nodes = @('nuc13-001') }
 $plain = @{ name = 'win11-26h2-a11y'; nodes = @('a11y-win'); ronin = @{ enabled = $false; win_kms_key = 'W269N-WFGWX-YVC9B-4J6C9-T83GX' }; bootstrap_script = 'windows-kms.ps1'; image = 'win11-a11y'; secret_date = '10-05-2026' }
 $pools = @($legacy, $plain)
