@@ -23,6 +23,8 @@ on:
         - win2022-64-2009
         - win2025-64-24h2-alpha
         - win2025-64-24h2
+        - win2025-64-24h2-core-alpha
+        - win2025-64-24h2-core
 
 permissions:
   id-token: write
@@ -108,6 +110,8 @@ jobs:
       artifact_pattern: release-notes-${{ github.event.inputs.config }}
       commit_message: ${{ github.event.inputs.config }} - Release Notes
   os-integration:
+    # Core needs targeted, same-revision validation before automatic routing.
+    if: ${{ !contains(github.event.inputs.config, '-core') }}
     needs: packer
     name: "OS Integration Tests"
     uses: ./.github/workflows/os-integration.yml
