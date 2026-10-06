@@ -35,8 +35,12 @@ function Assert-Fails([scriptblock]$Action) {
     if (-not $failed) { throw 'Expected failure.' }
 }
 $legacy = @{ name = 'legacy'; nodes = @('nuc13-001') }
-$plain = @{ name = 'win11-26h2-a11y'; nodes = @('a11y-win'); ronin = @{ enabled = $false; win_kms_key = 'W269N-WFGWX-YVC9B-4J6C9-T83GX' }; bootstrap_script = 'a11y-win.ps1'; image = 'win11-a11y'; secret_date = '10-05-2026' }
+$plain = @{ name = 'win11-26h2-a11y'; nodes = @('a11y-win'); ronin = @{ enabled = $false; win_kms_key = 'W269N-WFGWX-YVC9B-4J6C9-T83GX' }; bootstrap_script = 'windows-kms.ps1'; image = 'win11-a11y'; secret_date = '10-05-2026' }
 $pools = @($legacy, $plain)
+$other = $plain.Clone(); $other.name = 'win11-lab'; $other.nodes = @('lab-win')
+if ((Get-NonRoninDeploymentPool @($legacy, $plain, $other) 'lab-win').name -ne 'win11-lab') {
+    throw 'Non-Ronin routing must support another pool using the shared bootstrap.'
+}
 if ($null -ne (Get-NonRoninDeploymentPool $pools 'nuc13-001')) { throw 'Legacy pools must bypass the new selector.' }
 if ((Get-NonRoninDeploymentPool $pools 'a11y-win').ronin.enabled -ne $false) { throw 'Non-Ronin flag was lost.' }
 if ($null -ne (Get-NonRoninDeploymentPool $pools 'nuc13-00')) { throw 'Unmatched legacy nodes must retain the existing fallback.' }
@@ -74,7 +78,7 @@ try {
     $revision = 'a' * 40
     $pool = $plain
     Update-NonRoninBoot -revision $revision
-    if ($script:downloadUrl -notlike "*/$revision/provisioners/windows/MDC1Windows/non-ronin/a11y-win.ps1") {
+    if ($script:downloadUrl -notlike "*/$revision/provisioners/windows/MDC1Windows/non-ronin/windows-kms.ps1") {
         throw 'Non-Ronin bootstrap did not select its script from the pinned revision.'
     }
     $pool = $legacy
@@ -108,7 +112,7 @@ try {
 
 # Exercise the native KMS sequence with fakes, including activation that returns
 # zero but leaves Windows unlicensed. No installer, registry, or file deletion runs.
-$bootstrap = Join-Path $root 'provisioners/windows/MDC1Windows/non-ronin/a11y-win.ps1'
+$bootstrap = Join-Path $root 'provisioners/windows/MDC1Windows/non-ronin/windows-kms.ps1'
 $code = [IO.File]::ReadAllText($bootstrap)
 $script:configJson = '{"pool":"win11-26h2-a11y","kms_server":"kms.example.com:1688","kms_key":"AAAAA-BBBBB-CCCCC-DDDDD-EEEEE","worker_images_revision":"test"}'
 function Get-Content { return $script:configJson }
@@ -123,11 +127,16 @@ function Get-ChildItem { return @() }
 function Set-ItemProperty { }
 function Remove-ItemProperty { }
 $script:nativeExitCode = 0; $script:licenseStatus = 1
-$script:kmsCalls = @(); $script:cleanupCount = 0
-& ([scriptblock]::Create($code))
-if ($script:kmsCalls.Count -ne 3 -or $script:kmsCalls[0][2] -ne '/ipk' -or
-    $script:kmsCalls[1][2] -ne '/skms' -or $script:kmsCalls[2][2] -ne '/ato' -or $script:cleanupCount -eq 0) {
-    throw 'KMS command sequence or successful cleanup failed.'
+foreach ($poolName in 'win11-26h2-a11y', 'win11-lab') {
+    $config = $script:configJson | ConvertFrom-Json
+    $config.pool = $poolName
+    $script:configJson = $config | ConvertTo-Json
+    $script:kmsCalls = @(); $script:cleanupCount = 0
+    & ([scriptblock]::Create($code))
+    if ($script:kmsCalls.Count -ne 3 -or $script:kmsCalls[0][2] -ne '/ipk' -or
+        $script:kmsCalls[1][2] -ne '/skms' -or $script:kmsCalls[2][2] -ne '/ato' -or $script:cleanupCount -eq 0) {
+        throw 'KMS command sequence or successful cleanup failed.'
+    }
 }
 $script:cleanupCount = 0; $script:nativeExitCode = 1
 Assert-Fails { & ([scriptblock]::Create($code)) }

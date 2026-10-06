@@ -1,13 +1,37 @@
 # Windows Hardware Bootstrapping
 
-Pools in `pools.yml` use Ronin by default. Set `ronin: false` and
-`bootstrap_script: <filename>.ps1` to stage a first-boot script from
+Pools in `pools.yml` use Ronin by default. Set `ronin.enabled: false` and
+`bootstrap_script: windows-kms.ps1` to reuse the shared KMS first-boot script from
 `non-ronin/` instead of `Get-Bootstrap.ps1`. Scripts come from the same pinned
 worker-images revision as the deployment. Non-Ronin pools need no Puppet/Git
 versions or Ronin repository/role settings.
 The existing deployment functions and Ronin pool matching/fallback logic are
 preserved; only explicitly non-Ronin pools use the new helpers. Ronin bootstrap
 still runs at its original point after formatting Windows.
+
+For another plain Windows pool, copy this entry and set its name, image, node,
+secret date, and the public KMS client key for its Windows edition:
+
+```yaml
+- name: "win11-lab"
+  ronin:
+    enabled: false
+    # Public Pro GVLK: https://learn.microsoft.com/en-us/windows-server/get-started/kms-client-activation-keys
+    win_kms_key: "W269N-WFGWX-YVC9B-4J6C9-T83GX"
+  bootstrap_script: "windows-kms.ps1"
+  image: "win11-lab"
+  secret_date: "10-06-2026"
+  domain_suffix: "corpdmz.mdc1.mozilla.com"
+  nodes:
+    - lab-win
+```
+
+Stage the pool's single-edition WIM/media and `<name>-<secret_date>.yaml` secrets
+with `win_adminpw` and `win_kms_server`. The shared script reads the pool name and
+KMS settings from deployment configuration; it has no a11y-specific behavior.
+Use `dev` to test a deployment branch. For an ISO export, copy the a11y WIM
+config under the new image name and set its ISO/edition; add the image to the
+existing workflow choices. WIM builds select their branch through `pipeline_ref`.
 
 The `win11-26h2-a11y` pool uses plain Windows media with a single-edition WIM at index
 1. Extract the staged `resources/ISOs/Windows11_Client_x64_en-us_26300_9457.iso`
@@ -49,7 +73,8 @@ retain the protected provisioning files for diagnosis and retry.
 
 Non-Ronin provisioning skips the Ronin vault copy, Chocolatey/Puppet install,
 Ronin catalog, and Taskcluster registration. Additional a11y software and
-management tooling belong in `non-ronin/a11y-win.ps1` once specified.
+management tooling should use a separate pool-specific `bootstrap_script` once
+specified, leaving `non-ronin/windows-kms.ps1` reusable.
 
 Local verification (no disks, activation, or registry changes):
 

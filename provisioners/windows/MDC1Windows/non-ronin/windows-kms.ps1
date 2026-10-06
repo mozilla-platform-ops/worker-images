@@ -1,8 +1,8 @@
-# Staged as D:\scripts\Get-Bootstrap.ps1 by OS-deploy for the win11-26h2-a11y pool.
+# Staged as D:\scripts\Get-Bootstrap.ps1 by OS-deploy for pools with ronin.enabled: false.
 # No Puppet, Ronin checkout, or Taskcluster registration.
 $ErrorActionPreference = 'Stop'
 $config = Get-Content -LiteralPath 'D:\scripts\non-ronin.json' -Raw | ConvertFrom-Json
-if ($config.pool -ne 'win11-26h2-a11y') { throw 'Incorrect pool configuration for win11-26h2-a11y.' }
+if ($config.pool -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]*$') { throw 'Missing or invalid non-Ronin pool name.' }
 if ($config.kms_key -notmatch '^[A-Z0-9]{5}(-[A-Z0-9]{5}){4}$' -or
     $config.kms_server -notmatch '^[A-Za-z0-9][A-Za-z0-9.-]*(?::[0-9]{1,5})?$') {
     throw 'Invalid KMS key or server in the deployment configuration.'
@@ -27,4 +27,4 @@ Get-ChildItem -LiteralPath 'D:\' -Filter autounattend.xml -Recurse -File |
 $winlogon = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon'
 Set-ItemProperty -LiteralPath $winlogon -Name AutoAdminLogon -Value '0'
 Remove-ItemProperty -LiteralPath $winlogon -Name DefaultPassword -ErrorAction SilentlyContinue
-Write-Host "win11-26h2-a11y provisioning complete ($($config.worker_images_revision))."
+Write-Host "$($config.pool) provisioning complete ($($config.worker_images_revision))."
