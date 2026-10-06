@@ -29,9 +29,9 @@ To create it with the **Windows HW WIM Build** workflow, select image
 `win-hw-wim/config/win11-26h2-a11y.yaml`. Its `wim.plain: true` selects
 ISO extraction and single-edition export, followed by upload to
 `captured/WIMs/win11-26h2-a11y/<image>-<buildid>.wim` plus SHA-256.
-The initial edition selection is `Windows 11 Enterprise`; the build fails and
-lists available editions if that name is absent. Confirm the edition against
-the media and update the config as needed. This export retains the ISO's patch
+The edition selection is `Windows 11 Pro`, confirmed in the staged ISO by the
+build logs. Enterprise media is available separately; the staged consumer ISO
+does not include Enterprise. This export retains the ISO's patch
 level and does not run Ronin or Windows Update. At PXE deployment, the pool's
 existing `dev` flag selects the implementation branch.
 

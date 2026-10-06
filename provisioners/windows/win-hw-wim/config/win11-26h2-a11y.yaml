@@ -4,6 +4,7 @@ base:
   wim: win11-26300-9457-base-install.wim
   iso: Windows11_Client_x64_en-us_26300_9457.iso
   # Must match the media exactly. The build lists available editions if absent.
-  edition: Windows 11 Enterprise
+  # Enterprise media is available separately; this staged consumer ISO has no Enterprise edition.
+  edition: Windows 11 Pro
 wim:
   plain: true
