@@ -26,7 +26,7 @@ vm:
     sourceOrganization: "default"
     sourceRepository: "default"
     sourceBranch: "RELOPS-2610"
-    deploymentId: "81fb6fd4213f2a60400017504b2d4edffafb6477"
+    deploymentId: "NA"
     managed_by: "default"
 tests:
   - microsoft_binscope.tests.ps1
