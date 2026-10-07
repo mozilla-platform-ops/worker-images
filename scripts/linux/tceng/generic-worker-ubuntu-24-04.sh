@@ -71,7 +71,12 @@ retry apt-get install -y docker-ce docker-ce-cli containerd.io
 mkdir -p /etc/docker
 cat > /etc/docker/daemon.json <<'EOF'
 {
-  "mtu": 1400
+  "mtu": 1400,
+  "default-network-opts": {
+    "bridge": {
+      "com.docker.network.driver.mtu": "1400"
+    }
+  }
 }
 EOF
 retry docker run hello-world
