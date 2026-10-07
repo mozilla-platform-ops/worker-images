@@ -23,6 +23,8 @@ on:
         - win2022-64-2009
         - win2025-64-24h2-alpha
         - win2025-64-24h2
+        - win2025-64-24h2-core-alpha
+        - win2025-64-24h2-core
 
 permissions:
   id-token: write

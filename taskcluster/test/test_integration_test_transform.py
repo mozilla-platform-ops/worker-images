@@ -118,6 +118,28 @@ class TestIntegrationTestTransform(unittest.TestCase):
 
         self.assertEqual(result[0]["task"]["workerType"], "b-win2025-alpha")
 
+    def test_core_image_selects_level_1_core_alpha_pool(self):
+        self.mod.get_worker_pool_images = lambda: {
+            "gecko-1/b-win2022-alpha": {"win2022_64_2009_alpha"},
+            "gecko-1/b-win2025-alpha": {"win2025_64_24h2_alpha"},
+            "gecko-1/b-win2025-core-alpha": {"win2025_64_24h2_core_alpha"},
+            "gecko-3/b-win2025-core-alpha": {"trusted_win2025_64_24h2_core"},
+        }
+
+        class DummyConfig:
+            kind = "integration-test"
+            params = {"images": ["win2025_64_24h2_core_alpha"]}
+
+        for worker_type in ("b-win2022", "b-win2025"):
+            with self.subTest(worker_type=worker_type):
+                task = {
+                    "task": {"provisionerId": "gecko-3", "workerType": worker_type}
+                }
+                result = list(self.mod.change_worker_pool_to_alpha(DummyConfig(), [task]))
+                self.assertEqual(len(result), 1)
+                self.assertEqual(result[0]["task"]["provisionerId"], "gecko-1")
+                self.assertEqual(result[0]["task"]["workerType"], "b-win2025-core-alpha")
+
     def test_restore_gecko_revision_env_injects_revs_for_gecko_tasks(self):
         self.mod._fetch_gecko_revision_env = lambda: {
             "hg": {"GECKO_HEAD_REV": "deadbeefcafe"},
