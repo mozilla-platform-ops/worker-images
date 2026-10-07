@@ -25,8 +25,8 @@ vm:
     worker_pool_id: win2025-64-24h2-alpha
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "fix-task-temp-permissions"
-    deploymentId: "NA"
+    sourceBranch: "RELOPS-2610"
+    deploymentId: "81fb6fd4213f2a60400017504b2d4edffafb6477"
     managed_by: packer
 tests:
   - microsoft_binscope.tests.ps1
@@ -48,4 +48,5 @@ tests:
   - mercurial.tests.ps1
   - mozilla_build_v2.tests.ps1
   - windows_worker_runner.tests.ps1
+  - gpu_drivers_hardened.tests.ps1
   - task_storage.tests.ps1

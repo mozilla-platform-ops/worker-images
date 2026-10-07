@@ -14,6 +14,7 @@ on:
         - win11-a64-25h2-tester-alpha
         - win11-a64-25h2-builder-alpha
         - win2022-64-2009-alpha
+        - win2025-64-24h2-alpha
         - win2025-64-24h2-core-alpha
         - gw-fxci-gcp-l1-2404-gui-alpha
         - gw-fxci-gcp-l1-2404-headless-alpha

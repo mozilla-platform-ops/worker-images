@@ -25,6 +25,10 @@ on:
         - win2025-64-24h2
         - win2025-64-24h2-core-alpha
         - win2025-64-24h2-core
+      run_integration:
+        type: boolean
+        description: Run automatic OS integration tests after publishing
+        default: true
 
 permissions:
   id-token: write
@@ -110,6 +114,7 @@ jobs:
       artifact_pattern: release-notes-${{ github.event.inputs.config }}
       commit_message: ${{ github.event.inputs.config }} - Release Notes
   os-integration:
+    if: ${{ inputs.run_integration }}
     needs: packer
     name: "OS Integration Tests"
     uses: ./.github/workflows/os-integration.yml
