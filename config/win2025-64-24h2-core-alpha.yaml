@@ -12,6 +12,8 @@ azure:
   managed_image_resource_group_name: "default"
   managed_image_storage_account_type: "default"
   build_location: eastus2
+  locations:
+    - eastus2
 vm:
   spot: true
   puppet_version: "default"
@@ -23,8 +25,8 @@ vm:
     worker_pool_id: win2025-64-24h2-core-alpha
     sourceOrganization: "default"
     sourceRepository: "default"
-    sourceBranch: master
-    deploymentId: "default"
+    sourceBranch: "RELOPS-2610"
+    deploymentId: "NA"
     managed_by: "default"
 tests:
   - microsoft_binscope.tests.ps1
@@ -47,3 +49,4 @@ tests:
   - mercurial.tests.ps1
   - mozilla_build_v2.tests.ps1
   - windows_worker_runner.tests.ps1
+  - gpu_drivers_hardened.tests.ps1
