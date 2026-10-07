@@ -56,7 +56,7 @@ def pool_matches_images(pool_images: set[str], requested_images: set[str]) -> bo
 
 
 def get_worker_pool_variant(worker_type: str) -> str | None:
-    if worker_type in {"b-win2022", "b-win2025"}:
+    if worker_type in {"b-win2022", "b-win2025", "b-win2025-core"}:
         return "b-win"
 
     parts = worker_type.split("-")
