@@ -1,0 +1,24 @@
+---
+image:
+  # GCP-specific configuration
+  project_id: "taskcluster-imaging"
+  zone: "us-central1-a"
+  source_image_family: "ubuntu-2404-lts-arm64"
+  image_name: "generic-worker-ubuntu-24-04-arm64-staging"
+  workload_identity_provider_project_number: 324168772199
+  # AWS-specific configuration
+  ami_name: "generic-worker-ubuntu-24-04-arm64-staging-aws"
+  source_ami_owner: "099720109477"  # Canonical
+  source_ami_filter: "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-arm64-server-*"
+
+vm:
+  disk_size: 60
+  tc_arch: "arm64"
+  script_name: "generic-worker-ubuntu-24-04-staging.sh"
+  machine_type: "t2a-standard-4"
+  # AWS-specific VM settings
+  instance_type: "t4g.large"  # ARM-based Graviton2, used when building on AWS
+  tags:
+    image_set: "tceng-generic-worker-ubuntu-24-04-arm64-staging"
+    maintainer: "Taskcluster Engineering"
+    purpose: "tceng ubuntu-24-04-arm64-staging"

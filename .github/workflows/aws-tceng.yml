@@ -11,6 +11,7 @@ on:
           - generic-worker-ubuntu-24-04
           - generic-worker-ubuntu-24-04-arm64
           - generic-worker-ubuntu-24-04-staging
+          - generic-worker-ubuntu-24-04-arm64-staging
       aws_account:
         type: choice
         description: Choose which AWS account to build in
