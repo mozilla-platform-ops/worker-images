@@ -96,6 +96,17 @@ echo "kernel.core_pattern = core" >> /etc/sysctl.d/90-custom.conf
 # fix 'bugmon-process: error: rr needs /proc/sys/kernel/perf_event_paranoid <= 1, but it is 4'
 echo 'kernel.perf_event_paranoid = 1' >> /etc/sysctl.d/90-custom.conf
 
+# disable 5-level paging so that rr recordings can be replayed by pernosco
+# (on CPUs with LA57 the kernel otherwise enables 57-bit virtual addressing).
+# Ubuntu cloud images set GRUB_CMDLINE_LINUX_DEFAULT in
+# /etc/default/grub.d/50-cloudimg-settings.cfg, so append in a later file.
+if [ "${ARCH}" == 'amd64' ]; then
+    mkdir -p /etc/default/grub.d
+    echo 'GRUB_CMDLINE_LINUX_DEFAULT="${GRUB_CMDLINE_LINUX_DEFAULT} no5lvl"' > /etc/default/grub.d/99-no5lvl.cfg
+    update-grub
+    grep -q 'no5lvl' /boot/grub/grub.cfg
+fi
+
 # create group for running snap
 groupadd snap_sudo
 echo '%snap_sudo ALL=(ALL:ALL) NOPASSWD: /usr/bin/snap' | EDITOR='tee -a' visudo
