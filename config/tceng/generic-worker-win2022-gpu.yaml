@@ -12,7 +12,6 @@ azure:
     - southcentralus
     - westus2
   managed_image_resource_group_name: "rg-packer-worker-images"
-  managed_image_name_suffix: fuzzing
   managed_image_storage_account_type: "Standard_LRS"
 vm:
   providerType: "azure"

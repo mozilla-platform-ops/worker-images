@@ -100,11 +100,7 @@ function New-AzWorkerImage {
     $ENV:PKR_VAR_oidc_request_token = $oidc_request_token
 
     if ($Team -eq "tceng" -and $ENV:PKR_VAR_uuid) {
-        $managedImageName = "imageset-$($ENV:PKR_VAR_uuid)-$Location"
-        if ($YAML.azure["managed_image_name_suffix"]) {
-            $managedImageName = "$managedImageName-$($YAML.azure["managed_image_name_suffix"])"
-        }
-        $ENV:PKR_VAR_managed_image_name = $managedImageName
+        $ENV:PKR_VAR_managed_image_name = "imageset-$($ENV:PKR_VAR_uuid)-$Location"
     }
     else {
         switch -Wildcard ($Key) {
