@@ -113,7 +113,7 @@ echo '%snap_sudo ALL=(ALL:ALL) NOPASSWD: /usr/bin/snap' | EDITOR='tee -a' visudo
 # build generic-worker/livelog/start-worker/taskcluster-proxy from ${TASKCLUSTER_REF} commit / branch / tag etc
 retry apt-get install -y git tar
 retry curl -fsSL "https://dl.google.com/go/go1.26.0.linux-${ARCH}.tar.gz" > go.tar.gz
-tar xvfz go.tar.gz -C /usr/local
+tar xfz go.tar.gz -C /usr/local
 export HOME=/root
 export GOPATH=~/go
 export GOROOT=/usr/local/go

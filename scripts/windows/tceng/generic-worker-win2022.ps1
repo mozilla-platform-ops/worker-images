@@ -228,6 +228,10 @@ foreach ($service in $servicesToDisable) {
 # install chocolatey package manager
 Invoke-RestMethod -Uri 'https://community.chocolatey.org/install.ps1' | Invoke-Expression
 
+# disable download progress output, which otherwise emits one log line per
+# percentage update (tens of thousands of lines in packer logs)
+Run-Executable "choco" @("feature", "disable", "--name=showDownloadProgress")
+
 # install nssm
 Run-Executable "choco" @("install", "-y", "nssm", "--version", "2.24.101.20180116")
 
