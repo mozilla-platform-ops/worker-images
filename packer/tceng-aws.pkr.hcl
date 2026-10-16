@@ -114,10 +114,8 @@ build {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     environment_vars = [
       "MY_CLOUD=aws",
-      "IMAGE_SET=${var.config}",
-      "REGION=${var.region}",
       "TASKCLUSTER_VERSION=${var.taskcluster_version}",
-      "TC_ARCH=${var.tc_arch}"
+      "TASKCLUSTER_REF=${var.taskcluster_ref}"
     ]
     script = "${path.cwd}/scripts/linux/tceng/${var.bootstrap_script}"
   }

@@ -1,15 +1,12 @@
 #!/bin/bash
 
 set -exv
-# exec &> /var/log/bootstrap.log
-#exec > >(tee -a /var/log/bootstrap.log)
 
 if [[ -z "${MY_CLOUD}" ]]; then
   echo "Error: MY_CLOUD environment variable not set. Expected one of: google, azure, aws." >&2
   exit 1
 fi
 
-## Get TASKCLUSTER_VERSION from the yaml file
 if [[ -z "${TASKCLUSTER_VERSION}" ]]; then
   echo "Error: TASKCLUSTER_VERSION environment variable not set." >&2
   exit 1

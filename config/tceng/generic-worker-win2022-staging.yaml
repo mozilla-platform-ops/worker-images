@@ -15,6 +15,5 @@ vm:
   providerType: "azure"
   vm_size: Standard_D2s_v3
   bootstrapscript: "generic-worker-win2022-staging"
-  tc_arch: "amd64"
   tags:
     - image_set: generic-worker-win2022-staging

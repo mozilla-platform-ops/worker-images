@@ -17,7 +17,6 @@ variable "image_sku" { default = env("image_sku") }
 variable "image_version" { default = env("image_version") }
 variable "vm_size" { default = env("vm_size") }
 variable "location" { default = env("location") }
-variable "tc_arch" { default = "${env("tc_arch")}" }
 variable "managed_image_name" { default = env("managed_image_name") }
 variable "resource_group" { default = env("resource_group") }
 variable "managed_image_resource_group_name" { default = env("managed_image_resource_group_name") }
@@ -97,7 +96,6 @@ build {
     environment_vars = [
       "TASKCLUSTER_REF=${var.taskcluster_ref}",
       "TASKCLUSTER_VERSION=${var.taskcluster_version}",
-      "TC_ARCH=${var.tc_arch}",
       "PROVIDER_TYPE=${var.provider_type}"
     ]
     inline = [

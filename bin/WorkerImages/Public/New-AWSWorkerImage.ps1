@@ -50,6 +50,7 @@ function New-AWSWorkerImage {
     if ($YAML.vm["disk_size"]) { $ENV:PKR_VAR_disk_size = $YAML.vm["disk_size"] }
     if ($YAML.vm["instance_type"]) { $ENV:PKR_VAR_instance_type = $YAML.vm["instance_type"] }
     if ($YAML.vm["taskcluster_version"]) { $ENV:PKR_VAR_taskcluster_version = $YAML.vm["taskcluster_version"] }
+    if ($YAML.vm["taskcluster_ref"]) { $ENV:PKR_VAR_taskcluster_ref = $YAML.vm["taskcluster_ref"] }
     if ($YAML.vm["tc_arch"]) { $ENV:PKR_VAR_tc_arch = $YAML.vm["tc_arch"] }
     if ($YAML.vm["script_name"]) { $ENV:PKR_VAR_bootstrap_script = $YAML.vm["script_name"] }
 
