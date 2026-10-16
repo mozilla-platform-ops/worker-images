@@ -80,7 +80,7 @@ jobs:
           }
           "sharedimageversion=$ENV:PKR_VAR_sharedimage_version" >> $env:GITHUB_ENV
       - name: Upload Release Notes Artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: release-notes-${{ github.event.inputs.config }}
           path: ${{ github.event.inputs.config }}-${{ env.sharedimageversion }}.md

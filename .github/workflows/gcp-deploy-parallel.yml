@@ -128,7 +128,7 @@ jobs:
           "production_sbom=$ProductionSbomPath" >> $env:GITHUB_OUTPUT
 
       - name: Upload Production SBOM Artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: release-notes-production-${{ matrix.config }}
           path: ${{ steps.create-production-sbom.outputs.production_sbom }}
