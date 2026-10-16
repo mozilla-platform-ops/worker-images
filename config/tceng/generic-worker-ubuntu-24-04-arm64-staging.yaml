@@ -22,3 +22,11 @@ vm:
     image_set: "tceng-generic-worker-ubuntu-24-04-arm64-staging"
     maintainer: "Taskcluster Engineering"
     purpose: "tceng ubuntu-24-04-arm64-staging"
+
+# AWS-specific settings
+aws:
+  # Optional: replicate to multiple regions for global availability
+  ami_regions:
+    - "us-west-2"
+    - "us-east-1"
+    - "eu-west-1"

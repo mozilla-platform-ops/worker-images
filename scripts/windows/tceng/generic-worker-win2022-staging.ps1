@@ -94,17 +94,16 @@ function Expand-ZIPFile {
     Expand-Archive -Path $file -DestinationPath $destination -Force
 }
 
-##############################################################################
+###############################################################################
 # TASKCLUSTER_REF can be a git commit SHA, a git branch name, or a git tag name
 # (i.e. for a taskcluster version number, prefix with 'v' to make it a git tag)
 $TASKCLUSTER_REF = $ENV:TASKCLUSTER_REF
 $TASKCLUSTER_REPO = "https://github.com/taskcluster/taskcluster"
-##############################################################################
+###############################################################################
 
 Write-Log -message "TASKCLUSTER_REF: $($ENV:TASKCLUSTER_REF)"
 Write-Log -message "PROVIDER_TYPE: $($ENV:PROVIDER_TYPE)"
 
-$TASKCLUSTER_VERSION = $ENV:TASKCLUSTER_VERSION
 $MY_CLOUD = $ENV:PROVIDER_TYPE
 
 if ($null -eq $TASKCLUSTER_REF -or $TASKCLUSTER_REF -eq "") {

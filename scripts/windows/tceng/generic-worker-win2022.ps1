@@ -96,11 +96,9 @@ function Expand-ZIPFile {
 
 Write-Log -message "TASKCLUSTER_VERSION: $($ENV:taskcluster_version)"
 Write-Log -message "PROVIDER_TYPE: $($ENV:PROVIDER_TYPE)"
-Write-Log -message "TC_ARCH: $($ENV:TC_ARCH)"
 
 $TASKCLUSTER_VERSION = $ENV:taskcluster_version
 $MY_CLOUD = $ENV:PROVIDER_TYPE
-$TC_ARCH = $ENV:TC_ARCH
 
 if ($null -eq $TASKCLUSTER_VERSION -or $TASKCLUSTER_VERSION -eq "") {
     throw "TASKCLUSTER_VERSION environment variable is not set."
@@ -266,6 +264,13 @@ refreshenv
 
 md "C:\generic-worker"
 md "C:\worker-runner"
+
+switch ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture) {
+    "X64" { $TC_ARCH = "amd64" }
+    "Arm64" { $TC_ARCH = "arm64" }
+    default { throw "Unsupported architecture: $_" }
+}
+Write-Log -message "TC_ARCH: $TC_ARCH"
 
 Invoke-WebRequest -Uri ("https://github.com/taskcluster/taskcluster/releases/download/v{0}/generic-worker-multiuser-windows-{1}" -f $TASKCLUSTER_VERSION, $TC_ARCH) -OutFile "C:\generic-worker\generic-worker.exe"
 Invoke-WebRequest -Uri ("https://github.com/taskcluster/taskcluster/releases/download/v{0}/start-worker-windows-{1}" -f $TASKCLUSTER_VERSION, $TC_ARCH) -OutFile "C:\worker-runner\start-worker.exe"

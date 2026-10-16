@@ -84,11 +84,8 @@ build {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     environment_vars = [
       "MY_CLOUD=google",
-      "IMAGE_SET=${var.config}",
-      "REGION=${var.zone}",
       "TASKCLUSTER_VERSION=${var.taskcluster_version}",
-      "TASKCLUSTER_REF=${var.taskcluster_ref}",
-      "TC_ARCH=${var.tc_arch}"
+      "TASKCLUSTER_REF=${var.taskcluster_ref}"
     ]
     script = "${path.cwd}/scripts/linux/tceng/${var.bootstrap_script}"
   }

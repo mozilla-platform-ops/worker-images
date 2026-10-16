@@ -1,21 +1,20 @@
 #!/bin/bash
+
+set -exv
+
 if [[ -z "${MY_CLOUD}" ]]; then
   echo "Error: MY_CLOUD environment variable not set. Expected one of: google, azure, aws." >&2
   exit 1
 fi
 
+###############################################################################
+# TASKCLUSTER_REF can be a git commit SHA, a git branch name, or a git tag name
+# (i.e. for a taskcluster version number, prefix with 'v' to make it a git tag)
+###############################################################################
 if [[ -z "${TASKCLUSTER_REF}" ]]; then
   TASKCLUSTER_REF="main"
 fi
-
-set -exv
-#exec &> /var/log/bootstrap.log
-
-##############################################################################
-# TASKCLUSTER_REF can be a git commit SHA, a git branch name, or a git tag name
-# (i.e. for a taskcluster version number, prefix with 'v' to make it a git tag)
 TASKCLUSTER_REPO='https://github.com/taskcluster/taskcluster'
-##############################################################################
 
 function retry {
   set +e
@@ -43,10 +42,10 @@ start_time="$(date '+%s')"
 
 case "$(uname -m)" in
   x86_64)
-    export ARCH=amd64
+    ARCH=amd64
     ;;
   aarch64)
-    export ARCH=arm64
+    ARCH=arm64
     ;;
   *)
     echo "Unsupported architecture '$(uname -m)' - currently bootstrap.sh only supports architectures x86_64 and aarch64" >&2
@@ -119,7 +118,7 @@ export HOME=/root
 export GOPATH=~/go
 export GOROOT=/usr/local/go
 export PATH="${GOROOT}/bin:${GOPATH}/bin:${PATH}"
-export GCO_ENABLED=0
+export CGO_ENABLED=0
 git clone "${TASKCLUSTER_REPO}"
 cd taskcluster
 git checkout "${TASKCLUSTER_REF}"

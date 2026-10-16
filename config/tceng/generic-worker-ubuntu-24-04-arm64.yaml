@@ -22,7 +22,7 @@ vm:
   tags:
     image_set: "tceng-generic-worker-ubuntu-24-04-arm64"
     maintainer: "Taskcluster Engineering"
-    purpose: "tceng ubuntu-24-04-staging-arm64"
+    purpose: "tceng ubuntu-24-04-arm64"
 
 # AWS-specific settings
 aws:
