@@ -23,7 +23,11 @@ function Assert-WorkerImageDev {
     if ($Team) {
         throw 'Not authorized: dev branch selection is restricted to RelOps root-level alpha image configs; dev is not permitted in config subdirectories.'
     }
-    $users = Get-Content -LiteralPath "$Root/.github/relsre.json" -Raw -ErrorAction Stop | ConvertFrom-Json
+    try {
+        $users = Get-Content -LiteralPath "$Root/.github/relsre.json" -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+    } catch {
+        throw 'Not authorized: trusted RelOps allowlist is unavailable.'
+    }
     if (-not $env:GITHUB_ACTOR -or $users -notcontains $env:GITHUB_ACTOR -or
         ($env:GITHUB_TRIGGERING_ACTOR -and $users -notcontains $env:GITHUB_TRIGGERING_ACTOR)) {
         throw 'Not authorized: dev branch selection is restricted to the RelOps team.'
@@ -31,6 +35,17 @@ function Assert-WorkerImageDev {
     if ($Key -notmatch '-alpha2?$') { throw "dev is supported only for alpha images: $Key" }
     if ($Yaml.dev -isnot [string] -or [string]::IsNullOrWhiteSpace($Yaml.dev)) {
         throw "dev must be a nonempty worker-images branch name: $Key"
+    }
+}
+
+function Assert-WorkerImageAlpha {
+    param($Yaml, [string] $Provider)
+    if ($Provider -eq 'Azure') {
+        foreach ($name in @($Yaml.sharedimage.gallery_name, $Yaml.sharedimage.image_name, $Yaml.vm.tags.worker_pool_id)) {
+            if ($name -notmatch '[-_]alpha2?$') { throw 'dev cannot target a non-alpha Azure gallery, image, or worker pool.' }
+        }
+    } elseif ($Yaml.image.image_name -notmatch '-alpha2?$') {
+        throw 'dev cannot target a non-alpha GCP image.'
     }
 }
 

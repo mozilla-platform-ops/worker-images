@@ -66,6 +66,11 @@ jobs:
       matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Reject dev overrides for production promotion
+        shell: pwsh
+        run: |
+          ./ci/install-powershell-yaml.ps1
+          ./ci/select-image-source.ps1 -Key '${{ matrix.config }}' -Provider GCP -RejectDev
 
       - id: set-gcp-vars
         name: Get Project ID and Image Name from Config

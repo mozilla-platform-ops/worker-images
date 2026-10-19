@@ -40,6 +40,7 @@ function global:Set-PSRepository { }
 function global:Install-Module { }
 function global:packer {
     if ((Get-Content 'scripts/marker' -Raw).Trim() -ne $global:ExpectedMarker) { throw 'Packer used the wrong checkout.' }
+    if ($global:PackerFailure -eq $args[0]) { $global:LASTEXITCODE = 7; return }
     if ($args[0] -eq 'build') {
         if ($global:ExpectedProvider -eq 'Azure') {
             if ($env:PKR_VAR_sharedimage_version -ne '9.8.7' -or $env:PKR_VAR_git_version -ne '9.9.9') {
@@ -87,6 +88,8 @@ try {
     $env:GITHUB_ENV = ''
     $env:GITHUB_OUTPUT = ''
     Reload
+    $env:GITHUB_ACTOR = ''
+    if ((Set-GCPWorkerImageProject -Key $gcpKey -Team custom) -ne 'PROJECT=taskcluster-imaging') { throw 'Absent dev changed custom team config lookup.' }
     $plain = Get-WorkerImageSource -Key $azureKey -Provider Azure
     if ($plain.Root -ne $checkout -or $plain.Revision) { throw 'Absent dev changed checkout behavior.' }
 
@@ -103,6 +106,16 @@ try {
         }
     }
     $env:GITHUB_ACTOR = 'relops-test'
+    foreach ($action in @(
+        { New-GCPWorkerImage -Key fake-alpha -Team tceng },
+        { Set-GCPWorkerImageName -Key fake-alpha -Team tceng },
+        { Set-GCPWorkerImageProject -Key fake-alpha -Team tceng },
+        { Set-AzWorkerImageLocation -Key fake-alpha -Team tceng },
+        { New-AWSWorkerImage -Key fake-alpha -Region us-west-2 },
+        { New-AzWorkerImage -Key fake-alpha -Team tceng -Location test -Client_ID test -Subscription_ID test -Tenant_ID test -Application_ID test -oidc_request_url test -oidc_request_token test }
+    )) {
+        Reject $action 'dev is not permitted in config subdirectories'
+    }
     foreach ($dev in @($null, '', ' ', 1, $false, @('branch'), @{ branch = 'branch' })) {
         Write-Yaml $checkout 'config/fake-alpha.yaml' @{ dev = $dev }
         Reject { Get-WorkerImageSource -Key fake-alpha -Provider GCP } 'nonempty'
@@ -115,6 +128,18 @@ try {
     $yaml.dev = 'bad branch'
     Write-Yaml $checkout "config/$azureKey.yaml" $yaml
     Reject { Get-WorkerImageSource -Key $azureKey -Provider Azure } 'git check-ref-format failed'
+
+    $yaml.dev = 'missing/branch'
+    $yaml.sharedimage.image_name = 'production'
+    Write-Yaml $checkout "config/$azureKey.yaml" $yaml
+    Reject { Get-WorkerImageSource -Key $azureKey -Provider Azure } 'non-alpha Azure'
+    Write-Yaml $checkout 'config/fake-alpha.yaml' @{ dev = 'missing/branch'; image = @{ image_name = 'production' } }
+    Reject { Get-WorkerImageSource -Key fake-alpha -Provider GCP } 'non-alpha GCP'
+    New-Item -ItemType SymbolicLink -Path 'config/link-alpha.yaml' -Target 'tceng/fake-alpha.yaml' | Out-Null
+    Reject { Get-WorkerImageSource -Key link-alpha -Provider Azure } 'contains a link'
+    Move-Item '.github/relsre.json' '.github/relsre.saved'
+    Reject { Get-WorkerImageSource -Key fake-alpha -Provider GCP } 'trusted RelOps allowlist is unavailable'
+    Move-Item '.github/relsre.saved' '.github/relsre.json'
 
     # Different images select independent branches, with dev retained in branch YAML.
     foreach ($entry in @(@($azureKey, 'Azure', 'dev/azure'), @($gcpKey, 'GCP', 'dev/gcp'))) {
@@ -142,10 +167,12 @@ try {
         Write-Yaml $checkout "config/$key.yaml" $base
     }
     Reload
+    Reject { Get-WorkerImageSource -Key $gcpKey -Provider GCP -RejectDev } 'production promotion workflows'
     $az = Get-WorkerImageSource -Key $azureKey -Provider Azure
     $gcp = Get-WorkerImageSource -Key $gcpKey -Provider GCP
     if ($az.Root -eq $gcp.Root -or $az.Revision -eq $gcp.Revision) { throw 'Image sources were not isolated.' }
     if ((Get-Content scripts/marker -Raw).Trim() -ne 'main') { throw 'Original checkout was changed.' }
+    $global:PackerFailure = ''
     $global:ExpectedMarker = 'dev/azure'; $global:ExpectedProvider = 'Azure'
     New-AzSharedWorkerImage -Key $azureKey 6>$null
     if ((Get-WorkerImageSource -Key $gcpKey -Provider GCP).Root -ne $gcp.Root) { throw 'Branch handoff reset the original source cache.' }
@@ -154,6 +181,12 @@ try {
     New-GCPWorkerImage -Key $gcpKey 6>$null
     if (-not (Test-Path "sboms/$($gcp.Yaml.image.image_name).md")) { throw 'GCP artifact was not returned.' }
     if ((Get-Location).Path -ne $checkout) { throw 'Build did not restore working directory.' }
+    foreach ($stage in @('init', 'build')) {
+        $global:PackerFailure = $stage
+        Reject { New-GCPWorkerImage -Key $gcpKey 6>$null } "packer $stage failed with exit code 7"
+        if ((Get-Location).Path -ne $checkout) { throw 'Packer failure did not restore the working directory.' }
+    }
+    $global:PackerFailure = ''
     $env:GITHUB_ACTOR = 'attacker'
     Reject { Get-WorkerImageSource -Key $azureKey -Provider Azure } 'restricted to the RelOps team'
     $env:GITHUB_ACTOR = 'relops-test'; $env:GITHUB_TRIGGERING_ACTOR = 'attacker'
@@ -186,6 +219,29 @@ try {
         Reload
         $message = switch ($mutation) { image { 'non-alpha GCP image' } project { 'cannot change the GCP project' } missing { 'Missing dev build input' } }
         Reject { Get-WorkerImageSource -Key $gcpKey -Provider GCP } $message
+    }
+    foreach ($mutation in @('gallery', 'pool', 'defaults', 'link')) {
+        $null = Invoke-TestGit $origin @('checkout', '-B', "bad/azure-$mutation", 'dev/azure')
+        $data = ConvertFrom-Yaml (Get-Content "$origin/config/$azureKey.yaml" -Raw)
+        if ($mutation -eq 'gallery') { $data.sharedimage.gallery_name = 'production' }
+        if ($mutation -eq 'pool') { $data.vm.tags.worker_pool_id = 'production' }
+        if ($mutation -eq 'defaults') {
+            $defaults = ConvertFrom-Yaml (Get-Content "$origin/config/windows_production_defaults.yaml" -Raw)
+            $defaults.dev = 'other-branch'
+            Write-Yaml $origin 'config/windows_production_defaults.yaml' $defaults
+        }
+        if ($mutation -eq 'link') {
+            New-Item -ItemType SymbolicLink -Path "$origin/scripts/escape" -Target '/tmp' | Out-Null
+        }
+        Write-Yaml $origin "config/$azureKey.yaml" $data
+        $null = Invoke-TestGit $origin @('add', '.')
+        $null = Invoke-TestGit $origin @('commit', '-m', "bad Azure $mutation")
+        $base = ConvertFrom-Yaml (Get-Content "$repo/config/$azureKey.yaml" -Raw)
+        $base.dev = "bad/azure-$mutation"
+        Write-Yaml $checkout "config/$azureKey.yaml" $base
+        Reload
+        $message = switch ($mutation) { defaults { 'not defaults' } link { 'must not contain symbolic links' } default { 'non-alpha Azure' } }
+        Reject { Get-WorkerImageSource -Key $azureKey -Provider Azure } $message
     }
     Write-Host 'Image source authorization, validation, immutable selection, isolation, Azure uploads, and GCP provisioning checks passed.'
 } finally {

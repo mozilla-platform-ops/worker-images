@@ -52,7 +52,7 @@ variable "oidc_request_token" {
 }
 
 locals {
-  config = yamldecode(file(abspath("config/foofrix/${var.config}.yaml")))
+  config = yamldecode(file(abspath("${path.root}/../config/foofrix/${var.config}.yaml")))
   # Fail validation unless the destination gallery version is major.minor.patch.
   image_version = regex("^[0-9]+[.][0-9]+[.][0-9]+$", local.config.azure.image_version)
 }

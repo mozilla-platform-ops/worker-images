@@ -4,7 +4,8 @@ function Get-WorkerImageSource {
         [Parameter(Mandatory)][string] $Key,
         [string] $Team,
         [ValidateSet('Azure', 'GCP', 'AWS')][string] $Provider,
-        [string] $Revision = $env:WORKER_IMAGES_REVISION
+        [string] $Revision = $env:WORKER_IMAGES_REVISION,
+        [switch] $RejectDev
     )
 
     if ($Key -notmatch '^[a-zA-Z0-9_-]+$' -or ($Team -and $Team -notmatch '^[a-zA-Z0-9_-]+$')) {
@@ -21,7 +22,9 @@ function Get-WorkerImageSource {
     if (-not $yaml.Contains('dev')) {
         return [pscustomobject]@{ Root = $root; Key = $Key; Revision = ''; Branch = ''; Yaml = $yaml }
     }
+    if ($RejectDev) { throw 'dev is not supported by production promotion workflows.' }
     if ($Provider -notin @('Azure', 'GCP')) { throw 'dev supports only Azure and GCP alpha builds.' }
+    Assert-WorkerImageAlpha -Yaml $yaml -Provider $Provider
     if (-not $script:ImageSources) { $script:ImageSources = @{} }
     $cacheKey = "$root/$Key/$Provider/$Revision"
     if ($script:ImageSources.ContainsKey($cacheKey)) { return $script:ImageSources[$cacheKey] }
@@ -45,21 +48,14 @@ function Get-WorkerImageSource {
         if ($links -match '^120000 ') { throw 'Not authorized: dev checkout must not contain symbolic links.' }
         $selected = Read-WorkerImageYaml -Root $directory -Path $path
         Assert-WorkerImageDev -Yaml $selected -Key $Key -Root $root
+        Assert-WorkerImageAlpha -Yaml $selected -Provider $Provider
         $required = @('bin/WorkerImages/WorkerImages.psm1', $(if ($Provider -eq 'Azure') { 'bin/WorkerImages/Public/New-AzWorkerImage.ps1' } else { 'bin/WorkerImages/Public/New-GCPWorkerImage.ps1' }))
         if ($Provider -eq 'Azure') {
             $defaults = Read-WorkerImageYaml $directory 'config/windows_production_defaults.yaml'
             if ($defaults.Contains('dev')) { throw 'dev must be set on an individual root-level alpha image, not defaults.' }
-            foreach ($config in @($yaml, $selected)) {
-                foreach ($name in @($config.sharedimage.gallery_name, $config.sharedimage.image_name, $config.vm.tags.worker_pool_id)) {
-                    if ($name -notmatch '[-_]alpha2?$') { throw 'dev cannot target a non-alpha Azure gallery, image, or worker pool.' }
-                }
-            }
             $required += @('azure.pkr.hcl', 'bin/WorkerImages/Public/New-AzSharedWorkerImage.ps1',
                 'scripts/windows/CustomFunctions/Bootstrap', 'tests/win')
         } else {
-            foreach ($config in @($yaml, $selected)) {
-                if ($config.image.image_name -notmatch '-alpha2?$') { throw 'dev cannot target a non-alpha GCP image.' }
-            }
             if ($selected.image.project_id -ne $yaml.image.project_id) {
                 throw 'Not authorized: dev cannot change the GCP project or cloud identity.'
             }

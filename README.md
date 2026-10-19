@@ -141,7 +141,8 @@ and integration triggers consume the built image's recorded identity.
 Supported builds are the single-image and parallel FXCI Azure/GCP workflows and
 the `New-AzSharedWorkerImage`, `New-AzWorkerImage`, and `New-GCPWorkerImage`
 module functions. Invoke helpers from the repository root. Direct Packer calls
-are not a supported dev entry point. This setting does not select Puppet
+are not a supported dev entry point. Production GCP promotion workflows reject
+`dev`; remove it before promoting an image. This setting does not select Puppet
 `sourceBranch`/`deploymentId` or Taskcluster source/version settings. It does not
 change workflow authorization, cloud credentials, or production worker pools.
 
