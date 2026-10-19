@@ -107,6 +107,7 @@ jobs:
         with:
           name: image-source-${{ github.event.inputs.config }}
           path: image-source-${{ github.event.inputs.config }}.json
+          overwrite: true
           if-no-files-found: error
       - name: Upload Release Notes Artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9

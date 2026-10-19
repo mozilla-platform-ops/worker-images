@@ -47,15 +47,9 @@ jobs:
         run: |
           ./ci/install-powershell-yaml.ps1
           ./ci/select-image-source.ps1 -Key '${{ github.event.inputs.config }}' -Provider GCP
-      - id: set-matrix
-        shell: pwsh
-        run: |
-          Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
-          Set-GCPWorkerImageName -Key '${{ github.event.inputs.config }}'
-          Set-GCPWorkerImageProject -Key '${{ github.event.inputs.config }}'
     outputs:
-      IMAGENAME: ${{ steps.set-matrix.outputs.IMAGENAME }}
-      PROJECT: ${{ steps.set-matrix.outputs.PROJECT }}
+      IMAGENAME: ${{ steps.image-source.outputs.IMAGENAME }}
+      PROJECT: ${{ steps.image-source.outputs.PROJECT }}
       REVISION: ${{ steps.image-source.outputs.revision }}
   packer:
     needs: setproject
@@ -97,6 +91,7 @@ jobs:
         with:
           name: image-source-${{ github.event.inputs.config }}
           path: image-source-${{ github.event.inputs.config }}.json
+          overwrite: true
           if-no-files-found: error
       - name: Upload Release Notes Artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9

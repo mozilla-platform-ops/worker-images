@@ -39,6 +39,7 @@ function Reload {
 function global:Set-PSRepository { }
 function global:Install-Module { }
 function global:packer {
+    if ($env:WORKER_IMAGES_HELPER_MARKER -ne $global:ExpectedMarker) { throw 'Build used the original helper.' }
     if ((Get-Content 'scripts/marker' -Raw).Trim() -ne $global:ExpectedMarker) { throw 'Packer used the wrong checkout.' }
     if ($global:PackerFailure -eq $args[0]) { $global:LASTEXITCODE = 7; return }
     if ($args[0] -eq 'build') {
@@ -124,7 +125,7 @@ try {
     $yaml = ConvertFrom-Yaml (Get-Content "$repo/config/$azureKey.yaml" -Raw)
     $yaml.dev = 'missing/branch'
     Write-Yaml $checkout "config/$azureKey.yaml" $yaml
-    Reject { Get-WorkerImageSource -Key $azureKey -Provider Azure } 'git fetch failed'
+    Reject { Get-WorkerImageSource -Key $azureKey -Provider Azure } 'git ls-remote failed'
     $yaml.dev = 'bad branch'
     Write-Yaml $checkout "config/$azureKey.yaml" $yaml
     Reject { Get-WorkerImageSource -Key $azureKey -Provider Azure } 'git check-ref-format failed'
@@ -153,7 +154,15 @@ try {
             $defaults.vm.git_version = '9.9.9'
             $data.vm.git_version = 'default'
             Write-Yaml $origin 'config/windows_production_defaults.yaml' $defaults
-        } else { $data.vm.disk_size = 99 }
+        } else {
+            $data.vm.disk_size = 99
+            $data.image.image_name = $data.image.image_name -replace '-alpha$', '-branch-alpha'
+        }
+        $helper = if ($provider -eq 'Azure') { 'New-AzSharedWorkerImage' } else { 'New-GCPWorkerImage' }
+        $helperPath = "$origin/bin/WorkerImages/Public/$helper.ps1"
+        $helperCode = Get-Content $helperPath -Raw
+        $helperCode.Replace('    Install-Module powershell-yaml -ErrorAction Stop', "    Install-Module powershell-yaml -ErrorAction Stop`n    `$env:WORKER_IMAGES_HELPER_MARKER = '$branch'") | Set-Content $helperPath
+
         Write-Yaml $origin "config/$key.yaml" $data
         foreach ($file in @('scripts/marker', 'scripts/windows/CustomFunctions/Bootstrap/marker', 'scripts/linux/marker', 'tests/win/marker', 'tests/linux/marker')) {
             $branch | Set-Content "$origin/$file"
@@ -166,10 +175,25 @@ try {
         $base.dev = $branch
         Write-Yaml $checkout "config/$key.yaml" $base
     }
+    # Exercise the workflow selector in a fresh process, including its metadata outputs.
+    $env:GITHUB_ENV = "$checkout/action.env"
+    $env:GITHUB_OUTPUT = "$checkout/action.outputs"
+    & (Get-Process -Id $PID).Path -NoProfile -File "$checkout/ci/select-image-source.ps1" -Key $gcpKey -Provider GCP
+    if ($LASTEXITCODE) { throw 'Workflow source selector failed.' }
+    $metadata = Get-Content "image-source-$gcpKey.json" -Raw | ConvertFrom-Json
+    if ($metadata.IMAGENAME -notmatch '-branch-alpha$' -or $metadata.revision -notmatch '^[0-9a-f]{40}$') {
+        throw 'Workflow metadata came from the original config.'
+    }
+    if ((Get-Content $env:GITHUB_ENV -Raw).Trim() -ne "WORKER_IMAGES_REVISION=$($metadata.revision)") {
+        throw 'Workflow did not persist the selected commit.'
+    }
+    $env:GITHUB_ENV = ''; $env:GITHUB_OUTPUT = ''
+    'unrelated concurrent fetch' | Set-Content '.git/FETCH_HEAD'
     Reload
     Reject { Get-WorkerImageSource -Key $gcpKey -Provider GCP -RejectDev } 'production promotion workflows'
     $az = Get-WorkerImageSource -Key $azureKey -Provider Azure
     $gcp = Get-WorkerImageSource -Key $gcpKey -Provider GCP
+    if ((Get-Content '.git/FETCH_HEAD' -Raw).Trim() -ne 'unrelated concurrent fetch') { throw 'Image selection modified shared FETCH_HEAD.' }
     if ($az.Root -eq $gcp.Root -or $az.Revision -eq $gcp.Revision) { throw 'Image sources were not isolated.' }
     if ((Get-Content scripts/marker -Raw).Trim() -ne 'main') { throw 'Original checkout was changed.' }
     $global:PackerFailure = ''

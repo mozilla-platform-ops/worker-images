@@ -29,6 +29,9 @@ jobs:
       shell: pwsh
       run: ./ci/test-image-source.ps1
 
+    - name: Check nested Packer dev authorization
+      run: python3 ci/test-image-dev-packer.py
+
     - name: Install pre-commit
       run: pip install pre-commit
 

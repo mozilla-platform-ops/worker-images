@@ -186,6 +186,16 @@ The short version for Firefox CI production rollouts:
 
 ## Local Development
 
+Focused checks for development source selection (no cloud builds):
+
+```bash
+pwsh -NoProfile -File ci/test-image-source.ps1
+python3 ci/test-image-dev-packer.py
+```
+
+The first check requires `powershell-yaml`; the second requires Packer.
+
+
 Most image builds require cloud credentials and should be run through GitHub
 Actions. Local work is still useful for formatting, static validation, and
 Taskcluster taskgraph tests.

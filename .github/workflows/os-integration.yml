@@ -35,7 +35,7 @@ on:
         required: false
       use_build_metadata:
         type: boolean
-        description: Use image metadata from this run's release-note artifact
+        description: Use image metadata saved by this run's build
         default: false
     secrets:
       TASKCLUSTER_OS_INT_CLIENT_ID:

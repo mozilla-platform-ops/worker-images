@@ -32,14 +32,20 @@ function Get-WorkerImageSource {
     $branch = $yaml.dev
     $null = Invoke-WorkerImageGit $root @('check-ref-format', "refs/heads/$branch")
     if ($Revision) {
-        if ($Revision -notmatch '^[0-9a-f]{40}$') { throw 'Invalid pinned worker-images revision.' }
-        $ref = $Revision
+        $commit = $Revision
     } else {
-        $ref = "refs/heads/$branch"
+        try {
+            $remote = Invoke-WorkerImageGit $root @('ls-remote', '--exit-code', '--heads', 'origin', "refs/heads/$branch")
+        } catch {
+            throw "Could not resolve worker-images dev branch '$branch': $_"
+        }
+        $commit = ($remote -split "`t")[0]
     }
-    $null = Invoke-WorkerImageGit $root @('fetch', '--no-tags', 'origin', $ref)
-    $commit = (Invoke-WorkerImageGit $root @('rev-parse', '--verify', 'FETCH_HEAD^{commit}')).Trim()
-    if ($Revision -and $commit -ne $Revision) { throw 'Fetched worker-images revision differs from the pin.' }
+    if ($commit -notmatch '^[0-9a-f]{40}$') { throw 'Invalid pinned worker-images revision.' }
+    # Fetch the immutable object without sharing FETCH_HEAD between image selections.
+    $null = Invoke-WorkerImageGit $root @('fetch', '--no-tags', '--no-write-fetch-head', 'origin', $commit)
+    $resolved = (Invoke-WorkerImageGit $root @('rev-parse', '--verify', "$commit^{commit}")).Trim()
+    if ($resolved -ne $commit) { throw 'Fetched worker-images revision differs from the pin.' }
     $directory = Join-Path ([IO.Path]::GetTempPath()) ("worker-image-$Key-" + [guid]::NewGuid())
     $null = Invoke-WorkerImageGit $root @('worktree', 'add', '--detach', $directory, $commit)
     try {
