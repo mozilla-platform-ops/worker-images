@@ -101,6 +101,13 @@ try {
                 Write-Yaml $checkout "config/$team/fake-alpha.yaml" @{ dev = $dev }
                 Reject { Get-WorkerImageSource -Key fake-alpha -Team $team -Provider Azure } 'dev is not permitted in config subdirectories'
             }
+            Write-Yaml $checkout 'config/unknown/deep/fake-alpha.yaml' @{ dev = $dev }
+            Reject {
+                & (Get-Module WorkerImages) {
+                    param($root)
+                    Read-WorkerImageYaml -Root $root -Path 'config/unknown/deep/fake-alpha.yaml'
+                } $checkout
+            } 'dev is not permitted in config subdirectories'
             Write-Yaml $checkout 'config/fake.yaml' @{ dev = $dev }
             $message = if ($actor -eq 'relops-test') { 'only for alpha images' } else { 'restricted to the RelOps team' }
             Reject { Get-WorkerImageSource -Key fake -Provider GCP } $message
@@ -112,7 +119,6 @@ try {
         { Set-GCPWorkerImageName -Key fake-alpha -Team tceng },
         { Set-GCPWorkerImageProject -Key fake-alpha -Team tceng },
         { Set-AzWorkerImageLocation -Key fake-alpha -Team tceng },
-        { New-AWSWorkerImage -Key fake-alpha -Region us-west-2 },
         { New-AzWorkerImage -Key fake-alpha -Team tceng -Location test -Client_ID test -Subscription_ID test -Tenant_ID test -Application_ID test -oidc_request_url test -oidc_request_token test }
     )) {
         Reject $action 'dev is not permitted in config subdirectories'

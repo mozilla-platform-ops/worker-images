@@ -3,7 +3,7 @@ function Get-WorkerImageSource {
     param(
         [Parameter(Mandatory)][string] $Key,
         [string] $Team,
-        [ValidateSet('Azure', 'GCP', 'AWS')][string] $Provider,
+        [ValidateSet('Azure', 'GCP')][string] $Provider,
         [string] $Revision = $env:WORKER_IMAGES_REVISION,
         [switch] $RejectDev
     )
@@ -18,7 +18,7 @@ function Get-WorkerImageSource {
         $script:ActiveImageSource.Key -eq $Key -and -not $Team) {
         return $script:ActiveImageSource
     }
-    Assert-WorkerImageDev -Yaml $yaml -Key $Key -Team $Team -Root $root
+    Assert-WorkerImageDev -Yaml $yaml -Key $Key -Root $root
     if (-not $yaml.Contains('dev')) {
         return [pscustomobject]@{ Root = $root; Key = $Key; Revision = ''; Branch = ''; Yaml = $yaml }
     }

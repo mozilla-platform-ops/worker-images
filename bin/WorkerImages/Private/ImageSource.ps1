@@ -14,15 +14,15 @@ function Read-WorkerImageYaml {
     }
     $yaml = ConvertFrom-Yaml (Get-Content -LiteralPath $item.FullName -Raw -ErrorAction Stop)
     if ($yaml -isnot [System.Collections.IDictionary]) { throw "Expected a YAML mapping in $Path" }
+    if ($Path -match '^config/[^/]+/' -and $yaml.Contains('dev')) {
+        throw 'Not authorized: dev branch selection is restricted to RelOps root-level alpha image configs; dev is not permitted in config subdirectories.'
+    }
     return $yaml
 }
 
 function Assert-WorkerImageDev {
-    param($Yaml, [string] $Key, [string] $Team, [string] $Root)
+    param($Yaml, [string] $Key, [string] $Root)
     if (-not $Yaml.Contains('dev')) { return }
-    if ($Team) {
-        throw 'Not authorized: dev branch selection is restricted to RelOps root-level alpha image configs; dev is not permitted in config subdirectories.'
-    }
     try {
         $users = Get-Content -LiteralPath "$Root/.github/relsre.json" -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
     } catch {

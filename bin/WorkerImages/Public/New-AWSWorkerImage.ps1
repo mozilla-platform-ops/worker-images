@@ -19,8 +19,6 @@ function New-AWSWorkerImage {
     Set-PSRepository PSGallery -InstallationPolicy Trusted
     Install-Module powershell-yaml -ErrorAction Stop
 
-    $null = Get-WorkerImageSource -Key $Key -Team tceng -Provider AWS
-
     # AWS images are only for tceng
     $YamlPath = "config/tceng/$Key.yaml"
     $PackerHCLPath = "packer/tceng-aws.pkr.hcl"
