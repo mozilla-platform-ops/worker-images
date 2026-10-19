@@ -228,10 +228,11 @@ try {
         throw 'Build did not retain the pinned revision.'
     }
     # Selected config cannot redirect an alpha build to production or another identity.
-    foreach ($mutation in @('image', 'project', 'missing')) {
+    foreach ($mutation in @('image', 'path', 'project', 'missing')) {
         $null = Invoke-TestGit $origin @('checkout', '-B', "bad/$mutation", 'dev/gcp')
         $data = ConvertFrom-Yaml (Get-Content "$origin/config/$gcpKey.yaml" -Raw)
         if ($mutation -eq 'image') { $data.image.image_name = 'production' }
+        if ($mutation -eq 'path') { $data.image.image_name = '../outside-alpha' }
         if ($mutation -eq 'project') { $data.image.project_id = 'other-project' }
         Write-Yaml $origin "config/$gcpKey.yaml" $data
         if ($mutation -eq 'missing') { Remove-Item "$origin/gcp.pkr.hcl" }
@@ -241,7 +242,7 @@ try {
         $base.dev = "bad/$mutation"
         Write-Yaml $checkout "config/$gcpKey.yaml" $base
         Reload
-        $message = switch ($mutation) { image { 'non-alpha GCP image' } project { 'cannot change the GCP project' } missing { 'Missing dev build input' } }
+        $message = switch ($mutation) { image { 'non-alpha GCP image' } path { 'non-alpha GCP image' } project { 'cannot change the GCP project' } missing { 'Missing dev build input' } }
         Reject { Get-WorkerImageSource -Key $gcpKey -Provider GCP } $message
     }
     foreach ($mutation in @('gallery', 'pool', 'defaults', 'link')) {

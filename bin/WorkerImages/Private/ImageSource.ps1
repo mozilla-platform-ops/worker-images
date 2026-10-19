@@ -42,9 +42,9 @@ function Assert-WorkerImageAlpha {
     param($Yaml, [string] $Provider)
     if ($Provider -eq 'Azure') {
         foreach ($name in @($Yaml.sharedimage.gallery_name, $Yaml.sharedimage.image_name, $Yaml.vm.tags.worker_pool_id)) {
-            if ($name -notmatch '[-_]alpha2?$') { throw 'dev cannot target a non-alpha Azure gallery, image, or worker pool.' }
+            if ($name -notmatch '^[a-z0-9][a-z0-9_.-]*[-_]alpha2?$') { throw 'dev cannot target a non-alpha Azure gallery, image, or worker pool.' }
         }
-    } elseif ($Yaml.image.image_name -notmatch '-alpha2?$') {
+    } elseif ($Yaml.image.image_name -notmatch '^[a-z][a-z0-9-]*-alpha2?$') {
         throw 'dev cannot target a non-alpha GCP image.'
     }
 }
@@ -59,14 +59,15 @@ function Invoke-WorkerImageGit {
 function Invoke-WorkerImageDevCommand {
     param($Source, [string] $Command, [System.Collections.IDictionary] $Parameters)
     $previous = Get-Location
+    Push-Location $Source.Root -ErrorAction Stop
     try {
-        Push-Location $Source.Root
         $module = Import-Module "$($Source.Root)/bin/WorkerImages/WorkerImages.psm1" -PassThru -Scope Local -ErrorAction Stop
         # The trusted resolver has already checked this config; do not follow dev again.
         & $module { param($source) $script:ActiveImageSource = $source } $Source
         & $module { param($command, $parameters) & $command @parameters } $Command $Parameters
-    } finally {
-        Pop-Location
+        if ($Command -like 'New-*' -and $LASTEXITCODE -ne 0) {
+            throw "packer build failed with exit code $LASTEXITCODE"
+        }
         # Existing workflows publish artifacts from their original checkout.
         $patterns = if ($Command -like 'New-*') {
             @("$($Source.Key)*.md", "sboms/$($Source.Yaml.image.image_name).md")
@@ -75,9 +76,11 @@ function Invoke-WorkerImageDevCommand {
             foreach ($file in @(Get-ChildItem -Path (Join-Path $Source.Root $pattern) -File -ErrorAction SilentlyContinue)) {
                 $relative = [IO.Path]::GetRelativePath($Source.Root, $file.FullName)
                 $destination = Join-Path $previous.Path $relative
-                $null = New-Item -ItemType Directory -Path (Split-Path $destination) -Force
-                Copy-Item -LiteralPath $file.FullName -Destination $destination -Force
+                $null = New-Item -ItemType Directory -Path (Split-Path $destination) -Force -ErrorAction Stop
+                Copy-Item -LiteralPath $file.FullName -Destination $destination -Force -ErrorAction Stop
             }
         }
+    } finally {
+        Pop-Location
     }
 }
