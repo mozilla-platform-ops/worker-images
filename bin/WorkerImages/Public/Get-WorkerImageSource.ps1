@@ -75,7 +75,12 @@ function Get-WorkerImageSource {
         Write-Host "worker-images $Key dev branch '$branch' pinned to $commit ($directory)"
         return $source
     } catch {
-        $null = Invoke-WorkerImageGit $root @('worktree', 'remove', '--force', $directory)
-        throw
+        $failure = $_
+        try {
+            $null = Invoke-WorkerImageGit $root @('worktree', 'remove', '--force', $directory)
+        } catch {
+            Write-Warning "Could not remove dev worktree '$directory': $_"
+        }
+        throw $failure
     }
 }

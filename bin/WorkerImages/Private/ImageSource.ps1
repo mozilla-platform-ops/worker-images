@@ -82,6 +82,9 @@ function Invoke-WorkerImageDevCommand {
                 $destination = Join-Path $previous.Path $relative
                 $null = New-Item -ItemType Directory -Path (Split-Path $destination) -Force -ErrorAction Stop
                 Copy-Item -LiteralPath $file.FullName -Destination $destination -Force -ErrorAction Stop
+                $notes = Get-Content -LiteralPath $destination -Raw -ErrorAction Stop
+                "# DEV BUILD`n`nworker-images branch: $($Source.Branch)`n`nCommit: $($Source.Revision)`n`n$notes" |
+                    Set-Content -LiteralPath $destination -ErrorAction Stop
             }
         }
     } finally {

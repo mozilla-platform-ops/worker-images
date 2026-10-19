@@ -140,6 +140,9 @@ without falling back to the normal build.
 The selected revision is reused across workflow steps/jobs and retries. Scans
 and integration triggers receive the selected image name through job outputs.
 Metadata helpers remain in the trusted checkout and reject `dev`.
+Selection removes its temporary validation worktree before the build starts.
+Dev release notes are marked `DEV BUILD` with the branch and pinned commit.
+Azure dev builds use the same ten-attempt retry loop as normal builds.
 
 Supported workflows are `sig-nontrusted.yml` (Azure) and `gcp-fxci.yml` (GCP).
 The `New-AzSharedWorkerImage`, `New-AzWorkerImage`, and `New-GCPWorkerImage`

@@ -92,8 +92,14 @@ jobs:
           $maxAttempts = 10
           for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
             Write-Host "Packer attempt $attempt of $maxAttempts"
-            New-AzSharedWorkerImage @Vars
-            if ($LASTEXITCODE -eq 0) {
+            $succeeded = $false
+            try {
+              New-AzSharedWorkerImage @Vars
+              $succeeded = $LASTEXITCODE -eq 0
+            } catch {
+              Write-Warning "Packer attempt failed: $_"
+            }
+            if ($succeeded) {
               break
             }
             if ($attempt -eq $maxAttempts) {

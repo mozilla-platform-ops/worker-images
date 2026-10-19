@@ -39,10 +39,14 @@ function Reload {
 }
 function global:Set-PSRepository { }
 function global:Install-Module { }
+function global:Start-Sleep { }
 function global:packer {
     if ($env:WORKER_IMAGES_HELPER_MARKER -ne $global:ExpectedMarker) { throw 'Build used the original helper.' }
     if ((Get-Content 'scripts/marker' -Raw).Trim() -ne $global:ExpectedMarker) { throw 'Packer used the wrong checkout.' }
-    if ($global:PackerFailure -eq $args[0]) { $global:LASTEXITCODE = 7; return }
+    if ($global:PackerFailure -eq $args[0]) {
+        if ($global:FailOnce) { $global:PackerFailure = '' }
+        $global:LASTEXITCODE = 7; return
+    }
     if ($args[0] -eq 'build') {
         if ($global:ExpectedProvider -eq 'Azure') {
             if ($env:PKR_VAR_sharedimage_version -ne '9.8.7' -or $env:PKR_VAR_git_version -ne '9.9.9') {
@@ -225,8 +229,10 @@ try {
     # Exercise the workflow selector in a fresh process, including its metadata outputs.
     $env:GITHUB_ENV = "$checkout/action.env"
     $env:GITHUB_OUTPUT = "$checkout/action.outputs"
+    $beforeSelection = (& git worktree list --porcelain) -join "`n"
     & (Get-Process -Id $PID).Path -NoProfile -File "$checkout/ci/select-image-source.ps1" -Key $gcpKey -Provider GCP
     if ($LASTEXITCODE) { throw 'Workflow source selector failed.' }
+    if ($beforeSelection -ne ((& git worktree list --porcelain) -join "`n")) { throw 'Selector left an unused worktree.' }
     $metadata = Get-Content $env:GITHUB_OUTPUT -Raw | ConvertFrom-StringData
     if ($metadata.IMAGENAME -notmatch '-branch-alpha$' -or $metadata.revision -notmatch '^[0-9a-f]{40}$') {
         throw 'Workflow metadata came from the original config.'
@@ -262,9 +268,26 @@ try {
     New-AzSharedWorkerImage -Key $azureKey 6>$null
     if ((Get-WorkerImageSource -Key $gcpKey -Provider GCP).Root -ne $gcp.Root) { throw 'Branch handoff reset the original source cache.' }
     if (-not (Test-Path "$azureKey-9.8.7.md")) { throw 'Azure artifact was not returned.' }
+    $azureNotes = Get-Content "$azureKey-9.8.7.md" -Raw
+    if ($azureNotes -notlike "*DEV BUILD*dev/azure*$($az.Revision)*selected notes*") { throw 'Azure notes lack dev provenance.' }
+    # Run the actual workflow loop with one transient failure, then with persistent failure.
+    $workflow = Get-Content "$repo/.github/workflows/sig-nontrusted.yml" -Raw
+    $loop = [regex]::Match($workflow, '(?s)          \$maxAttempts = 10.*?(?=          "sharedimageversion=)').Value
+    if (-not $loop) { throw 'Azure workflow retry loop not found.' }
+    $retry = [scriptblock]::Create($loop.Replace('exit 1', "throw 'Retry limit reached'"))
+    $Vars = @{ Key = $azureKey }
+    $global:FailOnce = $true; $global:PackerFailure = 'build'
+    . $retry 6>$null
+    if ($attempt -ne 2) { throw 'Azure dev build did not retry after a thrown Packer failure.' }
+    if ((Get-WorkerImageSource -Key $azureKey -Provider Azure).Revision -ne $az.Revision) { throw 'Retry changed the pinned source.' }
+    $global:FailOnce = $false; $global:PackerFailure = 'build'
+    Reject { . $retry 6>$null } 'Retry limit reached'
+    $global:PackerFailure = ''
     $global:ExpectedMarker = 'dev/gcp'; $global:ExpectedProvider = 'GCP'
     New-GCPWorkerImage -Key $gcpKey 6>$null
     if (-not (Test-Path "sboms/$($gcp.Yaml.image.image_name).md")) { throw 'GCP artifact was not returned.' }
+    $gcpNotes = Get-Content "sboms/$($gcp.Yaml.image.image_name).md" -Raw
+    if ($gcpNotes -notlike "*DEV BUILD*dev/gcp*$($gcp.Revision)*selected notes*") { throw 'GCP notes lack dev provenance.' }
     if ((Get-Location).Path -ne $checkout) { throw 'Build did not restore working directory.' }
     foreach ($stage in @('init', 'build')) {
         $global:PackerFailure = $stage
@@ -305,6 +328,16 @@ try {
         Write-Yaml $checkout "config/$gcpKey.yaml" $base
         Reload
         $message = switch ($mutation) { image { 'non-alpha GCP image' } path { 'non-alpha GCP image' } project { 'cannot change the GCP project' } l3 { 'Not authorized: dev cannot target the trusted L3 GCP project' } missing { 'Missing dev build input' } }
+        if ($mutation -eq 'missing') {
+            & (Get-Module WorkerImages) {
+                $script:OriginalTestGit = ${function:Invoke-WorkerImageGit}
+                function script:Invoke-WorkerImageGit {
+                    param([string] $Root, [string[]] $Arguments)
+                    if ($Arguments[0] -eq 'worktree' -and $Arguments[1] -eq 'remove') { throw 'Simulated cleanup failure' }
+                    & $script:OriginalTestGit $Root $Arguments
+                }
+            }
+        }
         Reject { Get-WorkerImageSource -Key $gcpKey -Provider GCP } $message
     }
     foreach ($mutation in @('gallery', 'pool', 'defaults', 'link')) {
@@ -349,5 +382,5 @@ try {
         }
     }
     if (Test-Path $testRoot) { Remove-Item $testRoot -Recurse -Force }
-    foreach ($name in @('Set-PSRepository', 'Install-Module', 'packer')) { Remove-Item "Function:global:$name" -ErrorAction SilentlyContinue }
+    foreach ($name in @('Set-PSRepository', 'Install-Module', 'Start-Sleep', 'packer')) { Remove-Item "Function:global:$name" -ErrorAction SilentlyContinue }
 }
