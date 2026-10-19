@@ -15,6 +15,12 @@ function New-AzSharedWorkerImage {
     Set-PSRepository PSGallery -InstallationPolicy Trusted
     Install-Module powershell-yaml -ErrorAction Stop
 
+    $source = Get-WorkerImageSource -Key $Key -Provider Azure
+    if ($source.Root -ne (Get-Location).Path) {
+        Invoke-WorkerImageDevCommand -Source $source -Command 'New-AzSharedWorkerImage' -Parameters $PSBoundParameters
+        return
+    }
+
     $DefaultYaml = ConvertFrom-Yaml (Get-Content "config/windows_production_defaults.yaml" -Raw)
     $ImageYaml   = ConvertFrom-Yaml (Get-Content "config/$Key.yaml" -Raw)
 

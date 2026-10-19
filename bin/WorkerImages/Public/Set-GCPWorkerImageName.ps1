@@ -8,6 +8,12 @@ function Set-GCPWorkerImageName {
     Set-PSRepository PSGallery -InstallationPolicy Trusted
     Install-Module powershell-yaml -ErrorAction Stop
 
+    $source = Get-WorkerImageSource -Key $Key -Team $Team -Provider GCP
+    if ($source.Root -ne (Get-Location).Path) {
+        Invoke-WorkerImageDevCommand -Source $source -Command 'Set-GCPWorkerImageName' -Parameters $PSBoundParameters
+        return
+    }
+
     if ($Team -and $Team -ieq "tceng") {
         $YamlPath = "config/tceng/$Key.yaml"
     } else {

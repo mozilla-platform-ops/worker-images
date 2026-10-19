@@ -111,6 +111,45 @@ Level-1 images live in the `taskcluster-imaging` project. Trusted level-3
 images live in `fxci-production-level3-workers`. Production rollouts update
 the matching image paths in `fxci-config`.
 
+## Alpha development branches (RelOps only)
+
+A RelOps member can select a branch of **worker-images** for an individual
+Azure or GCP alpha image by adding a top-level setting to `config/<image>-alpha.yaml`:
+
+```yaml
+dev: "relops/my-image-change"
+```
+
+Only root-level alpha configs support this option. Any `dev` key in a config
+subdirectory (including TCEng and FooFrix) fails with an authorization error,
+even when empty/null or requested by RelOps. Non-alpha images also reject it.
+The actor and, on reruns, the triggering actor must be in `.github/relsre.json`
+from the original workflow checkout. Team allowlists and the selected branch's
+allowlist cannot grant access. Local calls require the same actor authorization;
+this is an execution guard, not a security boundary against someone who can edit
+and run arbitrary local code.
+
+The resolver logs the branch and immutable commit, checks the selected config
+again, and runs the selected revision's helpers, YAML/defaults, Packer templates,
+provisioning scripts, and build-time tests from an isolated Git worktree. Branch
+names may contain slashes. Invalid values, missing branches/files, non-alpha
+destinations, symbolic links in the selected tree, and GCP project changes fail
+without falling back to the normal build. Matrix images select independently.
+The selected revision is reused across workflow steps/jobs and retries; scans
+and integration triggers consume the built image's recorded identity.
+
+Supported builds are the single-image and parallel FXCI Azure/GCP workflows and
+the `New-AzSharedWorkerImage`, `New-AzWorkerImage`, and `New-GCPWorkerImage`
+module functions. Invoke helpers from the repository root. Direct Packer calls
+are not a supported dev entry point. This setting does not select Puppet
+`sourceBranch`/`deploymentId` or Taskcluster source/version settings. It does not
+change workflow authorization, cloud credentials, or production worker pools.
+
+Remove `dev` from the original image YAML to resume the normal checkout/build
+behavior. Temporary worktrees live in the system temp directory; GitHub-hosted
+runners discard them after the job. Local callers can remove them with
+`git worktree remove <logged-path>` after collecting their build artifacts.
+
 ## Validation
 
 There are three layers of validation:

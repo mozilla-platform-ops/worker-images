@@ -11,6 +11,12 @@ function Set-AzWorkerImageLocation {
     Set-PSRepository PSGallery -InstallationPolicy Trusted
     Install-Module powershell-yaml -ErrorAction Stop
 
+    $source = Get-WorkerImageSource -Key $Key -Team $Team -Provider Azure
+    if ($source.Root -ne (Get-Location).Path) {
+        Invoke-WorkerImageDevCommand -Source $source -Command 'Set-AzWorkerImageLocation' -Parameters $PSBoundParameters
+        return
+    }
+
     if ($Team) {
         $YamlPath = "config/$Team/$Key.yaml"
     } else {

@@ -10,7 +10,13 @@ packer {
 # -----------------------------
 # Variables (fed via PKR_VAR_*)
 # -----------------------------
-variable "config" { default = env("PKR_VAR_config") }
+variable "config" {
+  default = env("PKR_VAR_config")
+  validation {
+    condition     = !contains(keys(yamldecode(file("config/tceng/${var.config}.yaml"))), "dev")
+    error_message = "Not authorized: dev branch selection is restricted to RelOps root-level alpha image configs; dev is not permitted in config subdirectories."
+  }
+}
 variable "image_name" { default = env("PKR_VAR_image_name") }
 variable "disk_size" { default = env("PKR_VAR_disk_size") }
 variable "project_id" { default = env("PKR_VAR_project_id") }
