@@ -8,20 +8,7 @@ function Set-GCPWorkerImageName {
     Set-PSRepository PSGallery -InstallationPolicy Trusted
     Install-Module powershell-yaml -ErrorAction Stop
 
-    $source = Get-WorkerImageSource -Key $Key -Team $(if ($Team -ieq 'tceng') { 'tceng' }) -Provider GCP
-    if ($source.Root -ne (Get-Location).Path) {
-        Invoke-WorkerImageDevCommand -Source $source -Command 'Set-GCPWorkerImageName' -Parameters $PSBoundParameters
-        return
-    }
-
-    if ($Team -and $Team -ieq "tceng") {
-        $YamlPath = "config/tceng/$Key.yaml"
-    } else {
-        $YamlPath = "config/$Key.yaml"
-    }
-    if (-not (Test-Path $YamlPath)) { throw "YAML file not found at: $YamlPath" }
-
-    $YAML = ConvertFrom-Yaml (Get-Content $YamlPath -Raw)
+    $YAML = (Get-WorkerImageSource -Key $Key -Team $(if ($Team -ieq 'tceng') { 'tceng' }) -Provider GCP -RejectDev).Yaml
 
     if ($Team -and $Team -ieq "tceng") {
         $uuid = ([guid]::NewGuid().ToString('N')).Substring(0, 20)

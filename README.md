@@ -135,14 +135,15 @@ provisioning scripts, and build-time tests from an isolated Git worktree. Branch
 names may contain slashes. Invalid values, missing branches/files, non-alpha
 destinations, symbolic links in the selected tree, and GCP project changes fail
 without falling back to the normal build.
-The selected revision is reused across workflow steps/jobs and retries; scans
-and integration triggers consume the built image's recorded identity.
+The selected revision is reused across workflow steps/jobs and retries. Scans
+and integration triggers receive the selected image name through job outputs.
+Metadata helpers remain in the trusted checkout and reject `dev`.
 
-Supported builds are the single-image FXCI Azure/GCP workflows and
-the `New-AzSharedWorkerImage`, `New-AzWorkerImage`, and `New-GCPWorkerImage`
-module functions. Invoke helpers from the repository root. Direct Packer calls
-are not a supported dev entry point. Parallel build workflows and production GCP
-promotion workflows reject any `dev` key; remove it before using those workflows.
+Supported workflows are `sig-nontrusted.yml` (Azure) and `gcp-fxci.yml` (GCP).
+The `New-AzSharedWorkerImage`, `New-AzWorkerImage`, and `New-GCPWorkerImage`
+module functions also support direct builds. Invoke helpers from the repository root. Direct Packer calls
+are not a supported dev entry point. Parallel builds, trusted Azure production
+builds, and GCP production promotion reject any `dev` key; remove it before using those workflows.
 This setting does not select Puppet
 `sourceBranch`/`deploymentId` or Taskcluster source/version settings. It does not
 change workflow authorization, cloud credentials, or production worker pools.

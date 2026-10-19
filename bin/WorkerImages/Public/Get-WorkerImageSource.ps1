@@ -14,6 +14,7 @@ function Get-WorkerImageSource {
     $root = (Get-Location).Path
     $path = if ($Team) { "config/$Team/$Key.yaml" } else { "config/$Key.yaml" }
     $yaml = Read-WorkerImageYaml -Root $root -Path $path
+    if ($RejectDev -and $yaml.Contains('dev')) { throw 'dev branch selection is not supported by this entry point. Use a supported single-image build.' }
     if ($script:ActiveImageSource -and $script:ActiveImageSource.Root -eq $root -and
         $script:ActiveImageSource.Key -eq $Key -and -not $Team) {
         return $script:ActiveImageSource
@@ -22,7 +23,6 @@ function Get-WorkerImageSource {
     if (-not $yaml.Contains('dev')) {
         return [pscustomobject]@{ Root = $root; Key = $Key; Revision = ''; Branch = ''; Yaml = $yaml }
     }
-    if ($RejectDev) { throw 'dev is not supported by parallel builds or production promotion workflows. Use a single-image build.' }
     if ($Provider -notin @('Azure', 'GCP')) { throw 'dev supports only Azure and GCP alpha builds.' }
     Assert-WorkerImageAlpha -Yaml $yaml -Provider $Provider
     if (-not $script:ImageSources) { $script:ImageSources = @{} }

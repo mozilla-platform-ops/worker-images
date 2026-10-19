@@ -19,8 +19,7 @@ env = {**os.environ, 'PKR_VAR_config': 'win11-24h2',
 
 def evaluate(template, expression, success=True):
     result = subprocess.run([packer, 'console', str(template)], input=expression + '\n',
-                            env=env, text=True, capture_output=True,
-                            cwd=template.parent.parent)
+                            env=env, text=True, capture_output=True)
     assert (result.returncode == 0) == success, result.stdout + result.stderr
     return result.stdout.strip() if success else None
 
@@ -70,14 +69,6 @@ with tempfile.TemporaryDirectory(prefix='foofrix-config-') as directory:
         config['azure']['image_version'] = invalid
         yaml_file.write_text(json.dumps(config))
         evaluate(copied, 'local.image_version', success=False)
-    config['azure']['image_version'] = '9.8.7'
-    for dev in ('dev/branch', '', None, False, 1):
-        config['dev'] = dev
-        yaml_file.write_text(json.dumps(config))
-        result = subprocess.run([packer, 'validate', str(copied)], env=env,
-                                cwd=scratch, text=True, capture_output=True)
-        assert result.returncode != 0 and 'Not authorized:' in result.stderr + result.stdout, result.stdout + result.stderr
-    del config['dev']
     del config['azure']['image_version']
     yaml_file.write_text(json.dumps(config))
     evaluate(copied, 'local.image_version', success=False)

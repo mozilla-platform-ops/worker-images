@@ -57,7 +57,11 @@ function Invoke-WorkerImageGit {
 }
 
 function Invoke-WorkerImageDevCommand {
-    param($Source, [string] $Command, [System.Collections.IDictionary] $Parameters)
+    param(
+        $Source,
+        [ValidateSet('New-AzSharedWorkerImage', 'New-AzWorkerImage', 'New-GCPWorkerImage')][string] $Command,
+        [System.Collections.IDictionary] $Parameters
+    )
     $previous = Get-Location
     Push-Location $Source.Root -ErrorAction Stop
     try {
@@ -65,14 +69,11 @@ function Invoke-WorkerImageDevCommand {
         # The trusted resolver has already checked this config; do not follow dev again.
         & $module { param($source) $script:ActiveImageSource = $source } $Source
         & $module { param($command, $parameters) & $command @parameters } $Command $Parameters
-        if ($Command -like 'New-*' -and $LASTEXITCODE -ne 0) {
+        if ($LASTEXITCODE -ne 0) {
             throw "packer build failed with exit code $LASTEXITCODE"
         }
         # Existing workflows publish artifacts from their original checkout.
-        $patterns = if ($Command -like 'New-*') {
-            @("$($Source.Key)*.md", "sboms/$($Source.Yaml.image.image_name).md")
-        } else { @() }
-        foreach ($pattern in $patterns) {
+        foreach ($pattern in @("$($Source.Key)*.md", "sboms/$($Source.Yaml.image.image_name).md")) {
             foreach ($file in @(Get-ChildItem -Path (Join-Path $Source.Root $pattern) -File -ErrorAction SilentlyContinue)) {
                 $relative = [IO.Path]::GetRelativePath($Source.Root, $file.FullName)
                 $destination = Join-Path $previous.Path $relative

@@ -9,6 +9,7 @@ $oldTrigger = $env:GITHUB_TRIGGERING_ACTOR
 $oldRevision = $env:WORKER_IMAGES_REVISION
 $oldEnv = $env:GITHUB_ENV
 $oldOutput = $env:GITHUB_OUTPUT
+$oldWitness = $env:IMAGE_SOURCE_WITNESS
 $azureKey = 'win11-64-24h2-alpha'
 $gcpKey = 'gw-fxci-gcp-l1-2404-headless-alpha'
 
@@ -90,6 +91,21 @@ try {
     $env:GITHUB_OUTPUT = ''
     Reload
     $env:GITHUB_ACTOR = ''
+    $env:GITHUB_OUTPUT = "$checkout/metadata.outputs"
+    Set-AzWorkerImageLocation -Key generic-worker-win2022-staging -Team tceng
+    $values = Get-Content $env:GITHUB_OUTPUT -Raw | ConvertFrom-StringData
+    if ($values.CLIENT_ID_SECRET -ne 'AZURE_CLIENT_ID_FXCI' -or
+        ($values.LOCATIONS | ConvertFrom-Json) -join ',' -ne 'centralus,eastus') {
+        throw 'Trusted Azure metadata changed for a config without dev.'
+    }
+    Clear-Content $env:GITHUB_OUTPUT
+    Set-GCPWorkerImageProject -Key generic-worker-ubuntu-24-04-staging -Team tceng
+    Set-GCPWorkerImageName -Key $gcpKey
+    $values = Get-Content $env:GITHUB_OUTPUT -Raw | ConvertFrom-StringData
+    if ($values.PROJECT -ne 'taskcluster-imaging' -or $values.IMAGENAME -ne 'gw-fxci-gcp-l1-2404-amd64-headless-googlecompute-alpha') {
+        throw 'Trusted GCP metadata changed for configs without dev.'
+    }
+    $env:GITHUB_OUTPUT = ''
     if ((Set-GCPWorkerImageProject -Key $gcpKey -Team custom) -ne 'PROJECT=taskcluster-imaging') { throw 'Absent dev changed custom team config lookup.' }
     $plain = Get-WorkerImageSource -Key $azureKey -Provider Azure
     if ($plain.Root -ne $checkout -or $plain.Revision) { throw 'Absent dev changed checkout behavior.' }
@@ -148,6 +164,7 @@ try {
     Reject { Get-WorkerImageSource -Key fake-alpha -Provider GCP } 'trusted RelOps allowlist is unavailable'
     Move-Item '.github/relsre.saved' '.github/relsre.json'
 
+    $env:IMAGE_SOURCE_WITNESS = "$checkout/branch-code-executed"
     # Different images select independent branches, with dev retained in branch YAML.
     foreach ($entry in @(@($azureKey, 'Azure', 'dev/azure'), @($gcpKey, 'GCP', 'dev/gcp'))) {
         $key, $provider, $branch = $entry
@@ -164,6 +181,9 @@ try {
             $data.vm.disk_size = 99
             $data.image.image_name = $data.image.image_name -replace '-alpha$', '-branch-alpha'
         }
+        $modulePath = "$origin/bin/WorkerImages/WorkerImages.psm1"
+        $moduleCode = Get-Content $modulePath -Raw
+        ('Set-Content -LiteralPath $env:IMAGE_SOURCE_WITNESS -Value loaded' + "`n" + $moduleCode) | Set-Content $modulePath
         $helper = if ($provider -eq 'Azure') { 'New-AzSharedWorkerImage' } else { 'New-GCPWorkerImage' }
         $helperPath = "$origin/bin/WorkerImages/Public/$helper.ps1"
         $helperCode = Get-Content $helperPath -Raw
@@ -186,7 +206,7 @@ try {
     $env:GITHUB_OUTPUT = "$checkout/action.outputs"
     & (Get-Process -Id $PID).Path -NoProfile -File "$checkout/ci/select-image-source.ps1" -Key $gcpKey -Provider GCP
     if ($LASTEXITCODE) { throw 'Workflow source selector failed.' }
-    $metadata = Get-Content "image-source-$gcpKey.json" -Raw | ConvertFrom-Json
+    $metadata = Get-Content $env:GITHUB_OUTPUT -Raw | ConvertFrom-StringData
     if ($metadata.IMAGENAME -notmatch '-branch-alpha$' -or $metadata.revision -notmatch '^[0-9a-f]{40}$') {
         throw 'Workflow metadata came from the original config.'
     }
@@ -198,16 +218,24 @@ try {
     Reload
     $beforeRejection = @(& git worktree list --porcelain)
     foreach ($entry in @(@($azureKey, 'Azure'), @($gcpKey, 'GCP'))) {
-        Reject { Get-WorkerImageSource -Key $entry[0] -Provider $entry[1] -RejectDev } 'parallel builds or production promotion workflows'
+        Reject { Get-WorkerImageSource -Key $entry[0] -Provider $entry[1] -RejectDev } 'dev branch selection is not supported'
     }
     if (($beforeRejection -join "`n") -ne ((& git worktree list --porcelain) -join "`n")) {
         throw 'Unsupported workflow created a dev worktree.'
+    }
+    foreach ($action in @(
+        { Set-AzWorkerImageLocation -Key $azureKey },
+        { Set-GCPWorkerImageName -Key $gcpKey },
+        { Set-GCPWorkerImageProject -Key $gcpKey }
+    )) {
+        Reject $action 'dev branch selection is not supported'
     }
     $az = Get-WorkerImageSource -Key $azureKey -Provider Azure
     $gcp = Get-WorkerImageSource -Key $gcpKey -Provider GCP
     if ((Get-Content '.git/FETCH_HEAD' -Raw).Trim() -ne 'unrelated concurrent fetch') { throw 'Image selection modified shared FETCH_HEAD.' }
     if ($az.Root -eq $gcp.Root -or $az.Revision -eq $gcp.Revision) { throw 'Image sources were not isolated.' }
     if ((Get-Content scripts/marker -Raw).Trim() -ne 'main') { throw 'Original checkout was changed.' }
+    if (Test-Path $env:IMAGE_SOURCE_WITNESS) { throw 'Source selection or metadata lookup executed branch code.' }
     $global:PackerFailure = ''
     $global:ExpectedMarker = 'dev/azure'; $global:ExpectedProvider = 'Azure'
     New-AzSharedWorkerImage -Key $azureKey 6>$null
@@ -288,6 +316,7 @@ try {
     $env:WORKER_IMAGES_REVISION = $oldRevision
     $env:GITHUB_ENV = $oldEnv
     $env:GITHUB_OUTPUT = $oldOutput
+    $env:IMAGE_SOURCE_WITNESS = $oldWitness
     Remove-Module WorkerImages -Force -ErrorAction SilentlyContinue
     if (Test-Path "$checkout/.git") {
         foreach ($line in (& git -C $checkout worktree list --porcelain)) {

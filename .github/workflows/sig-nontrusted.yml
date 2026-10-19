@@ -54,6 +54,8 @@ jobs:
   packer:
     needs: check-access
     name: "Build ${{ github.event.inputs.config }}"
+    outputs:
+      image_name: ${{ steps.image-source.outputs.IMAGENAME }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -102,13 +104,6 @@ jobs:
             Start-Sleep -Seconds 30
           }
           "sharedimageversion=$ENV:PKR_VAR_sharedimage_version" >> $env:GITHUB_ENV
-      - name: Save resolved image metadata
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        with:
-          name: image-source-${{ github.event.inputs.config }}
-          path: image-source-${{ github.event.inputs.config }}.json
-          overwrite: true
-          if-no-files-found: error
       - name: Upload Release Notes Artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
@@ -117,7 +112,6 @@ jobs:
           overwrite: true
           retention-days: 1
           if-no-files-found: error
-
   sbom:
     needs: packer
     permissions:
@@ -134,7 +128,7 @@ jobs:
     uses: ./.github/workflows/os-integration.yml
     with:
       config: ${{ github.event.inputs.config }}
-      use_build_metadata: true
+      image_name: ${{ needs.packer.outputs.image_name }}
     secrets:
       TASKCLUSTER_OS_INT_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
       TASKCLUSTER_OS_INT_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}

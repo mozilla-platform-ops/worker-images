@@ -33,10 +33,6 @@ on:
         type: string
         description: Optional shared image name override
         required: false
-      use_build_metadata:
-        type: boolean
-        description: Use image metadata saved by this run's build
-        default: false
     secrets:
       TASKCLUSTER_OS_INT_CLIENT_ID:
         required: true
@@ -63,23 +59,14 @@ jobs:
             Write-Host "User ${{ github.actor }} is unauthorized."
             exit 1
           }
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
-        if: inputs.use_build_metadata
-        with:
-          name: image-source-${{ inputs.config }}
-          path: build-metadata
       - name: Resolve shared image name
         id: resolve-image
         shell: pwsh
         env:
           CONFIG: ${{ inputs.config }}
           IMAGE_NAME_INPUT: ${{ inputs.image_name }}
-          USE_BUILD_METADATA: ${{ inputs.use_build_metadata }}
         run: |
-          if ($env:USE_BUILD_METADATA -eq 'true') {
-            $metadata = Get-Content "build-metadata/image-source-$env:CONFIG.json" -Raw -ErrorAction Stop | ConvertFrom-Json
-            $imageName = $metadata.IMAGENAME
-          } elseif ($env:IMAGE_NAME_INPUT) {
+          if ($env:IMAGE_NAME_INPUT) {
             $imageName = $env:IMAGE_NAME_INPUT
           } else {
             Set-PSRepository PSGallery -InstallationPolicy Trusted
