@@ -134,15 +134,16 @@ again, and runs the selected revision's helpers, YAML/defaults, Packer templates
 provisioning scripts, and build-time tests from an isolated Git worktree. Branch
 names may contain slashes. Invalid values, missing branches/files, non-alpha
 destinations, symbolic links in the selected tree, and GCP project changes fail
-without falling back to the normal build. Matrix images select independently.
+without falling back to the normal build.
 The selected revision is reused across workflow steps/jobs and retries; scans
 and integration triggers consume the built image's recorded identity.
 
-Supported builds are the single-image and parallel FXCI Azure/GCP workflows and
+Supported builds are the single-image FXCI Azure/GCP workflows and
 the `New-AzSharedWorkerImage`, `New-AzWorkerImage`, and `New-GCPWorkerImage`
 module functions. Invoke helpers from the repository root. Direct Packer calls
-are not a supported dev entry point. Production GCP promotion workflows reject
-`dev`; remove it before promoting an image. This setting does not select Puppet
+are not a supported dev entry point. Parallel build workflows and production GCP
+promotion workflows reject any `dev` key; remove it before using those workflows.
+This setting does not select Puppet
 `sourceBranch`/`deploymentId` or Taskcluster source/version settings. It does not
 change workflow authorization, cloud credentials, or production worker pools.
 

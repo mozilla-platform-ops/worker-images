@@ -190,7 +190,13 @@ try {
     $env:GITHUB_ENV = ''; $env:GITHUB_OUTPUT = ''
     'unrelated concurrent fetch' | Set-Content '.git/FETCH_HEAD'
     Reload
-    Reject { Get-WorkerImageSource -Key $gcpKey -Provider GCP -RejectDev } 'production promotion workflows'
+    $beforeRejection = @(& git worktree list --porcelain)
+    foreach ($entry in @(@($azureKey, 'Azure'), @($gcpKey, 'GCP'))) {
+        Reject { Get-WorkerImageSource -Key $entry[0] -Provider $entry[1] -RejectDev } 'parallel builds or production promotion workflows'
+    }
+    if (($beforeRejection -join "`n") -ne ((& git worktree list --porcelain) -join "`n")) {
+        throw 'Unsupported workflow created a dev worktree.'
+    }
     $az = Get-WorkerImageSource -Key $azureKey -Provider Azure
     $gcp = Get-WorkerImageSource -Key $gcpKey -Provider GCP
     if ((Get-Content '.git/FETCH_HEAD' -Raw).Trim() -ne 'unrelated concurrent fetch') { throw 'Image selection modified shared FETCH_HEAD.' }

@@ -22,7 +22,7 @@ function Get-WorkerImageSource {
     if (-not $yaml.Contains('dev')) {
         return [pscustomobject]@{ Root = $root; Key = $Key; Revision = ''; Branch = ''; Yaml = $yaml }
     }
-    if ($RejectDev) { throw 'dev is not supported by production promotion workflows.' }
+    if ($RejectDev) { throw 'dev is not supported by parallel builds or production promotion workflows. Use a single-image build.' }
     if ($Provider -notin @('Azure', 'GCP')) { throw 'dev supports only Azure and GCP alpha builds.' }
     Assert-WorkerImageAlpha -Yaml $yaml -Provider $Provider
     if (-not $script:ImageSources) { $script:ImageSources = @{} }
