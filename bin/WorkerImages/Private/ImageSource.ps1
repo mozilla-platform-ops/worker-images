@@ -32,6 +32,7 @@ function Assert-WorkerImageDev {
         ($env:GITHUB_TRIGGERING_ACTOR -and $users -notcontains $env:GITHUB_TRIGGERING_ACTOR)) {
         throw 'Not authorized: dev branch selection is restricted to the RelOps team.'
     }
+    if ($Key -match 'trusted') { throw 'Not authorized: dev branch selection is not permitted for trusted images.' }
     if ($Key -notmatch '-alpha2?$') { throw "dev is supported only for alpha images: $Key" }
     if ($Yaml.dev -isnot [string] -or [string]::IsNullOrWhiteSpace($Yaml.dev)) {
         throw "dev must be a nonempty worker-images branch name: $Key"
@@ -44,6 +45,8 @@ function Assert-WorkerImageAlpha {
         foreach ($name in @($Yaml.sharedimage.gallery_name, $Yaml.sharedimage.image_name, $Yaml.vm.tags.worker_pool_id)) {
             if ($name -notmatch '^[a-z0-9][a-z0-9_.-]*[-_]alpha2?$') { throw 'dev cannot target a non-alpha Azure gallery, image, or worker pool.' }
         }
+    } elseif ($Yaml.image.project_id -eq 'fxci-production-level3-workers') {
+        throw 'Not authorized: dev cannot target the trusted L3 GCP project.'
     } elseif ($Yaml.image.image_name -notmatch '^[a-z][a-z0-9-]*-alpha2?$') {
         throw 'dev cannot target a non-alpha GCP image.'
     }

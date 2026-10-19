@@ -130,6 +130,27 @@ try {
         }
     }
     $env:GITHUB_ACTOR = 'relops-test'
+    foreach ($entry in @(
+        @('trusted-gw-fxci-gcp-l3-2404-headless-alpha', 'GCP'),
+        @('trusted-gw-fxci-gcp-l3-2404-arm64-headless-alpha', 'GCP'),
+        @('win11-64-24h2-trusted-alpha', 'Azure')
+    )) {
+        $key = $entry[0]
+        $sourceKey = if ($entry[1] -eq 'Azure') { $azureKey } else { $key }
+        $data = ConvertFrom-Yaml (Get-Content "$repo/config/$sourceKey.yaml" -Raw)
+        Write-Yaml $checkout "config/$key.yaml" $data
+        if ((Get-WorkerImageSource -Key $key -Provider $entry[1]).Root -ne $checkout) { throw 'Trusted build without dev changed.' }
+        foreach ($dev in @($null, '', 1, $false, @('branch'), @{ branch = 'branch' }, 'missing/branch')) {
+            $data.dev = $dev
+            Write-Yaml $checkout "config/$key.yaml" $data
+            Reject { Get-WorkerImageSource -Key $key -Provider $entry[1] } 'Not authorized: dev branch selection is not permitted for trusted images'
+        }
+    }
+    Write-Yaml $checkout 'config/renamed-alpha.yaml' @{
+        dev = 'missing/branch'
+        image = @{ image_name = 'renamed-alpha'; project_id = 'fxci-production-level3-workers' }
+    }
+    Reject { Get-WorkerImageSource -Key renamed-alpha -Provider GCP } 'Not authorized: dev cannot target the trusted L3 GCP project'
     foreach ($action in @(
         { New-GCPWorkerImage -Key fake-alpha -Team tceng },
         { Set-GCPWorkerImageName -Key fake-alpha -Team tceng },
@@ -268,12 +289,13 @@ try {
         throw 'Build did not retain the pinned revision.'
     }
     # Selected config cannot redirect an alpha build to production or another identity.
-    foreach ($mutation in @('image', 'path', 'project', 'missing')) {
+    foreach ($mutation in @('image', 'path', 'project', 'l3', 'missing')) {
         $null = Invoke-TestGit $origin @('checkout', '-B', "bad/$mutation", 'dev/gcp')
         $data = ConvertFrom-Yaml (Get-Content "$origin/config/$gcpKey.yaml" -Raw)
         if ($mutation -eq 'image') { $data.image.image_name = 'production' }
         if ($mutation -eq 'path') { $data.image.image_name = '../outside-alpha' }
         if ($mutation -eq 'project') { $data.image.project_id = 'other-project' }
+        if ($mutation -eq 'l3') { $data.image.project_id = 'fxci-production-level3-workers' }
         Write-Yaml $origin "config/$gcpKey.yaml" $data
         if ($mutation -eq 'missing') { Remove-Item "$origin/gcp.pkr.hcl" }
         $null = Invoke-TestGit $origin @('add', '.')
@@ -282,7 +304,7 @@ try {
         $base.dev = "bad/$mutation"
         Write-Yaml $checkout "config/$gcpKey.yaml" $base
         Reload
-        $message = switch ($mutation) { image { 'non-alpha GCP image' } path { 'non-alpha GCP image' } project { 'cannot change the GCP project' } missing { 'Missing dev build input' } }
+        $message = switch ($mutation) { image { 'non-alpha GCP image' } path { 'non-alpha GCP image' } project { 'cannot change the GCP project' } l3 { 'Not authorized: dev cannot target the trusted L3 GCP project' } missing { 'Missing dev build input' } }
         Reject { Get-WorkerImageSource -Key $gcpKey -Provider GCP } $message
     }
     foreach ($mutation in @('gallery', 'pool', 'defaults', 'link')) {

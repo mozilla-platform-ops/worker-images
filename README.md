@@ -120,7 +120,9 @@ Azure or GCP alpha image by adding a top-level setting to `config/<image>-alpha.
 dev: "relops/my-image-change"
 ```
 
-Only root-level alpha configs support this option. Any `dev` key in a config
+Only non-trusted root-level alpha configs support this option. Keys containing
+`trusted` and the GCP project `fxci-production-level3-workers` reject `dev`,
+including trusted L3 alpha builds. Any `dev` key in a config
 subdirectory (including TCEng and FooFrix) fails with an authorization error,
 even when empty/null or requested by RelOps. Non-alpha images also reject it.
 The actor and, on reruns, the triggering actor must be in `.github/relsre.json`
