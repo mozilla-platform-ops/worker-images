@@ -1,5 +1,5 @@
-name: Worker image development - Azure
-run-name: Dev Azure - ${{ inputs.config }} - ${{ inputs.branch }}
+name: Image generation dev - Azure
+run-name: Image generation dev - Azure - ${{ inputs.config }} - ${{ inputs.branch }}
 
 on:
   workflow_dispatch:

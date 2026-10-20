@@ -1,5 +1,5 @@
-name: Worker image development - GCP
-run-name: Dev GCP - ${{ inputs.config }} - ${{ inputs.branch }}
+name: Image generation dev - GCP
+run-name: Image generation dev - GCP - ${{ inputs.config }} - ${{ inputs.branch }}
 
 on:
   workflow_dispatch:
