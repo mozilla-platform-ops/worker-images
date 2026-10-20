@@ -14,10 +14,6 @@ variable "config" {
     condition     = can(regex("^[a-z0-9-]+$", var.config))
     error_message = "Use a config name from config/foofrix without a path or extension."
   }
-  validation {
-    condition     = !contains(keys(yamldecode(file("config/foofrix/${var.config}.yaml"))), "dev")
-    error_message = "Not authorized: dev branch selection is restricted to RelOps root-level alpha image configs; dev is not permitted in config subdirectories."
-  }
 }
 
 variable "subscription_id" {

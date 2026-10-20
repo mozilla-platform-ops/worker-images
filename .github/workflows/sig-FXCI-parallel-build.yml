@@ -49,11 +49,6 @@ jobs:
       matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - name: Reject dev overrides for parallel builds
-        shell: pwsh
-        run: |
-          ./ci/install-powershell-yaml.ps1
-          ./ci/select-image-source.ps1 -Key '${{ matrix.config }}' -Provider Azure -RejectDev
       - name: Azure Login
         uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906
         with:

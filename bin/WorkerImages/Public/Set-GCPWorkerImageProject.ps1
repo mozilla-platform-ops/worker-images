@@ -10,7 +10,17 @@ function Set-GCPWorkerImageProject {
     Set-PSRepository PSGallery -InstallationPolicy Trusted
     Install-Module powershell-yaml -ErrorAction Stop
 
-    $YAML = (Get-WorkerImageSource -Key $Key -Team $(if ($Team -ieq 'tceng') { 'tceng' }) -Provider GCP -RejectDev).Yaml
+    if ($Team -and $Team -ieq "tceng") {
+        $YamlPath = "config/tceng/$Key.yaml"
+    } else {
+        $YamlPath = "config/$Key.yaml"
+    }
+
+    if (-not (Test-Path $YamlPath)) {
+        throw "YAML file not found at: $YamlPath"
+    }
+
+    $YAML = ConvertFrom-Yaml (Get-Content $YamlPath -Raw)
     $Project = $YAML.image["project_id"]
 
     Write-Host "Setting $Project as the project for the worker image"

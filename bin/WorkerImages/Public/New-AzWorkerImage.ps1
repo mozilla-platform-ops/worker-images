@@ -16,12 +16,6 @@ function New-AzWorkerImage {
     Set-PSRepository PSGallery -InstallationPolicy Trusted
     Install-Module powershell-yaml -ErrorAction Stop
 
-    $source = Get-WorkerImageSource -Key $Key -Team $(if ($Team -ieq 'tceng') { 'tceng' }) -Provider Azure
-    if ($source.Root -ne (Get-Location).Path) {
-        Invoke-WorkerImageDevCommand -Source $source -Command 'New-AzWorkerImage' -Parameters $PSBoundParameters
-        return
-    }
-
     switch ($Team) {
         "tceng" {
             $YamlPath = "config/tceng/$Key.yaml"
@@ -126,12 +120,10 @@ function New-AzWorkerImage {
     Write-Host "Using HCL: $PackerHCLPath"
 
     packer init $PackerHCLPath
-    if ($LASTEXITCODE -ne 0) { throw "packer init failed with exit code $LASTEXITCODE" }
     if ($PackerDebug) {
         packer build -debug --only azure-arm.nonsig -force $PackerHCLPath
     }
     else {
         packer build --only azure-arm.nonsig -force $PackerHCLPath
     }
-    if ($LASTEXITCODE -ne 0) { throw "packer build failed with exit code $LASTEXITCODE" }
 }

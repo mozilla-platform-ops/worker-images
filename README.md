@@ -111,52 +111,36 @@ Level-1 images live in the `taskcluster-imaging` project. Trusted level-3
 images live in `fxci-production-level3-workers`. Production rollouts update
 the matching image paths in `fxci-config`.
 
-## Alpha development branches (RelOps only)
+## Development image builds (RelSRE only)
 
-A RelOps member can select a branch of **worker-images** for an individual
-Azure or GCP alpha image by adding a top-level setting to `config/<image>-alpha.yaml`:
+Run **Worker image development** (`image-dev.yml`) from `main`. Enter the
+worker-images **branch** to test, choose **Azure** or **GCP**, and enter a
+non-trusted root-level alpha **config** name without `.yaml`, for example
+`win11-64-24h2-alpha` or `gw-fxci-gcp-l1-2404-headless-alpha`.
 
-```yaml
-dev: "relops/my-image-change"
+The workflow checks the actor and rerun actor against `.github/relsre.json`
+from `main`, resolves the branch to one commit, validates its config using
+trusted code, and checks out that commit for the entire build. The selected
+revision supplies the helpers, config/defaults, templates, scripts, and tests.
+Branch names can contain slashes. No YAML `dev` setting is needed.
+
+Only alpha Azure galleries/images/worker pools and the non-trusted GCP
+`taskcluster-imaging` project are allowed. Trusted keys, config subdirectories,
+non-alpha destinations, missing branches, and symbolic links fail before cloud
+login. Azure builds retry up to ten times using the same commit.
+
+Release notes are uploaded as `dev-release-notes-<config>` artifacts, marked
+`DEV BUILD` with the branch and commit. They are not committed to `main`.
+Normal build and promotion workflows are unchanged. Development builds still
+write to the selected alpha image destination; coordinating simultaneous builds
+or isolating their output images is follow-up work in RELOPS-2631. Authorized
+branch code runs with the non-trusted build credentials and is not sandboxed.
+
+Local checks (requires PowerShell 7.3+ and `powershell-yaml`):
+
+```bash
+pwsh -NoProfile -File ci/test-image-dev.ps1
 ```
-
-Only non-trusted root-level alpha configs support this option. Keys containing
-`trusted` and the GCP project `fxci-production-level3-workers` reject `dev`,
-including trusted L3 alpha builds. Any `dev` key in a config
-subdirectory (including TCEng and FooFrix) fails with an authorization error,
-even when empty/null or requested by RelOps. Non-alpha images also reject it.
-The actor and, on reruns, the triggering actor must be in `.github/relsre.json`
-from the original workflow checkout. Team allowlists and the selected branch's
-allowlist cannot grant access. Local calls require the same actor authorization;
-this is an execution guard, not a security boundary against someone who can edit
-and run arbitrary local code.
-
-The resolver logs the branch and immutable commit, checks the selected config
-again, and runs the selected revision's helpers, YAML/defaults, Packer templates,
-provisioning scripts, and build-time tests from an isolated Git worktree. Branch
-names may contain slashes. Invalid values, missing branches/files, non-alpha
-destinations, symbolic links in the selected tree, and GCP project changes fail
-without falling back to the normal build.
-The selected revision is reused across workflow steps/jobs and retries. Scans
-and integration triggers receive the selected image name through job outputs.
-Metadata helpers remain in the trusted checkout and reject `dev`.
-Selection removes its temporary validation worktree before the build starts.
-Dev release notes are marked `DEV BUILD` with the branch and pinned commit.
-Azure dev builds use the same ten-attempt retry loop as normal builds.
-
-Supported workflows are `sig-nontrusted.yml` (Azure) and `gcp-fxci.yml` (GCP).
-The `New-AzSharedWorkerImage`, `New-AzWorkerImage`, and `New-GCPWorkerImage`
-module functions also support direct builds. Invoke helpers from the repository root. Direct Packer calls
-are not a supported dev entry point. Parallel builds, trusted Azure production
-builds, and GCP production promotion reject any `dev` key; remove it before using those workflows.
-This setting does not select Puppet
-`sourceBranch`/`deploymentId` or Taskcluster source/version settings. It does not
-change workflow authorization, cloud credentials, or production worker pools.
-
-Remove `dev` from the original image YAML to resume the normal checkout/build
-behavior. Temporary worktrees live in the system temp directory; GitHub-hosted
-runners discard them after the job. Local callers can remove them with
-`git worktree remove <logged-path>` after collecting their build artifacts.
 
 ## Validation
 
@@ -192,16 +176,6 @@ The short version for Firefox CI production rollouts:
    new workers boot the expected image.
 
 ## Local Development
-
-Focused checks for development source selection (no cloud builds):
-
-```bash
-pwsh -NoProfile -File ci/test-image-source.ps1
-python3 ci/test-image-dev-packer.py
-```
-
-The first check requires `powershell-yaml`; the second requires Packer.
-
 
 Most image builds require cloud credentials and should be run through GitHub
 Actions. Local work is still useful for formatting, static validation, and

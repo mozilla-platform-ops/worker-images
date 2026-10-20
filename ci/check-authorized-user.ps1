@@ -15,7 +15,8 @@ if (-not $actor) {
     throw "GITHUB_ACTOR is not set."
 }
 
-if ($authorizedUsers -contains $actor) {
+if ($authorizedUsers -contains $actor -and
+    (-not $env:GITHUB_TRIGGERING_ACTOR -or $authorizedUsers -contains $env:GITHUB_TRIGGERING_ACTOR)) {
     Write-Host "User $actor is authorized."
     exit 0
 }

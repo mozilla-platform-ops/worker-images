@@ -14,12 +14,6 @@ function New-GCPWorkerImage {
     Set-PSRepository PSGallery -InstallationPolicy Trusted
     Install-Module powershell-yaml -ErrorAction Stop
 
-    $source = Get-WorkerImageSource -Key $Key -Team $(if ($Team -ieq 'tceng') { 'tceng' }) -Provider GCP
-    if ($source.Root -ne (Get-Location).Path) {
-        Invoke-WorkerImageDevCommand -Source $source -Command 'New-GCPWorkerImage' -Parameters $PSBoundParameters
-        return
-    }
-
     if ($Team -and $Team -ieq "tceng") {
         $YamlPath      = "config/tceng/$Key.yaml"
         $PackerHCLPath = "packer/tceng-gcp.pkr.hcl"
@@ -85,7 +79,6 @@ function New-GCPWorkerImage {
     ## Initialize and build
     Write-Host "packer init $PackerHCLPath"
     packer init $PackerHCLPath
-    if ($LASTEXITCODE -ne 0) { throw "packer init failed with exit code $LASTEXITCODE" }
     if ($key -match "Trusted") {
         $ENV:PKR_VAR_use_keyvault = "true"
     }
@@ -101,5 +94,4 @@ function New-GCPWorkerImage {
         Write-Host "packer build --only $builder -force $PackerHCLPath"
         packer build --only $builder -force $PackerHCLPath
     }
-    if ($LASTEXITCODE -ne 0) { throw "packer build failed with exit code $LASTEXITCODE" }
 }

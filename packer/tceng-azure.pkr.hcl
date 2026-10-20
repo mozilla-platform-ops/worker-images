@@ -10,13 +10,7 @@ packer {
   }
 }
 
-variable "config" {
-  default = env("config")
-  validation {
-    condition     = !contains(keys(yamldecode(file("config/tceng/${var.config}.yaml"))), "dev")
-    error_message = "Not authorized: dev branch selection is restricted to RelOps root-level alpha image configs; dev is not permitted in config subdirectories."
-  }
-}
+variable "config" { default = env("config") }
 variable "image_publisher" { default = env("image_publisher") }
 variable "image_offer" { default = env("image_offer") }
 variable "image_sku" { default = env("image_sku") }

@@ -1,7 +1,5 @@
 $ErrorActionPreference = 'Stop'
 Import-Module powershell-yaml
-. ./bin/WorkerImages/Private/ImageSource.ps1
-. ./bin/WorkerImages/Public/Get-WorkerImageSource.ps1
 . ./bin/WorkerImages/Public/New-AzSharedWorkerImage.ps1
 function Set-PSRepository { }
 function Install-Module { }

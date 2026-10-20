@@ -41,16 +41,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - name: Select image source
-        id: image-source
+      - id: set-matrix
         shell: pwsh
         run: |
-          ./ci/install-powershell-yaml.ps1
-          ./ci/select-image-source.ps1 -Key '${{ github.event.inputs.config }}' -Provider GCP
+          Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
+          Set-GCPWorkerImageName -Key '${{ github.event.inputs.config }}'
+          Set-GCPWorkerImageProject -Key '${{ github.event.inputs.config }}'
     outputs:
-      IMAGENAME: ${{ steps.image-source.outputs.IMAGENAME }}
-      PROJECT: ${{ steps.image-source.outputs.PROJECT }}
-      REVISION: ${{ steps.image-source.outputs.revision }}
+      IMAGENAME: ${{ steps.set-matrix.outputs.IMAGENAME }}
+      PROJECT: ${{ steps.set-matrix.outputs.PROJECT }}
   packer:
     needs: setproject
     name: "GCP ${{ github.event.inputs.config }}"
@@ -61,13 +60,6 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - name: Select image source
-        shell: pwsh
-        env:
-          WORKER_IMAGES_REVISION: ${{ needs.setproject.outputs.REVISION }}
-        run: |
-          ./ci/install-powershell-yaml.ps1
-          ./ci/select-image-source.ps1 -Key '${{ github.event.inputs.config }}' -Provider GCP
       - uses: 'google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093'
         id: auth
         with:

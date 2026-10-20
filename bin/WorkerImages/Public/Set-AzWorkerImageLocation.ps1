@@ -11,7 +11,17 @@ function Set-AzWorkerImageLocation {
     Set-PSRepository PSGallery -InstallationPolicy Trusted
     Install-Module powershell-yaml -ErrorAction Stop
 
-    $YAML = (Get-WorkerImageSource -Key $Key -Team $Team -Provider Azure -RejectDev).Yaml
+    if ($Team) {
+        $YamlPath = "config/$Team/$Key.yaml"
+    } else {
+        $YamlPath = "config/$Key.yaml"
+    }
+
+    if (-not (Test-Path $YamlPath)) {
+        throw "YAML file not found at: $YamlPath"
+    }
+
+    $YAML = ConvertFrom-Yaml (Get-Content $YamlPath -Raw)
 
     if ($YAML.azure.locations.count -eq 1) {
         $locations = '["' + $YAML.azure.locations + '"]'
