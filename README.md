@@ -111,6 +111,38 @@ Level-1 images live in the `taskcluster-imaging` project. Trusted level-3
 images live in `fxci-production-level3-workers`. Production rollouts update
 the matching image paths in `fxci-config`.
 
+## Development image builds (RelSRE only)
+
+Run **Image generation dev - Azure** (`image-dev-azure.yml`) or
+**Image generation dev - GCP** (`image-dev-gcp.yml`) from `main`. Enter the
+worker-images **branch** to test and a
+non-trusted root-level alpha **config** name without `.yaml`, for example
+`win11-64-24h2-alpha` or `gw-fxci-gcp-l1-2404-headless-alpha`.
+
+The workflow checks the actor and rerun actor against `.github/relsre.json`
+from `main`, resolves the branch to one commit, validates its config using
+trusted code, and checks out that commit for the entire build. The selected
+revision supplies the helpers, config/defaults, templates, scripts, and tests.
+Branch names can contain slashes. No YAML `dev` setting is needed.
+
+Only alpha Azure galleries/images/worker pools and the non-trusted GCP
+`taskcluster-imaging` project are allowed. Trusted keys, config subdirectories,
+non-alpha destinations, missing branches, and symbolic links fail before cloud
+login. Azure builds retry up to ten times using the same commit.
+
+Release notes are uploaded as `dev-release-notes-<config>` artifacts, marked
+`DEV BUILD` with the branch and commit. They are not committed to `main`.
+Normal build and promotion workflows are unchanged. Development builds still
+write to the selected alpha image destination; coordinating simultaneous builds
+or isolating their output images is follow-up work in RELOPS-2631. Authorized
+branch code runs with the non-trusted build credentials and is not sandboxed.
+
+Local checks (requires PowerShell 7.3+ and `powershell-yaml`):
+
+```bash
+pwsh -NoProfile -File ci/test-image-dev.ps1
+```
+
 ## Validation
 
 There are three layers of validation:

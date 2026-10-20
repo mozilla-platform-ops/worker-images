@@ -25,6 +25,10 @@ jobs:
         Install-PSResource powershell-yaml -Version 0.4.12 -TrustRepository -Quiet
         ./ci/test-azure-upload-archives.ps1
 
+    - name: Check image development workflow
+      shell: pwsh
+      run: ./ci/test-image-dev.ps1
+
     - name: Install pre-commit
       run: pip install pre-commit
 

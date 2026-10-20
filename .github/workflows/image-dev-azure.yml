@@ -1,0 +1,107 @@
+name: Image generation dev - Azure
+run-name: Image generation dev - Azure - ${{ inputs.config }} - ${{ inputs.branch }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: worker-images branch to test
+        required: true
+        type: string
+      config:
+        description: Non-trusted root-level alpha config name (without .yaml)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    # Keep authorization and credential selection in the reviewed workflow on main.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          path: trusted
+          persist-credentials: false
+      - name: Authorize and pin development branch
+        id: source
+        working-directory: trusted
+        shell: pwsh
+        env:
+          DEV_BRANCH: ${{ inputs.branch }}
+          DEV_CONFIG: ${{ inputs.config }}
+        run: |
+          ./ci/install-powershell-yaml.ps1
+          ./ci/prepare-image-dev.ps1 -Branch $env:DEV_BRANCH -Key $env:DEV_CONFIG -Provider Azure
+      - name: Check out selected commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ steps.source.outputs.revision }}
+          path: source
+          persist-credentials: false
+      - name: Azure login
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID_FXCI }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}
+          enable-AzPSSession: true
+      - name: Build selected revision
+        working-directory: source
+        shell: pwsh
+        env:
+          DEV_CONFIG: ${{ inputs.config }}
+          GH_TOKEN: ${{ github.token }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID_FXCI }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}
+          AZURE_APPLICATION_ID: ${{ secrets.AZURE_APPLICATION_ID_FXCI }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          Import-Module ./bin/WorkerImages/WorkerImages.psm1
+          $vars = @{
+            Key = $env:DEV_CONFIG
+            github_token = $env:GH_TOKEN
+            Client_ID = $env:AZURE_CLIENT_ID
+            Tenant_ID = $env:AZURE_TENANT_ID
+            Subscription_ID = $env:AZURE_SUBSCRIPTION_ID
+            Application_ID = $env:AZURE_APPLICATION_ID
+            oidc_request_url = $env:ACTIONS_ID_TOKEN_REQUEST_URL
+            oidc_request_token = $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN
+          }
+          for ($attempt = 1; $attempt -le 10; $attempt++) {
+            try {
+              New-AzSharedWorkerImage @vars
+              if ($LASTEXITCODE -ne 0) { throw "Packer exited with $LASTEXITCODE" }
+              break
+            } catch {
+              if ($attempt -eq 10) { throw }
+              Write-Warning "Attempt $attempt failed: $_. Retrying in 30 seconds."
+              Start-Sleep -Seconds 30
+            }
+          }
+      - name: Record development provenance
+        shell: pwsh
+        env:
+          DEV_BRANCH: ${{ inputs.branch }}
+          DEV_REVISION: ${{ steps.source.outputs.revision }}
+          DEV_NOTES: ${{ steps.source.outputs.notes }}
+        run: |
+          $path = Join-Path source $env:DEV_NOTES
+          $notes = Get-Content -LiteralPath $path -Raw -ErrorAction Stop
+          "# DEV BUILD`n`nBranch: $env:DEV_BRANCH`n`nCommit: $env:DEV_REVISION`n`n$notes" |
+            Set-Content -LiteralPath $path
+      - name: Upload development release notes
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: dev-release-notes-${{ inputs.config }}
+          path: source/${{ steps.source.outputs.notes }}
+          if-no-files-found: error
