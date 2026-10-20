@@ -113,8 +113,9 @@ the matching image paths in `fxci-config`.
 
 ## Development image builds (RelSRE only)
 
-Run **Worker image development** (`image-dev.yml`) from `main`. Enter the
-worker-images **branch** to test, choose **Azure** or **GCP**, and enter a
+Run **Worker image development - Azure** (`image-dev-azure.yml`) or
+**Worker image development - GCP** (`image-dev-gcp.yml`) from `main`. Enter the
+worker-images **branch** to test and a
 non-trusted root-level alpha **config** name without `.yaml`, for example
 `win11-64-24h2-alpha` or `gw-fxci-gcp-l1-2404-headless-alpha`.
 

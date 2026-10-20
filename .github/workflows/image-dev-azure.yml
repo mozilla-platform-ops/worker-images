@@ -1,5 +1,5 @@
-name: Worker image development
-run-name: Dev ${{ inputs.provider }} - ${{ inputs.config }} - ${{ inputs.branch }}
+name: Worker image development - Azure
+run-name: Dev Azure - ${{ inputs.config }} - ${{ inputs.branch }}
 
 on:
   workflow_dispatch:
@@ -8,11 +8,6 @@ on:
         description: worker-images branch to test
         required: true
         type: string
-      provider:
-        description: Cloud provider
-        required: true
-        type: choice
-        options: [Azure, GCP]
       config:
         description: Non-trusted root-level alpha config name (without .yaml)
         required: true
@@ -42,10 +37,9 @@ jobs:
         env:
           DEV_BRANCH: ${{ inputs.branch }}
           DEV_CONFIG: ${{ inputs.config }}
-          DEV_PROVIDER: ${{ inputs.provider }}
         run: |
           ./ci/install-powershell-yaml.ps1
-          ./ci/prepare-image-dev.ps1 -Branch $env:DEV_BRANCH -Key $env:DEV_CONFIG -Provider $env:DEV_PROVIDER
+          ./ci/prepare-image-dev.ps1 -Branch $env:DEV_BRANCH -Key $env:DEV_CONFIG -Provider Azure
       - name: Check out selected commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -53,27 +47,17 @@ jobs:
           path: source
           persist-credentials: false
       - name: Azure login
-        if: inputs.provider == 'Azure'
         uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID_FXCI }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}
           enable-AzPSSession: true
-      - name: GCP login
-        if: inputs.provider == 'GCP'
-        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
-        with:
-          workload_identity_provider: projects/324168772199/locations/global/workloadIdentityPools/github-actions/providers/github-actions
-          service_account: deploy-prod@taskcluster-imaging.iam.gserviceaccount.com
-      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db
-        if: inputs.provider == 'GCP'
       - name: Build selected revision
         working-directory: source
         shell: pwsh
         env:
           DEV_CONFIG: ${{ inputs.config }}
-          DEV_PROVIDER: ${{ inputs.provider }}
           GH_TOKEN: ${{ github.token }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID_FXCI }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
@@ -83,29 +67,25 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $PSNativeCommandUseErrorActionPreference = $true
           Import-Module ./bin/WorkerImages/WorkerImages.psm1
-          if ($env:DEV_PROVIDER -eq 'GCP') {
-            New-GCPWorkerImage -Key $env:DEV_CONFIG -github_token $env:GH_TOKEN
-          } else {
-            $vars = @{
-              Key = $env:DEV_CONFIG
-              github_token = $env:GH_TOKEN
-              Client_ID = $env:AZURE_CLIENT_ID
-              Tenant_ID = $env:AZURE_TENANT_ID
-              Subscription_ID = $env:AZURE_SUBSCRIPTION_ID
-              Application_ID = $env:AZURE_APPLICATION_ID
-              oidc_request_url = $env:ACTIONS_ID_TOKEN_REQUEST_URL
-              oidc_request_token = $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN
-            }
-            for ($attempt = 1; $attempt -le 10; $attempt++) {
-              try {
-                New-AzSharedWorkerImage @vars
-                if ($LASTEXITCODE -ne 0) { throw "Packer exited with $LASTEXITCODE" }
-                break
-              } catch {
-                if ($attempt -eq 10) { throw }
-                Write-Warning "Attempt $attempt failed: $_. Retrying in 30 seconds."
-                Start-Sleep -Seconds 30
-              }
+          $vars = @{
+            Key = $env:DEV_CONFIG
+            github_token = $env:GH_TOKEN
+            Client_ID = $env:AZURE_CLIENT_ID
+            Tenant_ID = $env:AZURE_TENANT_ID
+            Subscription_ID = $env:AZURE_SUBSCRIPTION_ID
+            Application_ID = $env:AZURE_APPLICATION_ID
+            oidc_request_url = $env:ACTIONS_ID_TOKEN_REQUEST_URL
+            oidc_request_token = $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN
+          }
+          for ($attempt = 1; $attempt -le 10; $attempt++) {
+            try {
+              New-AzSharedWorkerImage @vars
+              if ($LASTEXITCODE -ne 0) { throw "Packer exited with $LASTEXITCODE" }
+              break
+            } catch {
+              if ($attempt -eq 10) { throw }
+              Write-Warning "Attempt $attempt failed: $_. Retrying in 30 seconds."
+              Start-Sleep -Seconds 30
             }
           }
       - name: Record development provenance
