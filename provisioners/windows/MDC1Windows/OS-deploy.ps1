@@ -259,9 +259,6 @@ function Get-NonRoninDeploymentPool {
     if ($matches.Count -eq 0) { return $null }
     if ($matches.Count -ne 1) { throw "Expected one non-Ronin deployment pool for '$Node'; found $($matches.Count)." }
     $selected = $matches[0]
-    if ([string]$selected.ronin.win_kms_key -notmatch '^[A-Z0-9]{5}(-[A-Z0-9]{5}){4}$') {
-        throw "Pool '$($selected.name)': ronin.enabled is false but ronin.win_kms_key is missing or invalid."
-    }
     foreach ($field in 'name', 'image') {
         if ([string]$selected[$field] -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]*$') {
             throw "Non-Ronin pool: invalid or missing $field."
@@ -270,9 +267,6 @@ function Get-NonRoninDeploymentPool {
     if ($selected.secret_date -and [string]$selected.secret_date -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]*$') {
         throw "Non-Ronin pool: invalid secret_date."
     }
-    if ([string]$selected.bootstrap_script -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]*\.ps1$') {
-        throw "Pool '$($selected.name)': bootstrap_script must be a script filename under non-ronin/."
-    }
     return $selected
 }
 
@@ -280,7 +274,7 @@ function Update-NonRoninBoot {
     param([Parameter(Mandatory)][string]$revision)
 
     $splat = @{
-        Url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$revision/provisioners/windows/MDC1Windows/non-ronin/$($pool.bootstrap_script)"
+        Url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$revision/provisioners/windows/MDC1Windows/non-ronin/$($pool.name).ps1"
         Path = Join-Path $local_scripts 'Get-Bootstrap.ps1'
     }
     Remove-Item -LiteralPath $splat.Path -Force -ErrorAction SilentlyContinue
@@ -863,8 +857,9 @@ if (-not $useRonin) {
         if ($hasPoolSecrets) {
             $sourceSecrets = ConvertFrom-Yaml (Get-Content -LiteralPath "Z:\secrets\$WorkerPool-$secret_date.yaml" -Raw)
         }
-        foreach ($field in 'win_adminpw', 'win_kms_server') {
-            if ([string]::IsNullOrWhiteSpace([string]$sourceSecrets[$field])) { throw "Non-Ronin deployment configuration missing $field; refusing to modify disks." }
+        if ([string]$sourceSecrets.win_kms_key -notmatch '^[A-Z0-9]{5}(-[A-Z0-9]{5}){4}$' -or
+            [string]$sourceSecrets.win_kms_server -notmatch '^[A-Za-z0-9][A-Za-z0-9.-]*(?::[0-9]{1,5})?$') {
+            throw 'Non-Ronin deployment secrets require a valid win_kms_key and win_kms_server; refusing to modify disks.'
         }
     }
     finally { Remove-PSDrive -Name Z -Scope Global -Force -ErrorAction SilentlyContinue }
@@ -1057,7 +1052,7 @@ if (($hasPoolSecrets -and (-not (Test-Path -LiteralPath $secret_file -PathType L
     throw 'Required provisioning secrets were not refreshed on D:.'
 }
 
-# The populated answer file contains the current node name and Administrator password.
+# The populated answer file contains the current node name and any configured password.
 # Regenerate it every deployment rather than treating it as part of the persistent image cache.
 $splat = @{
     Url  = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$workerImagesRevision/provisioners/windows/MDC1Windows/base-autounattend.xml"
@@ -1075,13 +1070,21 @@ $content2 = (Get-Content -Path $unattend -Raw).
     Replace('<PartitionID>3</PartitionID>', "<PartitionID>$PartitionNumber</PartitionID>")
 
 $adminPassword = [string]$secret_YAML.win_adminpw
-if ([string]::IsNullOrWhiteSpace($adminPassword)) { throw 'win_adminpw is missing from the deployment secrets.' }
 $unattendXml = New-Object System.Xml.XmlDocument
 $unattendXml.PreserveWhitespace = $true
 $unattendXml.LoadXml($content2)
-$passwordNodes = $unattendXml.SelectNodes("//*[local-name()='Value' and text()='NotARealPassword']")
-if ($passwordNodes.Count -eq 0) { throw 'No Administrator password placeholders found in the unattend template.' }
-foreach ($node in $passwordNodes) { $node.InnerText = $adminPassword }
+if ([string]::IsNullOrWhiteSpace($adminPassword)) {
+    if ($useRonin) { throw 'win_adminpw is missing from the deployment secrets.' }
+    # Leave account creation to OOBE instead of setting a password or enabling autologon.
+    foreach ($node in $unattendXml.SelectNodes("//*[local-name()='UserAccounts' or local-name()='AutoLogon']")) {
+        $node.ParentNode.RemoveChild($node) | Out-Null
+    }
+}
+else {
+    $passwordNodes = $unattendXml.SelectNodes("//*[local-name()='Value' and text()='NotARealPassword']")
+    if ($passwordNodes.Count -eq 0) { throw 'No Administrator password placeholders found in the unattend template.' }
+    foreach ($node in $passwordNodes) { $node.InnerText = $adminPassword }
+}
 if (-not $useRonin) {
     # A single-edition exported WIM is index 1. First boot runs only the pool's
     # worker-images script; do not seed a Ronin vault or invoke its bootstrap.
@@ -1095,7 +1098,7 @@ if (-not $useRonin) {
         pool = $WorkerPool
         worker_images_revision = $workerImagesRevision
         kms_server = $secret_YAML.win_kms_server
-        kms_key = $pool.ronin.win_kms_key
+        kms_key = $secret_YAML.win_kms_key
     } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $local_scripts 'non-ronin.json') -Encoding UTF8 -ErrorAction Stop
 }
 $xmlSettings = New-Object System.Xml.XmlWriterSettings

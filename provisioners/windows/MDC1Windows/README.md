@@ -1,8 +1,9 @@
 # Windows Hardware Bootstrapping
 
-Pools in `pools.yml` use Ronin by default. Set `ronin.enabled: false` and
-`bootstrap_script: windows-kms.ps1` to reuse the shared KMS first-boot script from
-`non-ronin/` instead of `Get-Bootstrap.ps1`. Scripts come from the same pinned
+Pools in `pools.yml` use Ronin by default. Set `ronin.enabled: false` to select
+`non-ronin/<pool-name>.ps1`, such as `non-ronin/win11-26h2-a11y.ps1`.
+The selected script is staged as `D:\scripts\Get-Bootstrap.ps1` for Windows
+FirstLogonCommands. Scripts come from the same pinned
 worker-images revision as the deployment. Non-Ronin pools need no Puppet/Git
 versions or Ronin repository/role settings.
 The existing deployment functions and Ronin pool matching/fallback logic are
@@ -10,15 +11,12 @@ preserved; only explicitly non-Ronin pools use the new helpers. Ronin bootstrap
 still runs at its original point after formatting Windows.
 
 For another plain Windows pool, copy this entry and set its name, image, node,
-secret date, and the public KMS client key for its Windows edition:
+and secret date:
 
 ```yaml
 - name: "win11-lab"
   ronin:
     enabled: false
-    # Public Pro GVLK: https://learn.microsoft.com/en-us/windows-server/get-started/kms-client-activation-keys
-    win_kms_key: "W269N-WFGWX-YVC9B-4J6C9-T83GX"
-  bootstrap_script: "windows-kms.ps1"
   image: "win11-lab"
   secret_date: "10-06-2026"
   domain_suffix: "corpdmz.mdc1.mozilla.com"
@@ -27,8 +25,8 @@ secret date, and the public KMS client key for its Windows edition:
 ```
 
 Stage the pool's single-edition WIM/media and `<name>-<secret_date>.yaml` secrets
-with `win_adminpw` and `win_kms_server`. The shared script reads the pool name and
-KMS settings from deployment configuration; it has no a11y-specific behavior.
+with the settings required by its pool-specific first-boot script. The a11y
+script requires `win_kms_key` and `win_kms_server`, plus optional `win_adminpw`.
 Use `dev` to test a deployment branch. For an ISO export, copy the a11y WIM
 config under the new image name and set its ISO/edition; add the image to the
 existing workflow choices. WIM builds select their branch through `pipeline_ref`.
@@ -41,10 +39,10 @@ using `win-hw-wim/scripts/extract-wim-from-iso.ps1`, inspect its editions with
 release and edition before deployment; the pool name records the source build.
 
 Stage the extracted ISO media under
-`\\mdt2022.ad.mozilla.com\deployments\Images\win11-26h2-a11y`, replacing
+`\\mdt2022.ad.mozilla.com\deployments\Images\win11-26h2-a11y-20261006-045741`, replacing
 `sources\install.wim` with the single-edition export and removing
 `sources\install.esd` if present. Alternatively, the existing direct-DISM path
-accepts `win11-26h2-a11y.wim` and its `.sha256` sidecar in that folder.
+accepts `win11-26h2-a11y-20261006-045741.wim` and its `.sha256` sidecar in that folder.
 The WIM artifact has not been created by adding the pool entry.
 
 To create it with the **Windows HW WIM Build** workflow, select image
@@ -59,22 +57,46 @@ does not include Enterprise. This export retains the ISO's patch
 level and does not run Ronin or Windows Update. At PXE deployment, the pool's
 existing `dev` flag selects the implementation branch.
 
-Stage `secrets\win11-26h2-a11y-10-05-2026.yaml` on the deployment share with
-`win_adminpw` and `win_kms_server` (hostname, optionally `:1688`). Keep these
-deployment values out of Git. The public Pro KMS client setup key is stored in
-the pool YAML under `ronin.win_kms_key`; `ronin.enabled: false` requires a valid
-key, checked before deployment touches any disks.
+Stage `secrets\win11-26h2-a11y-10-05-2026.yaml` on the deployment share:
+
+```yaml
+win_kms_server: "<your-kms-host>:1688"
+win_kms_key: "W269N-WFGWX-YVC9B-4J6C9-T83GX"
+```
+
+Replace `<your-kms-host>` with the actual KMS hostname. The key above is the
+public Windows 11 Pro KMS client setup key, appropriate for this Pro image.
+Both KMS values are validated before deployment touches disks. Keep deployment
+configuration in the share file rather than the pool YAML.
+
+Omit `win_adminpw` to leave account/password setup to interactive Windows OOBE.
+The generated answer file then contains neither account creation nor automatic
+logon; first-logon provisioning runs after an administrator signs in. Supplying
+`win_adminpw` retains the existing password/autologon behavior. Ronin pools still
+require their administrator password. Omitting `secret_date` skips copying the
+pool YAML, but this KMS bootstrap still requires KMS configuration before it
+can deploy.
+
 The existing share `secrets\pat.txt` is still needed to fetch pinned scripts.
-WinPE injects the administrator password into the answer file and stages
+WinPE injects the administrator password only when supplied and stages
 only KMS settings and provenance in `D:\scripts\non-ronin.json`. First boot
 installs the KMS key, sets the server, activates Windows, verifies the license
-state, and removes provisioning secrets/answer files after success. Failures
+state, then downloads MozillaBuild from the official
+[`MozillaBuildSetup-Latest.exe`](https://ftp.mozilla.org/pub/mozilla/libraries/win32/MozillaBuildSetup-Latest.exe)
+link in the [Windows build instructions](https://firefox-source-docs.mozilla.org/setup/windows_build.html).
+It requires a valid Mozilla Corporation Authenticode signature, installs silently
+with `/S` into the default `C:\mozilla-build` location, and checks the shell and
+version file. This installs the latest release at provisioning time; it does not
+clone Firefox or run `mach bootstrap`. Provisioning secrets/answer files are
+removed only after activation and MozillaBuild installation succeed. Failures
 retain the protected provisioning files for diagnosis and retry.
 
 Non-Ronin provisioning skips the Ronin vault copy, Chocolatey/Puppet install,
-Ronin catalog, and Taskcluster registration. Additional a11y software and
-management tooling should use a separate pool-specific `bootstrap_script` once
-specified, leaving `non-ronin/windows-kms.ps1` reusable.
+Ronin catalog, and Taskcluster registration. Add a11y-specific provisioning to
+`non-ronin/win11-26h2-a11y.ps1`. Another non-Ronin pool must provide its own
+`non-ronin/<pool-name>.ps1`; an unavailable script stops deployment before the
+Windows volume is formatted on the existing-partition path. Initial disk
+partitioning currently precedes script staging.
 
 Local verification (no disks, activation, or registry changes):
 

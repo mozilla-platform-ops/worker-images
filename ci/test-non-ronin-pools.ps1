@@ -35,7 +35,7 @@ function Assert-Fails([scriptblock]$Action) {
     if (-not $failed) { throw 'Expected failure.' }
 }
 $legacy = @{ name = 'legacy'; nodes = @('nuc13-001') }
-$plain = @{ name = 'win11-26h2-a11y'; nodes = @('a11y-win'); ronin = @{ enabled = $false; win_kms_key = 'W269N-WFGWX-YVC9B-4J6C9-T83GX' }; bootstrap_script = 'windows-kms.ps1'; image = 'win11-a11y'; secret_date = '10-05-2026' }
+$plain = @{ name = 'win11-26h2-a11y'; nodes = @('a11y-win'); ronin = @{ enabled = $false }; image = 'win11-a11y'; secret_date = '10-05-2026' }
 $pools = @($legacy, $plain)
 $other = $plain.Clone(); $other.name = 'win11-lab'; $other.nodes = @('lab-win')
 if ((Get-NonRoninDeploymentPool @($legacy, $plain, $other) 'lab-win').name -ne 'win11-lab') {
@@ -48,14 +48,27 @@ if ($null -ne (Get-NonRoninDeploymentPool @($legacy, $legacy) 'nuc13-001')) { th
 Assert-Fails { Get-NonRoninDeploymentPool @($plain, $plain) 'a11y-win' }
 $invalid = $plain.Clone(); $invalid.ronin = @{ enabled = 'false' }
 Assert-Fails { Get-NonRoninDeploymentPool @($invalid) 'a11y-win' }
-foreach ($key in $null, '', 'invalid') {
-    $invalid = $plain.Clone(); $invalid.ronin = @{ enabled = $false; win_kms_key = $key }
-    Assert-Fails { Get-NonRoninDeploymentPool @($invalid) 'a11y-win' }
-}
 $invalid = $plain.Clone(); $invalid.ronin = @{ enabled = $true }
 if ($null -ne (Get-NonRoninDeploymentPool @($invalid) 'a11y-win')) { throw 'Enabled Ronin pool must bypass non-Ronin provisioning.' }
-$invalid = $plain.Clone(); $invalid.bootstrap_script = '../bootstrap.ps1'
+$invalid = $plain.Clone(); $invalid.name = '../bootstrap'
 Assert-Fails { Get-NonRoninDeploymentPool @($invalid) 'a11y-win' }
+
+$kmsValidation = $ast.Find({ param($node)
+    $node -is [System.Management.Automation.Language.IfStatementAst] -and
+    $node.Extent.Text.StartsWith('if ([string]$sourceSecrets.win_kms_key') -and
+    $node.Extent.Text.Contains('Non-Ronin deployment secrets require a valid win_kms_key')
+}, $true)
+if (-not $kmsValidation) { throw 'Missing pre-disk KMS validation.' }
+$sourceSecrets = @{ win_kms_key = 'W269N-WFGWX-YVC9B-4J6C9-T83GX'; win_kms_server = 'kms.example.com:1688' }
+Invoke-Expression $kmsValidation.Extent.Text
+foreach ($field in 'win_kms_key', 'win_kms_server') {
+    $valid = $sourceSecrets.Clone()
+    foreach ($value in $null, '', 'bad value') {
+        $sourceSecrets[$field] = $value
+        Assert-Fails { Invoke-Expression $kmsValidation.Extent.Text }
+    }
+    $sourceSecrets = $valid
+}
 
 $withoutSecrets = $plain.Clone(); $withoutSecrets.Remove('secret_date')
 if ($null -eq (Get-NonRoninDeploymentPool @($withoutSecrets) 'a11y-win')) { throw 'secret_date must be optional.' }
@@ -120,10 +133,11 @@ try {
         $script:stagedScript = $Value
     }
     $revision = 'a' * 40
-    $pool = $plain
-    Update-NonRoninBoot -revision $revision
-    if ($script:downloadUrl -notlike "*/$revision/provisioners/windows/MDC1Windows/non-ronin/windows-kms.ps1") {
-        throw 'Non-Ronin bootstrap did not select its script from the pinned revision.'
+    foreach ($pool in @($plain, $other)) {
+        Update-NonRoninBoot -revision $revision
+        if ($script:downloadUrl -cne "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$revision/provisioners/windows/MDC1Windows/non-ronin/$($pool.name).ps1") {
+            throw 'Non-Ronin bootstrap did not select the pool-named script from the pinned revision.'
+        }
     }
     $pool = $legacy
     Update-GetBoot -revision $revision
@@ -136,7 +150,30 @@ try {
     $WorkerPool = 'win11-26h2-a11y'
     $workerImagesRevision = $revision
     $pool = $plain
-    $secret_YAML = @{ win_kms_server = 'kms.example.com' }
+    $secret_YAML = @{ win_kms_server = 'kms.example.com'; win_kms_key = 'W269N-WFGWX-YVC9B-4J6C9-T83GX' }
+    $passwordBranch = $ast.Find({ param($node)
+        $node -is [System.Management.Automation.Language.IfStatementAst] -and
+        $node.Extent.Text.StartsWith('if ([string]::IsNullOrWhiteSpace($adminPassword))')
+    }, $true)
+    if (-not $passwordBranch) { throw 'Missing answer-file password handling.' }
+    $adminPassword = ''
+    Invoke-Expression $passwordBranch.Extent.Text
+    if ($unattendXml.OuterXml -match 'NotARealPassword' -or
+        $unattendXml.SelectNodes("//*[local-name()='UserAccounts' or local-name()='AutoLogon']").Count -ne 0) {
+        throw 'Password-free setup retained default accounts, passwords, or autologon.'
+    }
+    $useRonin = $true
+    Assert-Fails { Invoke-Expression $passwordBranch.Extent.Text }
+    $useRonin = $false
+    $withoutPassword = $unattendXml
+    $unattendXml = [xml][IO.File]::ReadAllText((Join-Path $root 'provisioners/windows/MDC1Windows/base-autounattend.xml'))
+    $adminPassword = 'test<&password'
+    Invoke-Expression $passwordBranch.Extent.Text
+    $values = $unattendXml.SelectNodes("//*[local-name()='Password' or local-name()='AdministratorPassword']/*[local-name()='Value']")
+    if ($values.Count -ne 3 -or @($values | Where-Object { $_.InnerText -cne $adminPassword }).Count -ne 0) {
+        throw 'Configured password was not preserved safely in the answer file.'
+    }
+    $unattendXml = $withoutPassword
     $branch = $ast.Find({ param($node)
         $node -is [System.Management.Automation.Language.IfStatementAst] -and
         $node.Extent.Text -match 'if \(-not \$useRonin\)' -and $node.Extent.Text -match 'vaultCopy'
@@ -147,7 +184,7 @@ try {
         throw 'Non-Ronin answer file retained Ronin seeding or selected the wrong image index.'
     }
     $stagedConfig = [IO.File]::ReadAllText((Join-Path $scratch 'non-ronin.json')) | ConvertFrom-Json
-    if ($stagedConfig.kms_key -ne $plain.ronin.win_kms_key -or $stagedConfig.pool -ne $WorkerPool -or $stagedConfig.worker_images_revision -ne $revision -or
+    if ($stagedConfig.kms_key -ne $secret_YAML.win_kms_key -or $stagedConfig.pool -ne $WorkerPool -or $stagedConfig.worker_images_revision -ne $revision -or
         $stagedConfig.PSObject.Properties.Name -contains 'win_adminpw') { throw 'Incorrect staged non-Ronin configuration.' }
 } finally {
     Remove-Item -LiteralPath $scratch -Recurse -Force
@@ -156,36 +193,83 @@ try {
 
 # Exercise the native KMS sequence with fakes, including activation that returns
 # zero but leaves Windows unlicensed. No installer, registry, or file deletion runs.
-$bootstrap = Join-Path $root 'provisioners/windows/MDC1Windows/non-ronin/windows-kms.ps1'
-$code = [IO.File]::ReadAllText($bootstrap)
-$script:configJson = '{"pool":"win11-26h2-a11y","kms_server":"kms.example.com:1688","kms_key":"AAAAA-BBBBB-CCCCC-DDDDD-EEEEE","worker_images_revision":"test"}'
-function Get-Content { return $script:configJson }
-function cscript.exe {
-    $script:kmsCalls += ,@($args)
-    $global:LASTEXITCODE = $script:nativeExitCode
+$global:nonRoninTest = @{}
+$bootstrap = Join-Path $root 'provisioners/windows/MDC1Windows/non-ronin/win11-26h2-a11y.ps1'
+$global:nonRoninTest.configJson = '{"pool":"win11-26h2-a11y","kms_server":"kms.example.com:1688","kms_key":"AAAAA-BBBBB-CCCCC-DDDDD-EEEEE","worker_images_revision":"test"}'
+function Get-Content {
+    param($LiteralPath, [switch]$Raw)
+    if ($LiteralPath -eq 'C:\mozilla-build\VERSION') { return '4.2.1' }
+    return $global:nonRoninTest.configJson
 }
-function Get-CimInstance { return [pscustomobject]@{ LicenseStatus = $script:licenseStatus } }
-function Test-Path { return $true }
-function Remove-Item { $script:cleanupCount++ }
+function cscript.exe {
+    $global:nonRoninTest.kmsCalls += ,@($args)
+    $global:LASTEXITCODE = $global:nonRoninTest.nativeExitCode
+}
+function Get-CimInstance { return [pscustomobject]@{ LicenseStatus = $global:nonRoninTest.licenseStatus } }
+function Invoke-WebRequest {
+    param([switch]$UseBasicParsing, $Uri, $OutFile, $TimeoutSec)
+    if ($global:nonRoninTest.downloadFails) { throw 'Mock download failure.' }
+    $global:nonRoninTest.mozillaBuildUrl = $Uri
+}
+function Get-AuthenticodeSignature {
+    param($LiteralPath)
+    return [pscustomobject]@{ Status = $global:nonRoninTest.signatureStatus; SignerCertificate = [pscustomobject]@{ Subject = $global:nonRoninTest.signerSubject } }
+}
+function Start-Process {
+    param($FilePath, $ArgumentList, [switch]$Wait, [switch]$PassThru)
+    if ($ArgumentList -ne '/S' -or -not $Wait -or -not $PassThru) { throw 'MozillaBuild must install silently and wait for its exit code.' }
+    $global:nonRoninTest.installerCalls++
+    return [pscustomobject]@{ ExitCode = $global:nonRoninTest.installerExitCode }
+}
+function Test-Path {
+    param($LiteralPath, $PathType)
+    if ($LiteralPath -like 'C:\mozilla-build\*') { return $global:nonRoninTest.mozillaBuildInstalled }
+    return $true
+}
+function Remove-Item { $global:nonRoninTest.cleanupCount++ }
 function Get-ChildItem { return @() }
 function Set-ItemProperty { }
 function Remove-ItemProperty { }
-$script:nativeExitCode = 0; $script:licenseStatus = 1
+$global:nonRoninTest.nativeExitCode = 0; $global:nonRoninTest.licenseStatus = 1
+$global:nonRoninTest.signatureStatus = 'Valid'; $global:nonRoninTest.signerSubject = 'CN=Mozilla Corporation, O=Mozilla Corporation'
+$global:nonRoninTest.installerExitCode = 0; $global:nonRoninTest.mozillaBuildInstalled = $true
 foreach ($poolName in 'win11-26h2-a11y', 'win11-lab') {
-    $config = $script:configJson | ConvertFrom-Json
+    $config = $global:nonRoninTest.configJson | ConvertFrom-Json
     $config.pool = $poolName
-    $script:configJson = $config | ConvertTo-Json
-    $script:kmsCalls = @(); $script:cleanupCount = 0
-    & ([scriptblock]::Create($code))
-    if ($script:kmsCalls.Count -ne 3 -or $script:kmsCalls[0][2] -ne '/ipk' -or
-        $script:kmsCalls[1][2] -ne '/skms' -or $script:kmsCalls[2][2] -ne '/ato' -or $script:cleanupCount -eq 0) {
+    $global:nonRoninTest.configJson = $config | ConvertTo-Json
+    $global:nonRoninTest.kmsCalls = @(); $global:nonRoninTest.cleanupCount = 0
+    $global:nonRoninTest.installerCalls = 0
+    & $bootstrap
+    if ($global:nonRoninTest.kmsCalls.Count -ne 3 -or $global:nonRoninTest.kmsCalls[0][2] -ne '/ipk' -or
+        $global:nonRoninTest.kmsCalls[1][2] -ne '/skms' -or $global:nonRoninTest.kmsCalls[2][2] -ne '/ato' -or $global:nonRoninTest.cleanupCount -eq 0) {
         throw 'KMS command sequence or successful cleanup failed.'
     }
+    if ($global:nonRoninTest.installerCalls -ne 1 -or $global:nonRoninTest.mozillaBuildUrl -ne 'https://ftp.mozilla.org/pub/mozilla/libraries/win32/MozillaBuildSetup-Latest.exe') {
+        throw 'MozillaBuild was not installed from the official latest-release URL.'
+    }
 }
-$script:cleanupCount = 0; $script:nativeExitCode = 1
-Assert-Fails { & ([scriptblock]::Create($code)) }
-if ($script:cleanupCount -ne 0) { throw 'Credentials were deleted after a failed KMS command.' }
-$script:nativeExitCode = 0; $script:licenseStatus = 0
-Assert-Fails { & ([scriptblock]::Create($code)) }
-if ($script:cleanupCount -ne 0) { throw 'Credentials were deleted while Windows remained unlicensed.' }
-Write-Host 'Non-Ronin pool and KMS checks passed.'
+$global:nonRoninTest.cleanupCount = 0; $global:nonRoninTest.nativeExitCode = 1
+Assert-Fails { & $bootstrap }
+if ($global:nonRoninTest.cleanupCount -ne 0) { throw 'Credentials were deleted after a failed KMS command.' }
+$global:nonRoninTest.nativeExitCode = 0; $global:nonRoninTest.licenseStatus = 0
+Assert-Fails { & $bootstrap }
+if ($global:nonRoninTest.cleanupCount -ne 0) { throw 'Credentials were deleted while Windows remained unlicensed.' }
+$global:nonRoninTest.licenseStatus = 1; $global:nonRoninTest.installerCalls = 0
+$global:nonRoninTest.downloadFails = $true
+Assert-Fails { & $bootstrap }
+$global:nonRoninTest.downloadFails = $false
+foreach ($status in 'NotSigned', 'HashMismatch') {
+    $global:nonRoninTest.signatureStatus = $status
+    Assert-Fails { & $bootstrap }
+}
+$global:nonRoninTest.signatureStatus = 'Valid'; $global:nonRoninTest.signerSubject = 'CN=Other Publisher'
+Assert-Fails { & $bootstrap }
+if ($global:nonRoninTest.installerCalls -ne 0 -or $global:nonRoninTest.cleanupCount -ne 0) { throw 'Untrusted installer executed or credentials were removed.' }
+$global:nonRoninTest.signerSubject = 'CN=Mozilla Corporation, O=Mozilla Corporation'
+$global:nonRoninTest.installerExitCode = 1
+Assert-Fails { & $bootstrap }
+$global:nonRoninTest.installerExitCode = 0; $global:nonRoninTest.mozillaBuildInstalled = $false
+Assert-Fails { & $bootstrap }
+if ($global:nonRoninTest.cleanupCount -ne 0) { throw 'Credentials were deleted after MozillaBuild installation failed.' }
+Write-Host 'Non-Ronin pool, KMS, and MozillaBuild checks passed.'
+Remove-Variable nonRoninTest -Scope Global
