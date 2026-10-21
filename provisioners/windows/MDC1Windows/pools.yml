@@ -1,6 +1,6 @@
 ---
 pools:
-  # RELOPS-2612: route only a11y-win to the non-Ronin implementation branch.
+  # RELOPS-2612: route the accessibility host to the non-Ronin implementation branch.
   # Stage the single-edition WIM/media and deployment secrets before PXE testing.
   - name: "win11-26h2-a11y"
     Description: "Standalone accessibility Windows installation"
@@ -11,7 +11,7 @@ pools:
     secret_date: "10-05-2026"
     domain_suffix: "corpdmz.mdc1.mozilla.com"
     nodes:
-      - a11y-win
+      - a11y
   - name: "win11-64-24h2-hw-ref"
     openvox_version: "8.19.2"
     puppet_version: "8.10.0"
