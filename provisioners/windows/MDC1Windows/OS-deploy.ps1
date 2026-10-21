@@ -743,6 +743,8 @@ Write-Host "Host name set to be $ResolvedName"
 # Resolve the selected branch once, then use that immutable revision for the whole deploy.
 # Read the GitHub token directly from the deployment share; do not trust a cached D: copy
 # before Protect-ProvisioningDrive has run.
+# WebClient resolves relative paths against the process directory, not PowerShell's location.
+$poolsPath = Join-Path $PWD.Path 'pools.yml'
 Mount-ZDrive
 try {
     $workerImagesPAT = (Get-Content 'Z:\secrets\pat.txt' -Raw -ErrorAction Stop).Trim()
@@ -758,13 +760,13 @@ try {
     Write-Host "Pinned worker-images '$branch' to $workerImagesRevision"
     Invoke-DownloadWithRetryGithub `
         -Url "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$workerImagesRevision/provisioners/windows/MDC1Windows/pools.yml" `
-        -Path 'pools.yml' -PAT $workerImagesPAT
+        -Path $poolsPath -PAT $workerImagesPAT
 }
 finally {
     Remove-Variable workerImagesPAT -ErrorAction SilentlyContinue
     Remove-PSDrive -Name Z -Scope Global -Force -ErrorAction SilentlyContinue
 }
-$YAML = Convertfrom-Yaml (Get-Content "pools.yml" -raw)
+$YAML = Convertfrom-Yaml (Get-Content -LiteralPath $poolsPath -Raw -ErrorAction Stop)
 # Only explicitly non-Ronin pools use the new selector. Existing pools retain
 # the original matching, fallback, and development-branch behavior below.
 $nonRoninPool = Get-NonRoninDeploymentPool -Pools $YAML.pools -Node $shortname
@@ -1119,7 +1121,7 @@ if ($useRonin) {
 }
 
 ## Update yaml files with recent changes
-Copy-Item -Path pools.yml  $local_yaml -Force
+Copy-Item -LiteralPath $poolsPath -Destination $local_yaml -Force
 
 Set-Location -Path $OS_files
 Write-Host "Initializing OS installation."
