@@ -35,7 +35,7 @@ function Assert-Fails([scriptblock]$Action) {
     if (-not $failed) { throw 'Expected failure.' }
 }
 $legacy = @{ name = 'legacy'; nodes = @('nuc13-001') }
-$plain = @{ name = 'win11-26h2-a11y'; nodes = @('a11y-win'); ronin = @{ enabled = $false }; image = 'win11-a11y'; secret_date = '10-05-2026' }
+$plain = @{ name = 'win11-26h2-a11y'; nodes = @('a11y', 'a11y-win'); ronin = @{ enabled = $false }; image = 'win11-a11y'; secret_date = '10-05-2026' }
 $pools = @($legacy, $plain)
 $other = $plain.Clone(); $other.name = 'win11-lab'; $other.nodes = @('lab-win')
 if ((Get-NonRoninDeploymentPool @($legacy, $plain, $other) 'lab-win').name -ne 'win11-lab') {
@@ -43,6 +43,8 @@ if ((Get-NonRoninDeploymentPool @($legacy, $plain, $other) 'lab-win').name -ne '
 }
 if ($null -ne (Get-NonRoninDeploymentPool $pools 'nuc13-001')) { throw 'Legacy pools must bypass the new selector.' }
 if ((Get-NonRoninDeploymentPool $pools 'a11y-win').ronin.enabled -ne $false) { throw 'Non-Ronin flag was lost.' }
+if ((Get-NonRoninDeploymentPool $pools 'a11y').name -ne 'win11-26h2-a11y') { throw 'The DNS shortname a11y must select the accessibility pool.' }
+if ($null -ne (Get-NonRoninDeploymentPool $pools 'a11y-other')) { throw 'Accessibility host matching must remain exact.' }
 if ($null -ne (Get-NonRoninDeploymentPool $pools 'nuc13-00')) { throw 'Unmatched nodes must not select a non-Ronin pool.' }
 if ($null -ne (Get-NonRoninDeploymentPool @($legacy, $legacy) 'nuc13-001')) { throw 'Legacy matching rules were overridden.' }
 Assert-Fails { Get-NonRoninDeploymentPool @($plain, $plain) 'a11y-win' }
