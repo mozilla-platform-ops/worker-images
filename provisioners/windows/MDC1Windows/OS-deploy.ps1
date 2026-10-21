@@ -262,10 +262,13 @@ function Get-NonRoninDeploymentPool {
     if ([string]$selected.ronin.win_kms_key -notmatch '^[A-Z0-9]{5}(-[A-Z0-9]{5}){4}$') {
         throw "Pool '$($selected.name)': ronin.enabled is false but ronin.win_kms_key is missing or invalid."
     }
-    foreach ($field in 'name', 'image', 'secret_date') {
+    foreach ($field in 'name', 'image') {
         if ([string]$selected[$field] -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]*$') {
             throw "Non-Ronin pool: invalid or missing $field."
         }
+    }
+    if ($selected.secret_date -and [string]$selected.secret_date -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]*$') {
+        throw "Non-Ronin pool: invalid secret_date."
     }
     if ([string]$selected.bootstrap_script -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]*\.ps1$') {
         throw "Pool '$($selected.name)': bootstrap_script must be a script filename under non-ronin/."
@@ -829,11 +832,22 @@ foreach ($pool in $YAML.pools) {
 
 }
 
-# Check a new non-Ronin pool's staged media and secrets before touching its disks.
+if ($useRonin -and -not $found) {
+    throw "No deployment pool matched '$shortname'; refusing to partition or copy images."
+}
+if ([string]$neededImage -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]*$') {
+    throw "Pool '$WorkerPool' has no valid image name; refusing to partition or copy images."
+}
+
+$hasPoolSecrets = -not [string]::IsNullOrWhiteSpace([string]$secret_date)
+
+# Check a new non-Ronin pool's staged media and optional secrets before touching its disks.
 if (-not $useRonin) {
     Mount-ZDrive
     try {
-        foreach ($path in @("Z:\Images\$neededImage", "Z:\secrets\$WorkerPool-$secret_date.yaml")) {
+        $sourcePaths = @("Z:\Images\$neededImage")
+        if ($hasPoolSecrets) { $sourcePaths += "Z:\secrets\$WorkerPool-$secret_date.yaml" }
+        foreach ($path in $sourcePaths) {
             if (-not (Test-Path -LiteralPath $path)) { throw "Non-Ronin deployment source missing: $path" }
         }
         $sourceWim = "Z:\Images\$neededImage\$neededImage.wim"
@@ -845,9 +859,12 @@ if (-not $useRonin) {
         elseif (-not (Test-Path -LiteralPath $sourceWim) -or -not (Test-Path -LiteralPath "$sourceWim.sha256")) {
             throw 'Non-Ronin direct deployment requires the WIM and its SHA-256 sidecar.'
         }
-        $sourceSecrets = ConvertFrom-Yaml (Get-Content -LiteralPath "Z:\secrets\$WorkerPool-$secret_date.yaml" -Raw)
+        $sourceSecrets = @{}
+        if ($hasPoolSecrets) {
+            $sourceSecrets = ConvertFrom-Yaml (Get-Content -LiteralPath "Z:\secrets\$WorkerPool-$secret_date.yaml" -Raw)
+        }
         foreach ($field in 'win_adminpw', 'win_kms_server') {
-            if ([string]::IsNullOrWhiteSpace([string]$sourceSecrets[$field])) { throw "Non-Ronin deployment secrets missing $field." }
+            if ([string]::IsNullOrWhiteSpace([string]$sourceSecrets[$field])) { throw "Non-Ronin deployment configuration missing $field; refusing to modify disks." }
         }
     }
     finally { Remove-PSDrive -Name Z -Scope Global -Force -ErrorAction SilentlyContinue }
@@ -963,12 +980,13 @@ Write-host "Source install is $source_install"
 $OS_files = $local_install + $neededImage
 $setup = $OS_files + "\setup.exe"
 $secret_dir = $local_install + "secrets"
-$secret_file_name = $WorkerPool + "-" + $secret_date + ".yaml"
-Write-Host "Secret file name is $secret_file_name"
-$secret_file = $secret_dir + "\" + $secret_file_name
-$source_secrets = $source_dir + "secrets\" + $secret_file_name
+if ($hasPoolSecrets) {
+    $secret_file_name = $WorkerPool + "-" + $secret_date + ".yaml"
+    Write-Host "Secret file name is $secret_file_name"
+    $secret_file = $secret_dir + "\" + $secret_file_name
+    $source_secrets = $source_dir + "secrets\" + $secret_file_name
+}
 $source_secrets_pat = $source_dir + "secrets\pat.txt"
-Write-host "Source secrets is $source_secrets"
 $source_AZsecrets = $source_dir + "secrets\" + "azcredentials.yaml"
 $AZsecret_file = $secret_dir + "\azcredentials.yaml"
 $PATsecret_file = $secret_dir + "\pat.txt"
@@ -1025,14 +1043,16 @@ else {
 # every deployment. Bootstrap still needs both files until its Puppet run succeeds.
 if (-not $shareMounted) { Mount-ZDrive }
 New-Item -ItemType Directory -Path $secret_dir -Force | Out-Null
-Write-Host "Refreshing $source_secrets -> $secret_file"
-Copy-Item -Path $source_secrets -Destination $secret_file -Force -ErrorAction Stop
+if ($hasPoolSecrets) {
+    Write-Host "Refreshing $source_secrets -> $secret_file"
+    Copy-Item -Path $source_secrets -Destination $secret_file -Force -ErrorAction Stop
+}
 Write-Host "Refreshing $source_secrets_pat -> $PATsecret_file"
 Copy-Item -Path $source_secrets_pat -Destination $PATsecret_file -Force -ErrorAction Stop
 Write-Host "Disconecting Deployment Share."
 Remove-PSDrive -Name Z -Scope Global -Force -ErrorAction SilentlyContinue
 
-if ((-not (Test-Path -LiteralPath $secret_file -PathType Leaf)) -or
+if (($hasPoolSecrets -and (-not (Test-Path -LiteralPath $secret_file -PathType Leaf))) -or
     (-not (Test-Path -LiteralPath $PATsecret_file -PathType Leaf))) {
     throw 'Required provisioning secrets were not refreshed on D:.'
 }
@@ -1046,7 +1066,7 @@ $splat = @{
 }
 Invoke-DownloadWithRetryGithub @splat
 
-$secret_YAML = Convertfrom-Yaml (Get-Content $secret_file -raw)
+if ($hasPoolSecrets) { $secret_YAML = Convertfrom-Yaml (Get-Content $secret_file -raw) }
 $DiskNumber = (Get-Partition -DriveLetter C).DiskNumber
 $PartitionNumber = (Get-Partition -DriveLetter C).PartitionNumber
 $content2 = (Get-Content -Path $unattend -Raw).

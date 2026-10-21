@@ -43,7 +43,7 @@ if ((Get-NonRoninDeploymentPool @($legacy, $plain, $other) 'lab-win').name -ne '
 }
 if ($null -ne (Get-NonRoninDeploymentPool $pools 'nuc13-001')) { throw 'Legacy pools must bypass the new selector.' }
 if ((Get-NonRoninDeploymentPool $pools 'a11y-win').ronin.enabled -ne $false) { throw 'Non-Ronin flag was lost.' }
-if ($null -ne (Get-NonRoninDeploymentPool $pools 'nuc13-00')) { throw 'Unmatched legacy nodes must retain the existing fallback.' }
+if ($null -ne (Get-NonRoninDeploymentPool $pools 'nuc13-00')) { throw 'Unmatched nodes must not select a non-Ronin pool.' }
 if ($null -ne (Get-NonRoninDeploymentPool @($legacy, $legacy) 'nuc13-001')) { throw 'Legacy matching rules were overridden.' }
 Assert-Fails { Get-NonRoninDeploymentPool @($plain, $plain) 'a11y-win' }
 $invalid = $plain.Clone(); $invalid.ronin = @{ enabled = 'false' }
@@ -56,6 +56,50 @@ $invalid = $plain.Clone(); $invalid.ronin = @{ enabled = $true }
 if ($null -ne (Get-NonRoninDeploymentPool @($invalid) 'a11y-win')) { throw 'Enabled Ronin pool must bypass non-Ronin provisioning.' }
 $invalid = $plain.Clone(); $invalid.bootstrap_script = '../bootstrap.ps1'
 Assert-Fails { Get-NonRoninDeploymentPool @($invalid) 'a11y-win' }
+
+$withoutSecrets = $plain.Clone(); $withoutSecrets.Remove('secret_date')
+if ($null -eq (Get-NonRoninDeploymentPool @($withoutSecrets) 'a11y-win')) { throw 'secret_date must be optional.' }
+$invalid = $plain.Clone(); $invalid.secret_date = '../secret'
+Assert-Fails { Get-NonRoninDeploymentPool @($invalid) 'a11y-win' }
+foreach ($image in $null, '', ' ', '../Images') {
+    $invalid = $plain.Clone(); $invalid.image = $image
+    Assert-Fails { Get-NonRoninDeploymentPool @($invalid) 'a11y-win' }
+}
+
+# Run the actual selection guards without executing partitioning or deployment.
+$guards = @($ast.EndBlock.Statements | Where-Object {
+    $_ -is [System.Management.Automation.Language.IfStatementAst] -and
+    $_.Extent.Text -match 'refusing to partition or copy images'
+})
+if ($guards.Count -ne 2) { throw 'Expected pool and image guards before disk operations.' }
+$guardCode = [scriptblock]::Create(($guards.Extent.Text -join "`n"))
+$useRonin = $true; $found = $false; $neededImage = 'valid-image'; $shortname = 'unknown-node'
+Assert-Fails { & $guardCode }
+$found = $true; $neededImage = ''
+Assert-Fails { & $guardCode }
+$neededImage = 'win11-26h2-a11y-20261006-045741'
+& $guardCode
+$useRonin = $false; $found = $false
+& $guardCode
+$diskStart = $ast.Extent.Text.IndexOf('Write-Host "Preparing local environment."')
+if ($guards[-1].Extent.StartOffset -ge $diskStart) { throw 'Selection must fail before disk operations.' }
+
+# Exercise the real optional refresh branch; no files are copied by the mock.
+$refresh = $ast.Find({ param($node)
+    $node -is [System.Management.Automation.Language.IfStatementAst] -and
+    $node.Extent.Text.StartsWith('if ($hasPoolSecrets)') -and
+    $node.Extent.Text.Contains('Copy-Item -Path $source_secrets')
+}, $true)
+if (-not $refresh) { throw 'Pool secret copy must be conditional.' }
+function Copy-Item { param($Path, $Destination, [switch]$Force, $ErrorAction) $script:secretCopies++ }
+$source_secrets = 'source.yaml'; $secret_file = 'destination.yaml'
+$script:secretCopies = 0; $hasPoolSecrets = $false
+Invoke-Expression $refresh.Extent.Text
+if ($script:secretCopies -ne 0) { throw 'Copied pool secrets without secret_date.' }
+$hasPoolSecrets = $true
+Invoke-Expression $refresh.Extent.Text
+if ($script:secretCopies -ne 1) { throw 'Dated pool secrets were not refreshed.' }
+Remove-Item Function:\Copy-Item
 
 # Record the actual first-boot script selection and revision substitution.
 $scratch = Join-Path ([IO.Path]::GetTempPath()) ('non-ronin-test-' + [guid]::NewGuid())
