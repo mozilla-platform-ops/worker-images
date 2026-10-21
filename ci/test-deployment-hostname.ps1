@@ -28,6 +28,12 @@ $script:ptrRecords['10.49.67.195'] = 'A11Y.wintest2.releng.mdc1.mozilla.com'
 if ((Resolve-DeploymentHostname @('10.49.64.99', '10.49.67.195')) -ne 'a11y.wintest2.releng.mdc1.mozilla.com') { throw 'Equivalent PTR records must resolve once.' }
 $script:ptrRecords['10.49.67.195'] = 'other.example.com'
 Assert-Fails { Resolve-DeploymentHostname @('10.49.64.99', '10.49.67.195') }
+$script:ptrRecords['10.49.67.195'] = 'MININT-ABC123.example.com.'
+if ((Resolve-DeploymentHostname @('10.49.64.99', '10.49.67.195')) -ne 'a11y.wintest2.releng.mdc1.mozilla.com') { throw 'WinPE PTR names must not compete with the deployment hostname.' }
+Assert-Fails { Resolve-DeploymentHostname @('10.49.67.195') }
+$script:ptrRecords['10.49.67.195'] = 'MININT-ABC123'
+if ((Resolve-DeploymentHostname @('10.49.64.99', '10.49.67.195')) -ne 'a11y.wintest2.releng.mdc1.mozilla.com') { throw 'Bare WinPE names must also be ignored.' }
+Assert-Fails { Resolve-DeploymentHostname @('10.49.67.195') }
 Assert-Fails { Resolve-DeploymentHostname @('10.49.67.196') }
 Remove-Item Function:\Resolve-DnsName
 Write-Host 'Deployment hostname checks passed.'

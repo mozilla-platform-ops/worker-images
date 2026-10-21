@@ -690,6 +690,8 @@ function Resolve-DeploymentHostname {
         catch { Write-Warning "Reverse DNS failed for ${address}: $_" }
     })
     $names = @($names | ForEach-Object { ([string]$_).TrimEnd('.').ToLowerInvariant() } | Select-Object -Unique)
+    # WinPE's temporary name must not compete with the provisioned DNS hostname.
+    $names = @($names | Where-Object { $_ -notmatch '^minint-' })
     if ($names.Count -ne 1 -or $names[0] -notmatch '^[A-Za-z0-9][A-Za-z0-9-]*\.[A-Za-z0-9.-]+$') {
         throw "Expected one deployment hostname for IP addresses [$($IPAddresses -join ', ')]; found [$($names -join ', ')]."
     }
