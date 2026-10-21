@@ -186,6 +186,18 @@ try {
     $stagedConfig = [IO.File]::ReadAllText((Join-Path $scratch 'non-ronin.json')) | ConvertFrom-Json
     if ($stagedConfig.kms_key -ne $secret_YAML.win_kms_key -or $stagedConfig.pool -ne $WorkerPool -or $stagedConfig.worker_images_revision -ne $revision -or
         $stagedConfig.PSObject.Properties.Name -contains 'win_adminpw') { throw 'Incorrect staged non-Ronin configuration.' }
+
+    # Ronin keeps the template's vault seed, image index, and account/autologon settings.
+    $useRonin = $true
+    $unattendXml = [xml][IO.File]::ReadAllText((Join-Path $root 'provisioners/windows/MDC1Windows/base-autounattend.xml'))
+    Invoke-Expression $passwordBranch.Extent.Text
+    $roninXml = $unattendXml.OuterXml
+    if ($unattendXml.SelectNodes("//*[local-name()='UserAccounts' or local-name()='AutoLogon']").Count -ne 2 -or
+        $unattendXml.OuterXml -notmatch 'vault.yaml') { throw 'Ronin account or vault settings were removed.' }
+    if (@($unattendXml.SelectNodes("//*[local-name()='Password' or local-name()='AdministratorPassword']/*[local-name()='Value']") |
+        Where-Object { $_.InnerText -cne $adminPassword }).Count -ne 0) { throw 'Ronin password was not populated safely.' }
+    Invoke-Expression $branch.Extent.Text
+    if ($unattendXml.OuterXml -cne $roninXml) { throw 'Non-Ronin customization changed the Ronin answer file.' }
 } finally {
     Remove-Item -LiteralPath $scratch -Recurse -Force
     Remove-Item Function:\Test-Path
