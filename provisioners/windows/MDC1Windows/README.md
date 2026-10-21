@@ -42,10 +42,10 @@ using `win-hw-wim/scripts/extract-wim-from-iso.ps1`, inspect its editions with
 release and edition before deployment; the pool name records the source build.
 
 Stage the extracted ISO media under
-`\\mdt2022.ad.mozilla.com\deployments\Images\win11-26h2-a11y-20261006-045741`, replacing
+`\\mdt2022.ad.mozilla.com\deployments\Images\win11-26h2-a11y-20261021-225951`, replacing
 `sources\install.wim` with the single-edition export and removing
 `sources\install.esd` if present. Alternatively, the existing direct-DISM path
-accepts `win11-26h2-a11y-20261006-045741.wim` and its `.sha256` sidecar in that folder.
+accepts `win11-26h2-a11y-20261021-225951.wim` and its `.sha256` sidecar in that folder.
 The WIM artifact has not been created by adding the pool entry.
 
 To create it with the **Windows HW WIM Build** workflow, select image

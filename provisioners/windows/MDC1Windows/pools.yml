@@ -7,7 +7,7 @@ pools:
     dev: "relops-2612-non-ronin-pools"
     ronin:
       enabled: false
-    image: "win11-26h2-a11y-20261006-045741"
+    image: "win11-26h2-a11y-20261021-225951"
     secret_date: "10-05-2026"
     domain_suffix: "winshared.releng.mozilla.com"
     nodes:
