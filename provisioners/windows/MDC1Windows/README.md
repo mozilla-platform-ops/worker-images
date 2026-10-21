@@ -7,7 +7,7 @@ FirstLogonCommands. Scripts come from the same pinned
 worker-images revision as the deployment. Non-Ronin pools need no Puppet/Git
 versions or Ronin repository/role settings.
 Pool nodes must match the reverse-DNS shortname exactly. The accessibility pool
-accepts `a11y` and `a11y-win`. When PXE starts from `main`, its pool configuration
+accepts `a11y`. When PXE starts from `main`, its pool configuration
 must also match the hostname before the `dev` branch handoff can occur.
 The existing deployment functions and Ronin pool matching/fallback logic are
 preserved; only explicitly non-Ronin pools use the new helpers. Ronin bootstrap

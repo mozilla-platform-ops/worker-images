@@ -35,25 +35,25 @@ function Assert-Fails([scriptblock]$Action) {
     if (-not $failed) { throw 'Expected failure.' }
 }
 $legacy = @{ name = 'legacy'; nodes = @('nuc13-001') }
-$plain = @{ name = 'win11-26h2-a11y'; nodes = @('a11y', 'a11y-win'); ronin = @{ enabled = $false }; image = 'win11-a11y'; secret_date = '10-05-2026' }
+$plain = @{ name = 'win11-26h2-a11y'; nodes = @('a11y'); ronin = @{ enabled = $false }; image = 'win11-a11y'; secret_date = '10-05-2026' }
 $pools = @($legacy, $plain)
 $other = $plain.Clone(); $other.name = 'win11-lab'; $other.nodes = @('lab-win')
 if ((Get-NonRoninDeploymentPool @($legacy, $plain, $other) 'lab-win').name -ne 'win11-lab') {
     throw 'Non-Ronin routing must support another pool using the shared bootstrap.'
 }
 if ($null -ne (Get-NonRoninDeploymentPool $pools 'nuc13-001')) { throw 'Legacy pools must bypass the new selector.' }
-if ((Get-NonRoninDeploymentPool $pools 'a11y-win').ronin.enabled -ne $false) { throw 'Non-Ronin flag was lost.' }
+if ((Get-NonRoninDeploymentPool $pools 'a11y').ronin.enabled -ne $false) { throw 'Non-Ronin flag was lost.' }
 if ((Get-NonRoninDeploymentPool $pools 'a11y').name -ne 'win11-26h2-a11y') { throw 'The DNS shortname a11y must select the accessibility pool.' }
 if ($null -ne (Get-NonRoninDeploymentPool $pools 'a11y-other')) { throw 'Accessibility host matching must remain exact.' }
 if ($null -ne (Get-NonRoninDeploymentPool $pools 'nuc13-00')) { throw 'Unmatched nodes must not select a non-Ronin pool.' }
 if ($null -ne (Get-NonRoninDeploymentPool @($legacy, $legacy) 'nuc13-001')) { throw 'Legacy matching rules were overridden.' }
-Assert-Fails { Get-NonRoninDeploymentPool @($plain, $plain) 'a11y-win' }
+Assert-Fails { Get-NonRoninDeploymentPool @($plain, $plain) 'a11y' }
 $invalid = $plain.Clone(); $invalid.ronin = @{ enabled = 'false' }
-Assert-Fails { Get-NonRoninDeploymentPool @($invalid) 'a11y-win' }
+Assert-Fails { Get-NonRoninDeploymentPool @($invalid) 'a11y' }
 $invalid = $plain.Clone(); $invalid.ronin = @{ enabled = $true }
-if ($null -ne (Get-NonRoninDeploymentPool @($invalid) 'a11y-win')) { throw 'Enabled Ronin pool must bypass non-Ronin provisioning.' }
+if ($null -ne (Get-NonRoninDeploymentPool @($invalid) 'a11y')) { throw 'Enabled Ronin pool must bypass non-Ronin provisioning.' }
 $invalid = $plain.Clone(); $invalid.name = '../bootstrap'
-Assert-Fails { Get-NonRoninDeploymentPool @($invalid) 'a11y-win' }
+Assert-Fails { Get-NonRoninDeploymentPool @($invalid) 'a11y' }
 
 $kmsValidation = $ast.Find({ param($node)
     $node -is [System.Management.Automation.Language.IfStatementAst] -and
@@ -73,12 +73,12 @@ foreach ($field in 'win_kms_key', 'win_kms_server') {
 }
 
 $withoutSecrets = $plain.Clone(); $withoutSecrets.Remove('secret_date')
-if ($null -eq (Get-NonRoninDeploymentPool @($withoutSecrets) 'a11y-win')) { throw 'secret_date must be optional.' }
+if ($null -eq (Get-NonRoninDeploymentPool @($withoutSecrets) 'a11y')) { throw 'secret_date must be optional.' }
 $invalid = $plain.Clone(); $invalid.secret_date = '../secret'
-Assert-Fails { Get-NonRoninDeploymentPool @($invalid) 'a11y-win' }
+Assert-Fails { Get-NonRoninDeploymentPool @($invalid) 'a11y' }
 foreach ($image in $null, '', ' ', '../Images') {
     $invalid = $plain.Clone(); $invalid.image = $image
-    Assert-Fails { Get-NonRoninDeploymentPool @($invalid) 'a11y-win' }
+    Assert-Fails { Get-NonRoninDeploymentPool @($invalid) 'a11y' }
 }
 
 # Run the actual selection guards without executing partitioning or deployment.

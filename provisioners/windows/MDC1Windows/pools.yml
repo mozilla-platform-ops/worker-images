@@ -12,7 +12,6 @@ pools:
     domain_suffix: "winshared.releng.mozilla.com"
     nodes:
       - a11y
-      - a11y-win
   - name: "win11-64-24h2-hw-ref"
     openvox_version: "8.19.2"
     puppet_version: "8.10.0"
