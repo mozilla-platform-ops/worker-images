@@ -13,7 +13,8 @@
 
   Runs on the Windows build host: needs Mount-DiskImage (elevation) and DISM
   (Get-WindowsImage / Export-WindowsImage) for the .esd path. NOT a ronin operation —
-  this only lifts the OS image out of the media; no worker content is baked here.
+  this exports the OS image and optionally injects offline drivers; no worker
+  provisioning runs here.
 
 .PARAMETER SourceIso
   Path to the Windows install ISO to extract from.
@@ -28,10 +29,15 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)] [string] $SourceIso,
-    [Parameter(Mandatory)] [string] $OutWim
+    [Parameter(Mandatory)] [string] $OutWim,
+    # Optional: export only this edition at index 1 for non-Ronin deployment.
+    [string] $Edition,
+    # Optional offline driver packs for a single-edition WIM; uses the existing CAB/ZIP transport.
+    [string] $DriverCabUrls
 )
 $ErrorActionPreference = 'Stop'
 if (-not (Test-Path -LiteralPath $SourceIso)) { throw "SourceIso not found: $SourceIso" }
+if ($DriverCabUrls -and -not $Edition) { throw 'Driver injection requires an explicit edition.' }
 
 $outDir = Split-Path -Parent $OutWim
 if ($outDir -and -not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
@@ -45,7 +51,19 @@ try {
     if (-not $vol) { throw 'Could not determine the mounted ISO drive letter.' }
     $srcWim = "${vol}:\sources\install.wim"
     $srcEsd = "${vol}:\sources\install.esd"
-    if (Test-Path -LiteralPath $srcWim) {
+    if ($Edition) {
+        $source = if (Test-Path -LiteralPath $srcWim) { $srcWim } elseif (Test-Path -LiteralPath $srcEsd) { $srcEsd } else { throw 'ISO has no install.wim or install.esd.' }
+        $images = @(Get-WindowsImage -ImagePath $source)
+        $selected = @($images | Where-Object { $_.ImageName -eq $Edition })
+        if ($selected.Count -ne 1) { throw "Edition '$Edition' is not unique on this media. Available: $($images.ImageName -join ', ')" }
+        Export-WindowsImage -SourceImagePath $source -SourceIndex $selected[0].ImageIndex `
+            -DestinationImagePath $OutWim -CompressionType Max -CheckIntegrity | Out-Null
+        $exported = @(Get-WindowsImage -ImagePath $OutWim)
+        if ($exported.Count -ne 1 -or $exported[0].ImageIndex -ne 1 -or $exported[0].ImageName -ne $Edition) {
+            throw 'Exported WIM does not contain exactly the selected edition at index 1.'
+        }
+    }
+    elseif (Test-Path -LiteralPath $srcWim) {
         Write-Host "== Copying $srcWim -> $OutWim =="
         Copy-Item -LiteralPath $srcWim -Destination $OutWim -Force
     }
@@ -67,7 +85,25 @@ finally {
     Dismount-DiskImage -ImagePath $SourceIso | Out-Null
 }
 
-# sha256 sidecar (upload-wim.ps1 publishes <wim>.sha256 alongside).
+if ($DriverCabUrls) {
+    . (Join-Path $PSScriptRoot 'offline-drivers.ps1')
+    $driverMount = Join-Path $env:TEMP ('winhw-wim-mount-' + [guid]::NewGuid())
+    New-Item -ItemType Directory -Path $driverMount | Out-Null
+    $wimMounted = $false
+    try {
+        Mount-WindowsImage -ImagePath $OutWim -Index 1 -Path $driverMount -CheckIntegrity | Out-Null
+        $wimMounted = $true
+        Add-OfflineDrivers -ImagePath $driverMount -DriverCabUrls $DriverCabUrls
+        Dismount-WindowsImage -Path $driverMount -Save -CheckIntegrity | Out-Null
+        $wimMounted = $false
+    }
+    finally {
+        if ($wimMounted) { Dismount-WindowsImage -Path $driverMount -Discard | Out-Null }
+        Remove-Item -LiteralPath $driverMount -Recurse -Force
+    }
+}
+
+# Hash after servicing so upload-wim.ps1 publishes the checksum of the final image.
 $hash = (Get-FileHash -LiteralPath $OutWim -Algorithm SHA256).Hash.ToLower()
 [System.IO.File]::WriteAllText("$OutWim.sha256", "$hash  $(Split-Path -Leaf $OutWim)", [System.Text.ASCIIEncoding]::new())
 $sizeGb = [math]::Round((Get-Item -LiteralPath $OutWim).Length / 1GB, 2)
