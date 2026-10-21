@@ -632,7 +632,13 @@ function Get-PreRequ {
                 $git = "Git-$($git_version)-64-bit.exe"
             }
         }
-        $git_url = "https://github.com/git-for-windows/git/releases/download/v$($git_version).windows.1/$($git)"
+        # Git for Windows names a fourth-component rebuild 2.56.0.2 but tags it v2.56.0.windows.2.
+        $git_release = if ($git_version -match '^(\d+\.\d+\.\d+)\.(\d+)$') {
+            "$($Matches[1]).windows.$($Matches[2])"
+        } else {
+            "$git_version.windows.1"
+        }
+        $git_url = "https://github.com/git-for-windows/git/releases/download/v$git_release/$($git)"
 
         # --- Agent (Puppet/OpenVox): skip when baked WIM already meets the minimum ---
         $agentInstalled = Get-InstalledVersion -NameLike $agentNames

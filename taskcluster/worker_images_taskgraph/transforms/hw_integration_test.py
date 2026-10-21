@@ -325,14 +325,36 @@ def _root_url() -> str:
     ).rstrip("/")
 
 
-def _artifact_expiries(task_id: str) -> dict:
-    """Each artifact of a task and when it expires. Empty if it cannot be read."""
+# A task in one of these states has not produced its artifacts yet, so they
+# cannot have expired. The queue answers 404 for the artifacts of a task with no
+# run, which is what the newest push's build looks like while it waits.
+_NOT_YET_BUILT = ("unscheduled", "pending", "running")
+
+
+def _task_state(task_id: str) -> str | None:
+    url = f"{_root_url()}/api/queue/v1/task/{task_id}/status"
+    try:
+        response = requests.get(url, timeout=60)
+        response.raise_for_status()
+        return response.json()["status"]["state"]
+    except (requests.RequestException, ValueError, KeyError):
+        return None
+
+
+def _artifact_expiries(task_id: str) -> dict | None:
+    """Each artifact of a task and when it expires.
+
+    None if the task has not finished yet, so its artifacts are still to come.
+    Empty if they cannot be read for any other reason.
+    """
     url = f"{_root_url()}/api/queue/v1/task/{task_id}/artifacts"
     try:
         response = requests.get(url, timeout=60)
         response.raise_for_status()
         artifacts = response.json().get("artifacts", [])
     except (requests.RequestException, ValueError) as exc:
+        if _task_state(task_id) in _NOT_YET_BUILT:
+            return None
         logger.warning(f"hw-integration: could not list artifacts of {task_id}: {exc}")
         return {}
 
@@ -350,9 +372,16 @@ def _artifact_expiries(task_id: str) -> dict:
     return expiries
 
 
-def _fetch_is_live(task_id: str, artifact: str, cache: dict, now) -> bool:
+def _fetch_is_live(
+    task_id: str, artifact: str, cache: dict, now, allow_unbuilt=False
+) -> bool:
+    """``allow_unbuilt`` counts a task that has not finished as live: the task
+    under test waits for it, and its artifacts will be fresh. A replacement
+    must already exist, so that check leaves it off."""
     if task_id not in cache:
         cache[task_id] = _artifact_expiries(task_id)
+    if cache[task_id] is None:
+        return allow_unbuilt
     expires = cache[task_id].get(artifact)
     return expires is not None and expires > now + FETCH_EXPIRY_MARGIN
 
@@ -404,7 +433,7 @@ def _repair_fetches(source_tasks, pool, labels, indexes):
             task_id, artifact = fetch.get("task"), fetch.get("artifact")
             if not task_id or not artifact:
                 continue
-            if _fetch_is_live(task_id, artifact, artifacts, now):
+            if _fetch_is_live(task_id, artifact, artifacts, now, allow_unbuilt=True):
                 continue
 
             label = labels.get(task_id)
@@ -440,14 +469,19 @@ def _repair_fetches(source_tasks, pool, labels, indexes):
 
         if substitutions:
             env[FETCHES_ENV] = json.dumps(fetches)
-            dependencies = source["task"].get("dependencies") or []
+            dependencies = list(source["task"].get("dependencies") or [])
+            # Still named by a mount or an installer URL after the fetch moved.
+            payload = json.dumps(source["task"].get("payload", {}))
             for change in substitutions:
                 # The dependency has to move with the fetch: waiting on a task
-                # whose artifact is gone is waiting for nothing.
-                dependencies = [
-                    change["replacement_task"] if dep == change["expired_task"] else dep
-                    for dep in dependencies
-                ]
+                # whose artifact is gone is waiting for nothing. But a build
+                # task supplies more than one artifact, and generic-worker
+                # rejects a mount from a task that is not a dependency.
+                dependencies.append(change["replacement_task"])
+                if change["expired_task"] not in payload:
+                    dependencies = [
+                        dep for dep in dependencies if dep != change["expired_task"]
+                    ]
             source["task"]["dependencies"] = list(dict.fromkeys(dependencies))
             source["task"].setdefault("extra", {}).setdefault("hw-integration", {})[
                 "substituted-fetches"

@@ -1188,6 +1188,68 @@ class TestExpiredFetches(HwPoolsTestBase):
                 graphs={DAILY: {}},
             )
 
+    def test_a_fetch_from_a_build_that_has_not_run_is_kept(self):
+        # On 2026-10-21 the newest push's build was still unscheduled, the
+        # queue answered 404 for its artifacts, and its symbols were swapped
+        # for another build's.
+        source = self._source()
+        out = self._repair(
+            [source],
+            {
+                EXPIRED_FETCH: None,  # no run yet, so nothing to have expired
+                LIVE_FETCH: {CANARY: self.live},
+                "OTHERDEP" + "0" * 14: {"public/build/node.tar.zst": self.live},
+            },
+            graphs={DAILY: {"fetch-win64-cft-cd-canary": LIVE_FETCH}},
+        )
+        fetches = json.loads(out[0]["task"]["payload"]["env"]["MOZ_FETCHES"])
+        self.assertEqual(fetches[0]["task"], EXPIRED_FETCH, "wait for the build")
+        self.assertIn(EXPIRED_FETCH, out[0]["task"]["dependencies"])
+        self.assertNotIn("hw-integration", out[0]["task"].get("extra", {}))
+
+    def test_an_unbuilt_task_is_not_used_as_a_replacement(self):
+        source = self._source()
+        with self.assertRaises(self.hw_pools.HwPoolError):
+            self._repair(
+                [source],
+                {
+                    EXPIRED_FETCH: {CANARY: self.dead},
+                    LIVE_FETCH: None,
+                    "OTHERDEP" + "0" * 14: {"public/build/node.tar.zst": self.live},
+                },
+                graphs={DAILY: {"fetch-win64-cft-cd-canary": LIVE_FETCH}},
+            )
+
+    def test_a_build_still_mounted_stays_a_dependency(self):
+        # generic-worker rejects a mount from a task that is not a dependency:
+        # "task.dependencies needs to include ... since one or more of its
+        # artifacts are mounted". The build supplies mozharness and the
+        # installer as well as the fetch that moved.
+        source = self._source()
+        source["task"]["payload"]["mounts"] = [
+            {
+                "content": {
+                    "artifact": "public/build/mozharness.zip",
+                    "taskId": EXPIRED_FETCH,
+                },
+                "directory": "mozharness",
+                "format": "zip",
+            }
+        ]
+        out = self._repair(
+            [source],
+            {
+                EXPIRED_FETCH: {CANARY: self.dead},
+                LIVE_FETCH: {CANARY: self.live},
+                "OTHERDEP" + "0" * 14: {"public/build/node.tar.zst": self.live},
+            },
+            graphs={DAILY: {"fetch-win64-cft-cd-canary": LIVE_FETCH}},
+        )
+        dependencies = out[0]["task"]["dependencies"]
+        self.assertIn(LIVE_FETCH, dependencies)
+        self.assertIn(EXPIRED_FETCH, dependencies, "still mounted")
+        self.assertEqual(len(dependencies), len(set(dependencies)))
+
     def test_a_task_without_fetches_is_untouched(self):
         source = _source_task(name="talos-webgl")
         out = self._repair([source], {})
