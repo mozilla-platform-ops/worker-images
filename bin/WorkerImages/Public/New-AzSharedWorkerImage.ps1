@@ -12,7 +12,7 @@ function New-AzSharedWorkerImage {
         [String] $Tenant_ID
     )
 
-    Set-PSRepository PSGallery -InstallationPolicy Trusted
+    Register-PSRepository -Default -InstallationPolicy Trusted -ErrorAction SilentlyContinue
     Install-Module powershell-yaml -Force -ErrorAction Stop
 
     $DefaultYaml = ConvertFrom-Yaml (Get-Content "config/windows_production_defaults.yaml" -Raw)

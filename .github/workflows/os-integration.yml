@@ -69,7 +69,7 @@ jobs:
           if ($env:IMAGE_NAME_INPUT) {
             $imageName = $env:IMAGE_NAME_INPUT
           } else {
-            Set-PSRepository PSGallery -InstallationPolicy Trusted
+            Register-PSRepository -Default -InstallationPolicy Trusted -ErrorAction SilentlyContinue
             Install-Module powershell-yaml -Force -ErrorAction Stop
             $yaml = ConvertFrom-Yaml (Get-Content "config/$($env:CONFIG).yaml" -Raw)
             # Windows configs use sharedimage.image_name (Azure Shared Image Gallery name).

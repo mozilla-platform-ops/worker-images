@@ -16,7 +16,7 @@ function New-AWSWorkerImage {
         [Switch] $PackerDebug
     )
 
-    Set-PSRepository PSGallery -InstallationPolicy Trusted
+    Register-PSRepository -Default -InstallationPolicy Trusted -ErrorAction SilentlyContinue
     Install-Module powershell-yaml -Force -ErrorAction Stop
 
     # AWS images are only for tceng

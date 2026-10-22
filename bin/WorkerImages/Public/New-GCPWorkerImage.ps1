@@ -11,7 +11,7 @@ function New-GCPWorkerImage {
         [String] $Team
     )
 
-    Set-PSRepository PSGallery -InstallationPolicy Trusted
+    Register-PSRepository -Default -InstallationPolicy Trusted -ErrorAction SilentlyContinue
     Install-Module powershell-yaml -Force -ErrorAction Stop
 
     if ($Team -and $Team -ieq "tceng") {
