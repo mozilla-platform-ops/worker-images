@@ -245,6 +245,47 @@ function Update-PATSecret {
         Remove-PSDrive -Name Z -Scope Global -Force -ErrorAction SilentlyContinue
     }
 }
+function Get-NonRoninDeploymentPool {
+    param([Parameter(Mandatory)]$Pools, [Parameter(Mandatory)][string]$Node)
+
+    $matches = @($Pools | Where-Object { @($_.nodes) -contains $Node -and $_.ContainsKey('ronin') })
+    foreach ($candidate in $matches) {
+        if ($candidate.ronin -isnot [bool] -and
+            ($candidate.ronin -isnot [System.Collections.IDictionary] -or $candidate.ronin.enabled -isnot [bool])) {
+            throw "Pool '$($candidate.name)': ronin.enabled must be a YAML boolean."
+        }
+    }
+    $matches = @($matches | Where-Object { $_.ronin -eq $false -or $_.ronin.enabled -eq $false })
+    if ($matches.Count -eq 0) { return $null }
+    if ($matches.Count -ne 1) { throw "Expected one non-Ronin deployment pool for '$Node'; found $($matches.Count)." }
+    $selected = $matches[0]
+    foreach ($field in 'name', 'image') {
+        if ([string]$selected[$field] -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]*$') {
+            throw "Non-Ronin pool: invalid or missing $field."
+        }
+    }
+    if ($selected.secret_date -and [string]$selected.secret_date -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]*$') {
+        throw "Non-Ronin pool: invalid secret_date."
+    }
+    return $selected
+}
+
+function Update-NonRoninBoot {
+    param([Parameter(Mandatory)][string]$revision)
+
+    $splat = @{
+        Url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$revision/provisioners/windows/MDC1Windows/non-ronin/$($pool.name).ps1"
+        Path = Join-Path $local_scripts 'Get-Bootstrap.ps1'
+    }
+    Remove-Item -LiteralPath $splat.Path -Force -ErrorAction SilentlyContinue
+    if (Test-Path -LiteralPath 'D:\Secrets\pat.txt') {
+        $splat.PAT = Get-Content -LiteralPath 'D:\Secrets\pat.txt' -Raw -ErrorAction Stop
+        Invoke-DownloadWithRetryGithub @splat
+    }
+    else { Invoke-DownloadWithRetry @splat }
+    if (-not (Test-Path -LiteralPath $splat.Path -PathType Leaf)) { throw 'Non-Ronin bootstrap was not staged.' }
+}
+
 function Update-GetBoot {
     param(
         [Parameter(Mandatory)][string]$revision
@@ -635,6 +676,25 @@ function Invoke-DownloadWithRetryGithub {
     return $Path
 }
 
+function Resolve-DeploymentHostname {
+    param([Parameter(Mandatory)][string[]]$IPAddresses)
+
+    $names = @(foreach ($address in ($IPAddresses | Select-Object -Unique)) {
+        try {
+            Resolve-DnsName -Name $address -Server '10.48.75.120' -Type PTR -ErrorAction Stop |
+                Select-Object -ExpandProperty NameHost -ErrorAction Stop
+        }
+        catch { Write-Warning "Reverse DNS failed for ${address}: $_" }
+    })
+    $names = @($names | ForEach-Object { ([string]$_).TrimEnd('.').ToLowerInvariant() } | Select-Object -Unique)
+    # WinPE's temporary name must not compete with the provisioned DNS hostname.
+    $names = @($names | Where-Object { $_ -notmatch '^minint-' })
+    if ($names.Count -ne 1 -or $names[0] -notmatch '^[A-Za-z0-9][A-Za-z0-9-]*\.[A-Za-z0-9.-]+$') {
+        throw "Expected one deployment hostname for IP addresses [$($IPAddresses -join ', ')]; found [$($names -join ', ')]."
+    }
+    return $names[0]
+}
+
 ## Get node name
 Set-Location X:\working
 
@@ -666,7 +726,7 @@ else {
     Write-Host "No IP Address could be determined." -ForegroundColor Red
 }
 
-$ResolvedName = ((Resolve-DnsName -Name $IPAddress -Server "10.48.75.120").NameHost)
+$ResolvedName = Resolve-DeploymentHostname -IPAddresses @($IPAddress)
 write-host $ResolvedName
 
 $index = $ResolvedName.IndexOf('.')
@@ -683,6 +743,8 @@ Write-Host "Host name set to be $ResolvedName"
 # Resolve the selected branch once, then use that immutable revision for the whole deploy.
 # Read the GitHub token directly from the deployment share; do not trust a cached D: copy
 # before Protect-ProvisioningDrive has run.
+# WebClient resolves relative paths against the process directory, not PowerShell's location.
+$poolsPath = Join-Path $PWD.Path 'pools.yml'
 Mount-ZDrive
 try {
     $workerImagesPAT = (Get-Content 'Z:\secrets\pat.txt' -Raw -ErrorAction Stop).Trim()
@@ -698,15 +760,30 @@ try {
     Write-Host "Pinned worker-images '$branch' to $workerImagesRevision"
     Invoke-DownloadWithRetryGithub `
         -Url "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$workerImagesRevision/provisioners/windows/MDC1Windows/pools.yml" `
-        -Path 'pools.yml' -PAT $workerImagesPAT
+        -Path $poolsPath -PAT $workerImagesPAT
 }
 finally {
     Remove-Variable workerImagesPAT -ErrorAction SilentlyContinue
     Remove-PSDrive -Name Z -Scope Global -Force -ErrorAction SilentlyContinue
 }
-$YAML = Convertfrom-Yaml (Get-Content "pools.yml" -raw)
-
+$YAML = Convertfrom-Yaml (Get-Content -LiteralPath $poolsPath -Raw -ErrorAction Stop)
+# Only explicitly non-Ronin pools use the new selector. Existing pools retain
+# the original matching, fallback, and development-branch behavior below.
+$nonRoninPool = Get-NonRoninDeploymentPool -Pools $YAML.pools -Node $shortname
+$useRonin = $null -eq $nonRoninPool
+if ($nonRoninPool) {
+    $pool = $nonRoninPool
+    $neededImage = $pool.image
+    $WorkerPool = $pool.name
+    $secret_date = $pool.secret_date
+    if ($pool.dev -and (-not $devlopment_script)) {
+        Deploy-OS-Dev -Password $deploymentaccess -branch $pool.dev
+        exit
+    }
+}
+else {
 foreach ($pool in $YAML.pools) {
+    if ($pool.ronin -eq $false -or $pool.ronin.enabled -eq $false) { continue }
     foreach ($node in $pool.nodes) {
         if ($node -match $shortname) {
             $neededImage = $pool.image
@@ -747,6 +824,47 @@ foreach ($pool in $YAML.pools) {
             $puppet_version = "6.28.0"
         }
     }
+}
+
+}
+
+if ($useRonin -and -not $found) {
+    throw "No deployment pool matched '$shortname'; refusing to partition or copy images."
+}
+if ([string]$neededImage -notmatch '^[A-Za-z0-9][A-Za-z0-9_-]*$') {
+    throw "Pool '$WorkerPool' has no valid image name; refusing to partition or copy images."
+}
+
+$hasPoolSecrets = -not [string]::IsNullOrWhiteSpace([string]$secret_date)
+
+# Check a new non-Ronin pool's staged media and optional secrets before touching its disks.
+if (-not $useRonin) {
+    Mount-ZDrive
+    try {
+        $sourcePaths = @("Z:\Images\$neededImage")
+        if ($hasPoolSecrets) { $sourcePaths += "Z:\secrets\$WorkerPool-$secret_date.yaml" }
+        foreach ($path in $sourcePaths) {
+            if (-not (Test-Path -LiteralPath $path)) { throw "Non-Ronin deployment source missing: $path" }
+        }
+        $sourceWim = "Z:\Images\$neededImage\$neededImage.wim"
+        if (Test-Path -LiteralPath "Z:\Images\$neededImage\setup.exe") {
+            if (-not (Test-Path -LiteralPath "Z:\Images\$neededImage\sources\install.wim")) {
+                throw 'Non-Ronin Setup media must contain the exported sources\install.wim.'
+            }
+        }
+        elseif (-not (Test-Path -LiteralPath $sourceWim) -or -not (Test-Path -LiteralPath "$sourceWim.sha256")) {
+            throw 'Non-Ronin direct deployment requires the WIM and its SHA-256 sidecar.'
+        }
+        $sourceSecrets = @{}
+        if ($hasPoolSecrets) {
+            $sourceSecrets = ConvertFrom-Yaml (Get-Content -LiteralPath "Z:\secrets\$WorkerPool-$secret_date.yaml" -Raw)
+        }
+        if ([string]$sourceSecrets.win_kms_key -notmatch '^[A-Z0-9]{5}(-[A-Z0-9]{5}){4}$' -or
+            [string]$sourceSecrets.win_kms_server -notmatch '^[A-Za-z0-9][A-Za-z0-9.-]*(?::[0-9]{1,5})?$') {
+            throw 'Non-Ronin deployment secrets require a valid win_kms_key and win_kms_server; refusing to modify disks.'
+        }
+    }
+    finally { Remove-PSDrive -Name Z -Scope Global -Force -ErrorAction SilentlyContinue }
 }
 
 Write-Host "Preparing local environment."
@@ -859,12 +977,13 @@ Write-host "Source install is $source_install"
 $OS_files = $local_install + $neededImage
 $setup = $OS_files + "\setup.exe"
 $secret_dir = $local_install + "secrets"
-$secret_file_name = $WorkerPool + "-" + $secret_date + ".yaml"
-Write-Host "Secret file name is $secret_file_name"
-$secret_file = $secret_dir + "\" + $secret_file_name
-$source_secrets = $source_dir + "secrets\" + $secret_file_name
+if ($hasPoolSecrets) {
+    $secret_file_name = $WorkerPool + "-" + $secret_date + ".yaml"
+    Write-Host "Secret file name is $secret_file_name"
+    $secret_file = $secret_dir + "\" + $secret_file_name
+    $source_secrets = $source_dir + "secrets\" + $secret_file_name
+}
 $source_secrets_pat = $source_dir + "secrets\pat.txt"
-Write-host "Source secrets is $source_secrets"
 $source_AZsecrets = $source_dir + "secrets\" + "azcredentials.yaml"
 $AZsecret_file = $secret_dir + "\azcredentials.yaml"
 $PATsecret_file = $secret_dir + "\pat.txt"
@@ -921,19 +1040,21 @@ else {
 # every deployment. Bootstrap still needs both files until its Puppet run succeeds.
 if (-not $shareMounted) { Mount-ZDrive }
 New-Item -ItemType Directory -Path $secret_dir -Force | Out-Null
-Write-Host "Refreshing $source_secrets -> $secret_file"
-Copy-Item -Path $source_secrets -Destination $secret_file -Force -ErrorAction Stop
+if ($hasPoolSecrets) {
+    Write-Host "Refreshing $source_secrets -> $secret_file"
+    Copy-Item -Path $source_secrets -Destination $secret_file -Force -ErrorAction Stop
+}
 Write-Host "Refreshing $source_secrets_pat -> $PATsecret_file"
 Copy-Item -Path $source_secrets_pat -Destination $PATsecret_file -Force -ErrorAction Stop
 Write-Host "Disconecting Deployment Share."
 Remove-PSDrive -Name Z -Scope Global -Force -ErrorAction SilentlyContinue
 
-if ((-not (Test-Path -LiteralPath $secret_file -PathType Leaf)) -or
+if (($hasPoolSecrets -and (-not (Test-Path -LiteralPath $secret_file -PathType Leaf))) -or
     (-not (Test-Path -LiteralPath $PATsecret_file -PathType Leaf))) {
     throw 'Required provisioning secrets were not refreshed on D:.'
 }
 
-# The populated answer file contains the current node name and Administrator password.
+# The populated answer file contains the current node name and any configured password.
 # Regenerate it every deployment rather than treating it as part of the persistent image cache.
 $splat = @{
     Url  = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$workerImagesRevision/provisioners/windows/MDC1Windows/base-autounattend.xml"
@@ -942,7 +1063,7 @@ $splat = @{
 }
 Invoke-DownloadWithRetryGithub @splat
 
-$secret_YAML = Convertfrom-Yaml (Get-Content $secret_file -raw)
+if ($hasPoolSecrets) { $secret_YAML = Convertfrom-Yaml (Get-Content $secret_file -raw) }
 $DiskNumber = (Get-Partition -DriveLetter C).DiskNumber
 $PartitionNumber = (Get-Partition -DriveLetter C).PartitionNumber
 $content2 = (Get-Content -Path $unattend -Raw).
@@ -951,27 +1072,56 @@ $content2 = (Get-Content -Path $unattend -Raw).
     Replace('<PartitionID>3</PartitionID>', "<PartitionID>$PartitionNumber</PartitionID>")
 
 $adminPassword = [string]$secret_YAML.win_adminpw
-if ([string]::IsNullOrWhiteSpace($adminPassword)) { throw 'win_adminpw is missing from the deployment secrets.' }
 $unattendXml = New-Object System.Xml.XmlDocument
 $unattendXml.PreserveWhitespace = $true
 $unattendXml.LoadXml($content2)
-$passwordNodes = $unattendXml.SelectNodes("//*[local-name()='Value' and text()='NotARealPassword']")
-if ($passwordNodes.Count -eq 0) { throw 'No Administrator password placeholders found in the unattend template.' }
-foreach ($node in $passwordNodes) { $node.InnerText = $adminPassword }
+if ([string]::IsNullOrWhiteSpace($adminPassword)) {
+    if ($useRonin) { throw 'win_adminpw is missing from the deployment secrets.' }
+    # Leave account creation to OOBE instead of setting a password or enabling autologon.
+    foreach ($node in $unattendXml.SelectNodes("//*[local-name()='UserAccounts' or local-name()='AutoLogon']")) {
+        $node.ParentNode.RemoveChild($node) | Out-Null
+    }
+}
+else {
+    $passwordNodes = $unattendXml.SelectNodes("//*[local-name()='Value' and text()='NotARealPassword']")
+    if ($passwordNodes.Count -eq 0) { throw 'No Administrator password placeholders found in the unattend template.' }
+    foreach ($node in $passwordNodes) { $node.InnerText = $adminPassword }
+}
+if (-not $useRonin) {
+    # A single-edition exported WIM is index 1. First boot runs only the pool's
+    # worker-images script; do not seed a Ronin vault or invoke its bootstrap.
+    $unattendXml.SelectSingleNode("//*[local-name()='MetaData']/*[local-name()='Value']").InnerText = '1'
+    $vaultCopy = $unattendXml.SelectSingleNode("//*[local-name()='SynchronousCommand'][*[local-name()='CommandLine' and contains(text(), 'vault.yaml')]]")
+    if ($vaultCopy) { $vaultCopy.ParentNode.RemoveChild($vaultCopy) | Out-Null }
+    if ([string]::IsNullOrWhiteSpace([string]$secret_YAML.win_kms_server)) {
+        throw 'win_kms_server is missing from the non-Ronin deployment secrets.'
+    }
+    @{
+        pool = $WorkerPool
+        worker_images_revision = $workerImagesRevision
+        kms_server = $secret_YAML.win_kms_server
+        kms_key = $secret_YAML.win_kms_key
+    } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $local_scripts 'non-ronin.json') -Encoding UTF8 -ErrorAction Stop
+}
 $xmlSettings = New-Object System.Xml.XmlWriterSettings
 $xmlSettings.Encoding = New-Object System.Text.UTF8Encoding($false)
 $xmlWriter = [System.Xml.XmlWriter]::Create($unattend, $xmlSettings)
 try { $unattendXml.Save($xmlWriter) } finally { $xmlWriter.Dispose() }
+
+# Stage only the new non-Ronin bootstrap before formatting Windows.
+if (-not $useRonin) { Update-NonRoninBoot -revision $workerImagesRevision }
 
 if ((Get-ChildItem -Path C:\ -Force) -ne $null) {
     write-host "Previous installation detected. Formatting OS disk."
     Format-Volume -DriveLetter C -FileSystem NTFS -Force -ErrorAction Inquire | Out-Null
 }
 
-Update-GetBoot -revision $workerImagesRevision
+if ($useRonin) {
+    Update-GetBoot -revision $workerImagesRevision
+}
 
 ## Update yaml files with recent changes
-Copy-Item -Path pools.yml  $local_yaml -Force
+Copy-Item -LiteralPath $poolsPath -Destination $local_yaml -Force
 
 Set-Location -Path $OS_files
 Write-Host "Initializing OS installation."

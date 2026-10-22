@@ -54,7 +54,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)] [string] $Image,
-    [ValidateSet('prep', 'build', 'publish', 'iso')] [string[]] $Stages = @('prep', 'build', 'publish'),
+    [ValidateSet('prep', 'build', 'publish', 'iso', 'plain')] [string[]] $Stages = @('prep', 'build', 'publish'),
     [string] $WinRMPassword,
     [string] $BuildId,
     # Client ID of the user-assigned managed identity to log in with on the build VM.
@@ -144,11 +144,12 @@ if (-not $isoLabel) { $isoLabel = 'WIN11_NOCHK' }
 $scripts = @()
 if ($cfg.ContainsKey('scripts') -and $cfg['scripts']) { $scripts = @($cfg['scripts'] | ForEach-Object { "$_".Trim() } | Where-Object { $_ }) }
 
-# Config-driven stage selection: iso.enabled=true means this config builds a requirement-bypass
-# ISO instead of the WIM bake, so just selecting the image is enough. An explicit -Stages overrides.
+# Config-driven stage selection: iso.enabled builds an ISO; wim.plain exports an
+# edition without a bake. Existing configs retain prep/build/publish. -Stages overrides.
 $isoEnabled = ("$(Get-Val 'iso' 'enabled')".Trim() -match '^(true|1|yes)$')
+$plainWim = ("$(Get-Val 'wim' 'plain')".Trim() -match '^(true|1|yes)$')
 if (-not $PSBoundParameters.ContainsKey('Stages')) {
-    $Stages = if ($isoEnabled) { @('iso') } else { @('prep', 'build', 'publish') }
+    $Stages = if ($isoEnabled) { @('iso') } elseif ($plainWim) { @('plain', 'publish') } else { @('prep', 'build', 'publish') }
 }
 
 $roninOrg  = Get-Val 'ronin' 'org'
@@ -178,6 +179,12 @@ if ($wimStages -and -not $edition) { throw "config/$Image.yaml: base.edition is 
 if (($Stages -contains 'build') -and -not $bakeRole) { throw "config/$Image.yaml: ronin.bake_role is required." }
 if ($drvInject -and $drvCabUrls.Count -eq 0) { throw "config/$Image.yaml: drivers.inject is true but drivers.cabs is empty." }
 if (($Stages -contains 'iso') -and -not $baseIso) { throw "config/$Image.yaml: base.iso is required for the iso stage." }
+if ($Stages -contains 'plain') {
+    if (-not $baseIso -or -not $edition) { throw "config/$Image.yaml: plain WIM export requires base.iso and base.edition." }
+    if ($bakeRole -or $scripts.Count -gt 0 -or $drvInject -or $extraUrls.Count -gt 0 -or $winUpdate) {
+        throw 'Plain WIM export does not run provisioning, driver injection, extras, or Windows Update.'
+    }
+}
 # Provisioning is EITHER ronin (bake_role) OR scripts, not both.
 if ($scripts.Count -gt 0 -and $bakeRole) { throw "config/$Image.yaml: use EITHER ronin (bake_role) OR scripts, not both." }
 
@@ -287,6 +294,18 @@ elseif (-not (Test-AzLoggedIn)) {
 }
 
 $ps = { param($f, $a) & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ScriptDir $f) @a; if ($LASTEXITCODE) { throw "$f failed rc=$LASTEXITCODE" } }
+
+# --- Stage: plain (single-edition ISO export; no guest VM or Ronin) -------------
+if ($Stages -contains 'plain') {
+    $localSrcIso = Join-Path $work $baseIso
+    & $ps 'download-wim.ps1' @('-Blob', "$baseCont/$baseIsoBlob", '-Dest', $localSrcIso, '-Account', $account)
+    & $ps 'extract-wim-from-iso.ps1' @('-SourceIso', $localSrcIso, '-OutWim', $goldenWim, '-Edition', $edition)
+    # Use the existing release-notes handoff; plain exports have source provenance,
+    # without a Ronin software inventory.
+    @("# $Image", '', "Source ISO: $baseIso", "Edition: $edition", "Build: $BuildId",
+        'Plain ISO export; provisioning occurs at deployment.') |
+        Set-Content -LiteralPath $sbomMd -Encoding UTF8
+}
 
 # --- Stage: prep --------------------------------------------------------------
 if ($Stages -contains 'prep') {

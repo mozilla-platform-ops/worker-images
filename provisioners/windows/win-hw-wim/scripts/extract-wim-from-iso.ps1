@@ -28,7 +28,9 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)] [string] $SourceIso,
-    [Parameter(Mandatory)] [string] $OutWim
+    [Parameter(Mandatory)] [string] $OutWim,
+    # Optional: export only this edition at index 1 for non-Ronin deployment.
+    [string] $Edition
 )
 $ErrorActionPreference = 'Stop'
 if (-not (Test-Path -LiteralPath $SourceIso)) { throw "SourceIso not found: $SourceIso" }
@@ -45,7 +47,19 @@ try {
     if (-not $vol) { throw 'Could not determine the mounted ISO drive letter.' }
     $srcWim = "${vol}:\sources\install.wim"
     $srcEsd = "${vol}:\sources\install.esd"
-    if (Test-Path -LiteralPath $srcWim) {
+    if ($Edition) {
+        $source = if (Test-Path -LiteralPath $srcWim) { $srcWim } elseif (Test-Path -LiteralPath $srcEsd) { $srcEsd } else { throw 'ISO has no install.wim or install.esd.' }
+        $images = @(Get-WindowsImage -ImagePath $source)
+        $selected = @($images | Where-Object { $_.ImageName -eq $Edition })
+        if ($selected.Count -ne 1) { throw "Edition '$Edition' is not unique on this media. Available: $($images.ImageName -join ', ')" }
+        Export-WindowsImage -SourceImagePath $source -SourceIndex $selected[0].ImageIndex `
+            -DestinationImagePath $OutWim -CompressionType Max -CheckIntegrity | Out-Null
+        $exported = @(Get-WindowsImage -ImagePath $OutWim)
+        if ($exported.Count -ne 1 -or $exported[0].ImageIndex -ne 1 -or $exported[0].ImageName -ne $Edition) {
+            throw 'Exported WIM does not contain exactly the selected edition at index 1.'
+        }
+    }
+    elseif (Test-Path -LiteralPath $srcWim) {
         Write-Host "== Copying $srcWim -> $OutWim =="
         Copy-Item -LiteralPath $srcWim -Destination $OutWim -Force
     }
