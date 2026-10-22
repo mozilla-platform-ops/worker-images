@@ -21,7 +21,7 @@ jobs:
 
       - name: Install PowerShell-YAML module
         shell: pwsh
-        run: ./ci/install-powershell-yaml.ps1
+        run: Import-Module ./bin/WorkerImages
 
       - id: set-matrix
         name: Extract Azure production configs
