@@ -38,7 +38,7 @@ jobs:
           DEV_BRANCH: ${{ inputs.branch }}
           DEV_CONFIG: ${{ inputs.config }}
         run: |
-          ./ci/install-powershell-yaml.ps1
+          Import-Module ./bin/WorkerImages
           ./ci/prepare-image-dev.ps1 -Branch $env:DEV_BRANCH -Key $env:DEV_CONFIG -Provider Azure
       - name: Check out selected commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

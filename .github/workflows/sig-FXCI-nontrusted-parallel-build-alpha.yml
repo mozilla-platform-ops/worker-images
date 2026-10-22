@@ -22,8 +22,7 @@ jobs:
       - name: Install PowerShell-YAML module
         shell: pwsh
         run: |
-          Register-PSRepository -Default -InstallationPolicy Trusted -ErrorAction SilentlyContinue
-          Install-Module powershell-yaml -Force
+          Import-Module ./bin/WorkerImages
 
       - id: set-matrix
         name: Extract `images.alpha` from YAML
