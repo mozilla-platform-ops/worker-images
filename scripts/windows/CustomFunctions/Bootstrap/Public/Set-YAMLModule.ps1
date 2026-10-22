@@ -19,10 +19,10 @@ function Set-YAMLModule {
 
     ## Bootstrap for powershell modules
     Get-PackageProvider -Name Nuget -ForceBootstrap | Out-Null
-    Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+    Initialize-PSGallery
 
-    ## install Pester
-    Install-Module -Name "Powershell-YAML" -Force
+    ## install powershell-yaml
+    Install-Module -Name "Powershell-YAML" -Force -ErrorAction Stop
     Write-Log -message  ('{0} :: Installed Powershell-YAML' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
 
     $stopwatch.Stop()

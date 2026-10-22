@@ -350,6 +350,9 @@ if ($rc -eq 0 -or $rc -eq 2) {
   Step 'Baking NuGet provider + PS modules (ugit, Powershell-Yaml)'
   [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
   Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.208 -Force -Confirm:$false -ForceBootstrap -Scope AllUsers -ErrorAction SilentlyContinue | Out-Null
+  if (-not (Get-PSRepository -Name PSGallery -ErrorAction SilentlyContinue)) {
+    Register-PSRepository -Default -InstallationPolicy Trusted -ErrorAction SilentlyContinue | Out-Null
+  }
   try { Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction SilentlyContinue } catch { }
   foreach ($m in @('ugit', 'Powershell-Yaml')) {
     if (-not (Get-Module -Name $m -ListAvailable)) {

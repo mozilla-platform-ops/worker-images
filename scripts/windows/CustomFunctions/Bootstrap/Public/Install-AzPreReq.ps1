@@ -12,7 +12,7 @@ function Install-AzPreReq {
         Write-Host "========== $($MyInvocation.MyCommand.Name) started at $((Get-Date).ToUniversalTime().ToString('o')) =========="
 
         Get-PackageProvider -Name Nuget -ForceBootstrap | Out-Null
-        Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+        Initialize-PSGallery
         Install-Module powershell-yaml -Force -ErrorAction Stop
     }
 

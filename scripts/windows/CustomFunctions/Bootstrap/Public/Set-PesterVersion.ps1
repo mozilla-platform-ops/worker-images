@@ -19,7 +19,7 @@ function Set-PesterVersion {
 
     ## Bootstrap for powershell modules
     Get-PackageProvider -Name Nuget -ForceBootstrap | Out-Null
-    Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+    Initialize-PSGallery
 
     Foreach ($module in @("C:\Program Files (x86)\WindowsPowerShell\Modules\Pester", "C:\Program Files\WindowsPowerShell\Modules\Pester")) {
         takeown /F $module /A /R | Out-Null
@@ -28,10 +28,32 @@ function Set-PesterVersion {
         Remove-Item -Path $module -Recurse -Force -Confirm:$false | Out-Null
     }
 
-    ## install Pester
-    Install-Module -Name Pester -Force
+    ## Install Pester. Gallery downloads occasionally fail transiently, so
+    ## retry instead of continuing without a test framework.
+    $installed = $false
+    for ($attempt = 1; $attempt -le 3; $attempt++) {
+        try {
+            Install-Module -Name Pester -Force -ErrorAction Stop
+            $installed = $true
+            break
+        }
+        catch {
+            Write-Warning "Pester install attempt $attempt failed: $($_.Exception.Message)"
+            if ($attempt -lt 3) { Start-Sleep -Seconds 15 }
+        }
+    }
+    if (-not $installed) {
+        throw 'Failed to install Pester after 3 attempts'
+    }
 
-    Write-Log -message  ('{0} :: Pester 5 installation appears complete' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
+    $pester = Get-Module -ListAvailable -Name Pester |
+        Sort-Object Version -Descending |
+        Select-Object -First 1
+    if (-not $pester -or $pester.Version.Major -lt 5) {
+        throw "Pester 5 or later is required; found version '$($pester.Version)'"
+    }
+
+    Write-Log -message  ('{0} :: Pester {1} installation appears complete' -f $($MyInvocation.MyCommand.Name), $pester.Version) -severity 'DEBUG'
 
     $stopwatch.Stop()
     $elapsedMinutes = [int][math]::Floor($stopwatch.Elapsed.TotalMinutes)

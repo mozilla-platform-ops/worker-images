@@ -85,8 +85,12 @@ if (-not (Get-Module -ListAvailable -Name powershell-yaml)) {
     # Avoid the non-interactive NuGet-provider / PSGallery-trust prompt hang.
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force | Out-Null
-    Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-    Install-Module powershell-yaml -Scope CurrentUser -Force -Confirm:$false
+    # Repositories are per-user; this session may not have PSGallery registered.
+    if (-not (Get-PSRepository -Name PSGallery -ErrorAction SilentlyContinue)) {
+        Register-PSRepository -Default -InstallationPolicy Trusted -ErrorAction Stop | Out-Null
+    }
+    Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction Stop
+    Install-Module powershell-yaml -Scope CurrentUser -Force -Confirm:$false -ErrorAction Stop
 }
 Import-Module powershell-yaml
 $cfg = ConvertFrom-Yaml (Get-Content -Raw $imgCfg)

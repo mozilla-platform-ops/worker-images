@@ -92,8 +92,12 @@ if (-not (Get-Module -ListAvailable powershell-yaml)) {
     # Pre-install the provider and mark PSGallery trusted so nothing prompts.
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force | Out-Null
-    Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-    Install-Module powershell-yaml -Scope AllUsers -Force -Confirm:$false
+    # Repositories are per-user; this run-command session may not have PSGallery.
+    if (-not (Get-PSRepository -Name PSGallery -ErrorAction SilentlyContinue)) {
+        Register-PSRepository -Default -InstallationPolicy Trusted -ErrorAction Stop | Out-Null
+    }
+    Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction Stop
+    Install-Module powershell-yaml -Scope AllUsers -Force -Confirm:$false -ErrorAction Stop
 }
 
 # Refresh PATH from the machine env so the just-installed tools resolve now.
