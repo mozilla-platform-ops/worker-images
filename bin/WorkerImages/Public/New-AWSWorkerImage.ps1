@@ -17,7 +17,7 @@ function New-AWSWorkerImage {
     )
 
     Set-PSRepository PSGallery -InstallationPolicy Trusted
-    Install-Module powershell-yaml -ErrorAction Stop
+    Install-Module powershell-yaml -Force -ErrorAction Stop
 
     # AWS images are only for tceng
     $YamlPath = "config/tceng/$Key.yaml"

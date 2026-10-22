@@ -14,7 +14,7 @@ function New-AzWorkerImage {
     )
 
     Set-PSRepository PSGallery -InstallationPolicy Trusted
-    Install-Module powershell-yaml -ErrorAction Stop
+    Install-Module powershell-yaml -Force -ErrorAction Stop
 
     switch ($Team) {
         "tceng" {
