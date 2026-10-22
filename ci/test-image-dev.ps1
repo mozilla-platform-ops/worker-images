@@ -13,6 +13,11 @@ function Reject {
     }
     throw "Expected rejection: $Message"
 }
+function Set-YamlValue {
+    param([string] $Path, [string] $Name, [string] $Value)
+    # Each fixture key is on one line, so a line replace needs no YAML writer.
+    (Get-Content $Path -Raw) -replace "(?m)^(\s*$Name):.*$", "`$1: $Value" | Set-Content $Path -NoNewline
+}
 function Commit {
     git add .
     git commit -qm fixture
@@ -28,9 +33,7 @@ try {
     Commit
     git checkout -q -b dev/test
     $gcpKey = 'gw-fxci-gcp-l1-2404-headless-alpha'
-    $gcp = ConvertFrom-Yaml (Get-Content "config/$gcpKey.yaml" -Raw)
-    $gcp.image.image_name = 'selected-branch-alpha'
-    $gcp | ConvertTo-Json -Depth 20 | Set-Content "config/$gcpKey.yaml"
+    Set-YamlValue "config/$gcpKey.yaml" image_name selected-branch-alpha
     '["attacker"]' | Set-Content .github/relsre.json
     Commit
     $pin = git rev-parse HEAD
@@ -60,14 +63,9 @@ try {
     foreach ($mutation in @('l3', 'production', 'azure', 'link')) {
         Push-Location "$root/origin"
         git checkout -q -B "bad/$mutation" $pin
-        if ($mutation -eq 'l3') { $gcp.image.project_id = 'fxci-production-level3-workers' }
-        if ($mutation -eq 'production') { $gcp.image.project_id = 'taskcluster-imaging'; $gcp.image.image_name = 'production' }
-        $gcp | ConvertTo-Json -Depth 20 | Set-Content "config/$gcpKey.yaml"
-        if ($mutation -eq 'azure') {
-            $azure = ConvertFrom-Yaml (Get-Content config/win11-64-24h2-alpha.yaml -Raw)
-            $azure.sharedimage.gallery_name = 'production'
-            $azure | ConvertTo-Json -Depth 20 | Set-Content config/win11-64-24h2-alpha.yaml
-        }
+        if ($mutation -eq 'l3') { Set-YamlValue "config/$gcpKey.yaml" project_id fxci-production-level3-workers }
+        if ($mutation -eq 'production') { Set-YamlValue "config/$gcpKey.yaml" image_name production }
+        if ($mutation -eq 'azure') { Set-YamlValue config/win11-64-24h2-alpha.yaml gallery_name production }
         if ($mutation -eq 'link') { $null = New-Item -ItemType SymbolicLink escape -Target /tmp }
         Commit
         Pop-Location
