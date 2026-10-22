@@ -7,8 +7,8 @@ FirstLogonCommands. Scripts come from the same pinned
 worker-images revision as the deployment. Non-Ronin pools need no Puppet/Git
 versions or Ronin repository/role settings.
 Pool nodes must match the reverse-DNS shortname exactly. The accessibility pool
-accepts `a11y`. When PXE starts from `main`, its pool configuration
-must also match the hostname before the `dev` branch handoff can occur.
+accepts `a11y` and deploys from the selected worker-images revision without a
+`dev` branch override.
 The existing deployment functions and Ronin pool matching/fallback logic are
 preserved; only explicitly non-Ronin pools use the new helpers. Ronin bootstrap
 still runs at its original point after formatting Windows.
@@ -57,8 +57,8 @@ ISO extraction and single-edition export, followed by upload to
 The edition selection is `Windows 11 Pro`, confirmed in the staged ISO by the
 build logs. Enterprise media is available separately; the staged consumer ISO
 does not include Enterprise. This export retains the ISO's patch
-level and does not run Ronin or Windows Update. At PXE deployment, the pool's
-existing `dev` flag selects the implementation branch.
+level and does not run Ronin or Windows Update. PXE deployment uses the selected
+worker-images revision; this pool has no `dev` branch override.
 
 Stage `secrets\win11-26h2-a11y-10-05-2026.yaml` on the deployment share:
 

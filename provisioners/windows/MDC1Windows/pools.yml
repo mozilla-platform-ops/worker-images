@@ -1,10 +1,9 @@
 ---
 pools:
-  # RELOPS-2612: route the accessibility host to the non-Ronin implementation branch.
+  # RELOPS-2612: provision the accessibility host without Ronin.
   # Stage the single-edition WIM/media and deployment secrets before PXE testing.
   - name: "win11-26h2-a11y"
     Description: "Standalone accessibility Windows installation"
-    dev: "relops-2612-non-ronin-pools"
     ronin:
       enabled: false
     image: "win11-26h2-a11y-20261021-225951"
