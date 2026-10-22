@@ -13,9 +13,6 @@ function New-AzWorkerImage {
         [Switch] $PackerDebug
     )
 
-    Set-PSRepository PSGallery -InstallationPolicy Trusted
-    Install-Module powershell-yaml -Force -ErrorAction Stop
-
     switch ($Team) {
         "tceng" {
             $YamlPath = "config/tceng/$Key.yaml"

@@ -8,9 +8,6 @@ function Set-AzWorkerImageLocation {
         [String] $Team
     )
 
-    Set-PSRepository PSGallery -InstallationPolicy Trusted
-    Install-Module powershell-yaml -Force -ErrorAction Stop
-
     if ($Team) {
         $YamlPath = "config/$Team/$Key.yaml"
     } else {

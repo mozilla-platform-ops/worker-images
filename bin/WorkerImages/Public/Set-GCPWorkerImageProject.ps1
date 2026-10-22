@@ -7,9 +7,6 @@ function Set-GCPWorkerImageProject {
         [String] $Team
     )
 
-    Set-PSRepository PSGallery -InstallationPolicy Trusted
-    Install-Module powershell-yaml -Force -ErrorAction Stop
-
     if ($Team -and $Team -ieq "tceng") {
         $YamlPath = "config/tceng/$Key.yaml"
     } else {
