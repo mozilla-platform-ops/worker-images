@@ -20,7 +20,7 @@ git fetch --no-tags --no-write-fetch-head origin $revision
 $tree = git ls-tree -r $revision
 if ($tree -match '^120000 ') { throw 'Not authorized: development build inputs must not contain symbolic links.' }
 
-Import-Module powershell-yaml
+Import-Module "$PSScriptRoot/../bin/WorkerImages"
 $yaml = ConvertFrom-Yaml ((git show "${revision}:config/$Key.yaml") -join "`n")
 if ($yaml -isnot [System.Collections.IDictionary]) { throw 'Expected an image YAML mapping.' }
 if ($Provider -eq 'Azure') {

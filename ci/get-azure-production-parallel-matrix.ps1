@@ -1,5 +1,6 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+Import-Module "$PSScriptRoot/../bin/WorkerImages"
 
 function Set-OutputValue {
     param(

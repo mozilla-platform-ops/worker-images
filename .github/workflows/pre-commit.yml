@@ -21,9 +21,7 @@ jobs:
 
     - name: Check Azure upload archives
       shell: pwsh
-      run: |
-        Install-PSResource powershell-yaml -Version 0.4.12 -TrustRepository -Quiet
-        ./ci/test-azure-upload-archives.ps1
+      run: ./ci/test-azure-upload-archives.ps1
 
     - name: Check image development workflow
       shell: pwsh
