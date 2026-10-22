@@ -41,3 +41,10 @@ systemctl restart docker
 ## export the docker daemon config
 cat /etc/docker/daemon.json
 grep -q '"nvidia"' /etc/docker/daemon.json
+
+## nvidia-container-toolkit >= 1.18 ships nvidia-cdi-refresh.{service,path}.
+## On instances without a GPU the service fails and restarts forever
+## (Restart=on-failure, RestartSec=1s), spamming the journal and repeatedly
+## loading the nvidia kernel modules. Disable it here; configure-nvidia-gpus
+## generates the CDI spec at boot only when a GPU is present.
+systemctl disable nvidia-cdi-refresh.path nvidia-cdi-refresh.service || true
