@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $true
-Import-Module powershell-yaml
 $repo = Split-Path $PSScriptRoot
+Import-Module "$repo/bin/WorkerImages"
 $root = Join-Path ([IO.Path]::GetTempPath()) ('image-dev-test-' + [guid]::NewGuid())
 $saved = @{}
 foreach ($name in @('GITHUB_ACTOR', 'GITHUB_TRIGGERING_ACTOR', 'GITHUB_OUTPUT')) { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
@@ -30,7 +30,7 @@ try {
     $gcpKey = 'gw-fxci-gcp-l1-2404-headless-alpha'
     $gcp = ConvertFrom-Yaml (Get-Content "config/$gcpKey.yaml" -Raw)
     $gcp.image.image_name = 'selected-branch-alpha'
-    $gcp | ConvertTo-Yaml | Set-Content "config/$gcpKey.yaml"
+    $gcp | ConvertTo-Json -Depth 20 | Set-Content "config/$gcpKey.yaml"
     '["attacker"]' | Set-Content .github/relsre.json
     Commit
     $pin = git rev-parse HEAD
@@ -62,11 +62,11 @@ try {
         git checkout -q -B "bad/$mutation" $pin
         if ($mutation -eq 'l3') { $gcp.image.project_id = 'fxci-production-level3-workers' }
         if ($mutation -eq 'production') { $gcp.image.project_id = 'taskcluster-imaging'; $gcp.image.image_name = 'production' }
-        $gcp | ConvertTo-Yaml | Set-Content "config/$gcpKey.yaml"
+        $gcp | ConvertTo-Json -Depth 20 | Set-Content "config/$gcpKey.yaml"
         if ($mutation -eq 'azure') {
             $azure = ConvertFrom-Yaml (Get-Content config/win11-64-24h2-alpha.yaml -Raw)
             $azure.sharedimage.gallery_name = 'production'
-            $azure | ConvertTo-Yaml | Set-Content config/win11-64-24h2-alpha.yaml
+            $azure | ConvertTo-Json -Depth 20 | Set-Content config/win11-64-24h2-alpha.yaml
         }
         if ($mutation -eq 'link') { $null = New-Item -ItemType SymbolicLink escape -Target /tmp }
         Commit

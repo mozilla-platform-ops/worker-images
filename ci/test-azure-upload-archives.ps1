@@ -1,5 +1,5 @@
 $ErrorActionPreference = 'Stop'
-Import-Module powershell-yaml
+. ./bin/WorkerImages/Public/ConvertFrom-Yaml.ps1
 . ./bin/WorkerImages/Public/New-AzSharedWorkerImage.ps1
 
 $check = @{ calls = @(); directory = ''; fail = '' }
