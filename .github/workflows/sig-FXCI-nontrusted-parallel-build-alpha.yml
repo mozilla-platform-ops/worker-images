@@ -22,7 +22,7 @@ jobs:
       - name: Install PowerShell-YAML module
         shell: pwsh
         run: |
-          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Register-PSRepository -Default -InstallationPolicy Trusted -ErrorAction SilentlyContinue
           Install-Module powershell-yaml -Force
 
       - id: set-matrix
