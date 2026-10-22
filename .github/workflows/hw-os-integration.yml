@@ -63,10 +63,6 @@ on:
         description: "win11-64-24h2-hw-perf-debug - stages win11-64-24h2-hw"
         type: boolean
         default: false
-      win11_64_24h2_hw_perf_sheriff:
-        description: "win11-64-24h2-hw-perf-sheriff - stages win11-64-24h2-hw (single node - very slow)"
-        type: boolean
-        default: false
       repeat:
         description: "Runs of each task, 1-10 (every run repeats the whole test set)"
         type: string
@@ -116,8 +112,7 @@ jobs:
             ${{ inputs.win11_64_24h2_hw_alpha && 'win11-64-24h2-hw-alpha,' || '' }}${{
                 inputs.win11_64_24h2_hw_relops1213 && 'win11-64-24h2-hw-relops1213,' || '' }}${{
                 inputs.win11_64_24h2_hw_ref_alpha && 'win11-64-24h2-hw-ref-alpha,' || '' }}${{
-                inputs.win11_64_24h2_hw_perf_debug && 'win11-64-24h2-hw-perf-debug,' || '' }}${{
-                inputs.win11_64_24h2_hw_perf_sheriff && 'win11-64-24h2-hw-perf-sheriff' || '' }}
+                inputs.win11_64_24h2_hw_perf_debug && 'win11-64-24h2-hw-perf-debug' || '' }}
         run: |
           pools="$(printf '%s' "$SELECTED" | tr -d '[:space:]' | sed 's/,*$//')"
           if [ -z "$pools" ]; then
