@@ -70,7 +70,7 @@ jobs:
             $imageName = $env:IMAGE_NAME_INPUT
           } else {
             Set-PSRepository PSGallery -InstallationPolicy Trusted
-            Install-Module powershell-yaml -ErrorAction Stop
+            Install-Module powershell-yaml -Force -ErrorAction Stop
             $yaml = ConvertFrom-Yaml (Get-Content "config/$($env:CONFIG).yaml" -Raw)
             # Windows configs use sharedimage.image_name (Azure Shared Image Gallery name).
             # Linux GCP configs use image.image_name (GCP image name).

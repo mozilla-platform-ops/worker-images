@@ -13,7 +13,7 @@ function Install-AzPreReq {
 
         Get-PackageProvider -Name Nuget -ForceBootstrap | Out-Null
         Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-        Install-Module powershell-yaml -ErrorAction Stop
+        Install-Module powershell-yaml -Force -ErrorAction Stop
     }
 
     process {

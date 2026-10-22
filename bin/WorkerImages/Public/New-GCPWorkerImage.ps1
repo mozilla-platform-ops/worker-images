@@ -12,7 +12,7 @@ function New-GCPWorkerImage {
     )
 
     Set-PSRepository PSGallery -InstallationPolicy Trusted
-    Install-Module powershell-yaml -ErrorAction Stop
+    Install-Module powershell-yaml -Force -ErrorAction Stop
 
     if ($Team -and $Team -ieq "tceng") {
         $YamlPath      = "config/tceng/$Key.yaml"

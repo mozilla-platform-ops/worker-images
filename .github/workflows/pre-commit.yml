@@ -22,7 +22,16 @@ jobs:
     - name: Check Azure upload archives
       shell: pwsh
       run: |
-        Install-PSResource powershell-yaml -Version 0.4.12 -TrustRepository -Quiet
+        for ($attempt = 1; $attempt -le 3; $attempt++) {
+            try {
+                Install-PSResource powershell-yaml -Version 0.4.12 -TrustRepository -Quiet -ErrorAction Stop
+                break
+            } catch {
+                if ($attempt -eq 3) { throw }
+                Write-Warning "PowerShell Gallery install failed (attempt $attempt/3). Retrying in 10 seconds: $_"
+                Start-Sleep -Seconds 10
+            }
+        }
         ./ci/test-azure-upload-archives.ps1
 
     - name: Check image development workflow
