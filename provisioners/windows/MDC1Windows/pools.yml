@@ -42,12 +42,12 @@ pools:
     openvox_version: "8.31.1"
     git_version: "2.56.0.2"
     Description: "NUC12 Hardware Reference Staging/Testing Pool"
-    # RELOPS-2585: reuse the validated WIM for Taskcluster 113.1.3 testing.
+    # Reuse the validated WIM to test ronin_puppet#1481.
     image: "win11-24h2-hw-test-20260930-201046"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "taskcluster-113.1.3-windows-hw"
-    hash: "e626b486c35ad846f84ef9d0c0245e4c68c01a3f"
+    src_Branch: "windows-emsign-ca-fix"
+    hash: "5eb4225e017538fb5ad755f0a84be687b4bb04e5"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -155,12 +155,12 @@ pools:
     openvox_version: "8.31.1"
     git_version: "2.56.0.2"
     Description: "NUC12 Hardware Performance Staging/Testing Pool"
-    # RELOPS-2585: reuse the validated WIM for Taskcluster 113.1.3 testing.
+    # Reuse the validated WIM to test ronin_puppet#1481.
     image: "win11-24h2-hw-test-20260930-201046"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "taskcluster-113.1.3-windows-hw"
-    hash: "e626b486c35ad846f84ef9d0c0245e4c68c01a3f"
+    src_Branch: "windows-emsign-ca-fix"
+    hash: "5eb4225e017538fb5ad755f0a84be687b4bb04e5"
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
