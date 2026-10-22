@@ -170,20 +170,6 @@ pools:
     - nuc13-018
     - nuc13-071
     - nuc13-134
-  - name: "win11-64-24h2-hw-perf-sheriff"
-    openvox_version: "8.19.2"
-    puppet_version: "8.10.0"
-    git_version: "2.50.0"
-    Description: "Tracking metric variability with performance sheriffing. Tracking in RELOPS-1288"
-    image: "win11-24H2-NUC-01-16-2025"
-    src_Organisation: "mozilla-platform-ops"
-    src_Repository: "ronin_puppet"
-    src_Branch: "master"
-    hash: "7511c8e"
-    secret_date: "02-24-2026"
-    domain_suffix: "wintest2.releng.mdc1.mozilla.com"
-    nodes:
-    - nuc13-021
   - name: "win11-64-24h2-hw"
     openvox_version: "8.19.2"
     puppet_version: "8.10.0"
@@ -354,3 +340,6 @@ Known-BAD:
     ## Dead
     ## Different model as well
     - t-nuc12-001
+    ## Retired win11-64-24h2-hw-perf-sheriff node (RELOPS-1288). Unreachable on TCP/22;
+    ## last connected to Taskcluster 2026-05-30. Return to win11-64-24h2-hw after repair.
+    - nuc13-021
