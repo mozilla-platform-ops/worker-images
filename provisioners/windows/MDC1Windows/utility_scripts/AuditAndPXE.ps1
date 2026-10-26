@@ -154,7 +154,7 @@ function Stage-RemotePXEFile {
     param([Parameter(Mandatory)][string]$NodeName,[Parameter(Mandatory)][string]$RemotePath)
 
     $b64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($pxeScriptContent))
-    $folder = [IO.Path]::GetDirectoryName($RemotePath)
+    $folder = Split-Path $RemotePath
     $file   = $RemotePath
 
     $ps = @"
