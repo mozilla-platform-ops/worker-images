@@ -14,8 +14,8 @@ Usage:
     uv run ci/run-os-integration.py <image_name> --no-wait
 
 Example:
-    uv run ci/run-os-integration.py win11_64_24h2_alpha
-    uv run ci/run-os-integration.py win11_64_24h2_alpha --no-wait
+    uv run ci/run-os-integration.py win11_64_25h2_alpha
+    uv run ci/run-os-integration.py win11_64_25h2_alpha --no-wait
 
 Environment variables (required):
     TASKCLUSTER_CLIENT_ID      - Taskcluster client ID
@@ -263,7 +263,7 @@ def get_created_task_group_id(
 def main():
     parser = argparse.ArgumentParser(description="Trigger OS integration tests")
     parser.add_argument(
-        "image_name", help="Image name to test (e.g., win11_64_24h2_alpha)"
+        "image_name", help="Image name to test (e.g., win11_64_25h2_alpha)"
     )
     parser.add_argument(
         "--no-wait",

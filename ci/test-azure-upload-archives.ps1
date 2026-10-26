@@ -38,10 +38,10 @@ function packer {
 }
 
 foreach ($case in @(
-    @('win11-64-24h2-alpha', ''),
+    @('win11-64-25h2-alpha', ''),
     @('trusted-win2025-64-24h2', ''),
-    @('win11-64-24h2-alpha', 'init'),
-    @('win11-64-24h2-alpha', 'build')
+    @('win11-64-25h2-alpha', 'init'),
+    @('win11-64-25h2-alpha', 'build')
 )) {
     $check.calls = @()
     $check.fail = $case[1]

@@ -13,7 +13,7 @@ separate set of Taskcluster Engineering image builds.
 
 | Area | Images | Cloud |
 | --- | --- | --- |
-| Firefox CI Windows | Windows 10, Windows 11 24H2/25H2, Windows Server 2022, x64 and arm64 tester/builder variants | Azure |
+| Firefox CI Windows | Windows 10, Windows 11 25H2, Windows Server 2022, x64 and arm64 tester/builder variants | Azure |
 | Firefox CI Linux | Ubuntu 24.04 headless, arm64 headless, and GUI/Wayland images, including trusted level-3 variants | GCP |
 | Taskcluster Engineering | Generic worker images for Azure, GCP, and AWS experiments and migrations | Azure, GCP, AWS |
 
@@ -117,7 +117,7 @@ Run **Image generation dev - Azure** (`image-dev-azure.yml`) or
 **Image generation dev - GCP** (`image-dev-gcp.yml`) from `main`. Enter the
 worker-images **branch** to test and a
 non-trusted root-level alpha **config** name without `.yaml`, for example
-`win11-64-24h2-alpha` or `gw-fxci-gcp-l1-2404-headless-alpha`.
+`win11-64-25h2-alpha` or `gw-fxci-gcp-l1-2404-headless-alpha`.
 
 The workflow checks the actor and rerun actor against `.github/relsre.json`
 from `main`, resolves the branch to one commit, validates its config using
@@ -199,8 +199,8 @@ To trigger OS integration tests from a local shell, set
 `TASKCLUSTER_CLIENT_ID` and `TASKCLUSTER_ACCESS_TOKEN`, then run:
 
 ```bash
-uv run ci/run-os-integration.py win11_64_24h2_alpha
-uv run ci/run-os-integration.py win11_64_24h2_alpha --no-wait
+uv run ci/run-os-integration.py win11_64_25h2_alpha
+uv run ci/run-os-integration.py win11_64_25h2_alpha --no-wait
 ```
 
 ## Terms
