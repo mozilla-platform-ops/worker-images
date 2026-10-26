@@ -3,7 +3,7 @@
 ## Build provenance
 
 - Image name: gw-fxci-gcp-l1-2404-amd64-gui-googlecompute-alpha
-- Taskcluster version: 113.1.3
+- Taskcluster version: 113.2.0
 - Taskcluster ref: unknown
 - Architecture: AMD64
 - Source image family: ubuntu-2404-lts-amd64
@@ -20,10 +20,10 @@
 
 | Name | Version |
 | --- | --- |
-| generic-worker | generic-worker (multiuser engine) 113.1.3 [ revision: https://github.com/taskcluster/taskcluster/commits/03d177cc5e349284de359bd0db68e8ca11fbc935 ] |
-| start-worker | start-worker 113.1.3 |
-| livelog | livelog 113.1.3 |
-| taskcluster-proxy | Taskcluster proxy 113.1.3 (git revision 03d177cc5e349284de359bd0db68e8ca11fbc935) |
+| generic-worker | generic-worker (multiuser engine) 113.2.0 [ revision: https://github.com/taskcluster/taskcluster/commits/efb71e91e3502152e6eb1a82bbf98c3d4d99f75e ] |
+| start-worker | start-worker 113.2.0 |
+| livelog | livelog 113.2.0 |
+| taskcluster-proxy | Taskcluster proxy 113.2.0 (git revision efb71e91e3502152e6eb1a82bbf98c3d4d99f75e) |
 
 ## Python packages
 
@@ -202,7 +202,7 @@
 | catatonit | 0.1.7-1 | amd64 |
 | chrony | 4.5-1ubuntu4.2 | amd64 |
 | cloud-guest-utils | 0.33-1 | all |
-| cloud-init | 26.2-0ubuntu1~24.04.1 | all |
+| cloud-init | 26.2-0ubuntu1~24.04.2 | all |
 | cloud-initramfs-copymods | 0.49~24.04.1 | all |
 | cloud-initramfs-dyn-netconf | 0.49~24.04.1 | all |
 | colord | 1.4.7-1build2 | amd64 |
@@ -638,7 +638,7 @@
 | libbpf1:amd64 | 1:1.3.0-2build2 | amd64 |
 | libbpfcc:amd64 | 0.29.1+ds-1ubuntu7 | amd64 |
 | libbrlapi0.8:amd64 | 6.6-4ubuntu5 | amd64 |
-| libbrotli1:amd64 | 1.1.0-2build2 | amd64 |
+| libbrotli1:amd64 | 1.1.0-2ubuntu0.1 | amd64 |
 | libbs2b0:amd64 | 3.1.0+dfsg-7build1 | amd64 |
 | libbsd0:amd64 | 0.12.1-1build1.1 | amd64 |
 | libburn4t64:amd64 | 1.5.6-1.1build1 | amd64 |
@@ -1722,7 +1722,7 @@
 | poppler-utils | 24.02.0-1ubuntu9.11 | amd64 |
 | power-profiles-daemon | 0.21-1ubuntu3 | amd64 |
 | powermgmt-base | 1.37ubuntu0.1 | all |
-| powershell | 7.6.7-1.deb | amd64 |
+| powershell | 7.6.9-1.deb | amd64 |
 | ppp | 2.4.9-1+1.1ubuntu4 | amd64 |
 | pptp-linux | 1.10.0-1build4 | amd64 |
 | printer-driver-brlaser | 6-3build2 | amd64 |
@@ -2098,6 +2098,6 @@
 | zenity-common | 4.0.1-1build3 | all |
 | zerofree | 1.1.1-1build5 | amd64 |
 | zip | 3.0-13ubuntu0.2 | amd64 |
-| zlib1g-dev:amd64 | 1:1.3.dfsg-3.1ubuntu2.2 | amd64 |
-| zlib1g:amd64 | 1:1.3.dfsg-3.1ubuntu2.2 | amd64 |
+| zlib1g-dev:amd64 | 1:1.3.dfsg-3.1ubuntu2.3 | amd64 |
+| zlib1g:amd64 | 1:1.3.dfsg-3.1ubuntu2.3 | amd64 |
 | zstd | 1.5.5+dfsg2-2build1.1 | amd64 |
