@@ -11,9 +11,7 @@ function Install-AzPreReq {
         Write-Log -message ('{0} :: begin - {1:o}' -f $($MyInvocation.MyCommand.Name), (Get-Date).ToUniversalTime()) -severity 'DEBUG'
         Write-Host "========== $($MyInvocation.MyCommand.Name) started at $((Get-Date).ToUniversalTime().ToString('o')) =========="
 
-        Get-PackageProvider -Name Nuget -ForceBootstrap | Out-Null
-        Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-        Install-Module powershell-yaml -Force -ErrorAction Stop
+        Set-YAMLModule
     }
 
     process {
