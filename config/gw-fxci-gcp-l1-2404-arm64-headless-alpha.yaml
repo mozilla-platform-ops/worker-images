@@ -8,7 +8,7 @@ image:
   fallback_zones: [us-central1-b, us-central1-f]
 vm:
   disk_size: 60
-  taskcluster_version: 113.1.3
+  taskcluster_version: 113.2.0
   tc_arch: ARM64
   script_paths:
   - "scripts/linux/ubuntu-2404-headless-arm64-headless"
