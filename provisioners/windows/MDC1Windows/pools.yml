@@ -42,12 +42,12 @@ pools:
     openvox_version: "8.31.1"
     git_version: "2.56.0.2"
     Description: "NUC12 Hardware Reference Staging/Testing Pool"
-    # Reuse the validated WIM to test ronin_puppet#1481.
+    # Reuse the validated WIM to test Defender hardening in ronin_puppet#1483.
     image: "win11-24h2-hw-test-20260930-201046"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "windows-emsign-ca-fix"
-    hash: "634e9cb6d68be4e0a7d08361dd0c6eb18be21f69"
+    src_Branch: "RELOPS-2433-defender-hardening-only"
+    hash: "f13cf4c9809e2d98107bf1c8267a3b85c367674e"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -155,12 +155,12 @@ pools:
     openvox_version: "8.31.1"
     git_version: "2.56.0.2"
     Description: "NUC12 Hardware Performance Staging/Testing Pool"
-    # Reuse the validated WIM to test ronin_puppet#1481.
+    # Reuse the validated WIM to test Defender hardening in ronin_puppet#1483.
     image: "win11-24h2-hw-test-20260930-201046"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "windows-emsign-ca-fix"
-    hash: "634e9cb6d68be4e0a7d08361dd0c6eb18be21f69"
+    src_Branch: "RELOPS-2433-defender-hardening-only"
+    hash: "f13cf4c9809e2d98107bf1c8267a3b85c367674e"
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
