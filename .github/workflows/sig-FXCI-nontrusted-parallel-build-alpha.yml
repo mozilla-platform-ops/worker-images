@@ -36,7 +36,9 @@ jobs:
           Write-Host "Generated matrix: $matrix"
           "matrix=$matrix" >> $env:GITHUB_OUTPUT
 
-          "os_integration_matrix=$matrix" >> $env:GITHUB_OUTPUT
+          # The 24H2 alpha GPU pool cannot launch with its retired NV12s_v3 size.
+          $osIntegrationMatrix = @{ config = @($alphaImages | Where-Object { $_ -ne 'win11-64-24h2-alpha' }) } | ConvertTo-Json -Compress
+          "os_integration_matrix=$osIntegrationMatrix" >> $env:GITHUB_OUTPUT
 
   check-access:
     name: "Verify User Access"
