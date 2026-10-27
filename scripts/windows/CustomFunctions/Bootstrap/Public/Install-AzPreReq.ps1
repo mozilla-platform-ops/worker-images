@@ -12,6 +12,7 @@ function Install-AzPreReq {
         Write-Host "========== $($MyInvocation.MyCommand.Name) started at $((Get-Date).ToUniversalTime().ToString('o')) =========="
 
         Set-YAMLModule
+        Set-NetFx3
     }
 
     process {
