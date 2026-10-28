@@ -474,11 +474,6 @@ build {
     ]
   }
 
-  provisioner "file" {
-    source      = "${path.cwd}/scripts/cache-seeds/gecko_hg.py"
-    destination = "C:/gecko_hg.py"
-  }
-
   provisioner "powershell" {
     elevated_password = ""
     elevated_user     = "SYSTEM"
@@ -488,7 +483,10 @@ build {
       "GECKO_SEED_DECISION=${var.gecko_seed_decision}",
       "GECKO_HG_SEED_LEVEL=${startswith(var.config, "trusted-") ? "3" : "1"}",
     ]
-    script = "${path.cwd}/scripts/windows/preload-gecko-hg.ps1"
+    inline = [
+      "Import-Module BootStrap -Force;",
+      "Initialize-GeckoCacheSeed"
+    ]
   }
 
   provisioner "powershell" {

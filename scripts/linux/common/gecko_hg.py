@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build and install an opt-in Gecko Mercurial history seed."""
+"""Build and restore Linux Gecko Hg and Git image caches."""
 
 import argparse
 from datetime import datetime, timezone
@@ -46,7 +46,6 @@ def seed_store(source, revision, sharebase, hg="hg", robustcheckout=None, upstre
     if any(sharebase.iterdir()):
         raise FileExistsError(f"Seed directory must be empty: {sharebase}")
     started = time.monotonic()
-    # Only the disposable checkout is private. The store inherits its pool's ACL.
     with tempfile.TemporaryDirectory(prefix=".seed-") as temp:
         clone = Path(temp) / "repository"
         if robustcheckout is None:
@@ -90,10 +89,8 @@ def initialize_run_task_cache(run_task, cache):
 
 def cache_names(mode, level, digest=None):
     suffix = f"-hg58-v3-{digest[:20]}" if mode == "linux-d2g" else ""
-    names = [f"gecko-level-{level}-{name}{suffix}" for name in ("checkouts", "checkouts-sparse")]
-    if mode.startswith("linux-"):
-        names = names[:1]
-    if mode in ("windows-arm64", "linux-d2g"):
+    names = [f"gecko-level-{level}-checkouts{suffix}"]
+    if mode == "linux-d2g":
         names.append(f"relops-level-3-checkouts-sparse{suffix}")
     return names
 
@@ -147,9 +144,8 @@ def build_git(revision, mode, level, seed_root, decision, git_executable="git"):
                            env=dict(os.environ, GIT_CONFIG_NOSYSTEM="1",
                                     GIT_CONFIG_GLOBAL=os.devnull, GIT_TERMINAL_PROMPT="0")).stdout
 
-        checkout = "src" if mode.startswith("windows-") else "gecko"
-        full = staging / "full" / checkout
-        shallow = staging / "shallow" / checkout
+        full = staging / "full" / "gecko"
+        shallow = staging / "shallow" / "gecko"
         for name in ("full", "shallow"):
             cache = staging / name
             cache.mkdir()
@@ -168,8 +164,7 @@ def build_git(revision, mode, level, seed_root, decision, git_executable="git"):
             (repo / ".git/worker-image-seed").write_text(revision + "\n")
             cache_name = "checkouts-git" + ("-shallow" if name == "shallow" else "")
             spec["cache_sources"][f"gecko-level-{level}-{cache_name}{suffix}"] = name
-            if mode.startswith("linux-"):
-                archive_cache(staging / name, mode)
+            archive_cache(staging / name, mode)
         spec["cache_names"] = list(spec["cache_sources"])
         (staging / "manifest.json").write_text(json.dumps(spec, indent=2) + "\n")
         staging.rename(seed_root)
@@ -178,9 +173,6 @@ def build_git(revision, mode, level, seed_root, decision, git_executable="git"):
 def build(revision, mode, level, seed_root, hg, robustcheckout=None):
     if not NODE.fullmatch(revision):
         raise ValueError("Use a full Hg changeset from the latest autoland decision task")
-    if mode == "windows-x64":
-        seed_store(SOURCE, revision, seed_root, hg, robustcheckout, upstream=UPSTREAM)
-        return
     if seed_root.exists():
         raise FileExistsError(f"Refusing to replace seed directory: {seed_root}")
     seed_root.parent.mkdir(parents=True, exist_ok=True)
@@ -202,8 +194,7 @@ def build(revision, mode, level, seed_root, hg, robustcheckout=None):
         spec["store_subdir"] = store
         spec["root_node"] = seed_store(SOURCE, revision, cache / store, hg, robustcheckout, upstream=UPSTREAM)
         spec["cache_names"] = cache_names(mode, level, spec.get("run_task_sha256"))
-        if mode.startswith("linux-"):
-            archive_cache(cache, mode)
+        archive_cache(cache, mode)
         (staging / "manifest.json").write_text(json.dumps(spec, indent=2) + "\n")
         staging.rename(seed_root)
     print(f"Gecko Hg seed ready: {seed_root}", flush=True)
@@ -226,11 +217,10 @@ def install(seed_root, destination_root, state_file, extra_seeds=()):
             entries.append((root, spec, name, source))
     state = {}
     destination_root.mkdir(parents=True, exist_ok=True)
-    if os.name == "posix":
-        # Idle caches must not be accessible without a scoped task mount.
-        destination_root.chmod(0o700)
+    # Idle caches must not be accessible without a scoped task mount.
+    destination_root.chmod(0o700)
     for seed_root, spec, name, source in entries:
-        relops_cache = (spec["mode"] in ("windows-arm64", "linux-d2g")
+        relops_cache = (spec["mode"] == "linux-d2g"
                         and re.fullmatch(r"relops-level-3-checkouts-sparse(?:-hg58-v3-[0-9a-f]{20})?", name))
         git_cache = re.fullmatch(r"gecko-level-[13]-checkouts-git(?:-shallow)?(?:-v3-[0-9a-f]{20})?", name)
         if not (relops_cache or git_cache) and not re.fullmatch(r"gecko-level-[13]-checkouts(?:-sparse)?(?:-hg58-v3-[0-9a-f]{20})?", name):
@@ -242,17 +232,14 @@ def install(seed_root, destination_root, state_file, extra_seeds=()):
         print(f"Installing checkout cache: {name}", flush=True)
         with tempfile.TemporaryDirectory(prefix=".install-", dir=destination_root) as temp:
             cache = Path(temp) / "cache"
-            if spec["mode"].startswith("linux-"):
-                if spec["mode"] == "linux-d2g" and os.geteuid() != 0:
-                    raise PermissionError("Restore D2G seeds as root to preserve UID/GID 1000")
-                cache.mkdir()
-                archive = seed_root / f"{source}.tar.gz"
-                print(f"Restoring {archive.stat().st_size} archive bytes onto the task disk", flush=True)
-                # This archive is built into the trusted image, outside task-writable paths.
-                subprocess.run(["tar", "-xzf", str(archive), "--numeric-owner",
-                                "-C", str(cache)], check=True)
-            else:
-                shutil.copytree(seed_root / source, cache)
+            if spec["mode"] == "linux-d2g" and os.geteuid() != 0:
+                raise PermissionError("Restore D2G seeds as root to preserve UID/GID 1000")
+            cache.mkdir()
+            archive = seed_root / f"{source}.tar.gz"
+            print(f"Restoring {archive.stat().st_size} archive bytes onto the task disk", flush=True)
+            # This archive is built into the trusted image, outside task-writable paths.
+            subprocess.run(["tar", "-xzf", str(archive), "--numeric-owner",
+                            "-C", str(cache)], check=True)
             cache.rename(destination)
         print(f"Installed {name} in {time.monotonic() - started:.1f}s", flush=True)
         state[name] = [{"key": name, "location": str(destination.resolve()),
@@ -271,14 +258,14 @@ def main():
     commands = parser.add_subparsers(dest="command", required=True)
     bake = commands.add_parser("build")
     bake.add_argument("--revision", required=True)
-    bake.add_argument("--mode", choices=("linux-native", "linux-d2g", "windows-x64", "windows-arm64"), required=True)
+    bake.add_argument("--mode", choices=("linux-native", "linux-d2g"), required=True)
     bake.add_argument("--level", type=int, choices=(1, 3), default=1)
     bake.add_argument("--seed-root", type=Path, required=True)
     bake.add_argument("--hg", default="hg")
     git_bake = commands.add_parser("build-git")
     git_bake.add_argument("--revision", required=True)
     git_bake.add_argument("--decision", required=True)
-    git_bake.add_argument("--mode", choices=("linux-native", "linux-d2g", "windows-x64", "windows-arm64"), required=True)
+    git_bake.add_argument("--mode", choices=("linux-native", "linux-d2g"), required=True)
     git_bake.add_argument("--level", type=int, choices=(1, 3), default=1)
     git_bake.add_argument("--seed-root", type=Path, required=True)
     git_bake.add_argument("--git", default="git")

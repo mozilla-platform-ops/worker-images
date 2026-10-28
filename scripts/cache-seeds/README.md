@@ -4,11 +4,17 @@ These opt-in seeds contain Gecko Mercurial and Git history. They do not contain
 checked-out source files, pip packages, or other task dependencies. Hardware WIMs are
 not changed.
 
-The Linux and Windows parallel alpha workflows automatically resolve the latest
-autoland decision and seed its paired Hg and Git revisions. No revision input is needed. Each
-workflow resolves it once, logs the decision and revisions, and uses those revisions
-for all images in that run. The next run resolves the latest decision again.
-The seed stays fixed after image creation; tasks fetch later changes normally.
+The Linux and Windows parallel alpha workflows resolve the latest autoland
+decision once per run. Only configs with `experimental.gecko_cache_seed: true`
+seed its paired Hg and Git revisions. The flag is off by default. The next run
+resolves the latest decision again. The seed stays fixed after image creation;
+tasks fetch later changes normally.
+
+Windows provisioning uses `Initialize-GeckoCacheSeed` in the existing
+`Bootstrap` module; it calls Hg and Git directly, not a Python seed helper. Linux provisioning uses
+`scripts/linux/common/preload-gecko-hg.sh` and `gecko_hg.py` in the same directory.
+The Python code builds archives and restores them before the Linux worker starts.
+The two platforms have separate implementations.
 
 Hg uses `robustcheckout --noupdate` from the selected autoland revision.
 It uses `--upstream https://hg.mozilla.org/mozilla-unified`, as real tasks do.
@@ -67,8 +73,10 @@ is outside the pool and is removed after seeding. The builder checks ownership
 and inherited access on sample files; it does not run recursive ACL or owner repairs.
 
 On ARM64, Gecko uses `build/hg-store` inside a Generic Worker checkout cache.
-The builder prepares independent full and sparse caches under `C:\caches` and
-writes initial state to `C:\worker-runner\directory-caches.json`. These use
+The PowerShell builder prepares the seed in a temporary directory, copies
+independent full and sparse caches under `C:\caches`, and writes initial state
+to `C:\worker-runner\directory-caches.json`. It removes the temporary seed
+after image creation. These use
 `gecko-level-<level>-checkouts` and `gecko-level-<level>-checkouts-sparse`.
 Generic Worker grants task-user access when it mounts each cache.
 
@@ -221,6 +229,8 @@ uv run --python 3.10 --with mercurial==6.2.1 scripts/cache-seeds/test_gecko_hg.p
 uv run --python 3.11 --with mercurial==6.9 scripts/cache-seeds/test_gecko_hg.py
 uv run scripts/cache-seeds/test_benchmark.py
 uv run --with pyyaml scripts/cache-seeds/test_git_seed.py
+# Exercise the Windows PowerShell implementation with small local repositories:
+uv run --python 3.11 --with mercurial==6.9 -- pwsh -File ci/test-windows-cache-seed.ps1
 # Test updates with the decision artifact's actual Git helper:
 RUN_TASK_GIT=/path/to/run-task-git uv run scripts/cache-seeds/test_git_seed.py
 # On Linux as root, test with Gecko's pinned helpers too:
@@ -228,8 +238,9 @@ RUN_TASK=/path/to/run-task ROBUSTCHECKOUT=/path/to/robustcheckout.py \
   uv run scripts/cache-seeds/test_gecko_hg.py
 ```
 
-The worker scripts use the Python already installed in the image. Startup does
-not install uv or fetch a Python environment.
+Linux uses the Python already installed in the image. Windows uses PowerShell
+and the installed Hg and Git executables. Startup does not install uv or fetch
+a Python environment.
 
 The Hg check downloads a fixed test version of robustcheckout unless
 `ROBUSTCHECKOUT` points to a local copy. Image builds instead obtain the helper
@@ -239,9 +250,12 @@ Puppet for Windows ARM64 and x64. It also checks the `ubuntu-latest` runner's
 Mercurial apt package, which includes distribution patches. Do not replace that check with
 the unpatched upstream 6.7.2 package. These checks do not replace tests of the
 Windows executables or the Mercurial package in each task container.
-The integration check uses a small local Hg repository. It checks the real
-run-task cache requirements, UID/GID, full-store reuse, Windows cache layouts, later
-revisions, and preservation of live state. It is not a full image test.
+The Linux integration check uses a small local Hg repository to check run-task
+cache requirements, UID/GID, reuse, later revisions, and live state preservation.
+The PowerShell test checks Windows cache layouts, independent copies, full and
+sparse Hg reuse, Git updates, and refusal to replace live state. CI runs it under
+Windows PowerShell. These are not full image tests; SYSTEM ownership and task-user
+ACL checks still need a Windows image build.
 
 For the Linux trial, use a pool with local SSD and confirm its exact Hg cache
 name, run-task hash, and UID/GID before building. Compare an unseeded image and

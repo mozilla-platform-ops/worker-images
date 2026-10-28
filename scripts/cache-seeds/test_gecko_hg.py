@@ -23,6 +23,7 @@ from unittest.mock import patch
 from urllib.parse import urlsplit
 from urllib.request import urlopen
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "linux/common"))
 import gecko_hg as seed
 
 
@@ -139,28 +140,6 @@ class SeedTest(unittest.TestCase):
             (upstream / "tracked").write_text("upstream-only\n")
             seed.hg_command("hg", "-R", upstream, "commit", "-u", "test", "-m", "upstream-only")
             upstream_revision = seed.hg_command("hg", "-R", upstream, "log", "-r", ".", "-T", "{node}", capture=True)
-            with patch.object(seed, "SOURCE", str(source)), patch.object(seed, "UPSTREAM", str(upstream)):
-                seed.build(revision, "windows-x64", 1, root / "hg-shared", "hg", self.extension)
-                seed.build(revision, "windows-arm64", 1, root / "arm-seed", "hg", self.extension)
-            self.assertTrue((root / "hg-shared" / revision / ".hg").is_dir())
-            self.assertFalse((root / "hg-shared/manifest.json").exists())
-            self.assertEqual(seed.hg_command("hg", "-R", root / "hg-shared" / revision,
-                                            "log", "-r", upstream_revision, "-T", "{node}", capture=True),
-                             upstream_revision)
-            seed.install(root / "arm-seed", root / "arm-caches", root / "arm-state.json")
-            arm_state = json.loads((root / "arm-state.json").read_text())
-            self.assertEqual(set(arm_state), set(seed.cache_names("windows-arm64", 1)))
-            arm_stores = []
-            for name in seed.cache_names("windows-arm64", 1):
-                store = Path(arm_state[name][0]["location"]) / "hg-store" / revision / ".hg"
-                self.assertTrue(store.is_dir())
-                for other in arm_stores:
-                    self.assertFalse(os.path.samefile(store / "store/00changelog.i", other / "store/00changelog.i"))
-                arm_stores.append(store)
-            # A write in the RelOps cache must not change either Gecko cache.
-            (arm_stores[-1] / "worker-image-seed").write_text("changed by RelOps task\n")
-            for store in arm_stores[:-1]:
-                self.assertEqual((store / "worker-image-seed").read_text().strip(), revision)
             wrapper = os.environ.get("RUN_TASK")
             mode = "linux-d2g" if wrapper else "linux-native"
             image = root / "image-seed"
@@ -259,12 +238,6 @@ class SeedTest(unittest.TestCase):
                                   ".hg/worker-image-seed").read_text().strip(), revision)
 
     def test_names_and_existing_state(self):
-        self.assertEqual(seed.cache_names("windows-arm64", 1),
-                         ["gecko-level-1-checkouts", "gecko-level-1-checkouts-sparse",
-                          "relops-level-3-checkouts-sparse"])
-        self.assertEqual(seed.cache_names("windows-arm64", 3),
-                         ["gecko-level-3-checkouts", "gecko-level-3-checkouts-sparse",
-                          "relops-level-3-checkouts-sparse"])
         self.assertEqual(seed.cache_names("linux-native", 1),
                          ["gecko-level-1-checkouts"])
         with tempfile.TemporaryDirectory() as directory:
@@ -275,7 +248,7 @@ class SeedTest(unittest.TestCase):
             self.assertEqual(state.read_text(), '{"live": []}')
             self.assertFalse((root / "caches").exists())
             with self.assertRaises(ValueError):
-                seed.build("tip", "windows-x64", 1, root / "shared", "hg")
+                seed.build("tip", "linux-native", 1, root / "shared", "hg")
             self.assertFalse((root / "shared").exists())
 
     def test_broken_archive_does_not_register_cache(self):

@@ -1,6 +1,7 @@
 $ErrorActionPreference = 'Stop'
 Import-Module powershell-yaml
 . ./bin/WorkerImages/Public/New-AzSharedWorkerImage.ps1
+. ./bin/WorkerImages/Private/Set-GeckoCacheSeedEnvironment.ps1
 function Set-PSRepository { }
 function Install-Module { }
 

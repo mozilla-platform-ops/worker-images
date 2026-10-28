@@ -418,7 +418,7 @@ build {
 
   # Add the seed after the last build-time reboot. Install it on the first boot.
   provisioner "file" {
-    source      = "${path.cwd}/scripts/cache-seeds/gecko_hg.py"
+    source      = "${path.cwd}/scripts/linux/common/gecko_hg.py"
     destination = "/tmp/gecko_hg.py"
   }
 
