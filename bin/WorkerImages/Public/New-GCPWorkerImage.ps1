@@ -33,6 +33,7 @@ function New-GCPWorkerImage {
 
     $YAML = ConvertFrom-Yaml (Get-Content $YamlPath -Raw)
     $ENV:PKR_VAR_config = $Key
+    Set-GeckoCacheSeedEnvironment -ImageConfig $YAML -ImageKey $Key
 
     ## Image naming
     if ($Team -and $Team -ieq "tceng") {

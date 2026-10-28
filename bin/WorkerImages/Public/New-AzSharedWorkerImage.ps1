@@ -86,6 +86,7 @@ function New-AzSharedWorkerImage {
 
     # Set environment variables
     $ENV:PKR_VAR_config = $Key
+    Set-GeckoCacheSeedEnvironment -ImageConfig $ImageYaml -ImageKey $Key
     $ENV:PKR_VAR_image_key_name = $Key
     $ENV:PKR_VAR_image_publisher = $Y.image["publisher"]
     $ENV:PKR_VAR_image_offer = $Y.image["offer"]
