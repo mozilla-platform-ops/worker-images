@@ -18,7 +18,6 @@ jobs:
       gecko_hg_seed_revision: ${{ steps.seed.outputs.revision }}
       gecko_git_seed_revision: ${{ steps.seed.outputs.git_revision }}
       gecko_seed_decision: ${{ steps.seed.outputs.decision }}
-      gecko_cache_seed_enabled: ${{ steps.set-matrix.outputs.gecko_cache_seed_enabled }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -41,16 +40,6 @@ jobs:
             exit 1
           }
 
-          $seedEnabled = $false
-          foreach ($config in $alphaImages) {
-            $imageYaml = ConvertFrom-Yaml (Get-Content "./config/$config.yaml" -Raw)
-            if ($imageYaml.experimental -and $imageYaml.experimental.gecko_cache_seed -eq $true) {
-              $seedEnabled = $true
-              break
-            }
-          }
-          "gecko_cache_seed_enabled=$($seedEnabled.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
-
           $matrix = @{ config = $alphaImages } | ConvertTo-Json -Compress
           Write-Host "Generated matrix: $matrix"
           "matrix=$matrix" >> $env:GITHUB_OUTPUT
@@ -62,7 +51,6 @@ jobs:
 
       - name: Resolve latest autoland Hg and Git revisions
         id: seed
-        if: steps.set-matrix.outputs.gecko_cache_seed_enabled == 'true'
         shell: bash
         run: python3 ci/resolve-gecko-hg-seed.py | tee -a "$GITHUB_OUTPUT"
 
