@@ -19,12 +19,11 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Check PowerShell build helpers
+    - name: Check Azure upload archives
       shell: pwsh
       run: |
         Install-PSResource powershell-yaml -Version 0.4.12 -TrustRepository -Quiet
         ./ci/test-azure-upload-archives.ps1
-        ./ci/test-gecko-cache-seed-config.ps1
 
     - name: Install pre-commit
       run: pip install pre-commit
@@ -58,19 +57,6 @@ jobs:
       run: |
         echo "Running pre-commit on all files"
         pre-commit run --all-files
-
-  windows-cache-seeds:
-    runs-on: windows-latest
-    steps:
-    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-    - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4
-    - name: Check Windows Hg and Git caches
-      shell: powershell
-      run: |
-        uv run --python 3.10 --with mercurial==6.2.1 -- powershell -NoProfile -File ci/test-windows-cache-seed.ps1
-        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-        uv run --python 3.11 --with mercurial==6.9 -- powershell -NoProfile -File ci/test-windows-cache-seed.ps1
-        exit $LASTEXITCODE
 
   shellcheck:
     runs-on: ubuntu-latest

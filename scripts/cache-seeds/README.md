@@ -229,8 +229,6 @@ uv run --python 3.10 --with mercurial==6.2.1 scripts/cache-seeds/test_gecko_hg.p
 uv run --python 3.11 --with mercurial==6.9 scripts/cache-seeds/test_gecko_hg.py
 uv run scripts/cache-seeds/test_benchmark.py
 uv run --with pyyaml scripts/cache-seeds/test_git_seed.py
-# Exercise the Windows PowerShell implementation with small local repositories:
-uv run --python 3.11 --with mercurial==6.9 -- pwsh -File ci/test-windows-cache-seed.ps1
 # Test updates with the decision artifact's actual Git helper:
 RUN_TASK_GIT=/path/to/run-task-git uv run scripts/cache-seeds/test_git_seed.py
 # On Linux as root, test with Gecko's pinned helpers too:
@@ -252,10 +250,11 @@ the unpatched upstream 6.7.2 package. These checks do not replace tests of the
 Windows executables or the Mercurial package in each task container.
 The Linux integration check uses a small local Hg repository to check run-task
 cache requirements, UID/GID, reuse, later revisions, and live state preservation.
-The PowerShell test checks Windows cache layouts, independent copies, full and
-sparse Hg reuse, Git updates, and refusal to replace live state. CI runs it under
-Windows PowerShell. These are not full image tests; SYSTEM ownership and task-user
-ACL checks still need a Windows image build.
+Windows image builds run the seed checks in `tests/win/task_storage.tests.ps1`
+after provisioning. With seeding enabled, Pester checks the selected Hg and Git
+revisions, checkout-cache registrations, shallow Git layout, and x64 task-user
+ACLs. The seed checks are skipped when seeding is disabled. Fresh-worker task
+reuse and startup cost still need separate validation.
 
 For the Linux trial, use a pool with local SSD and confirm its exact Hg cache
 name, run-task hash, and UID/GID before building. Compare an unseeded image and

@@ -499,7 +499,9 @@ build {
       "src_Repository=${var.source_repository}",
       "src_Branch=${var.source_branch}",
       "deploymentId=${var.deployment_id}",
-      "config=${var.config}"
+      "config=${var.config}",
+      "GECKO_HG_SEED_REVISION=${var.gecko_hg_seed_revision}",
+      "GECKO_GIT_SEED_REVISION=${var.gecko_git_seed_revision}"
     ]
     inline = [
       "Import-Module BootStrap -Force;",
