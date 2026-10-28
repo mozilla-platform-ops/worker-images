@@ -16,6 +16,9 @@ Lives in worker-images at `provisioners/windows/win-hw-wim/`.
 > `win116424h2hwbake` role) is authored on a feature branch in the `ronin_puppet`
 > checkout.
 
+Git and OpenSSH installers use the shared reviewed manifest and SHA-256 verifier.
+See [bootstrap installer integrity and update procedure](../MDC1Windows/README.md).
+
 ## Pipeline
 
 ```

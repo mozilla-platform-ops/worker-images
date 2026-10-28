@@ -24,6 +24,7 @@ param()
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+. 'C:\wim-bake\bootstrap-installers.ps1'
 
 $org      = $env:RONIN_ORG
 $repo     = $env:RONIN_REPO
@@ -80,7 +81,7 @@ if ($env:OPENVOX_VERSION) {
 }
 $gitExe = "Git-$($env:GIT_VERSION)-64-bit.exe"
 
-Step "Installing agent ($agentMsi) and Git ($gitExe) from $extSrc"
+Step "Installing agent ($agentMsi) from $extSrc and Git ($gitExe) from the reviewed manifest"
 
 # Puppet/OpenVox agent (MSI) — assets blob only.
 $agentPath = Join-Path $dlDir $agentMsi
@@ -88,13 +89,8 @@ Get-PrereqFile -Urls @("$extSrc/$agentMsi") -OutFile $agentPath
 $p = Start-Process msiexec.exe -ArgumentList "/i `"$agentPath`" /qn /norestart" -Wait -PassThru
 if ($p.ExitCode -ne 0 -and $p.ExitCode -ne 3010) { throw "agent MSI install failed rc=$($p.ExitCode)" }
 
-# Git — prefer the assets-blob mirror, fall back to the git-for-windows upstream
-# (upstream needs no PAT for a public release asset).
-$gitPath    = Join-Path $dlDir $gitExe
-$gitUpstream = "https://github.com/git-for-windows/git/releases/download/v$($env:GIT_VERSION).windows.1/$gitExe"
-Get-PrereqFile -Urls @("$extSrc/$gitExe", $gitUpstream) -OutFile $gitPath
-$p = Start-Process $gitPath -ArgumentList '/VERYSILENT /NORESTART /SUPPRESSMSGBOXES /NOCANCEL' -Wait -PassThru
-if ($p.ExitCode -ne 0) { throw "Git install failed rc=$($p.ExitCode)" }
+# Git uses the same reviewed mirror/upstream URLs and hash as first boot.
+Install-VerifiedBootstrapInstaller -Name $gitExe -Destination $dlDir -Arguments '/VERYSILENT /NORESTART /SUPPRESSMSGBOXES /NOCANCEL'
 
 # Refresh PATH in this session so `puppet` / `git` resolve for the steps below.
 $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')
@@ -281,10 +277,7 @@ if ($rc -eq 0 -or $rc -eq 2) {
   # sysprep-generalize.ps1 removes ssh_host_* so host keys regenerate per node.
   Step 'Baking OpenSSH server + audit key'
   $sshAssets = 'https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/main/provisioners/windows/MDC1Windows/ssh'
-  $sshMsi = Join-Path $dlDir 'OpenSSH-Win64.msi'
-  Get-PrereqFile -Urls @('https://github.com/PowerShell/Win32-OpenSSH/releases/download/v9.8.3.0p2-Preview/OpenSSH-Win64-v9.8.3.0.msi') -OutFile $sshMsi
-  $s = Start-Process msiexec.exe -ArgumentList "/i `"$sshMsi`" /quiet /norestart ADDLOCAL=Server" -Wait -PassThru
-  if ($s.ExitCode -ne 0 -and $s.ExitCode -ne 3010) { throw "OpenSSH MSI install failed rc=$($s.ExitCode)" }
+  Install-VerifiedBootstrapInstaller -Name 'OpenSSH-Win64-v9.8.3.0.msi' -Destination $dlDir -Arguments '/quiet /norestart ADDLOCAL=Server'
   New-Item -ItemType Directory -Path 'C:\ProgramData\ssh' -Force | Out-Null
   Get-PrereqFile -Urls @("$sshAssets/sshd_config") -OutFile 'C:\ProgramData\ssh\sshd_config'
   $adminSsh = 'C:\Users\Administrator\.ssh'

@@ -249,6 +249,11 @@ function Update-GetBoot {
     param(
         [Parameter(Mandatory)][string]$revision
     )
+    foreach ($asset in @('bootstrap-installers.ps1', 'bootstrap-installers.json')) {
+        $assetPath = Join-Path 'D:\scripts' $asset
+        Remove-Item -LiteralPath $assetPath -Force -ErrorAction SilentlyContinue
+        Invoke-DownloadWithRetry -Url "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$revision/provisioners/windows/MDC1Windows/$asset" -Path $assetPath | Out-Null
+    }
     $Get_Bootstrap = "D:\scripts\Get-Bootstrap.ps1"
     $Template_Get_Bootstrap = $local_scripts + "Template_Get-Bootstrap.ps1"
 
@@ -486,7 +491,7 @@ function Invoke-DownloadWithRetry {
         $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
         Write-Host "Package downloaded in $attemptSeconds seconds"
         #Write-Log -message ('{0} :: Package downloaded in {1} seconds - {2:o}' -f $($MyInvocation.MyCommand.Name), $attemptSeconds, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
-        break
+        return $Path
     }
         catch {
             $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
@@ -502,7 +507,7 @@ function Invoke-DownloadWithRetry {
             }
         }
 
-        if ($retries -eq 0) {
+        if ($retries -le 1) {
             $totalSeconds = [math]::Round(($(Get-Date) - $downloadStartTime).TotalSeconds, 2)
             throw "Package download failed after $totalSeconds seconds"
         }
@@ -512,7 +517,7 @@ function Invoke-DownloadWithRetry {
         Start-Sleep -Seconds $interval
     }
 
-    return $Path
+    throw "Package download failed after exhausting retries: $Url"
 }
 
 function Invoke-DownloadWithRetryGithub {
@@ -580,7 +585,7 @@ function Invoke-DownloadWithRetryGithub {
             $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
             Write-Host "Package downloaded in $attemptSeconds seconds"
             #Write-Log -message ('{0} :: Package downloaded in {1} seconds - {2:o}' -f $($MyInvocation.MyCommand.Name), $attemptSeconds, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
-            break
+            return $Path
         }
         catch {
             $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
@@ -622,7 +627,7 @@ function Invoke-DownloadWithRetryGithub {
             }
         }
 
-        if ($retries -eq 0) {
+        if ($retries -le 1) {
             $totalSeconds = [math]::Round(($(Get-Date) - $downloadStartTime).TotalSeconds, 2)
             throw "Package download failed after $totalSeconds seconds"
         }
@@ -632,7 +637,7 @@ function Invoke-DownloadWithRetryGithub {
         Start-Sleep -Seconds $interval
     }
 
-    return $Path
+    throw "Package download failed after exhausting retries: $Url"
 }
 
 function Resolve-DeploymentHostname {

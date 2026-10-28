@@ -88,6 +88,16 @@ build {
     destination = "C:/wim-bake/"
   }
 
+  provisioner "file" {
+    source      = "${path.root}/../MDC1Windows/bootstrap-installers.ps1"
+    destination = "C:/wim-bake/bootstrap-installers.ps1"
+  }
+
+  provisioner "file" {
+    source      = "${path.root}/../MDC1Windows/bootstrap-installers.json"
+    destination = "C:/wim-bake/bootstrap-installers.json"
+  }
+
   # ---- 3. Bake: install puppet/git, clone ronin, AppX (provisioned) removal, puppet apply of the BAKE role ----
   provisioner "powershell" {
     elevated_user     = var.winrm_username

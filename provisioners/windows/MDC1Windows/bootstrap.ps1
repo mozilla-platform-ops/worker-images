@@ -119,7 +119,7 @@ function Invoke-DownloadWithRetry {
             $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
             Write-Host "Package downloaded in $attemptSeconds seconds"
             Write-Log -message ('{0} :: Package downloaded in {1} seconds - {2:o}' -f $($MyInvocation.MyCommand.Name), $attemptSeconds, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
-            break
+            return $Path
         }
         catch {
             $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
@@ -135,7 +135,7 @@ function Invoke-DownloadWithRetry {
             }
         }
 
-        if ($retries -eq 0) {
+        if ($retries -le 1) {
             $totalSeconds = [math]::Round(($(Get-Date) - $downloadStartTime).TotalSeconds, 2)
             throw "Package download failed after $totalSeconds seconds"
         }
@@ -145,7 +145,7 @@ function Invoke-DownloadWithRetry {
         Start-Sleep -Seconds $interval
     }
 
-    return $Path
+    throw "Package download failed after exhausting retries: $Url"
 }
 
 
@@ -216,7 +216,7 @@ function Invoke-DownloadWithRetryGithub {
             Write-Host "Package downloaded in $attemptSeconds seconds"
             Write-host "Status: $($response.statuscode)"
             #Write-Log -message ('{0} :: Package downloaded in {1} seconds - {2:o}' -f $($MyInvocation.MyCommand.Name), $attemptSeconds, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
-            break
+            return $Path
         }
         catch {
             $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
@@ -233,7 +233,7 @@ function Invoke-DownloadWithRetryGithub {
             }
         }
 
-        if ($retries -eq 0) {
+        if ($retries -le 1) {
             $totalSeconds = [math]::Round(($(Get-Date) - $downloadStartTime).TotalSeconds, 2)
             throw "Package download failed after $totalSeconds seconds"
         }
@@ -243,7 +243,7 @@ function Invoke-DownloadWithRetryGithub {
         Start-Sleep -Seconds $interval
     }
 
-    return $Path
+    throw "Package download failed after exhausting retries: $Url"
 }
 # Copied from https://github.com/actions/runner-images
 function Get-WindowsUpdateStates {
@@ -372,10 +372,7 @@ function Set-SSH {
         $authorized_keys = $destinationDirectory + "\authorized_keys"
         New-Item -ItemType Directory -Path $destinationDirectory -Force
         ## Now let's install it
-        $win32_openssh = Invoke-DownloadWithRetry "https://github.com/PowerShell/Win32-OpenSSH/releases/download/v9.8.3.0p2-Preview/OpenSSH-Win64-v9.8.3.0.msi"
-        ## Install the server component
-        $install = Start-Process -FilePath msiexec.exe -ArgumentList "/i $win32_openssh /quiet /norestart ADDLOCAL=Server" -Wait -PassThru -NoNewWindow
-        Write-host "win32_openssh install exit code: $($install.ExitCode)"
+        Install-VerifiedBootstrapInstaller -Name 'OpenSSH-Win64-v9.8.3.0.msi' -Destination 'C:\bootstrap\installers' -Arguments '/quiet /norestart ADDLOCAL=Server'
         Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$worker_images_revision/provisioners/windows/MDC1Windows/ssh/authorized_keys" -Path $authorized_keys
         Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$worker_images_revision/provisioners/windows/MDC1Windows/ssh/sshd_config" -Path "C:\programdata\ssh\sshd_config"
         $sshdService = Get-Service -Name ssh* -ErrorAction SilentlyContinue
@@ -632,14 +629,6 @@ function Get-PreRequ {
                 $git = "Git-$($git_version)-64-bit.exe"
             }
         }
-        # Git for Windows names a fourth-component rebuild 2.56.0.2 but tags it v2.56.0.windows.2.
-        $git_release = if ($git_version -match '^(\d+\.\d+\.\d+)\.(\d+)$') {
-            "$($Matches[1]).windows.$($Matches[2])"
-        } else {
-            "$git_version.windows.1"
-        }
-        $git_url = "https://github.com/git-for-windows/git/releases/download/v$git_release/$($git)"
-
         # --- Agent (Puppet/OpenVox): skip when baked WIM already meets the minimum ---
         $agentInstalled = Get-InstalledVersion -NameLike $agentNames
         if (Test-VersionAtLeast -Installed $agentInstalled -Minimum $agentMin) {
@@ -678,15 +667,7 @@ function Get-PreRequ {
             Write-Host ('{0} :: Git {1} satisfies minimum {2}; skipping install' -f $($MyInvocation.MyCommand.Name), $gitInstalled, $git_version)
         }
         else {
-            Write-Log -Message ('{0} :: Git install needed (installed={1}, min={2}) from {3}' -f $($MyInvocation.MyCommand.Name), $gitInstalled, $git_version, $git_url) -severity 'DEBUG'
-            if (-Not (Test-Path "$env:systemdrive\$git")) {
-                Invoke-DownloadWithRetryGithub -Url $git_url -Path "$env:systemdrive\$git" -PAT (Get-Content "D:\Secrets\pat.txt")
-            }
-            if (-Not (Test-Path "$env:systemdrive\$git")) {
-                Write-Log -Message ('{0} :: Git failed to download' -f $($MyInvocation.MyCommand.Name)) -severity 'ERROR'
-                exit 1
-            }
-            Start-Process "$env:systemdrive\$git" -ArgumentList "/verysilent" -Wait -NoNewWindow
+            Install-VerifiedBootstrapInstaller -Name $git -Destination 'C:\bootstrap\installers' -Arguments '/VERYSILENT /NORESTART /SUPPRESSMSGBOXES /NOCANCEL'
             $gitInstalled = Get-InstalledVersion -NameLike @('Git version*', 'Git')
             # Bin-dir fallback (original behavior) guards against a registry detection miss.
             $gitOk = (Test-VersionAtLeast -Installed $gitInstalled -Minimum $git_version) -or (Test-Path 'C:\Program Files\Git\bin')
@@ -1222,6 +1203,8 @@ powercfg.exe -x -monitor-timeout-ac 0
 ## and nothing in the bootstrap path needs WinRM; SSH (baked) is the access path. If WinRM is
 ## ever actually required, let Puppet configure it.
 # Set-WinRM
+if (-not (Test-Path -LiteralPath 'D:\scripts\bootstrap-installers.ps1')) { throw 'Missing reviewed bootstrap installer helper.' }
+. 'D:\scripts\bootstrap-installers.ps1'
 Set-SSH
 
 ## This is not being set yet, so it won't find the ronin_puppet registry entry

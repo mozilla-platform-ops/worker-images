@@ -81,7 +81,7 @@ function Invoke-DownloadWithRetry {
             $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
             Write-Host "Package downloaded in $attemptSeconds seconds"
             Write-Log -message ('{0} :: Package downloaded in {1} seconds - {2:o}' -f $($MyInvocation.MyCommand.Name), $attemptSeconds, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
-            break
+            return $Path
         } catch {
             $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
             Write-Warning "Package download failed in $attemptSeconds seconds"
@@ -93,7 +93,7 @@ function Invoke-DownloadWithRetry {
                 $retries = 0
             }
         }
-        if ($retries -eq 0) {
+        if ($retries -le 1) {
             $totalSeconds = [math]::Round(($(Get-Date) - $downloadStartTime).TotalSeconds, 2)
             throw "Package download failed after $totalSeconds seconds"
         }
@@ -101,7 +101,7 @@ function Invoke-DownloadWithRetry {
         Write-Log -message ('{0} :: Waiting {1} seconds before retrying (retries left: {2})... - {3:o}' -f $($MyInvocation.MyCommand.Name), $interval, $retries, (Get-Date).ToUniversalTime()) -severity 'DEBUG'
         Start-Sleep -Seconds $interval
     }
-    return $Path
+    throw "Package download failed after exhausting retries: $Url"
 }
 
 function Get-WinDisplayVersion { (Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion').DisplayVersion }
@@ -123,9 +123,7 @@ function Set-SSH {
         $destinationDirectory = "C:\users\administrator\.ssh"
         $authorized_keys = $destinationDirectory + "\authorized_keys"
         New-Item -ItemType Directory -Path $destinationDirectory -Force | Out-Null
-        $win32_openssh = Invoke-DownloadWithRetry "https://github.com/PowerShell/Win32-OpenSSH/releases/download/v9.8.3.0p2-Preview/OpenSSH-Win64-v9.8.3.0.msi"
-        $install = Start-Process -FilePath msiexec.exe -ArgumentList "/i $win32_openssh /quiet /norestart ADDLOCAL=Server" -Wait -PassThru -NoNewWindow
-        Write-Host "win32_openssh install exit code: $($install.ExitCode)"
+        Install-VerifiedBootstrapInstaller -Name 'OpenSSH-Win64-v9.8.3.0.msi' -Destination 'C:\bootstrap\installers' -Arguments '/quiet /norestart ADDLOCAL=Server'
         Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$worker_images_revision/provisioners/windows/MDC1Windows/ssh/authorized_keys" -Path $authorized_keys
         Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$worker_images_revision/provisioners/windows/MDC1Windows/ssh/sshd_config" -Path "C:\programdata\ssh\sshd_config"
         $sshdService = Get-Service -Name ssh* -ErrorAction SilentlyContinue
@@ -336,7 +334,7 @@ function Invoke-DownloadWithRetryGithub {
             $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
             Write-Host "Package downloaded in $attemptSeconds seconds"
             Write-Host "Status: $($response.statuscode)"
-            break
+            return $Path
         } catch {
             $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
             Write-Warning "Package download failed in $attemptSeconds seconds"
@@ -347,14 +345,14 @@ function Invoke-DownloadWithRetryGithub {
                 $retries = 0
             }
         }
-        if ($retries -eq 0) {
+        if ($retries -le 1) {
             $totalSeconds = [math]::Round(($(Get-Date) - $downloadStartTime).TotalSeconds, 2)
             throw "Package download failed after $totalSeconds seconds"
         }
         Write-Warning "Waiting $interval seconds before retrying (retries left: $retries)..."
         Start-Sleep -Seconds $interval
     }
-    return $Path
+    throw "Package download failed after exhausting retries: $Url"
 }
 
 # ===== Execution Flow =====
@@ -363,6 +361,8 @@ function Invoke-DownloadWithRetryGithub {
 Test-ConnectionUntilOnline
 
 # Enable SSH and import keys
+if (-not (Test-Path -LiteralPath 'D:\scripts\bootstrap-installers.ps1')) { throw 'Missing reviewed bootstrap installer helper.' }
+. 'D:\scripts\bootstrap-installers.ps1'
 Set-SSH
 
 # WinRM disabled for the pre-baked NUC deploy.

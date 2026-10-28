@@ -21,6 +21,10 @@ jobs:
       shell: pwsh
       run: ./ci/test-azure-upload-archives.ps1
 
+    - name: Check hardware bootstrap installer integrity
+      shell: pwsh
+      run: ./ci/test-bootstrap-installers.ps1
+
     - name: Check image development workflow
       shell: pwsh
       run: ./ci/test-image-dev.ps1
