@@ -133,7 +133,7 @@ pools:
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "relops-2575-chrome-without-chocolatey"
-    hash: "0c8c60c0f81af2b39d4c6cdebba2fc3e79c16bbb"
+    hash: "0c8c60c0"
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
