@@ -1,7 +1,7 @@
 """uv run --with pyyaml scripts/cache-seeds/test_git_seed.py
 
 Set RUN_TASK_GIT to test with Gecko's actual helper. On Linux as root, also
-set RUN_TASK to test Docker-style cache requirements and archive ownership.
+set RUN_TASK to test Docker-style cache requirements and seed ownership.
 """
 
 import hashlib
@@ -53,11 +53,11 @@ class GitSeedTest(unittest.TestCase):
                 self.assertTrue(all(name.endswith(suffix) for name in spec["cache_names"]))
             state = root / "state.json"
             destination = root / "caches"
-            # Register a second archive in the same initial worker state file.
+            # Register a second seed in the same initial worker state file.
             other = root / "other"
             (other / "cache").mkdir(parents=True)
             (other / "cache/marker").write_text("other seed")
-            seed.archive_cache(other / "cache", mode)
+            seed.prepare_cache(other / "cache", mode)
             (other / "manifest.json").write_text(json.dumps({
                 "mode": mode, "created": spec["created"],
                 "cache_names": ["gecko-level-1-checkouts"],
@@ -67,7 +67,7 @@ class GitSeedTest(unittest.TestCase):
             seed.install(image, destination, state)
             self.assertEqual(state.read_bytes(), saved)
             entries = json.loads(saved)
-            self.assertEqual(len(entries), 3)
+            self.assertEqual(len(entries), 2)
             entries.pop("gecko-level-1-checkouts")
             # A later task revision must use the existing seed, not clone again.
             (source / "tracked").write_text("later")
@@ -77,9 +77,12 @@ class GitSeedTest(unittest.TestCase):
             for name, records in entries.items():
                 cache = Path(records[0]["location"])
                 repo = cache / "gecko"
-                self.assertEqual((repo / ".git/shallow").exists(), "-shallow" in name)
+                self.assertTrue(name.startswith("gecko-level-1-checkouts-git-shallow"))
+                # Full history and checked-out files under the shallow cache name.
+                self.assertFalse((repo / ".git/shallow").exists())
                 self.assertFalse((repo / ".git/objects/info/alternates").exists())
-                self.assertFalse((repo / "tracked").exists())
+                self.assertEqual((repo / "tracked").read_text(), "second")
+                first = git("-C", source, "rev-list", "--max-parents=0", "HEAD")
                 self.assertEqual(git("-c", f"safe.directory={repo}", "-C", repo,
                                      "rev-parse", "HEAD"), revision)
                 self.assertEqual(git("-c", f"safe.directory={repo}", "-C", repo,
@@ -92,8 +95,11 @@ class GitSeedTest(unittest.TestCase):
                     with patch.dict(os.environ, git_env):
                         checkout = runpy.run_path(helper)["git_checkout"]
                         checkout(str(repo), source.as_uri(), source.as_uri(), None, None,
-                                 head, None, None, shallow="-shallow" in name)
+                                 head, None, None, shallow=True)
                     self.assertEqual((repo / "tracked").read_text(), "later")
+                    # run-task-git's --depth=1 fetch must not drop the seeded history.
+                    self.assertEqual(git("-c", f"safe.directory={repo}", "-C", repo,
+                                         "cat-file", "-t", first), "commit")
                     self.assertEqual(marker.read_text().strip(), revision)
 
     def test_bad_revision_and_duplicate_state(self):
@@ -104,7 +110,7 @@ class GitSeedTest(unittest.TestCase):
             image = root / "image"
             image.mkdir()
             (image / "manifest.json").write_text(json.dumps({
-                "cache_names": ["gecko-level-1-checkouts-git"],
+                "cache_names": ["gecko-level-1-checkouts-git-shallow"],
             }))
             with self.assertRaises(ValueError):
                 seed.install(image, root / "caches", root / "state", [image])
