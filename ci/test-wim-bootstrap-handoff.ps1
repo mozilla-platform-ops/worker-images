@@ -96,16 +96,23 @@ function Install-Choco { }
 function Invoke-DownloadWithRetryGithub { }
 function Get-Content { return 'test credential' }
 function New-ItemProperty { }
+function Write-Log {
+    param($message, $severity)
+    $script:events += ,@{ message = $message; severity = $severity }
+    if ($severity -eq 'ERROR' -and $script:errorLogFails) { throw 'event log failed' }
+}
 foreach ($case in @(
     @{ name = 'other launcher'; lock = $false; stage = 'setup'; command = ''; fails = $false; calls = 0 },
     @{ name = 'completed'; lock = $true; stage = 'complete'; command = ''; fails = $false; calls = 0 },
     @{ name = 'orphaned child'; lock = $true; stage = 'inprogress'; command = 'powershell -File C:\bootstrap\bootstrap.ps1'; fails = $false; calls = 0 },
     @{ name = 'failed prerequisite'; lock = $true; stage = 'setup'; command = ''; fails = $true; calls = 1 },
+    @{ name = 'failed error logging'; logFails = $true; lock = $true; stage = 'setup'; command = ''; fails = $true; calls = 1 },
     @{ name = 'normal launch'; lock = $true; stage = 'setup'; command = ''; fails = $false; calls = 1 }
 )) {
     $script:lockAvailable = $case.lock; $script:stage = $case.stage; $script:commandLine = $case.command
     $script:prerequisiteFails = $case.fails; $script:prerequisites = 0
     $script:released = 0; $script:disposed = 0; $script:filesAvailable = $true
+    $script:events = @(); $script:errorLogFails = $case.logFails
     $script:startFails = $false; $script:processExit = 0; $ownsMutex = $false
     $bootstrapMutex = [pscustomobject]@{}
     $bootstrapMutex | Add-Member ScriptMethod WaitOne { param($Timeout) return $script:lockAvailable }
@@ -117,6 +124,10 @@ foreach ($case in @(
         $script:released -ne [int]$case.lock -or $script:disposed -ne 1) {
         throw "Launcher guard failed: $($case.name): $failure"
     }
+    if ($case.logFails -and $failure.Exception.Message -ne 'network failed') { throw 'Logging hid the original failure.' }
+    if (($script:events.message -join ' ') -match 'test credential') { throw 'Credential appeared in logs.' }
+    if (-not $script:events.Count) { throw "Missing lifecycle log: $($case.name)" }
+    if ($case.fails -and -not ($script:events | Where-Object severity -eq 'ERROR')) { throw 'Bootstrap failure was not logged.' }
 }
 $global:LASTEXITCODE = 0
 Write-Host 'WIM bootstrap handoff checks passed.'

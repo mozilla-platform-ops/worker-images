@@ -251,18 +251,18 @@ function Install-Choco {
 
     $file = Join-Path $tempDir "chocolatey.zip"
     $ChocolateyDownloadUrl = "https://ronin-puppet-package-repo.s3.us-west-2.amazonaws.com/Windows/chocolatey.zip"
-    Write-Host "Getting Chocolatey from $ChocolateyDownloadUrl."
+    Write-Log -message "Getting Chocolatey from $ChocolateyDownloadUrl."
     Invoke-DownloadWithRetry -Url $ChocolateyDownloadUrl -Path $file
 
-    Write-Host "Extracting $file to $tempDir"
+    Write-Log -message "Extracting $file to $tempDir"
     Expand-Archive -Path $file -DestinationPath $tempDir -Force
 
-    Write-Host "Installing Chocolatey on the local machine"
+    Write-Log -message "Installing Chocolatey on the local machine"
     $toolsFolder = Join-Path $tempDir -ChildPath "tools"
     $chocoInstallPS1 = Join-Path $toolsFolder -ChildPath "chocolateyInstall.ps1"
     & $chocoInstallPS1
 
-    Write-Host 'Ensuring Chocolatey commands are on the path'
+    Write-Log -message 'Ensuring Chocolatey commands are on the path'
     $chocoInstallVariableName = "ChocolateyInstall"
     $chocoPath = [Environment]::GetEnvironmentVariable($chocoInstallVariableName)
     if (-not $chocoPath) { $chocoPath = "$env:ALLUSERSPROFILE\Chocolatey" }
@@ -272,7 +272,7 @@ function Install-Choco {
         $env:Path = [Environment]::GetEnvironmentVariable('Path', [System.EnvironmentVariableTarget]::Machine);
     }
 
-    Write-Host 'Ensuring chocolatey.nupkg is in the lib folder'
+    Write-Log -message 'Ensuring chocolatey.nupkg is in the lib folder'
     $chocoPkgDir = Join-Path $chocoPath -ChildPath 'lib\chocolatey'
     $nupkg = Join-Path $chocoPkgDir -ChildPath 'chocolatey.nupkg'
     if (-not (Test-Path $chocoPkgDir -PathType Container)) { $null = New-Item -ItemType Directory -Path $chocoPkgDir }
@@ -321,7 +321,7 @@ function Invoke-DownloadWithRetryGithub {
         if ([String]::IsNullOrEmpty($fileName)) { $fileName = [System.IO.Path]::GetRandomFileName() }
         $Path = Join-Path -Path "${env:Temp}" -ChildPath $fileName
     }
-    Write-Host "Downloading package from $Url to $Path..."
+    Write-Log -message "Downloading $Url to $Path" -severity 'DEBUG'
     $interval = 30
     $downloadStartTime = Get-Date
     for ($retries = 20; $retries -gt 0; $retries--) {
@@ -332,18 +332,16 @@ function Invoke-DownloadWithRetryGithub {
                 Authorization          = "Bearer $($PAT)"
                 "X-GitHub-Api-Version" = "2022-11-28"
             }
-            $response = Invoke-WebRequest -Uri $Url -Headers $Headers -OutFile $Path
+            Invoke-WebRequest -Uri $Url -Headers $Headers -OutFile $Path
             $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
-            Write-Host "Package downloaded in $attemptSeconds seconds"
-            Write-Host "Status: $($response.statuscode)"
+            Write-Log -message "Package downloaded in $attemptSeconds seconds" -severity 'DEBUG'
             break
         } catch {
             $attemptSeconds = [math]::Round(($(Get-Date) - $attemptStartTime).TotalSeconds, 2)
-            Write-Warning "Package download failed in $attemptSeconds seconds"
-            Write-Host "Status: $($response.statuscode)"
-            Write-Warning $_.Exception.Message
+            Write-Log -message "Package download failed in $attemptSeconds seconds" -severity 'WARN'
+            Write-Log -message $_.Exception.Message -severity 'WARN'
             if ($_.Exception.InnerException.Response.StatusCode -eq [System.Net.HttpStatusCode]::NotFound) {
-                Write-Warning "Request returned 404 Not Found. Aborting download."
+                Write-Log -message "Request returned 404 Not Found. Aborting download." -severity 'ERROR'
                 $retries = 0
             }
         }
@@ -351,7 +349,7 @@ function Invoke-DownloadWithRetryGithub {
             $totalSeconds = [math]::Round(($(Get-Date) - $downloadStartTime).TotalSeconds, 2)
             throw "Package download failed after $totalSeconds seconds"
         }
-        Write-Warning "Waiting $interval seconds before retrying (retries left: $retries)..."
+        Write-Log -message "Waiting $interval seconds before retrying (retries left: $retries)..." -severity 'WARN'
         Start-Sleep -Seconds $interval
     }
     return $Path
@@ -363,24 +361,26 @@ $ownsMutex = $false
 try {
     try { $ownsMutex = $bootstrapMutex.WaitOne(0) }
     catch [System.Threading.AbandonedMutexException] { $ownsMutex = $true }
-    if (-not $ownsMutex) { Write-Host 'Bootstrap launcher already running.'; return }
+    if (-not $ownsMutex) { Write-Log -message 'Get-Bootstrap :: launcher already running'; return }
     $stage = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Mozilla\ronin_puppet' -ErrorAction SilentlyContinue
-    if ($stage.bootstrap_stage -eq 'complete') { return }
+    if ($stage.bootstrap_stage -eq 'complete') { Write-Log -message 'Get-Bootstrap :: provisioning already complete'; return }
     $running = Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe'" | Where-Object {
         $_.CommandLine -match '(?i)(?:^|\s)-file\s+"?C:\\bootstrap\\bootstrap\.ps1"?(?:\s|$)'
     }
-    if ($running) { Write-Host 'Bootstrap already running.'; return }
+    if ($running) { Write-Log -message 'Get-Bootstrap :: bootstrap already running'; return }
+
+    Write-Log -message ('Get-Bootstrap :: begin - {0:o}' -f (Get-Date).ToUniversalTime()) -severity 'DEBUG'
 
     # Wait until internet works
     Test-ConnectionUntilOnline
 
-    # Enable SSH and import keys
+    Write-Log -message 'Get-Bootstrap :: configuring SSH' -severity 'DEBUG'
     Set-SSH
 
-    # Install Chocolatey
+    Write-Log -message 'Get-Bootstrap :: installing Chocolatey' -severity 'DEBUG'
     Install-Choco
 
-    # Fetch bootstrap.ps1
+    Write-Log -message 'Get-Bootstrap :: downloading bootstrap.ps1' -severity 'DEBUG'
     $local_bootstrap = "C:\bootstrap\bootstrap.ps1"
     if (-Not (Test-Path "D:\Secrets\pat.txt")) {
         $splat = @{ Url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$worker_images_revision/provisioners/windows/MDC1Windows/bootstrap.ps1"; Path = $local_bootstrap }
@@ -402,6 +402,7 @@ try {
     New-Item -Path 'HKLM:\SOFTWARE\Mozilla' -Force | Out-Null
     New-Item -Path 'HKLM:\SOFTWARE\Mozilla\ronin_puppet' -Force | Out-Null
     New-ItemProperty -Path 'HKLM:\SOFTWARE\Mozilla\ronin_puppet' -Name worker_images_revision -Value $worker_images_revision -PropertyType String -Force | Out-Null
+    Write-Log -message 'Get-Bootstrap :: starting bootstrap through PsExec' -severity 'DEBUG'
     $bootstrapProcess = Start-Process -FilePath 'D:\applications\psexec.exe' -Wait -PassThru -NoNewWindow -ArgumentList @(
         '-i', '-s', '-accepteula', 'powershell.exe', '-ExecutionPolicy', 'Bypass', '-File', $local_bootstrap,
         '-worker_pool_id', 'WorkerPoolId',
@@ -416,7 +417,15 @@ try {
         '-openvox_version', '1openvox_version',
         '-worker_images_revision', $worker_images_revision
     )
+    Write-Log -message ('Get-Bootstrap :: PsExec/bootstrap returned {0}' -f $bootstrapProcess.ExitCode)
     if ($bootstrapProcess.ExitCode -ne 0) { throw "PsExec/bootstrap failed: $($bootstrapProcess.ExitCode)" }
+    Write-Log -message ('Get-Bootstrap :: end - {0:o}' -f (Get-Date).ToUniversalTime()) -severity 'DEBUG'
+}
+catch {
+    $failure = $_
+    try { Write-Log -message ('Get-Bootstrap :: failed: {0}' -f $failure.Exception.Message) -severity 'ERROR' }
+    catch { Write-Warning 'Get-Bootstrap :: could not write failure to the event log' }
+    throw $failure
 }
 finally {
     if ($ownsMutex) { $bootstrapMutex.ReleaseMutex() }
