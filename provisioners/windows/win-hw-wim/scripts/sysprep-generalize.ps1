@@ -32,12 +32,20 @@ Write-Output 'WIM-WATCHDOG-STOP: sysprep starting; the guest power-off from here
 
 # --- Secret + identity scrub ---
 Step 'Scrubbing bake secrets and identity'
-Remove-Item 'C:\ronin\data\secrets\vault.yaml' -Force -ErrorAction SilentlyContinue
-# Remove the whole bake work dir. It holds the SYSTEM puppet-apply helper
-# (C:\bake\run-puppet-system.ps1) which EMBEDS the build-scoped GitHub token
-# (custom_win_github_pat) when one is supplied, plus prereq installers and puppet logs.
-# None of it belongs in the golden WIM — drop it before capture.
-Remove-Item 'C:\bake' -Recurse -Force -ErrorAction SilentlyContinue
+$buildSecretPaths = @("$env:SystemDrive\ronin\data\secrets\vault.yaml", "$env:SystemDrive\bake")
+foreach ($answerRoot in @("$env:SystemRoot\Panther", "$env:SystemRoot\System32\Sysprep")) {
+  if (Test-Path -LiteralPath $answerRoot) {
+    $buildSecretPaths += @(Get-ChildItem -LiteralPath $answerRoot -Recurse -File -ErrorAction Stop |
+      Where-Object { $_.Name -in @('unattend.xml', 'autounattend.xml') } |
+      Select-Object -ExpandProperty FullName)
+  }
+}
+foreach ($secretPath in $buildSecretPaths) {
+  if (Test-Path -LiteralPath $secretPath) {
+    Remove-Item -LiteralPath $secretPath -Recurse -Force -ErrorAction Stop
+    if (Test-Path -LiteralPath $secretPath) { throw "Build secret cleanup failed: $secretPath" }
+  }
+}
 $ron = 'HKLM:\SOFTWARE\Mozilla\ronin_puppet'
 if (Test-Path $ron) {
   foreach ($v in 'role','workerType','worker_pool_id','GITHASH','secret_date') {
@@ -143,18 +151,11 @@ $rdbSettings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopI
 Register-ScheduledTask -TaskName 'RunDeployBootstrap' -Action $rdbAction -Trigger $rdbTrigger -Principal $rdbPrincipal -Settings $rdbSettings -Force | Out-Null
 Write-Host '  RunDeployBootstrap SYSTEM startup task registered (fires only on the deployed node).'
 
-# --- Bake hygiene: neutralize the build-only 'packer' admin account ([[bake-hygiene-todo]]) ---
-# The build unattend created an Administrators-group account (@@WINRM_USER@@, i.e. 'packer')
-# for Packer/WinRM. It must not remain a usable admin in the golden WIM. We DISABLE it rather
-# than delete it: this script runs AS that account (over WinRM), and you cannot delete the
-# account you are currently logged in as. Disabling fully neutralizes it - a disabled account
-# cannot log in locally, over WinRM, or via SSH - which is the security goal. (Deletion, if
-# ever wanted, must happen as SYSTEM on the deployed node where packer isn't logged in.)
-# This is the LAST WinRM-affecting step before Sysprep /shutdown; no provisioner runs after it.
+# The active WinRM session uses this account.
 Step 'Disabling build-only packer account'
 $buildAcct = $env:USERNAME   # the account this provisioner runs under IS the build account
 & net.exe user $buildAcct /active:no
-if ($LASTEXITCODE -ne 0) { Write-Warning "net user $buildAcct /active:no returned $LASTEXITCODE" }
+if ($LASTEXITCODE -ne 0) { throw "Disabling build account failed: $LASTEXITCODE" }
 
 # Clear any autologon the bake configured. The build 'packer' account auto-logs in during the bake,
 # leaving AutoAdminLogon/DefaultUserName/DefaultPassword/AutoLogonSID in Winlogon. Left in the golden
@@ -168,10 +169,13 @@ foreach ($v in 'DefaultUserName', 'DefaultPassword', 'DefaultDomainName', 'AutoL
   Remove-ItemProperty -Path $wl -Name $v -ErrorAction SilentlyContinue
 }
 
+if ('DefaultPassword' -in (Get-ItemProperty -LiteralPath $wl).PSObject.Properties.Name) {
+  throw 'Build autologon password remains.'
+}
+
 # --- Sysprep generalize + shutdown ---
 Step 'Running Sysprep /generalize /oobe /shutdown'
 $sp = "$env:SystemRoot\System32\Sysprep"
-Remove-Item (Join-Path $sp 'unattend.xml') -Force -ErrorAction SilentlyContinue
 & (Join-Path $sp 'Sysprep.exe') /generalize /oobe /shutdown /quiet
 if ($LASTEXITCODE -ne 0) {
   Write-Warning "Sysprep returned rc=$LASTEXITCODE - dumping Panther errors:"

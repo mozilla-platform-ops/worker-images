@@ -61,10 +61,6 @@ param(
     # The VM is attached a USER-assigned identity (no system-assigned), so bare
     # `az login --identity` fails ("Please run az login") — it must be told which one.
     [string] $IdentityClientId,
-    # Build-scoped GitHub token for puppet's tooltool download in the bake. Defaults to
-    # $env:GITHUB_TOKEN / $env:PACKER_GITHUB_API_TOKEN (CI sets these). Empty is OK —
-    # tooltool.py is public and downloads without a token. Not baked into the WIM.
-    [string] $GithubPat = ($env:GITHUB_TOKEN, $env:PACKER_GITHUB_API_TOKEN, '' | Where-Object { $_ } | Select-Object -First 1),
     [switch] $KeepArtifacts
 )
 
@@ -368,13 +364,12 @@ if ($Stages -contains 'build') {
     $pkrTmp = Join-Path $work 'pkrtmp'
     New-Item -ItemType Directory -Path $pkrTmp -Force | Out-Null
 
-    # Per-image var-file (gitignored under work/). winrm_password is sensitive.
+    # Keep credentials out of the variable file.
     $varFile = Join-Path $work 'build.pkrvars.hcl'
     @"
 source_vm_name   = "$vmName"
 switch_name      = "$switch"
 winrm_username   = "packer"
-winrm_password   = "$WinRMPassword"
 cpus             = $cpus
 memory_mb        = $memMb
 ronin_org        = "$roninOrg"
@@ -386,7 +381,6 @@ puppet_version   = "$puppetV"
 git_version      = "$gitV"
 openvox_version  = "$openvoxV"
 ronin_ext_src    = "$extSrc"
-github_pat       = "$GithubPat"
 windows_update   = $($winUpdate.ToString().ToLower())
 output_directory = "$($buildDir -replace '\\','/')"
 temp_path        = "$($pkrTmp -replace '\\','/')"
@@ -540,8 +534,10 @@ sbom_path        = "$($sbomMd -replace '\\','/')"
         }
     } -ArgumentList $cloneVm, $pkrLog, $wdLog, 'packer', $WinRMPassword
 
+    $previousWinrmPassword = [Environment]::GetEnvironmentVariable('PKR_VAR_winrm_password', 'Process')
     Push-Location $Root
     try {
+        $env:PKR_VAR_winrm_password = $WinRMPassword
         # Pass the DIRECTORY (.), not a single file: `packer build foo.pkr.hcl` loads
         # only that file and ignores variables.pkr.hcl, so var.* declarations go missing.
         & packer init .; if ($LASTEXITCODE) { throw "packer init rc=$LASTEXITCODE" }
@@ -595,8 +591,10 @@ sbom_path        = "$($sbomMd -replace '\\','/')"
         }
     }
     finally {
+        [Environment]::SetEnvironmentVariable('PKR_VAR_winrm_password', $previousWinrmPassword, 'Process')
         Pop-Location
         if ($watchdog) { Stop-Job $watchdog -ErrorAction SilentlyContinue; Remove-Job $watchdog -Force -ErrorAction SilentlyContinue }
+        if (Test-Path -LiteralPath $varFile) { Remove-Item -LiteralPath $varFile -Force -ErrorAction Stop }
     }
     if (-not (Test-Path $goldenWim)) { throw "build finished but golden WIM missing: $goldenWim" }
 }

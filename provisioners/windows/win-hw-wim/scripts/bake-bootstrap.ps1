@@ -117,7 +117,6 @@ try {
     # Preserve short YAML pins even when a historical commit is no longer reachable
     # from its branch: resolve the prefix, fetch that exact object, and never use HEAD.
     $headers = @{ Accept = 'application/vnd.github+json'; 'X-GitHub-Api-Version' = '2022-11-28' }
-    if ($env:CUSTOM_WIN_GITHUB_PAT) { $headers.Authorization = "Bearer $env:CUSTOM_WIN_GITHUB_PAT" }
     $commit = Invoke-RestMethod -Uri "https://api.github.com/repos/$org/$repo/commits/$hash" -Headers $headers
     $resolvedHash = "$($commit.sha)".Trim().ToLowerInvariant()
     if (($resolvedHash -notmatch '^[0-9a-f]{40}$') -or
@@ -187,16 +186,11 @@ $sysScript = 'C:\bake\run-puppet-system.ps1'
 $exitFile  = 'C:\bake\bake-puppet.exitcode'
 Remove-Item $puppetLog, $exitFile -ErrorAction SilentlyContinue
 
-# Child script executed by the SYSTEM task. Written BOM-less. A fresh SYSTEM process does
-# not inherit this WinRM session's env, so it re-resolves PATH from the machine env,
-# forwards the build-scoped GitHub token to the catalog (tooltool), and sets the role fact
-# explicitly. Puppet writes to console; Tee-Object captures it to the shared log the parent
-# tails (so output still streams into the packer/build log even if the VM is cleaned up).
+# Run Puppet as SYSTEM with an explicit PATH and role fact.
 $child = @"
 `$ErrorActionPreference = 'Continue'
 `$env:Path = [Environment]::GetEnvironmentVariable('Path','Machine')
 foreach (`$e in 'C:\Program Files\Puppet Labs\Puppet\bin','C:\Program Files\OpenVox\Puppet\bin','C:\Program Files\Git\cmd') { if (Test-Path `$e) { `$env:Path = `$e + ';' + `$env:Path } }
-`$env:custom_win_github_pat = '$($env:custom_win_github_pat)'
 `$env:FACTER_custom_win_role = '$role'
 Set-Location '$roninDir'
 # Write the puppet log as UTF-8, NOT via Tee-Object. Windows PowerShell 5.1's Tee-Object
