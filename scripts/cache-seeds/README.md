@@ -1,7 +1,8 @@
 # Gecko Hg and Git image seeds (WIP)
 
-These opt-in seeds contain Gecko Mercurial and Git history. They do not contain
-checked-out source files, pip packages, or other task dependencies. Hardware WIMs are
+These opt-in seeds contain Gecko Mercurial and Git history. Only the Linux Git
+seed also contains checked-out source files. No seed contains pip packages or
+other task dependencies. Hardware WIMs are
 not changed.
 
 The Linux and Windows parallel alpha workflows resolve the latest autoland
@@ -106,15 +107,18 @@ uses Hg, so no RelOps Git caches are created. Both Windows architectures use
 directory-cache state for Git; neither
 uses `C:\hg-shared` for Git. Hg and Git registrations are written together.
 
-Linux moves two extra seed directories, full and shallow, into the caches
-directory. D2G seeds have UID/GID 1000 and use the pinned decision's
+Linux seeds one full Git clone with checked-out files, not a depth-1 clone. It
+is registered as `gecko-level-<level>-checkouts-git-shallow`, because no Linux
+task requests the full Git cache. `run-task-git` fetches the task revision with
+`--depth=1` into the full clone and keeps the seeded history.
+`test_git_seed.py` checks this with the decision's `run-task-git`. The download
+size of that fetch on Gecko is not measured. D2G seeds have UID/GID 1000 and use the pinned decision's
 `run-task-git` cache initializer. Their `-v3-<hash>` suffix follows Gecko's
 decision repository type: an Hg decision hashes `run-task-hg`, even for Git
 tasks. A Git decision hashes `run-task-git`. External Docker cache suffixes
 remain outside this trial.
 
-Allow space for both Git seed formats and their runtime copies in addition to
-Hg. Full Gecko disk use and Linux restore time have not been measured in a
+On Windows, allow space for both Git seed formats in addition to Hg. Full Gecko disk use and Linux restore time have not been measured in a
 cloud build. Do not infer a speed gain from these local checks. The existing
 `benchmark.py` measures Hg only; Git reuse is covered by `test_git_seed.py`
 locally and still needs a fresh-image task test.
@@ -124,13 +128,13 @@ older D: pools or change tasksDir, cachesDir, or downloadsDir.
 
 ## Linux images
 
-Linux seeds one Gecko full-checkout cache. D2G images also register
-`relops-level-3-checkouts-sparse-hg58-v3-<run-task-hash>` for the OS integration
-startup test. No checkout option is needed
-for the Hg trial. Autoland decision `W2W5EeeBSJu1jaEnKQkzAw` has 3,435 Linux
+Every Linux image seeds the Git cache. Only D2G images also seed the Hg
+`gecko-level-<level>-checkouts` cache, because Linux D2G builder tasks still
+check out with Hg. The native GUI image seeds Git only. No checkout option is
+needed. Autoland decision `W2W5EeeBSJu1jaEnKQkzAw` has 3,435 Linux
 Docker-style Hg task definitions using the full cache and 453 using the sparse
 cache. These are task definitions, not measured task volume or cache-hit rates.
-Both checkout types work; the Gecko sparse cache is not preloaded.
+The Gecko and RelOps sparse caches are not preloaded.
 Other cache names continue to use the normal cold-checkout path.
 
 The image keeps each seed as a plain directory under
@@ -148,12 +152,9 @@ on a different filesystem from the caches directory, the hook registers no
 caches and tasks clone normally. Copying from the boot disk to an SSD costs
 more than it saves.
 
-D2G seeds have UID/GID 1000 from the image build. D2G registers one Hg seed as
-two caches, Gecko full and RelOps sparse. The RelOps cache gets a full `cp -a`
-copy on the boot disk, because Hg writes revlogs in place and the two caches
-must not share files. Native Linux moves one store. If an install is
-interrupted, a cache directory that is already in place is kept on the next
-boot.
+D2G seeds have UID/GID 1000 from the image build. Each seed directory backs
+exactly one cache, and boot never copies a seed. If an install is interrupted,
+a cache directory that is already in place is kept on the next boot.
 
 Native tasks use `checkouts/hg-shared`. D2G tasks use `checkouts/hg-store` and
 cache names with the `-hg58-v3-<run-task-hash>` suffix. The builder obtains
@@ -170,8 +171,8 @@ the new names. There are no wildcard cache names.
 
 The automatic OS integration suite is not a cache benchmark. Its replication
 step changes cache names to `relops-level-3-*` in the deployed main-branch hook.
-The Windows ARM64 and Linux D2G seeds include the matching RelOps sparse cache.
-The run-task hash must match on Linux. A passing startup test alone does not
+The Windows ARM64 seed includes the matching RelOps sparse cache. Linux seeds do
+not, so the Linux startup test uses a cold checkout. A passing startup test alone does not
 prove seed reuse or a speed gain; check the seed marker and checkout log.
 Most OS tests use downloaded test artifacts and do not request a Gecko checkout.
 

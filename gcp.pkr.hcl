@@ -90,11 +90,14 @@ variable "access_token" {
   sensitive = true
 }
 
+# Seeds: full Git delta resolution uses up to 20 threads, and the larger image
+# takes longer than the 5m default to register.
 source "googlecompute" "gw-fxci-gcp-l1-2404-gui-alpha" {
   disk_size           = var.disk_size
   image_licenses      = ["projects/vm-options/global/licenses/enable-vmx"]
   image_name          = var.image_name
-  machine_type        = null
+  machine_type        = "c2d-standard-56"
+  state_timeout       = "30m"
   project_id          = var.project_id
   source_image_family = var.source_image_family
   ssh_username        = "ubuntu"
@@ -107,7 +110,8 @@ source "googlecompute" "trusted-gw-fxci-gcp-l3-2404-headless-alpha" {
   disk_type               = "pd-ssd"
   image_licenses          = ["projects/vm-options/global/licenses/enable-vmx"]
   image_name              = var.image_name
-  machine_type            = null
+  machine_type            = "c2d-standard-56"
+  state_timeout           = "30m"
   project_id              = var.project_id
   source_image_family     = var.source_image_family
   ssh_username            = "ubuntu"
@@ -121,7 +125,8 @@ source "googlecompute" "gw-fxci-gcp-l1-2404-headless-alpha" {
   disk_type               = "pd-ssd"
   image_licenses          = ["projects/vm-options/global/licenses/enable-vmx"]
   image_name              = var.image_name
-  machine_type            = null
+  machine_type            = "c2d-standard-56"
+  state_timeout           = "30m"
   project_id              = var.project_id
   source_image_family     = var.source_image_family
   ssh_username            = "ubuntu"
@@ -134,7 +139,8 @@ source "googlecompute" "gw-fxci-gcp-l1-2404-arm64-headless-alpha" {
   disk_size               = var.disk_size
   image_licenses          = ["projects/vm-options/global/licenses/enable-vmx"]
   image_name              = var.image_name
-  machine_type            = "t2a-standard-4"
+  machine_type            = "t2a-standard-48"
+  state_timeout           = "30m"
   project_id              = var.project_id
   source_image_family     = var.source_image_family
   ssh_username            = "ubuntu"
@@ -147,7 +153,8 @@ source "googlecompute" "trusted-gw-fxci-gcp-l3-2404-arm64-headless-alpha" {
   disk_size               = var.disk_size
   image_licenses          = ["projects/vm-options/global/licenses/enable-vmx"]
   image_name              = var.image_name
-  machine_type            = "t2a-standard-4"
+  machine_type            = "t2a-standard-48"
+  state_timeout           = "30m"
   project_id              = var.project_id
   source_image_family     = var.source_image_family
   ssh_username            = "ubuntu"

@@ -87,10 +87,7 @@ def initialize_run_task_cache(run_task, cache):
 
 def cache_names(mode, level, digest=None):
     suffix = f"-hg58-v3-{digest[:20]}" if mode == "linux-d2g" else ""
-    names = [f"gecko-level-{level}-checkouts{suffix}"]
-    if mode == "linux-d2g":
-        names.append(f"relops-level-3-checkouts-sparse{suffix}")
-    return names
+    return [f"gecko-level-{level}-checkouts{suffix}"]
 
 
 def prepare_cache(cache, mode):
@@ -101,17 +98,6 @@ def prepare_cache(cache, mode):
 
 def same_disk(a, b):
     return a.stat().st_dev == b.stat().st_dev
-
-
-def place_cache(source, destination, move):
-    if move:
-        source.rename(destination)
-        return
-    with tempfile.TemporaryDirectory(prefix=".install-", dir=destination.parent) as temp:
-        # Separate copies: Hg revlogs are written in place, so caches must not share files.
-        copy = Path(temp) / "cache"
-        subprocess.run(["cp", "-a", "--", str(source), str(copy)], check=True)
-        copy.rename(destination)
 
 
 def build_git(revision, mode, level, seed_root, decision, git_executable="git"):
@@ -152,27 +138,22 @@ def build_git(revision, mode, level, seed_root, decision, git_executable="git"):
                            env=dict(os.environ, GIT_CONFIG_NOSYSTEM="1",
                                     GIT_CONFIG_GLOBAL=os.devnull, GIT_TERMINAL_PROMPT="0")).stdout
 
-        full = staging / "full" / "gecko"
-        shallow = staging / "shallow" / "gecko"
-        for name in ("full", "shallow"):
-            cache = staging / name
-            cache.mkdir()
-            if mode == "linux-d2g":
-                initialize_run_task_cache(wrapper, cache)
-        git("init", full)
-        git("-C", full, "remote", "add", "origin", GIT_SOURCE)
-        git("-C", full, "fetch", "--progress", "--no-tags", "origin", revision)
-        git("-C", full, "update-ref", "HEAD", revision)
-        # file:// forces Git transport; no alternates or hardlinked object files.
-        git("clone", "--progress", "--no-checkout", "--no-hardlinks", "--depth=1", full.resolve().as_uri(), shallow)
-        git("-C", shallow, "remote", "set-url", "origin", GIT_SOURCE)
-        for name, repo in (("full", full), ("shallow", shallow)):
-            if git("-C", repo, "rev-parse", "--verify", "HEAD^{commit}", capture=True).strip() != revision:
-                raise ValueError("The Git seed does not contain the selected autoland revision at HEAD")
-            (repo / ".git/worker-image-seed").write_text(revision + "\n")
-            cache_name = "checkouts-git" + ("-shallow" if name == "shallow" else "")
-            spec["cache_sources"][f"gecko-level-{level}-{cache_name}{suffix}"] = name
-            prepare_cache(staging / name, mode)
+        cache = staging / "full"
+        repo = cache / "gecko"
+        cache.mkdir()
+        if mode == "linux-d2g":
+            initialize_run_task_cache(wrapper, cache)
+        git("init", repo)
+        git("-C", repo, "remote", "add", "origin", GIT_SOURCE)
+        git("-C", repo, "fetch", "--progress", "--no-tags", "origin", revision)
+        # Full history plus checked-out files, so the first task only updates changed files.
+        git("-C", repo, "checkout", "--quiet", "--force", "--detach", revision)
+        if git("-C", repo, "rev-parse", "--verify", "HEAD^{commit}", capture=True).strip() != revision:
+            raise ValueError("The Git seed does not contain the selected autoland revision at HEAD")
+        (repo / ".git/worker-image-seed").write_text(revision + "\n")
+        # Linux tasks request the shallow cache; a full clone there still works with run-task-git.
+        spec["cache_sources"][f"gecko-level-{level}-checkouts-git-shallow{suffix}"] = "full"
+        prepare_cache(cache, mode)
         spec["cache_names"] = list(spec["cache_sources"])
         (staging / "manifest.json").write_text(json.dumps(spec, indent=2) + "\n")
         staging.chmod(0o700)
@@ -217,29 +198,28 @@ def install(seed_root, destination_root, state_file, extra_seeds=()):
         return
     entries = []
     names = set()
+    sources = set()
     for root in (seed_root, *extra_seeds):
         spec = json.loads((root / "manifest.json").read_text())
         for name in spec["cache_names"]:
             source = spec.get("cache_sources", {}).get(name, "cache")
-            if name in names or source not in ("cache", "full", "shallow"):
-                raise ValueError("Duplicate cache name or invalid cache source")
+            # Each seed directory is moved, not copied, so it can back only one cache.
+            if name in names or (root, source) in sources or source not in ("cache", "full"):
+                raise ValueError("Duplicate cache name, shared seed directory, or invalid cache source")
             names.add(name)
+            sources.add((root, source))
             entries.append((root, spec, name, source))
     state = {}
     destination_root.mkdir(parents=True, exist_ok=True)
     # Idle caches must not be accessible without a scoped task mount.
     destination_root.chmod(0o700)
     if any(not same_disk(root, destination_root) for root, *_ in entries):
-        # Local-SSD pools: copying from the boot disk costs more than a cold clone.
+        # Local-SSD pools: copying from the boot disk costs more than a cold clone, so skip.
         print(f"Seed is not on the {destination_root} disk; tasks will clone normally", flush=True)
         return
-    # The last user of each seed directory moves it; earlier users copy it.
-    last = {(root, source): name for root, _, name, source in entries}
     for seed_root, spec, name, source in entries:
-        relops_cache = (spec["mode"] == "linux-d2g"
-                        and re.fullmatch(r"relops-level-3-checkouts-sparse(?:-hg58-v3-[0-9a-f]{20})?", name))
-        git_cache = re.fullmatch(r"gecko-level-[13]-checkouts-git(?:-shallow)?(?:-v3-[0-9a-f]{20})?", name)
-        if not (relops_cache or git_cache) and not re.fullmatch(r"gecko-level-[13]-checkouts(?:-sparse)?(?:-hg58-v3-[0-9a-f]{20})?", name):
+        git_cache = re.fullmatch(r"gecko-level-[13]-checkouts-git-shallow(?:-v3-[0-9a-f]{20})?", name)
+        if not git_cache and not re.fullmatch(r"gecko-level-[13]-checkouts(?:-sparse)?(?:-hg58-v3-[0-9a-f]{20})?", name):
             raise ValueError("Invalid cache name in seed manifest")
         destination = destination_root / name
         started = time.monotonic()
@@ -251,7 +231,7 @@ def install(seed_root, destination_root, state_file, extra_seeds=()):
                 raise PermissionError("Restore D2G seeds as root to preserve UID/GID 1000")
             print(f"Installing checkout cache: {name}", flush=True)
             # The seed is built into the trusted image, outside task-writable paths.
-            place_cache(seed_root / source, destination, last[(seed_root, source)] == name)
+            (seed_root / source).rename(destination)
             print(f"Installed {name} in {time.monotonic() - started:.1f}s", flush=True)
         state[name] = [{"key": name, "location": str(destination.resolve()),
                         "created": spec["created"]}]
