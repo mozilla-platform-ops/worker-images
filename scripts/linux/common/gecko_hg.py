@@ -138,21 +138,21 @@ def build_git(revision, mode, level, seed_root, decision, git_executable="git"):
                            env=dict(os.environ, GIT_CONFIG_NOSYSTEM="1",
                                     GIT_CONFIG_GLOBAL=os.devnull, GIT_TERMINAL_PROMPT="0")).stdout
 
-        cache = staging / "full"
+        cache = staging / "shallow"
         repo = cache / "gecko"
         cache.mkdir()
         if mode == "linux-d2g":
             initialize_run_task_cache(wrapper, cache)
         git("init", repo)
         git("-C", repo, "remote", "add", "origin", GIT_SOURCE)
-        git("-C", repo, "fetch", "--progress", "--no-tags", "origin", revision)
-        # Full history plus checked-out files, so the first task only updates changed files.
-        git("-C", repo, "checkout", "--quiet", "--force", "--detach", revision)
+        # Depth 1 and no checked-out files: on pd-balanced, a full history made the task's
+        # --depth=1 fetch take ~110 s, and checking 486k existing files took 2x longer than writing them.
+        git("-C", repo, "fetch", "--progress", "--no-tags", "--depth=1", "origin", revision)
+        git("-C", repo, "update-ref", "HEAD", revision)
         if git("-C", repo, "rev-parse", "--verify", "HEAD^{commit}", capture=True).strip() != revision:
             raise ValueError("The Git seed does not contain the selected autoland revision at HEAD")
         (repo / ".git/worker-image-seed").write_text(revision + "\n")
-        # Linux tasks request the shallow cache; a full clone there still works with run-task-git.
-        spec["cache_sources"][f"gecko-level-{level}-checkouts-git-shallow{suffix}"] = "full"
+        spec["cache_sources"][f"gecko-level-{level}-checkouts-git-shallow{suffix}"] = "shallow"
         prepare_cache(cache, mode)
         spec["cache_names"] = list(spec["cache_sources"])
         (staging / "manifest.json").write_text(json.dumps(spec, indent=2) + "\n")
@@ -204,7 +204,7 @@ def install(seed_root, destination_root, state_file, extra_seeds=()):
         for name in spec["cache_names"]:
             source = spec.get("cache_sources", {}).get(name, "cache")
             # Each seed directory is moved, not copied, so it can back only one cache.
-            if name in names or (root, source) in sources or source not in ("cache", "full"):
+            if name in names or (root, source) in sources or source not in ("cache", "shallow"):
                 raise ValueError("Duplicate cache name, shared seed directory, or invalid cache source")
             names.add(name)
             sources.add((root, source))

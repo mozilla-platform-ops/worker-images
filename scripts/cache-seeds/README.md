@@ -1,8 +1,7 @@
 # Gecko Hg and Git image seeds (WIP)
 
-These opt-in seeds contain Gecko Mercurial and Git history. Only the Linux Git
-seed also contains checked-out source files. No seed contains pip packages or
-other task dependencies. Hardware WIMs are
+These opt-in seeds contain Gecko Mercurial and Git history. They do not contain
+checked-out source files, pip packages, or other task dependencies. Hardware WIMs are
 not changed.
 
 The Linux and Windows parallel alpha workflows resolve the latest autoland
@@ -107,12 +106,9 @@ uses Hg, so no RelOps Git caches are created. Both Windows architectures use
 directory-cache state for Git; neither
 uses `C:\hg-shared` for Git. Hg and Git registrations are written together.
 
-Linux seeds one full Git clone with checked-out files, not a depth-1 clone. It
-is registered as `gecko-level-<level>-checkouts-git-shallow`, because no Linux
-task requests the full Git cache. `run-task-git` fetches the task revision with
-`--depth=1` into the full clone and keeps the seeded history.
-`test_git_seed.py` checks this with the decision's `run-task-git`. The download
-size of that fetch on Gecko is not measured. D2G seeds have UID/GID 1000 and use the pinned decision's
+Linux seeds a depth-1 Git clone with no checked-out files as
+`gecko-level-<level>-checkouts-git-shallow`. A full clone was slower than a
+cold shallow clone on pd-balanced boot disks. D2G seeds have UID/GID 1000 and use the pinned decision's
 `run-task-git` cache initializer. Their `-v3-<hash>` suffix follows Gecko's
 decision repository type: an Hg decision hashes `run-task-hg`, even for Git
 tasks. A Git decision hashes `run-task-git`. External Docker cache suffixes
