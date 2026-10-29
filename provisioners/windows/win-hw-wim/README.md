@@ -30,6 +30,25 @@ your base install.wim
   7. deploy                  existing PXE dance -> first-boot personalization + worker registration
 ```
 
+## Plain accessibility WIM
+
+`win11-26h2-a11y` exports Windows 11 Pro from its source ISO as a single-image
+WIM at index 1, injects the configured driver packs offline, and publishes the
+WIM and its final SHA-256. It does not run the Ronin bake or Windows Update.
+Build it with the existing Windows HW WIM Build workflow and image choice.
+
+Its driver ZIP is extracted from HPE Gen12 SPP 2026.09.00.00:
+`resources/drivers/hpe-gen12-spp-2026.09.00.00-win-driverpack-12.01.zip`
+in the private `hardwareimaging` account. SHA-256:
+`6fa6c2c3c7299a44f99d7c365fdba92825cc92d7635a65a0d7533a4f1e726761`.
+The build host downloads it using its existing Azure identity. Only the
+extracted INF drivers are added; component installers and firmware are not run.
+HPE's package metadata lists Windows Server support; Windows 11 compatibility
+and device matching must be validated on the DL325 Gen12 before rollout.
+
+Run `powershell.exe -NoProfile -File ci/test-wim-pool-build.ps1` for local
+regression checks. Windows image servicing and Azure downloads are mocked.
+
 ## Layout
 
 | Path | Purpose |

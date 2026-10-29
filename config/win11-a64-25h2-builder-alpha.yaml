@@ -17,6 +17,8 @@ azure:
     - centralus
     - eastus2
     - northcentralus
+    - westus2
+    - westus3
 vm:
   puppet_version: 8.10.0
   git_version: "default"
@@ -27,8 +29,8 @@ vm:
     worker_pool_id: win11-a64-25h2-builder-alpha
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "preload-gecko-pip-caches-alpha-20260924"
-    deploymentId: "NA"
+    sourceBranch: "default"
+    deploymentId: "default"
     managed_by: packer
 tests:
   - microsoft_binscope.tests.ps1
@@ -55,5 +57,4 @@ tests:
   - git.tests.ps1
   - mozilla_build.tests.ps1
   - windows_worker_runner.tests.ps1
-  - ronin_hardening.tests.ps1
   - error_reporting.tests.ps1

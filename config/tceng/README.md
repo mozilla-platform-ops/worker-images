@@ -108,7 +108,6 @@ azure:
     - centralus
     - eastus
   managed_image_resource_group_name: "rg-tc-eng-images"   # Destination image resource group
-  # managed_image_name_suffix: fuzzing    # Optional; only needed when consumers expect a suffix
   managed_image_storage_account_type: "Standard_LRS"      # Type of storage for managed image
 
 vm:
@@ -138,8 +137,6 @@ You can manually run the workflow and supply `"image_development"` as the build 
 TCEng Azure configs default to the TCEng Azure subscription when `azure.subscription` is omitted or set to `tceng`.
 
 Use `azure.subscription: fxci-untrusted` for images that must be consumed by the `azure2` provider in `fxci-config`. Those images are built with the FXCI untrusted Azure credentials, and the destination resource group should be one that exists in that subscription, such as `rg-packer-worker-images`.
-
-If `fxci-config` references the image with `version: NA` and a `deployment_id`, set `azure.managed_image_name_suffix` to the same deployment ID. The TCEng Azure build uses UUID-based managed image names, and the suffix keeps the final Azure image name aligned with what `fxci-config` generates.
 
 ---
 

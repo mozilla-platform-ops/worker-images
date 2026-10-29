@@ -16,6 +16,7 @@ tasks:
         - gecko.v2.mozilla-central.latest.taskgraph.decision-os-integration
       include-attrs:
         kind:
+          - generate-profile
           - source-test
           - startup-test
           - test

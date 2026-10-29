@@ -5,9 +5,10 @@ image:
   workload_identity_provider_project_number: 324168772199
   image_name: gw-fxci-gcp-l1-2404-arm64-headless-googlecompute-alpha
   zone: us-central1-a
+  fallback_zones: [us-central1-b, us-central1-f]
 vm:
   disk_size: 60
-  taskcluster_version: 110.1.0
+  taskcluster_version: 113.2.0
   tc_arch: ARM64
   script_paths:
   - "scripts/linux/ubuntu-2404-headless-arm64-headless"

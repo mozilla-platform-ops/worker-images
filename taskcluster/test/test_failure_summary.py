@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-"""Tests for ci/hw_failure_summary.py.
+"""Tests for ci/failure_summary.py.
 
 Loaded by path like the runner it belongs to. No test here reaches the API: the
 client is faked, so what is pinned is the request this repo sends and what it
@@ -18,7 +18,7 @@ import unittest
 import unittest.mock
 from pathlib import Path
 
-MODULE = Path(__file__).resolve().parent.parent.parent / "ci" / "hw_failure_summary.py"
+MODULE = Path(__file__).resolve().parent.parent.parent / "ci" / "failure_summary.py"
 
 GROUP = "DECISIONGROUPID1234567"
 
@@ -28,7 +28,7 @@ def _load_module():
     requests_module.RequestException = Exception
     sys.modules.setdefault("requests", requests_module)
 
-    spec = importlib.util.spec_from_file_location("hw_failure_summary", MODULE)
+    spec = importlib.util.spec_from_file_location("failure_summary", MODULE)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module

@@ -13,9 +13,6 @@ function New-AzWorkerImage {
         [Switch] $PackerDebug
     )
 
-    Set-PSRepository PSGallery -InstallationPolicy Trusted
-    Install-Module powershell-yaml -ErrorAction Stop
-
     switch ($Team) {
         "tceng" {
             $YamlPath = "config/tceng/$Key.yaml"
@@ -65,7 +62,6 @@ function New-AzWorkerImage {
     if ($YAML.vm["taskcluster_ref"]) { $ENV:PKR_VAR_taskcluster_ref = $YAML.vm["taskcluster_ref"] }
     if ($YAML.vm["taskcluster_repo"]) { $ENV:PKR_VAR_taskcluster_repo = $YAML.vm["taskcluster_repo"] }
     if ($YAML.vm["providerType"]) { $ENV:PKR_VAR_provider_type = $YAML.vm["providerType"] }
-    if ($YAML.vm["tc_arch"]) { $ENV:PKR_VAR_tc_arch = $YAML.vm["tc_arch"] }
     if ($YAML.vm.tags["base_image"]) { $ENV:PKR_VAR_base_image = $YAML.vm.tags["base_image"] }
     if ($YAML.vm.tags["sourceBranch"]) { $ENV:PKR_VAR_source_branch = $YAML.vm.tags["sourceBranch"] }
     if ($YAML.vm.tags["sourceRepository"]) { $ENV:PKR_VAR_source_repository = $YAML.vm.tags["sourceRepository"] }
@@ -100,11 +96,7 @@ function New-AzWorkerImage {
     $ENV:PKR_VAR_oidc_request_token = $oidc_request_token
 
     if ($Team -eq "tceng" -and $ENV:PKR_VAR_uuid) {
-        $managedImageName = "imageset-$($ENV:PKR_VAR_uuid)-$Location"
-        if ($YAML.azure["managed_image_name_suffix"]) {
-            $managedImageName = "$managedImageName-$($YAML.azure["managed_image_name_suffix"])"
-        }
-        $ENV:PKR_VAR_managed_image_name = $managedImageName
+        $ENV:PKR_VAR_managed_image_name = "imageset-$($ENV:PKR_VAR_uuid)-$Location"
     }
     else {
         switch -Wildcard ($Key) {

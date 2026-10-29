@@ -5,13 +5,13 @@ image:
   sku: 2022-datacenter-azure-edition
   version: latest
 azure:
+  subscription: fxci-untrusted
   locations:
-    - westus2
-  managed_image_resource_group_name: "rg-tc-eng-images"
+    - eastus
+  managed_image_resource_group_name: "rg-packer-worker-images"
   managed_image_storage_account_type: "Standard_LRS"
 vm:
   providerType: "azure"
   vm_size: Standard_NV12ads_A10_v5
   bootstrapscript: "generic-worker-win2022-staging"
-  tc_arch: "amd64"
   tags: {}

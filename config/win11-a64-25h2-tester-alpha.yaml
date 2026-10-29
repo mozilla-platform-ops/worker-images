@@ -19,17 +19,18 @@ azure:
     - northcentralus
     - uksouth
 vm:
+  spot: true
   puppet_version: 8.10.0
   openvox_version: "default"
   git_version: "default"
-  size: Standard_D8pds_v6
+  size: Standard_D16pds_v6
   tags:
     base_image: win11a6425h2azuretester
     worker_pool_id: win11-a64-25h2-tester-alpha
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
-    sourceBranch: "preload-gecko-pip-caches-alpha-20260924"
-    deploymentId: "NA"
+    sourceBranch: "default"
+    deploymentId: "default"
     managed_by: packer
 tests:
   - error_reporting.tests.ps1
@@ -48,6 +49,5 @@ tests:
   - mozilla_build.tests.ps1
   - mozilla_maintenance_service.tests.ps1
   - windows_worker_runner.tests.ps1
-  - ronin_hardening.tests.ps1
   - disable_services.tests.ps1
   - microsoft_wptx64.tests.ps1

@@ -1,21 +1,20 @@
 #!/bin/bash
+
+set -exv
+
 if [[ -z "${MY_CLOUD}" ]]; then
   echo "Error: MY_CLOUD environment variable not set. Expected one of: google, azure, aws." >&2
   exit 1
 fi
 
+###############################################################################
+# TASKCLUSTER_REF can be a git commit SHA, a git branch name, or a git tag name
+# (i.e. for a taskcluster version number, prefix with 'v' to make it a git tag)
+###############################################################################
 if [[ -z "${TASKCLUSTER_REF}" ]]; then
   TASKCLUSTER_REF="main"
 fi
-
-set -exv
-#exec &> /var/log/bootstrap.log
-
-##############################################################################
-# TASKCLUSTER_REF can be a git commit SHA, a git branch name, or a git tag name
-# (i.e. for a taskcluster version number, prefix with 'v' to make it a git tag)
 TASKCLUSTER_REPO='https://github.com/taskcluster/taskcluster'
-##############################################################################
 
 function retry {
   set +e
@@ -43,10 +42,10 @@ start_time="$(date '+%s')"
 
 case "$(uname -m)" in
   x86_64)
-    export ARCH=amd64
+    ARCH=amd64
     ;;
   aarch64)
-    export ARCH=arm64
+    ARCH=arm64
     ;;
   *)
     echo "Unsupported architecture '$(uname -m)' - currently bootstrap.sh only supports architectures x86_64 and aarch64" >&2
@@ -69,6 +68,18 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docke
   $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
 retry apt-get update
 retry apt-get install -y docker-ce docker-ce-cli containerd.io
+
+mkdir -p /etc/docker
+cat > /etc/docker/daemon.json <<'EOF'
+{
+  "mtu": 1400,
+  "default-network-opts": {
+    "bridge": {
+      "com.docker.network.driver.mtu": "1400"
+    }
+  }
+}
+EOF
 retry docker run hello-world
 
 # configure kvm vmware backdoor
@@ -84,19 +95,31 @@ echo "kernel.core_pattern = core" >> /etc/sysctl.d/90-custom.conf
 # fix 'bugmon-process: error: rr needs /proc/sys/kernel/perf_event_paranoid <= 1, but it is 4'
 echo 'kernel.perf_event_paranoid = 1' >> /etc/sysctl.d/90-custom.conf
 
+# disable 5-level paging so that rr recordings can be replayed by pernosco
+# (on CPUs with LA57 the kernel otherwise enables 57-bit virtual addressing).
+# Ubuntu cloud images set GRUB_CMDLINE_LINUX_DEFAULT in
+# /etc/default/grub.d/50-cloudimg-settings.cfg, so append in a later file.
+if [ "${ARCH}" == 'amd64' ]; then
+    mkdir -p /etc/default/grub.d
+    echo 'GRUB_CMDLINE_LINUX_DEFAULT="${GRUB_CMDLINE_LINUX_DEFAULT} no5lvl"' > /etc/default/grub.d/99-no5lvl.cfg
+    update-grub
+    grep -q 'no5lvl' /boot/grub/grub.cfg
+fi
+
 # create group for running snap
 groupadd snap_sudo
 echo '%snap_sudo ALL=(ALL:ALL) NOPASSWD: /usr/bin/snap' | EDITOR='tee -a' visudo
 
 # build generic-worker/livelog/start-worker/taskcluster-proxy from ${TASKCLUSTER_REF} commit / branch / tag etc
 retry apt-get install -y git tar
-retry curl -fsSL 'https://dl.google.com/go/go1.26.0.linux-amd64.tar.gz' > go.tar.gz
-tar xvfz go.tar.gz -C /usr/local
+GO_VERSION="$(retry curl -fsSL 'https://go.dev/VERSION?m=text' | head -1)"
+retry curl -fsSL "https://dl.google.com/go/${GO_VERSION}.linux-${ARCH}.tar.gz" > go.tar.gz
+tar xfz go.tar.gz -C /usr/local
 export HOME=/root
 export GOPATH=~/go
 export GOROOT=/usr/local/go
 export PATH="${GOROOT}/bin:${GOPATH}/bin:${PATH}"
-export GCO_ENABLED=0
+export CGO_ENABLED=0
 git clone "${TASKCLUSTER_REPO}"
 cd taskcluster
 git checkout "${TASKCLUSTER_REF}"

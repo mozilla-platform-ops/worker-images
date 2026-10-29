@@ -10,13 +10,11 @@ azure:
     - centralus
     - eastus
   managed_image_resource_group_name: "rg-packer-worker-images"
-  managed_image_name_suffix: fuzzing
   managed_image_storage_account_type: "Standard_LRS"
 vm:
   providerType: "azure"
   vm_size: Standard_D2s_v3
   bootstrapscript: "generic-worker-win2022"
-  tc_arch: "amd64"
-  taskcluster_version: 108.1.0
+  taskcluster_version: 113.1.3
   tags:
     - image_set: markco-generic-worker-win2022

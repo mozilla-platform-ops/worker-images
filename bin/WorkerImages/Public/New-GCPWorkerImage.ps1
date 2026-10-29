@@ -11,9 +11,6 @@ function New-GCPWorkerImage {
         [String] $Team
     )
 
-    Set-PSRepository PSGallery -InstallationPolicy Trusted
-    Install-Module powershell-yaml -ErrorAction Stop
-
     if ($Team -and $Team -ieq "tceng") {
         $YamlPath      = "config/tceng/$Key.yaml"
         $PackerHCLPath = "packer/tceng-gcp.pkr.hcl"
@@ -92,7 +89,12 @@ function New-GCPWorkerImage {
         packer build -force $PackerHCLPath
     } else {
         $builder = "googlecompute.$Key"
-        Write-Host "packer build --only $builder -force $PackerHCLPath"
-        packer build --only $builder -force $PackerHCLPath
+        # Retry in fallback_zones when GCP has no capacity (common for ARM64).
+        foreach ($zone in @($YAML.image["zone"]) + @($YAML.image["fallback_zones"]) | Where-Object { $_ }) {
+            $ENV:PKR_VAR_zone = $zone
+            Write-Host "packer build --only $builder -force $PackerHCLPath (zone: $zone)"
+            packer build --only $builder -force $PackerHCLPath 2>&1 | Tee-Object -Variable out
+            if ($LASTEXITCODE -eq 0 -or -not ($out -match 'STOCKOUT')) { break }
+        }
     }
 }

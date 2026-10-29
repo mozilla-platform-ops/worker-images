@@ -11,6 +11,11 @@ on:
           - generic-worker-ubuntu-24-04
           - generic-worker-ubuntu-24-04-arm64
           - generic-worker-ubuntu-24-04-staging
+          - generic-worker-ubuntu-24-04-arm64-staging
+      TASKCLUSTER_REF:
+        type: string
+        description: Git reference (branch, tag, or commit) to use
+        default: main
       aws_account:
         type: choice
         description: Choose which AWS account to build in
@@ -99,7 +104,10 @@ jobs:
 
       - name: Run Packer
         shell: pwsh
+        env:
+          TASKCLUSTER_REF: ${{ github.event.inputs.TASKCLUSTER_REF }}
         run: |
+          $ENV:PKR_VAR_taskcluster_ref = $ENV:TASKCLUSTER_REF
           Import-Module "${{ github.workspace }}/bin/WorkerImages/WorkerImages.psm1"
           $Vars = @{
             Key     = '${{ github.event.inputs.config }}'

@@ -77,7 +77,7 @@ HW_POOLS_MODULE = (
 )
 
 
-FAILURE_SUMMARY_MODULE = Path(__file__).resolve().parent / "hw_failure_summary.py"
+FAILURE_SUMMARY_MODULE = Path(__file__).resolve().parent / "failure_summary.py"
 BASELINE_MODULE = Path(__file__).resolve().parent / "hw_baseline.py"
 SCORE_SUMMARY_MODULE = Path(__file__).resolve().parent / "hw_score_summary.py"
 
@@ -92,7 +92,7 @@ def _load_by_path(name: str, path: Path):
 
 
 hw_pools = _load_by_path("hw_pools", HW_POOLS_MODULE)
-hw_failure_summary = _load_by_path("hw_failure_summary", FAILURE_SUMMARY_MODULE)
+failure_summaries = _load_by_path("failure_summary", FAILURE_SUMMARY_MODULE)
 hw_baseline = _load_by_path("hw_baseline", BASELINE_MODULE)
 hw_score_summary = _load_by_path("hw_score_summary", SCORE_SUMMARY_MODULE)
 
@@ -2113,7 +2113,7 @@ def main() -> int:
     # run has no failing task to read -- nothing ran -- so it makes no call.
     failure_summary = []
     if failed_overall:
-        failure_summary, _ = hw_failure_summary.build(
+        failure_summary, _ = failure_summaries.build(
             queue, runs, replicated_tasks, drift, root_url, warn
         )
 

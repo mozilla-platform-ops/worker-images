@@ -1,5 +1,6 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+Import-Module "$PSScriptRoot/../bin/WorkerImages"
 
 function Set-OutputValue {
     param(
@@ -22,7 +23,8 @@ $prodImages = @($yaml.images.production)
 $trustedImages = @(
     Get-ChildItem -Path "./config" -File -Filter "trusted-*.yaml" |
         ForEach-Object { $_.BaseName } |
-        Where-Object { $_ -match "^trusted-(?!gw-fxci-gcp).*" -and $_ -notmatch "alpha" } |
+        # Core candidates remain manual builds pending workload qualification.
+        Where-Object { $_ -match "^trusted-(?!gw-fxci-gcp).*" -and $_ -notmatch "alpha|core" } |
         Sort-Object
 )
 

@@ -1,5 +1,17 @@
 ---
 pools:
+  # RELOPS-2612: route the accessibility host to the non-Ronin implementation branch.
+  # Stage the single-edition WIM/media and deployment secrets before PXE testing.
+  - name: "win11-26h2-a11y"
+    Description: "Standalone accessibility Windows installation"
+    dev: "relops-2612-non-ronin-pools"
+    ronin: false
+    bootstrap_script: "a11y-win.ps1"
+    image: "win11-26h2-a11y"
+    secret_date: "10-05-2026"
+    domain_suffix: "corpdmz.mdc1.mozilla.com"
+    nodes:
+      - a11y
   - name: "win11-64-24h2-hw-ref"
     openvox_version: "8.19.2"
     puppet_version: "8.10.0"
@@ -9,7 +21,7 @@ pools:
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "master"
-    hash: "f328b45d"
+    hash: "2ed103138ddb3408b3511444a52316e823d6eadf"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -27,20 +39,15 @@ pools:
     - t-nuc12-015
   - name: "win11-64-24h2-hw-ref-alpha"
     puppet_version: "8.10.0"
-    openvox_version: "8.19.2"
-    git_version: "2.50.0"
+    openvox_version: "8.31.1"
+    git_version: "2.56.0.2"
     Description: "NUC12 Hardware Reference Staging/Testing Pool"
-    # RELOPS-2584: run this pool's deploy from the hardening branch alongside
-    # win11-64-24h2-hw-alpha. This retires both the paused RELOPS-2487 nuc-wim-pipeline
-    # canary and the ronin_puppet#1408 pin. Puppet is
-    # ronin_puppet#relops-2584-no-hw-obs-alpha, which is mainline with
-    # hardware_observability (nsclient + fleetbench) commented out on this role.
-    dev: "relops-2584-windows-hw-deployment-hardening"
-    image: "win11-24h2-hw-20260908-172915"
+    # Reuse the validated WIM to test Defender hardening in ronin_puppet#1483.
+    image: "win11-24h2-hw-test-20260930-201046"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "relops-2584-no-hw-obs-alpha"
-    hash: "e997775"
+    src_Branch: "RELOPS-2433-defender-hardening-only"
+    hash: "f13cf4c9809e2d98107bf1c8267a3b85c367674e"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -145,19 +152,15 @@ pools:
     - nuc13-115
   - name: "win11-64-24h2-hw-alpha"
     puppet_version: "8.10.0"
-    openvox_version: "8.19.2"
-    git_version: "2.50.1"
+    openvox_version: "8.31.1"
+    git_version: "2.56.0.2"
     Description: "NUC12 Hardware Performance Staging/Testing Pool"
-    # RELOPS-2584: run this pool's deploy from the hardening branch so the nodes pull
-    # OS-deploy/Get-Bootstrap/bootstrap and the new sshd_config from it. Puppet is
-    # ronin_puppet#relops-2584-no-hw-obs-alpha, which is mainline with
-    # hardware_observability (nsclient + fleetbench) commented out on this role.
-    dev: "relops-2584-windows-hw-deployment-hardening"
-    image: "win11-24h2-hw-20260908-172915"
+    # Reuse the validated WIM to test Defender hardening in ronin_puppet#1483.
+    image: "win11-24h2-hw-test-20260930-201046"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "relops-2584-no-hw-obs-alpha"
-    hash: "e997775"
+    src_Branch: "RELOPS-2433-defender-hardening-only"
+    hash: "f13cf4c9809e2d98107bf1c8267a3b85c367674e"
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -167,20 +170,6 @@ pools:
     - nuc13-018
     - nuc13-071
     - nuc13-134
-  - name: "win11-64-24h2-hw-perf-sheriff"
-    openvox_version: "8.19.2"
-    puppet_version: "8.10.0"
-    git_version: "2.50.0"
-    Description: "Tracking metric variability with performance sheriffing. Tracking in RELOPS-1288"
-    image: "win11-24H2-NUC-01-16-2025"
-    src_Organisation: "mozilla-platform-ops"
-    src_Repository: "ronin_puppet"
-    src_Branch: "master"
-    hash: "7511c8e"
-    secret_date: "02-24-2026"
-    domain_suffix: "wintest2.releng.mdc1.mozilla.com"
-    nodes:
-    - nuc13-021
   - name: "win11-64-24h2-hw"
     openvox_version: "8.19.2"
     puppet_version: "8.10.0"
@@ -190,7 +179,7 @@ pools:
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "master"
-    hash: "f328b45d"
+    hash: "2ed103138ddb3408b3511444a52316e823d6eadf"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -351,3 +340,6 @@ Known-BAD:
     ## Dead
     ## Different model as well
     - t-nuc12-001
+    ## Retired win11-64-24h2-hw-perf-sheriff node (RELOPS-1288). Unreachable on TCP/22;
+    ## last connected to Taskcluster 2026-05-30. Return to win11-64-24h2-hw after repair.
+    - nuc13-021

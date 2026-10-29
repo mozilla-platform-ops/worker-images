@@ -22,16 +22,11 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-      - name: Install PowerShell-YAML module
-        shell: pwsh
-        run: |
-          Set-PSRepository PSGallery -InstallationPolicy Trusted
-          Install-Module powershell-yaml -Force
-
       - id: set-matrix
         name: Extract `images.alpha` from YAML
         shell: pwsh
         run: |
+          Import-Module ./bin/WorkerImages
           $yaml = ConvertFrom-Yaml (Get-Content ./config/windows_production_defaults.yaml -Raw)
           $alphaImages = $yaml.images.alpha
 
@@ -44,10 +39,9 @@ jobs:
           Write-Host "Generated matrix: $matrix"
           "matrix=$matrix" >> $env:GITHUB_OUTPUT
 
-          $osIntImages = $alphaImages | Where-Object { $_ -notmatch '^win2022' -and $_ -notmatch '^win11-a64.*builder' }
-          $osIntMatrix = @{ config = @($osIntImages) } | ConvertTo-Json -Compress
-          Write-Host "Generated os-integration matrix: $osIntMatrix"
-          "os_integration_matrix=$osIntMatrix" >> $env:GITHUB_OUTPUT
+          # The 24H2 alpha GPU pool cannot launch with its retired NV12s_v3 size.
+          $osIntegrationMatrix = @{ config = @($alphaImages | Where-Object { $_ -ne 'win11-64-24h2-alpha' }) } | ConvertTo-Json -Compress
+          "os_integration_matrix=$osIntegrationMatrix" >> $env:GITHUB_OUTPUT
 
       - name: Resolve latest autoland Hg and Git revisions
         id: seed
@@ -122,7 +116,7 @@ jobs:
           }
           "sharedimageversion=$ENV:PKR_VAR_sharedimage_version" >> $env:GITHUB_ENV
       - name: Upload Release Notes Artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: release-notes-${{ matrix.config }}
           path: ${{ matrix.config }}-${{ env.sharedimageversion }}.md
@@ -183,3 +177,23 @@ jobs:
     secrets:
       TASKCLUSTER_OS_INT_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
       TASKCLUSTER_OS_INT_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}
+
+  failure-summary:
+    name: Explain alpha failures
+    needs: [check-access, packer, os-integration]
+    if: ${{ !cancelled() && needs.check-access.result == 'success' && (needs.packer.result == 'failure' || needs.os-integration.result == 'failure') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Install uv
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e
+      - name: Summarize build and integration failures
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: uv run ci/alpha_failure_summary.py

@@ -7,7 +7,7 @@ image:
 sharedimage:
   gallery_name: "win10_64_2009"
   image_name: "win10_64_2009"
-  image_version: "1.4.1"
+  image_version: "1.4.5"
 azure:
   build_location: eastus
   managed_image_resource_group_name: "default"
@@ -16,7 +16,7 @@ vm:
   puppet_version: "default"
   git_version: "default"
   openvox_version: "default"
-  size: Standard_D8alds_v6
+  size: Standard_F8alds_v7
   tags:
     base_image: win10642009azure
     worker_pool_id: win10-64-2009
@@ -45,5 +45,5 @@ tests:
   - mozilla_build.tests.ps1
   - mozilla_maintenance_service.tests.ps1
   - windows_worker_runner.tests.ps1
-  - gpu_drivers.tests.ps1
+  - gpu_drivers_hardened.tests.ps1
   - microsoft_tools_tester.tests.ps1

@@ -94,17 +94,16 @@ function Expand-ZIPFile {
     Expand-Archive -Path $file -DestinationPath $destination -Force
 }
 
-##############################################################################
+###############################################################################
 # TASKCLUSTER_REF can be a git commit SHA, a git branch name, or a git tag name
 # (i.e. for a taskcluster version number, prefix with 'v' to make it a git tag)
 $TASKCLUSTER_REF = $ENV:TASKCLUSTER_REF
 $TASKCLUSTER_REPO = "https://github.com/taskcluster/taskcluster"
-##############################################################################
+###############################################################################
 
 Write-Log -message "TASKCLUSTER_REF: $($ENV:TASKCLUSTER_REF)"
 Write-Log -message "PROVIDER_TYPE: $($ENV:PROVIDER_TYPE)"
 
-$TASKCLUSTER_VERSION = $ENV:TASKCLUSTER_VERSION
 $MY_CLOUD = $ENV:PROVIDER_TYPE
 
 if ($null -eq $TASKCLUSTER_REF -or $TASKCLUSTER_REF -eq "") {
@@ -235,6 +234,10 @@ foreach ($service in $servicesToDisable) {
 # install chocolatey package manager
 Invoke-RestMethod -Uri 'https://community.chocolatey.org/install.ps1' | Invoke-Expression
 
+# disable download progress output, which otherwise emits one log line per
+# percentage update (tens of thousands of lines in packer logs)
+Run-Executable "choco" @("feature", "disable", "--name=showDownloadProgress")
+
 # install nssm
 Run-Executable "choco" @("install", "-y", "nssm", "--version", "2.24.101.20180116")
 
@@ -254,7 +257,7 @@ New-NetFirewallRule -DisplayName "Allow livelog PUT requests" -Direction Inbound
 New-NetFirewallRule -DisplayName "Allow livelog GET requests" -Direction Inbound -LocalPort 60023 -Protocol TCP -Action Allow
 
 # install go
-Run-Executable "choco" @("install", "-y", "golang", "--version", "1.26.0")
+Run-Executable "choco" @("install", "-y", "golang")
 
 # install git
 Run-Executable "choco" @("install", "-y", "git")

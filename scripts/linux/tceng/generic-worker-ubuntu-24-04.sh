@@ -1,15 +1,12 @@
 #!/bin/bash
 
 set -exv
-# exec &> /var/log/bootstrap.log
-#exec > >(tee -a /var/log/bootstrap.log)
 
 if [[ -z "${MY_CLOUD}" ]]; then
   echo "Error: MY_CLOUD environment variable not set. Expected one of: google, azure, aws." >&2
   exit 1
 fi
 
-## Get TASKCLUSTER_VERSION from the yaml file
 if [[ -z "${TASKCLUSTER_VERSION}" ]]; then
   echo "Error: TASKCLUSTER_VERSION environment variable not set." >&2
   exit 1
@@ -67,6 +64,18 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docke
   $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
 retry apt-get update
 retry apt-get install -y docker-ce docker-ce-cli containerd.io
+
+mkdir -p /etc/docker
+cat > /etc/docker/daemon.json <<'EOF'
+{
+  "mtu": 1400,
+  "default-network-opts": {
+    "bridge": {
+      "com.docker.network.driver.mtu": "1400"
+    }
+  }
+}
+EOF
 retry docker run hello-world
 
 # configure kvm vmware backdoor

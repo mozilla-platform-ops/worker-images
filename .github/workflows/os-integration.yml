@@ -14,6 +14,8 @@ on:
         - win11-a64-25h2-tester-alpha
         - win11-a64-25h2-builder-alpha
         - win2022-64-2009-alpha
+        - win2025-64-24h2-alpha
+        - win2025-64-24h2-core-alpha
         - gw-fxci-gcp-l1-2404-gui-alpha
         - gw-fxci-gcp-l1-2404-headless-alpha
         - gw-fxci-gcp-l1-2404-arm64-headless-alpha
@@ -67,8 +69,7 @@ jobs:
           if ($env:IMAGE_NAME_INPUT) {
             $imageName = $env:IMAGE_NAME_INPUT
           } else {
-            Set-PSRepository PSGallery -InstallationPolicy Trusted
-            Install-Module powershell-yaml -ErrorAction Stop
+            Import-Module ./bin/WorkerImages
             $yaml = ConvertFrom-Yaml (Get-Content "config/$($env:CONFIG).yaml" -Raw)
             # Windows configs use sharedimage.image_name (Azure Shared Image Gallery name).
             # Linux GCP configs use image.image_name (GCP image name).
@@ -87,7 +88,7 @@ jobs:
           "image_name=$imageName" >> $env:GITHUB_OUTPUT
           Write-Host "Resolved image name: $imageName"
       - name: Install uv
-        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e
       - name: Run OS Integration Tests
         env:
           IMAGE_NAME: ${{ steps.resolve-image.outputs.image_name }}

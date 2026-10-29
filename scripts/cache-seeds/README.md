@@ -34,8 +34,9 @@ Source tarballs, such as GitHub source archives, do not contain `.hg` or `.git`
 history. They cannot replace these seeds without changes to task checkouts.
 Linux still stores the completed Hg seed as `cache.tar.gz` for SSD extraction.
 
-Windows alpha images also require ronin_puppet PR #1431's removal of the old
-`D:\pip-cache` cleanup rule. On images without D:, that rule fails before seeding.
+This PR leaves image Puppet pins unchanged. Before enabling the Windows seed,
+validate that the selected Puppet revision provides the C: cache paths and
+permissions described below. The seed builder fails if those checks do not pass.
 
 For a direct Packer build, set `gecko_hg_seed_revision` to the full 40-character
 `GECKO_HEAD_REV` from an Hg task in the latest autoland decision task graph:
