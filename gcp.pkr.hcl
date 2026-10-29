@@ -121,7 +121,8 @@ source "googlecompute" "gw-fxci-gcp-l1-2404-headless-alpha" {
   disk_type               = "pd-ssd"
   image_licenses          = ["projects/vm-options/global/licenses/enable-vmx"]
   image_name              = var.image_name
-  machine_type            = null
+  machine_type            = "c2d-standard-56"
+  state_timeout           = "30m"
   project_id              = var.project_id
   source_image_family     = var.source_image_family
   ssh_username            = "ubuntu"
