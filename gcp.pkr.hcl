@@ -116,12 +116,14 @@ source "googlecompute" "trusted-gw-fxci-gcp-l3-2404-headless-alpha" {
   image_guest_os_features = ["GVNIC"]
 }
 
+# Gecko cache seed: git delta resolution is CPU-bound (index-pack uses up to 20 threads) and the larger image needs more than the 5m default to register.
 source "googlecompute" "gw-fxci-gcp-l1-2404-headless-alpha" {
   disk_size               = var.disk_size
   disk_type               = "pd-ssd"
   image_licenses          = ["projects/vm-options/global/licenses/enable-vmx"]
   image_name              = var.image_name
-  machine_type            = null
+  machine_type            = "c2d-standard-56"
+  state_timeout           = "30m"
   project_id              = var.project_id
   source_image_family     = var.source_image_family
   ssh_username            = "ubuntu"
