@@ -33,6 +33,22 @@ local "sbom_name" {
   expression = var.config
 }
 
+variable "gecko_hg_seed_revision" {
+  type        = string
+  default     = ""
+  description = "WIP: full autoland Hg changeset to seed. Empty disables seeding."
+}
+
+variable "gecko_git_seed_revision" {
+  type    = string
+  default = ""
+}
+
+variable "gecko_seed_decision" {
+  type    = string
+  default = ""
+}
+
 variable "vault_name" {
   type    = string
   default = "${env("vault_name")}"
@@ -462,13 +478,30 @@ build {
     elevated_password = ""
     elevated_user     = "SYSTEM"
     environment_vars = [
+      "GECKO_HG_SEED_REVISION=${var.gecko_hg_seed_revision}",
+      "GECKO_GIT_SEED_REVISION=${var.gecko_git_seed_revision}",
+      "GECKO_SEED_DECISION=${var.gecko_seed_decision}",
+      "GECKO_HG_SEED_LEVEL=${startswith(var.config, "trusted-") ? "3" : "1"}",
+    ]
+    inline = [
+      "Import-Module BootStrap -Force;",
+      "Initialize-GeckoCacheSeed"
+    ]
+  }
+
+  provisioner "powershell" {
+    elevated_password = ""
+    elevated_user     = "SYSTEM"
+    environment_vars = [
       "worker_pool_id=${var.worker_pool_id}",
       "base_image=${var.base_image}",
       "src_organisation=${var.source_organization}",
       "src_Repository=${var.source_repository}",
       "src_Branch=${var.source_branch}",
       "deploymentId=${var.deployment_id}",
-      "config=${var.config}"
+      "config=${var.config}",
+      "GECKO_HG_SEED_REVISION=${var.gecko_hg_seed_revision}",
+      "GECKO_GIT_SEED_REVISION=${var.gecko_git_seed_revision}"
     ]
     inline = [
       "Import-Module BootStrap -Force;",

@@ -29,6 +29,7 @@ function New-GCPWorkerImage {
     }
 
     $YAML = ConvertFrom-Yaml (Get-Content $YamlPath -Raw)
+    Set-GeckoCacheSeedEnvironment -ImageConfig $YAML -ImageKey $Key
     $ENV:PKR_VAR_config = $Key
 
     ## Image naming
