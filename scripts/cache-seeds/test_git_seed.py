@@ -1,7 +1,7 @@
 """uv run --with pyyaml scripts/cache-seeds/test_git_seed.py
 
 Set RUN_TASK_GIT to test with Gecko's actual helper. On Linux as root, also
-set RUN_TASK to test Docker-style cache requirements and archive ownership.
+set RUN_TASK to test Docker-style cache requirements and seed ownership.
 """
 
 import hashlib
@@ -53,11 +53,11 @@ class GitSeedTest(unittest.TestCase):
                 self.assertTrue(all(name.endswith(suffix) for name in spec["cache_names"]))
             state = root / "state.json"
             destination = root / "caches"
-            # Register a second archive in the same initial worker state file.
+            # Register a second seed in the same initial worker state file.
             other = root / "other"
             (other / "cache").mkdir(parents=True)
             (other / "cache/marker").write_text("other seed")
-            seed.archive_cache(other / "cache", mode)
+            seed.prepare_cache(other / "cache", mode)
             (other / "manifest.json").write_text(json.dumps({
                 "mode": mode, "created": spec["created"],
                 "cache_names": ["gecko-level-1-checkouts"],

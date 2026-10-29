@@ -151,8 +151,8 @@ class SeedTest(unittest.TestCase):
                 else:
                     seed.build(revision, mode, 3, image, "hg", self.extension)
             spec = json.loads((image / "manifest.json").read_text())
-            self.assertTrue((image / "cache.tar.gz").is_file())
-            self.assertFalse((image / "cache").exists())
+            self.assertTrue((image / "cache").is_dir())
+            self.assertEqual(image.stat().st_mode & 0o777, 0o700)
             # The task needs a later revision than the image seed.
             (source / "tracked").write_text("second\n")
             seed.hg_command("hg", "-R", source, "commit", "-u", "test", "-m", "second")
@@ -167,6 +167,8 @@ class SeedTest(unittest.TestCase):
             state = root / "directory-caches.json"
             seed.install(image, root / "caches", state)
             entries = json.loads(state.read_text())
+            # Same filesystem: boot moves the seed instead of copying it.
+            self.assertFalse((image / "cache").exists())
             if os.name == "posix":
                 self.assertEqual((root / "caches").stat().st_mode & 0o777, 0o700)
             self.assertEqual(len(entries), 2 if wrapper else 1)
@@ -237,6 +239,31 @@ class SeedTest(unittest.TestCase):
                 self.assertEqual((gecko_cache / spec["store_subdir"] / revision /
                                   ".hg/worker-image-seed").read_text().strip(), revision)
 
+    def test_resume_and_other_disk(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            image = root / "image"
+            (image / "cache").mkdir(parents=True)
+            (image / "cache/marker").write_text("seed")
+            (image / "manifest.json").write_text(json.dumps({
+                "mode": "linux-native", "created": "now",
+                "cache_names": ["gecko-level-1-checkouts", "gecko-level-1-checkouts-sparse"],
+            }))
+            caches = root / "caches"
+            state = root / "state.json"
+            with patch.object(seed, "same_disk", return_value=False):
+                seed.install(image, caches, state)
+            self.assertFalse(state.exists())
+            self.assertTrue((image / "cache/marker").exists())
+            # An interrupted install already placed the first cache.
+            (caches / "gecko-level-1-checkouts").mkdir()
+            seed.install(image, caches, state)
+            self.assertEqual(set(json.loads(state.read_text())),
+                             {"gecko-level-1-checkouts", "gecko-level-1-checkouts-sparse"})
+            self.assertEqual((caches / "gecko-level-1-checkouts-sparse/marker").read_text(), "seed")
+            self.assertFalse((caches / "gecko-level-1-checkouts/marker").exists())
+            self.assertFalse((image / "cache").exists())
+
     def test_names_and_existing_state(self):
         self.assertEqual(seed.cache_names("linux-native", 1),
                          ["gecko-level-1-checkouts"])
@@ -251,7 +278,7 @@ class SeedTest(unittest.TestCase):
                 seed.build("tip", "linux-native", 1, root / "shared", "hg")
             self.assertFalse((root / "shared").exists())
 
-    def test_broken_archive_does_not_register_cache(self):
+    def test_missing_seed_does_not_register_cache(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             image = root / "image"
@@ -259,8 +286,7 @@ class SeedTest(unittest.TestCase):
             (image / "manifest.json").write_text(json.dumps({
                 "mode": "linux-native", "cache_names": ["gecko-level-1-checkouts"],
             }))
-            (image / "cache.tar.gz").write_bytes(b"incomplete archive")
-            with self.assertRaises(subprocess.CalledProcessError):
+            with self.assertRaises(FileNotFoundError):
                 seed.install(image, root / "caches", root / "state.json")
             self.assertFalse((root / "state.json").exists())
             self.assertEqual(list((root / "caches").iterdir()), [])

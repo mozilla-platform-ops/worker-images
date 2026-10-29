@@ -13,7 +13,7 @@ tasks fetch later changes normally.
 Windows provisioning uses `Initialize-GeckoCacheSeed` in the existing
 `Bootstrap` module; it calls Hg and Git directly, not a Python seed helper. Linux provisioning uses
 `scripts/linux/common/preload-gecko-hg.sh` and `gecko_hg.py` in the same directory.
-The Python code builds archives and restores them before the Linux worker starts.
+The Python code builds seed directories and moves them into place before the Linux worker starts.
 The two platforms have separate implementations.
 
 Hg uses `robustcheckout --noupdate` from the selected autoland revision.
@@ -32,7 +32,6 @@ incomplete store; use a fresh image build rather than that partial store.
 
 Source tarballs, such as GitHub source archives, do not contain `.hg` or `.git`
 history. They cannot replace these seeds without changes to task checkouts.
-Linux still stores the completed Hg seed as `cache.tar.gz` for SSD extraction.
 
 This PR leaves image Puppet pins unchanged. Before enabling the Windows seed,
 validate that the selected Puppet revision provides the C: cache paths and
@@ -107,8 +106,8 @@ uses Hg, so no RelOps Git caches are created. Both Windows architectures use
 directory-cache state for Git; neither
 uses `C:\hg-shared` for Git. Hg and Git registrations are written together.
 
-Linux restores two extra archives, full and shallow, directly onto the task
-disk. D2G archives have UID/GID 1000 and use the pinned decision's
+Linux moves two extra seed directories, full and shallow, into the caches
+directory. D2G seeds have UID/GID 1000 and use the pinned decision's
 `run-task-git` cache initializer. Their `-v3-<hash>` suffix follows Gecko's
 decision repository type: an Hg decision hashes `run-task-hg`, even for Git
 tasks. A Git decision hashes `run-task-git`. External Docker cache suffixes
@@ -134,23 +133,27 @@ cache. These are task definitions, not measured task volume or cache-hit rates.
 Both checkout types work; the Gecko sparse cache is not preloaded.
 Other cache names continue to use the normal cold-checkout path.
 
-The image contains one gzip archive at
-`/usr/local/share/gecko-hg-seed/cache.tar.gz`, outside `/home`. The unarchived
-build copy is removed before image capture. Before Worker Runner starts, its
-ExecStartPre hook extracts each cache directly into a temporary directory
-under `/home/generic-worker/caches`, after the task disk is mounted. It renames
-the completed directory on that same filesystem and writes initial
-state to `/directory-caches.json`, because the existing worker service has no
-WorkingDirectory and starts in `/`. It does not change either setting.
-The existing local-SSD setup and ext4 filesystem stay unchanged. The archive is
-not copied onto the SSD before extraction. D2G ownership is stored in the archive;
-there is no separate recursive ownership pass at boot. Restore logs include the
-archive size and elapsed time. D2G restores the same archive into two independent
-stores: Gecko full and RelOps sparse. Native Linux restores one store.
-There is no extra network clone or image archive, but the RelOps cache adds one
-store's disk use and extraction time at startup. The stores do not share mutable
-files. This still transfers history to the task disk for each new worker;
-compression and end-to-end speed gains have not been measured on Gecko history.
+The image keeps each seed as a plain directory under
+`/usr/local/share/gecko-hg-seed` and `/usr/local/share/gecko-git-seed`
+(mode 0700, outside `/home`). Hg stores and Git packs are already compressed,
+so the image does not archive them again. Before Worker Runner starts, its
+ExecStartPre hook renames each seed directory into
+`/home/generic-worker/caches` and writes initial state to
+`/directory-caches.json`. The service has no WorkingDirectory and starts in
+`/`; this hook does not change that.
+
+This is for pools without a local SSD (noscratch), where the seed and the
+caches directory are on the boot disk, so the move takes no time. If a seed is
+on a different filesystem from the caches directory, the hook registers no
+caches and tasks clone normally. Copying from the boot disk to an SSD costs
+more than it saves.
+
+D2G seeds have UID/GID 1000 from the image build. D2G registers one Hg seed as
+two caches, Gecko full and RelOps sparse. The RelOps cache gets a full `cp -a`
+copy on the boot disk, because Hg writes revlogs in place and the two caches
+must not share files. Native Linux moves one store. If an install is
+interrupted, a cache directory that is already in place is kept on the next
+boot.
 
 Native tasks use `checkouts/hg-shared`. D2G tasks use `checkouts/hg-store` and
 cache names with the `-hg58-v3-<run-task-hash>` suffix. The builder obtains
@@ -205,7 +208,7 @@ layout for both runs.
 This wrapper does not prove that the worker is fresh or verify its cloud image
 ID. Record the actual image ID and worker history separately. Use the first
 cache task on a new worker. Also record VM-request-to-task-completion time and
-Linux archive restore time; checkout time alone excludes the SSD restore cost.
+Linux seed install time; checkout time alone excludes it.
 The targeted task submission and these cloud checks are still required before
 the draft can be merged. The regular OS suite remains a separate correctness
 check, not a substitute for this measurement.

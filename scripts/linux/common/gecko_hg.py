@@ -9,9 +9,7 @@ import os
 from pathlib import Path
 import re
 import runpy
-import shutil
 import subprocess
-import tarfile
 import tempfile
 import time
 from types import SimpleNamespace
@@ -95,15 +93,25 @@ def cache_names(mode, level, digest=None):
     return names
 
 
-def archive_cache(cache, mode):
-    def owner(member):
-        if mode == "linux-d2g":
-            member.uid = member.gid = 1000
-            member.uname = member.gname = ""
-        return member
-    with tarfile.open(cache.with_name(cache.name + ".tar.gz"), "w:gz", compresslevel=1) as archive:
-        archive.add(cache, arcname=".", filter=owner)
-    shutil.rmtree(cache)
+def prepare_cache(cache, mode):
+    # Kept as a directory so boot is a rename on the same disk, not an extraction.
+    if mode == "linux-d2g":
+        subprocess.run(["chown", "-R", "1000:1000", str(cache)], check=True)
+
+
+def same_disk(a, b):
+    return a.stat().st_dev == b.stat().st_dev
+
+
+def place_cache(source, destination, move):
+    if move:
+        source.rename(destination)
+        return
+    with tempfile.TemporaryDirectory(prefix=".install-", dir=destination.parent) as temp:
+        # Separate copies: Hg revlogs are written in place, so caches must not share files.
+        copy = Path(temp) / "cache"
+        subprocess.run(["cp", "-a", "--", str(source), str(copy)], check=True)
+        copy.rename(destination)
 
 
 def build_git(revision, mode, level, seed_root, decision, git_executable="git"):
@@ -164,9 +172,10 @@ def build_git(revision, mode, level, seed_root, decision, git_executable="git"):
             (repo / ".git/worker-image-seed").write_text(revision + "\n")
             cache_name = "checkouts-git" + ("-shallow" if name == "shallow" else "")
             spec["cache_sources"][f"gecko-level-{level}-{cache_name}{suffix}"] = name
-            archive_cache(staging / name, mode)
+            prepare_cache(staging / name, mode)
         spec["cache_names"] = list(spec["cache_sources"])
         (staging / "manifest.json").write_text(json.dumps(spec, indent=2) + "\n")
+        staging.chmod(0o700)
         staging.rename(seed_root)
 
 
@@ -194,8 +203,9 @@ def build(revision, mode, level, seed_root, hg, robustcheckout=None):
         spec["store_subdir"] = store
         spec["root_node"] = seed_store(SOURCE, revision, cache / store, hg, robustcheckout, upstream=UPSTREAM)
         spec["cache_names"] = cache_names(mode, level, spec.get("run_task_sha256"))
-        archive_cache(cache, mode)
+        prepare_cache(cache, mode)
         (staging / "manifest.json").write_text(json.dumps(spec, indent=2) + "\n")
+        staging.chmod(0o700)
         staging.rename(seed_root)
     print(f"Gecko Hg seed ready: {seed_root}", flush=True)
 
@@ -219,6 +229,12 @@ def install(seed_root, destination_root, state_file, extra_seeds=()):
     destination_root.mkdir(parents=True, exist_ok=True)
     # Idle caches must not be accessible without a scoped task mount.
     destination_root.chmod(0o700)
+    if any(not same_disk(root, destination_root) for root, *_ in entries):
+        # Local-SSD pools: copying from the boot disk costs more than a cold clone.
+        print(f"Seed is not on the {destination_root} disk; tasks will clone normally", flush=True)
+        return
+    # The last user of each seed directory moves it; earlier users copy it.
+    last = {(root, source): name for root, _, name, source in entries}
     for seed_root, spec, name, source in entries:
         relops_cache = (spec["mode"] == "linux-d2g"
                         and re.fullmatch(r"relops-level-3-checkouts-sparse(?:-hg58-v3-[0-9a-f]{20})?", name))
@@ -226,22 +242,17 @@ def install(seed_root, destination_root, state_file, extra_seeds=()):
         if not (relops_cache or git_cache) and not re.fullmatch(r"gecko-level-[13]-checkouts(?:-sparse)?(?:-hg58-v3-[0-9a-f]{20})?", name):
             raise ValueError("Invalid cache name in seed manifest")
         destination = destination_root / name
-        if destination.exists():
-            raise FileExistsError(f"Cache directory exists without worker state: {destination}")
         started = time.monotonic()
-        print(f"Installing checkout cache: {name}", flush=True)
-        with tempfile.TemporaryDirectory(prefix=".install-", dir=destination_root) as temp:
-            cache = Path(temp) / "cache"
+        if destination.exists():
+            # Only an earlier, interrupted install creates caches before the state file exists.
+            print(f"Keeping checkout cache from an earlier install: {name}", flush=True)
+        else:
             if spec["mode"] == "linux-d2g" and os.geteuid() != 0:
                 raise PermissionError("Restore D2G seeds as root to preserve UID/GID 1000")
-            cache.mkdir()
-            archive = seed_root / f"{source}.tar.gz"
-            print(f"Restoring {archive.stat().st_size} archive bytes onto the task disk", flush=True)
-            # This archive is built into the trusted image, outside task-writable paths.
-            subprocess.run(["tar", "-xzf", str(archive), "--numeric-owner",
-                            "-C", str(cache)], check=True)
-            cache.rename(destination)
-        print(f"Installed {name} in {time.monotonic() - started:.1f}s", flush=True)
+            print(f"Installing checkout cache: {name}", flush=True)
+            # The seed is built into the trusted image, outside task-writable paths.
+            place_cache(seed_root / source, destination, last[(seed_root, source)] == name)
+            print(f"Installed {name} in {time.monotonic() - started:.1f}s", flush=True)
         state[name] = [{"key": name, "location": str(destination.resolve()),
                         "created": spec["created"]}]
     state_file.parent.mkdir(parents=True, exist_ok=True)
