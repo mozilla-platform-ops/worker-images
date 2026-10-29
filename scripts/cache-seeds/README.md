@@ -106,13 +106,9 @@ uses Hg, so no RelOps Git caches are created. Both Windows architectures use
 directory-cache state for Git; neither
 uses `C:\hg-shared` for Git. Hg and Git registrations are written together.
 
-Linux seeds a depth-1 Git clone at the autoland commit without checked-out
-files, registered as `gecko-level-<level>-checkouts-git-shallow`. A full clone
-with checked-out files was slower than a cold shallow clone on 75 GB
-pd-balanced boot disks (169-178 s against 63-69 s). The task's `--depth=1`
-fetch walked the full history (107-116 s), and checking 486k existing files
-took 60 s against 30 s to write them. `test_git_seed.py` checks reuse with the
-decision's `run-task-git`. D2G seeds have UID/GID 1000 and use the pinned decision's
+Linux seeds a depth-1 Git clone with no checked-out files as
+`gecko-level-<level>-checkouts-git-shallow`. A full clone was slower than a
+cold shallow clone on pd-balanced boot disks. D2G seeds have UID/GID 1000 and use the pinned decision's
 `run-task-git` cache initializer. Their `-v3-<hash>` suffix follows Gecko's
 decision repository type: an Hg decision hashes `run-task-hg`, even for Git
 tasks. A Git decision hashes `run-task-git`. External Docker cache suffixes
