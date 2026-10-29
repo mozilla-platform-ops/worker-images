@@ -20,7 +20,11 @@ function Get-ItemProperty { [pscustomobject]@{ bootstrap_stage = $script:stage }
 function Get-CimInstance {
     if ($script:commandLine) { [pscustomobject]@{ CommandLine = $script:commandLine } }
 }
-function Test-Path { param($Path) return $script:filesAvailable }
+function Test-Path {
+    param($Path)
+    if ($script:missingBootstrap -and $Path -eq 'C:\bootstrap\bootstrap.ps1') { return $false }
+    return $script:filesAvailable
+}
 function Start-Sleep { }
 function New-Item { }
 function Copy-Item { if ($script:copyFails) { throw 'copy failed' } }
@@ -38,7 +42,7 @@ function Start-Process {
 function Check-Runner($Name, $Stage, $CommandLine, $ChildExit, $ChildStage, $Files, $CopyFails, $Launches, $Removed, $Fails) {
     $script:stage = $Stage; $script:commandLine = $CommandLine
     $script:childExit = $ChildExit; $script:childStage = $ChildStage
-    $script:filesAvailable = $Files; $script:copyFails = $CopyFails
+    $script:missingBootstrap = $false; $script:filesAvailable = $Files; $script:copyFails = $CopyFails
     $script:launches = 0; $script:removed = 0; $script:messages = @()
     $failed = $false
     try { & $runner } catch { $failed = $true }
@@ -105,12 +109,13 @@ foreach ($case in @(
     @{ name = 'other launcher'; lock = $false; stage = 'setup'; command = ''; fails = $false; calls = 0 },
     @{ name = 'completed'; lock = $true; stage = 'complete'; command = ''; fails = $false; calls = 0 },
     @{ name = 'orphaned child'; lock = $true; stage = 'inprogress'; command = 'powershell -File C:\bootstrap\bootstrap.ps1'; fails = $false; calls = 0 },
-    @{ name = 'failed prerequisite'; lock = $true; stage = 'setup'; command = ''; fails = $true; calls = 1 },
-    @{ name = 'failed error logging'; logFails = $true; lock = $true; stage = 'setup'; command = ''; fails = $true; calls = 1 },
+    @{ name = 'failed prerequisite'; prerequisiteFails = $true; lock = $true; stage = 'setup'; command = ''; fails = $true; calls = 1 },
+    @{ name = 'failed error logging'; prerequisiteFails = $true; logFails = $true; lock = $true; stage = 'setup'; command = ''; fails = $true; calls = 1 },
+    @{ name = 'missing download'; missingBootstrap = $true; lock = $true; stage = 'setup'; command = ''; fails = $true; calls = 1 },
     @{ name = 'normal launch'; lock = $true; stage = 'setup'; command = ''; fails = $false; calls = 1 }
 )) {
     $script:lockAvailable = $case.lock; $script:stage = $case.stage; $script:commandLine = $case.command
-    $script:prerequisiteFails = $case.fails; $script:prerequisites = 0
+    $script:prerequisiteFails = $case.prerequisiteFails; $script:missingBootstrap = $case.missingBootstrap; $script:prerequisites = 0
     $script:released = 0; $script:disposed = 0; $script:filesAvailable = $true
     $script:events = @(); $script:errorLogFails = $case.logFails
     $script:startFails = $false; $script:processExit = 0; $ownsMutex = $false
@@ -124,6 +129,7 @@ foreach ($case in @(
         $script:released -ne [int]$case.lock -or $script:disposed -ne 1) {
         throw "Launcher guard failed: $($case.name): $failure"
     }
+    if ($case.missingBootstrap -and $failure.Exception.Message -notmatch 'Downloaded bootstrap.ps1 is missing') { throw 'Missing download did not retain the retry path.' }
     if ($case.logFails -and $failure.Exception.Message -ne 'network failed') { throw 'Logging hid the original failure.' }
     if (($script:events.message -join ' ') -match 'test credential') { throw 'Credential appeared in logs.' }
     if (-not $script:events.Count) { throw "Missing lifecycle log: $($case.name)" }

@@ -406,12 +406,8 @@ try {
         Invoke-DownloadWithRetryGithub @splat
     }
 
-    # If we still don't have bootstrap, PXE fallback
     if (-Not (Test-Path -Path $local_bootstrap)) {
-        switch (Get-WinDisplayVersion) {
-            "24H2" { Set-PXE }
-            default { Set-PXEWin10 }
-        }
+        throw 'Downloaded bootstrap.ps1 is missing; retry on next boot.'
     }
 
     # Wait for bootstrap so failures reach the startup task.
