@@ -93,44 +93,45 @@ Unregister-ScheduledTask -TaskName 'BakeNetwork' -Confirm:$false -ErrorAction Si
 # Sysprep blocker is ever suspected, check it inside bake-bootstrap.ps1 (right after
 # puppet apply) where AppXSvc is still running.
 
-# --- Bake the first-boot bootstrap runner (SYSTEM startup task) ---
-# Registered HERE, as the last thing before Sysprep, so it CANNOT run during the bake:
-# the bake VM only ever shuts down from this point (no more boots before capture). On the
-# DEPLOYED node's first boot it reproduces the shape the unattend FirstLogonCommands would
-# have (seed C:\bootstrap + vault.yaml, disable sleep) and launches Get-Bootstrap.ps1
-# (which OS-deploy.ps1 stages on D:\ with the pool params already substituted). One-shot:
-# it flags + unregisters itself once it has launched Get-Bootstrap, so it does not re-run
-# on later ronin reboots (matches the production one-shot FirstLogonCommands launcher).
+# Keep the startup task until provisioning completes.
 Step 'Baking first-boot bootstrap runner (RunDeployBootstrap startup task)'
 $deployDir = 'C:\deploy'
 New-Item -ItemType Directory -Path $deployDir -Force | Out-Null
 $runner = @'
-$ErrorActionPreference = 'Continue'
+$ErrorActionPreference = 'Stop'
 $log = 'C:\deploy\run-bootstrap.log'
 function L($m) { ('{0} {1}' -f (Get-Date -Format o), $m) | Tee-Object -FilePath $log -Append | Out-Null }
-$flag = 'C:\deploy\.bootstrap-launched'
-if (Test-Path $flag) {
-    L 'bootstrap already launched on a prior boot; unregistering task and exiting'
-    Unregister-ScheduledTask -TaskName 'RunDeployBootstrap' -Confirm:$false -ErrorAction SilentlyContinue
-    return
+try {
+    $stage = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Mozilla\ronin_puppet' -ErrorAction SilentlyContinue
+    if ($stage.bootstrap_stage -eq 'complete') {
+        L 'bootstrap complete; removing startup task'
+        Unregister-ScheduledTask -TaskName 'RunDeployBootstrap' -Confirm:$false
+        return
+    }
+    $running = Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe'" | Where-Object {
+        $_.CommandLine -match '(?i)(?:^|\s)-file\s+"?(?:C:\\bootstrap\\bootstrap|D:\\scripts\\Get-Bootstrap)\.ps1"?(?:\s|$)'
+    }
+    if ($running) { L 'bootstrap already running; leaving startup task registered'; return }
+    $gb = 'D:\scripts\Get-Bootstrap.ps1'
+    for ($i = 0; $i -lt 60 -and -not (Test-Path $gb); $i++) { Start-Sleep -Seconds 10 }
+    if (-not (Test-Path $gb)) { throw "$gb not found" }
+    New-Item -ItemType Directory -Path 'C:\bootstrap' -Force | Out-Null
+    if (Test-Path 'D:\secrets\vault.yaml') { Copy-Item 'D:\secrets\vault.yaml' 'C:\bootstrap\' -Force }
+    powercfg -x -standby-timeout-ac 0
+    powercfg -x -monitor-timeout-ac 0
+    L 'launching Get-Bootstrap.ps1'
+    $launcher = Start-Process -FilePath 'powershell.exe' -Wait -PassThru -NoNewWindow -ArgumentList @(
+        '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $gb
+    )
+    if ($launcher.ExitCode -ne 0) { throw "Get-Bootstrap failed: $($launcher.ExitCode)" }
+    $stage = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Mozilla\ronin_puppet' -ErrorAction SilentlyContinue
+    if ($stage.bootstrap_stage -ne 'complete') { throw 'bootstrap did not complete' }
+    Unregister-ScheduledTask -TaskName 'RunDeployBootstrap' -Confirm:$false
 }
-L 'run-bootstrap: start'
-# OS-deploy.ps1 stages Get-Bootstrap.ps1 (templated with the pool params) to D:\scripts in
-# WinPE before this boot; wait for D: to mount and the script to appear.
-$gb = 'D:\scripts\Get-Bootstrap.ps1'
-for ($i = 0; $i -lt 60 -and -not (Test-Path $gb); $i++) { Start-Sleep -Seconds 10 }
-if (-not (Test-Path $gb)) { L "ERROR: $gb not found; leaving task registered to retry next boot"; return }
-# FirstLogonCommands-equivalent prerequisites (base-autounattend.xml oobeSystem pass):
-if (-not (Test-Path 'C:\bootstrap')) { New-Item -ItemType Directory -Path 'C:\bootstrap' -Force | Out-Null }
-if (Test-Path 'D:\secrets\vault.yaml') { Copy-Item 'D:\secrets\vault.yaml' 'C:\bootstrap\' -Force }
-powercfg -x -standby-timeout-ac 0 2>$null
-powercfg -x -monitor-timeout-ac 0 2>$null
-L 'run-bootstrap: launching Get-Bootstrap.ps1'
-& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $gb *>&1 | Tee-Object -FilePath $log -Append
-L ('run-bootstrap: Get-Bootstrap returned rc=' + $LASTEXITCODE)
-# Mark launched + one-shot self-remove; bootstrap.ps1 continues via ronin's own task.
-New-Item -Path $flag -ItemType File -Force | Out-Null
-Unregister-ScheduledTask -TaskName 'RunDeployBootstrap' -Confirm:$false -ErrorAction SilentlyContinue
+catch {
+    L ("bootstrap failed; retrying next boot: " + $_.Exception.Message)
+    exit 1
+}
 '@
 $utf8NoBomRunner = New-Object System.Text.UTF8Encoding($false)
 [System.IO.File]::WriteAllText((Join-Path $deployDir 'run-bootstrap.ps1'), $runner, $utf8NoBomRunner)

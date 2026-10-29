@@ -1,3 +1,4 @@
+$ErrorActionPreference = 'Stop'
 $worker_images_revision = 'WIRevisionPlaceholder'
 if ($worker_images_revision -notmatch '^[0-9a-fA-F]{40}$') {
     throw 'Get-Bootstrap received an invalid worker-images revision.'
@@ -278,8 +279,7 @@ function Install-Choco {
     Copy-Item -Path $file -Destination $nupkg -Force -ErrorAction SilentlyContinue
 
     if (-Not (Test-Path "C:\ProgramData\Chocolatey\bin\choco.exe")) {
-        Write-Host "Chocolatey installation failed. Exiting."
-        pause
+        throw "Chocolatey installation failed."
     }
 }
 
@@ -357,58 +357,68 @@ function Invoke-DownloadWithRetryGithub {
     return $Path
 }
 
-# ===== Execution Flow =====
-
-# Wait until internet works
-Test-ConnectionUntilOnline
-
-# Enable SSH and import keys
-Set-SSH
-
-# WinRM disabled for the pre-baked NUC deploy.
-# RELOPS-2487: Set-WinRM is NOT called here - Enable-PSRemoting can't publish a listener on the
-# NUC's Public/workgroup network (it failed every deploy) and nothing in the bootstrap path needs
-# WinRM; SSH (baked) is the access path. The Set-WinRM function is kept for future use / if Puppet
-# ever needs it. Mirrors the same skip in bootstrap.ps1.
-# $winrmOk = Set-WinRM -Retries 2 -DelaySeconds 10
-# if (-not $winrmOk) {
-#     Write-Log -message 'get-bootstrap :: WinRM setup did not succeed after retries; continuing without it.' -severity 'WARN'
-# }
-
-# Install Chocolatey
-Install-Choco
-
-# Fetch bootstrap.ps1
-$local_bootstrap = "C:\bootstrap\bootstrap.ps1"
-if (-Not (Test-Path "D:\Secrets\pat.txt")) {
-    $splat = @{ Url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$worker_images_revision/provisioners/windows/MDC1Windows/bootstrap.ps1"; Path = $local_bootstrap }
-    Invoke-DownloadWithRetry @splat
-} else {
-    $splat = @{ Url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$worker_images_revision/provisioners/windows/MDC1Windows/bootstrap.ps1"; Path = $local_bootstrap; PAT = Get-Content "D:\Secrets\pat.txt" }
-    Invoke-DownloadWithRetryGithub @splat
-}
-
-# If we still don't have bootstrap, PXE fallback
-if (-Not (Test-Path -Path $local_bootstrap)) {
-    switch (Get-WinDisplayVersion) {
-        "24H2" { Set-PXE }
-        default { Set-PXEWin10 }
+# First logon and the startup task can overlap.
+$bootstrapMutex = [System.Threading.Mutex]::new($false, 'Global\MozillaDeployBootstrap')
+$ownsMutex = $false
+try {
+    try { $ownsMutex = $bootstrapMutex.WaitOne(0) }
+    catch [System.Threading.AbandonedMutexException] { $ownsMutex = $true }
+    if (-not $ownsMutex) { Write-Host 'Bootstrap launcher already running.'; return }
+    $stage = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Mozilla\ronin_puppet' -ErrorAction SilentlyContinue
+    if ($stage.bootstrap_stage -eq 'complete') { return }
+    $running = Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe'" | Where-Object {
+        $_.CommandLine -match '(?i)(?:^|\s)-file\s+"?C:\\bootstrap\\bootstrap\.ps1"?(?:\s|$)'
     }
-}
+    if ($running) { Write-Host 'Bootstrap already running.'; return }
 
-# Run bootstrap with PsExec
-New-Item -Path 'HKLM:\SOFTWARE\Mozilla' -Force | Out-Null
-New-Item -Path 'HKLM:\SOFTWARE\Mozilla\ronin_puppet' -Force | Out-Null
-New-ItemProperty -Path 'HKLM:\SOFTWARE\Mozilla\ronin_puppet' -Name worker_images_revision -Value $worker_images_revision -PropertyType String -Force | Out-Null
-D:\applications\psexec.exe -i -s -d -accepteula powershell.exe -ExecutionPolicy Bypass -file $local_bootstrap `
-    -worker_pool_id "WorkerPoolId" `
-    -role "1Role" `
-    -src_Organisation "SRCOrganisation" `
-    -src_Repository "SRCRepository" `
-    -src_Branch "SRCBranch" `
-    -hash "1HASH" `
-    -secret_date "1secret_date" `
-    -puppet_version "1puppet_version" `
-    -git_version "1git_version" `
-    -openvox_version "1openvox_version" `
-    -worker_images_revision "$worker_images_revision"
+    # Wait until internet works
+    Test-ConnectionUntilOnline
+
+    # Enable SSH and import keys
+    Set-SSH
+
+    # Install Chocolatey
+    Install-Choco
+
+    # Fetch bootstrap.ps1
+    $local_bootstrap = "C:\bootstrap\bootstrap.ps1"
+    if (-Not (Test-Path "D:\Secrets\pat.txt")) {
+        $splat = @{ Url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$worker_images_revision/provisioners/windows/MDC1Windows/bootstrap.ps1"; Path = $local_bootstrap }
+        Invoke-DownloadWithRetry @splat
+    } else {
+        $splat = @{ Url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$worker_images_revision/provisioners/windows/MDC1Windows/bootstrap.ps1"; Path = $local_bootstrap; PAT = Get-Content "D:\Secrets\pat.txt" }
+        Invoke-DownloadWithRetryGithub @splat
+    }
+
+    # If we still don't have bootstrap, PXE fallback
+    if (-Not (Test-Path -Path $local_bootstrap)) {
+        switch (Get-WinDisplayVersion) {
+            "24H2" { Set-PXE }
+            default { Set-PXEWin10 }
+        }
+    }
+
+    # Wait for bootstrap so failures reach the startup task.
+    New-Item -Path 'HKLM:\SOFTWARE\Mozilla' -Force | Out-Null
+    New-Item -Path 'HKLM:\SOFTWARE\Mozilla\ronin_puppet' -Force | Out-Null
+    New-ItemProperty -Path 'HKLM:\SOFTWARE\Mozilla\ronin_puppet' -Name worker_images_revision -Value $worker_images_revision -PropertyType String -Force | Out-Null
+    $bootstrapProcess = Start-Process -FilePath 'D:\applications\psexec.exe' -Wait -PassThru -NoNewWindow -ArgumentList @(
+        '-i', '-s', '-accepteula', 'powershell.exe', '-ExecutionPolicy', 'Bypass', '-File', $local_bootstrap,
+        '-worker_pool_id', 'WorkerPoolId',
+        '-role', '1Role',
+        '-src_Organisation', 'SRCOrganisation',
+        '-src_Repository', 'SRCRepository',
+        '-src_Branch', 'SRCBranch',
+        '-hash', '1HASH',
+        '-secret_date', '1secret_date',
+        '-puppet_version', '1puppet_version',
+        '-git_version', '1git_version',
+        '-openvox_version', '1openvox_version',
+        '-worker_images_revision', $worker_images_revision
+    )
+    if ($bootstrapProcess.ExitCode -ne 0) { throw "PsExec/bootstrap failed: $($bootstrapProcess.ExitCode)" }
+}
+finally {
+    if ($ownsMutex) { $bootstrapMutex.ReleaseMutex() }
+    $bootstrapMutex.Dispose()
+}
