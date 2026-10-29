@@ -57,6 +57,7 @@ param(
     [ValidateSet('prep', 'build', 'publish', 'iso', 'plain')] [string[]] $Stages = @('prep', 'build', 'publish'),
     [string] $WinRMPassword,
     [string] $BuildId,
+    [ValidatePattern('^_status/[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9_-]*/[1-9][0-9]*$')] [string] $StatusPrefix,
     # Client ID of the user-assigned managed identity to log in with on the build VM.
     # The VM is attached a USER-assigned identity (no system-assigned), so bare
     # `az login --identity` fails ("Please run az login") — it must be told which one.
@@ -101,6 +102,8 @@ function Get-Val {
 }
 
 if (-not $BuildId) { $BuildId = Get-Date -Format 'yyyyMMdd-HHmmss' }
+if (-not $StatusPrefix) { $StatusPrefix = "_status/$Image/manual-$([guid]::NewGuid().ToString('N'))/1" }
+if (-not $StatusPrefix.StartsWith("_status/$Image/")) { throw 'Status prefix does not match image.' }
 
 # --- Resolved settings --------------------------------------------------------
 $account   = $def['storage']['account']
@@ -201,13 +204,10 @@ $vmName    = "wim-bake-$Image"
 $buildDir  = Join-Path $work 'build'
 $goldenWim = Join-Path $work "$Image-$BuildId.wim"
 $capBlob   = "WIMs/$Image/$Image-$BuildId.wim"
-# Release notes / SBOM: Packer downloads the guest's markdown here (same filename the
-# Azure gallery images use, <config>-<version>.md, so it drops straight into sboms/).
-# Published twice: next to the WIM as provenance, and under _status/sbom/ where the GH
-# runner can find it by prefix without needing to know the build id.
+# Publish notes beside the WIM and in this run attempt's status directory.
 $sbomMd      = Join-Path $work "$Image-$BuildId.md"
 $sbomBlob    = "WIMs/$Image/$Image-$BuildId.md"
-$sbomRunBlob = "_status/sbom/$Image-$BuildId.md"
+$sbomRunBlob = "$StatusPrefix/$Image-$BuildId.md"
 # iso stage output — a captured OUTPUT artifact, so it mirrors the golden-WIM naming
 # (captured/ISOs/<image>/<image>-<buildid>.iso) instead of a fixed name in resources/.
 $goldenIso = Join-Path $work "$Image-$BuildId.iso"
