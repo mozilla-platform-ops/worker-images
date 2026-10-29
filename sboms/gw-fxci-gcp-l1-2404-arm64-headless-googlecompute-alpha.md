@@ -8,7 +8,7 @@
 - Architecture: ARM64
 - Source image family: ubuntu-2404-lts-arm64
 - GCP project: taskcluster-imaging
-- GCP zone: us-central1-a
+- GCP zone: us-central1-b
 
 ## Operating system
 
