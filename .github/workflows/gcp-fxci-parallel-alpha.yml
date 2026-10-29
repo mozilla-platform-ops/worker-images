@@ -28,7 +28,7 @@ jobs:
         run: |
           $configs = Get-ChildItem -Path ./config -File -Filter "*.yaml" |
             ForEach-Object { $_.BaseName } |
-            Where-Object { $_ -match '^(trusted-)?gw-fxci-gcp-.*-alpha$' } |
+            Where-Object { $_ -eq 'gw-fxci-gcp-l1-2404-headless-alpha' } |
             Sort-Object
 
           if (-not $configs -or $configs.Count -eq 0) {
