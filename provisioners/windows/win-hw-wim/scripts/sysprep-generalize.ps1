@@ -179,11 +179,23 @@ if ('DefaultPassword' -in (Get-ItemProperty -LiteralPath $wl).PSObject.Propertie
 
 Step 'Running Sysprep /generalize /oobe /quit'
 $sp = "$env:SystemRoot\System32\Sysprep"
-$process = Start-Process -FilePath (Join-Path $sp 'Sysprep.exe') -ArgumentList '/generalize', '/oobe', '/quit', '/quiet' -PassThru
-if (-not $process.WaitForExit(1800000)) { throw 'Sysprep timed out.' }
-if ($process.ExitCode -ne 0) { throw "Sysprep failed: $($process.ExitCode)" }
-$state = (Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Setup\State' -Name ImageState).ImageState
-if ($state -ne 'IMAGE_STATE_GENERALIZE_RESEAL_TO_OOBE') { throw "Unexpected Sysprep image state: $state" }
+try {
+  $process = Start-Process -FilePath (Join-Path $sp 'Sysprep.exe') -ArgumentList '/generalize', '/oobe', '/quit', '/quiet' -PassThru
+  if (-not $process.WaitForExit(1800000)) { throw 'Sysprep timed out.' }
+  Write-Host ("Sysprep exit code: {0}" -f $process.ExitCode)
+  if ($process.ExitCode -ne 0) { throw "Sysprep failed: $($process.ExitCode)" }
+  $state = (Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Setup\State' -Name ImageState).ImageState
+  if ($state -ne 'IMAGE_STATE_GENERALIZE_RESEAL_TO_OOBE') { throw "Unexpected Sysprep image state: $state" }
+}
+catch {
+  # Stream diagnostics before the ephemeral build VM is deleted.
+  foreach ($log in 'setuperr.log', 'setupact.log') {
+    Write-Host ("== Sysprep Panther/{0} (last 60 lines) ==" -f $log)
+    Get-Content -LiteralPath (Join-Path $sp "Panther\$log") -Tail 60 -ErrorAction SilentlyContinue |
+      ForEach-Object { Write-Host $_ }
+  }
+  throw
+}
 & shutdown.exe /s /t 10 /f
 if ($LASTEXITCODE -ne 0) { throw "Shutdown request failed: $LASTEXITCODE" }
 Write-Output 'WIM_FINALIZE_OK'

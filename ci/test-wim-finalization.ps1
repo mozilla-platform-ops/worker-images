@@ -166,10 +166,17 @@ function shutdown.exe {
     $global:LASTEXITCODE = if ($global:wimTest.case -eq 'shutdown') { 5 } else { 0 }
 }
 $savedRoot = $env:SystemRoot
+$sysprepScratch = Join-Path ([IO.Path]::GetTempPath()) ('wim-sysprep-' + [guid]::NewGuid())
+New-Item -ItemType Directory -Path (Join-Path $sysprepScratch 'System32/Sysprep/Panther') -Force | Out-Null
+Set-Content -LiteralPath (Join-Path $sysprepScratch 'System32/Sysprep/Panther/setuperr.log') -Value 'test Sysprep diagnostic'
+function Write-Host {
+    param($Object)
+    $global:wimTest.diagnostics += [string]$Object
+}
 try {
-    $env:SystemRoot = [IO.Path]::GetTempPath()
+    $env:SystemRoot = $sysprepScratch
     foreach ($case in 'success', 'exit', 'sysprep-timeout', 'state', 'shutdown') {
-        $global:wimTest = @{ case = $case; shutdown = 0 }
+        $global:wimTest = @{ case = $case; shutdown = 0; diagnostics = @() }
         switch ($case) {
             'success' { Assert ('WIM_FINALIZE_OK' -in @(& $finish)) 'Missing guest success marker.' }
             'exit' { Expect-Failure $finish 'Sysprep failed: 5' }
@@ -177,10 +184,17 @@ try {
             'state' { Expect-Failure $finish 'Unexpected Sysprep image state' }
             'shutdown' { Expect-Failure $finish 'Shutdown request failed' }
         }
+        if ($case -in 'exit', 'sysprep-timeout', 'state') {
+            Assert ('test Sysprep diagnostic' -in $global:wimTest.diagnostics) 'Sysprep diagnostics were not streamed on failure.'
+        }
         Assert ($global:wimTest.shutdown -eq $(if ($case -in 'success', 'shutdown') { 1 } else { 0 })) 'Shutdown requested after a Sysprep failure.'
     }
 }
-finally { $env:SystemRoot = $savedRoot }
+finally {
+    $env:SystemRoot = $savedRoot
+    Microsoft.PowerShell.Management\Remove-Item Function:\Write-Host
+    Microsoft.PowerShell.Management\Remove-Item -LiteralPath $sysprepScratch -Recurse -Force
+}
 
 # Inspect offline state and credentials using the real gate with mock registry hives.
 . (Join-Path $scripts 'assert-capture-ready.ps1')
