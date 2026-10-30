@@ -1,6 +1,9 @@
-# Gecko Hg and Git image seeds (WIP)
+# Gecko Git image seeds (WIP)
 
-These opt-in seeds contain Gecko Mercurial and Git history. They do not contain
+Images build only the Git seed. The Hg seed was slower than a cold clone and is
+no longer built; the Hg sections below describe the earlier trial.
+
+These opt-in seeds contain Gecko Git history. They do not contain
 checked-out source files, pip packages, or other task dependencies. Hardware WIMs are
 not changed.
 

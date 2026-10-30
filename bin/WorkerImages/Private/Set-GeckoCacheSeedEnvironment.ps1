@@ -7,11 +7,7 @@ function Set-GeckoCacheSeedEnvironment($ImageConfig, $ImageKey) {
         return
     }
 
-    if ($ImageKey -notmatch '-alpha$') {
-        throw "Gecko cache seeding is only supported for alpha configs: $ImageKey"
-    }
     if (
-        [string]::IsNullOrWhiteSpace($env:PKR_VAR_gecko_hg_seed_revision) -or
         [string]::IsNullOrWhiteSpace($env:PKR_VAR_gecko_git_seed_revision) -or
         [string]::IsNullOrWhiteSpace($env:PKR_VAR_gecko_seed_decision)
     ) {
