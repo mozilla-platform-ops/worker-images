@@ -59,18 +59,6 @@ vm:
     managed_by: packer
 ```
 
-`experimental.gecko_cache_seed`: Set this to `true` to seed the Gecko Hg and
-Git caches for an alpha image. It is off when absent or `false`, and is rejected
-for non-alpha configs. Enable it only in the alpha image config you want to test:
-
-```
-experimental:
-  gecko_cache_seed: true
-```
-
-The alpha build workflow must provide the paired Hg revision, Git revision, and
-decision task ID. The build fails if the flag is enabled without those values.
-
 `tests`: This is an ordered list of pester tests that will be run on the image at the end of the packer build process
 
 ```

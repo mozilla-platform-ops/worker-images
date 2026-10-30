@@ -1,44 +1,6 @@
-function Invoke-SeedHg {
-    & $hg --config ui.interactive=false --config progress.assume-tty=true `
-        --config format.use-share-safe=no --config format.use-dirstate-v2=no `
-        --config format.use-persistent-nodemap=no --config format.use-delta-info-flags=no @args
-    if ($LASTEXITCODE -ne 0) { throw "Hg seed command failed: $args" }
-}
-
 function Invoke-SeedGit {
     & $git @args
     if ($LASTEXITCODE -ne 0) { throw "Git seed command failed: $args" }
-}
-
-function New-HgSeed($Revision, $Sharebase, $RobustCheckout, $Source, $Upstream) {
-    if ($Revision -cnotmatch '^[0-9a-f]{40}$') { throw 'Use a full Hg changeset' }
-    if ((Test-Path -LiteralPath $Sharebase) -and (Get-ChildItem -LiteralPath $Sharebase -Force)) {
-        throw "Seed directory must be empty: $Sharebase"
-    }
-    $null = New-Item -ItemType Directory -Path $Sharebase -Force
-    $checkout = Join-Path ([IO.Path]::GetTempPath()) ('.hg-seed-' + [guid]::NewGuid())
-    try {
-        Invoke-SeedHg --config "extensions.robustcheckout=$RobustCheckout" `
-            --config ui.clonebundles=true --config ui.clonebundlefallback=false `
-            robustcheckout --noupdate --sharebase $Sharebase --upstream $Upstream `
-            --revision $Revision $Source $checkout | Out-Host
-        $resolved = Invoke-SeedHg -R $checkout log -r $Revision -T '{node}'
-        if ($resolved -cne $Revision) { throw 'The Hg seed does not contain the selected revision' }
-        $root = Invoke-SeedHg -R $checkout log -r 0 -T '{node}'
-        if ($root -cnotmatch '^[0-9a-f]{40}$') { throw 'Invalid Hg root changeset' }
-        $store = Join-Path $Sharebase "$root/.hg"
-        $requirements = @(Get-Content -LiteralPath "$store/requires")
-        $supported = @('dotencode', 'fncache', 'generaldelta', 'revlogv1', 'store', 'sparserevlog', 'revlog-compression-zstd')
-        if (@($requirements | Where-Object { $_ -cnotin $supported }).Count -or
-            @(@('dotencode', 'fncache', 'store') | Where-Object { $_ -cnotin $requirements }).Count) {
-            throw "Unsupported Hg store requirements: $requirements"
-        }
-        if (Test-Path -LiteralPath "$store/sharedpath") { throw 'The Hg seed must not depend on another repository' }
-        [IO.File]::WriteAllText("$store/worker-image-seed", "$Revision`n")
-    }
-    finally {
-        if (Test-Path -LiteralPath $checkout) { Remove-Item -LiteralPath $checkout -Recurse -Force }
-    }
 }
 
 function New-GitSeed($Revision, $Source, $Full, $Shallow) {

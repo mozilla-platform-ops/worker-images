@@ -20,53 +20,14 @@ Describe "Task storage configuration" {
     }
 }
 
-Describe 'Gecko image seed' -Skip:([string]::IsNullOrWhiteSpace($env:GECKO_HG_SEED_REVISION)) {
+Describe 'Gecko image seed' {
     BeforeAll {
-        $hg = 'C:\Program Files\Mercurial\hg.exe'
         $git = 'C:\Program Files\Git\cmd\git.exe'
-        $arm64 = @(Get-CimInstance -ClassName Win32_Processor -ErrorAction Stop).Architecture -contains 12
         $level = if ($env:config -like 'trusted-*') { 3 } else { 1 }
-        if ($arm64 -or $env:GECKO_GIT_SEED_REVISION) {
-            $state = Get-Content 'C:\worker-runner\directory-caches.json' -Raw -ErrorAction Stop | ConvertFrom-Json
-        }
+        $state = Get-Content 'C:\worker-runner\directory-caches.json' -Raw -ErrorAction Stop | ConvertFrom-Json
     }
 
-    It 'Contains the selected Hg history in each expected store' {
-        $sharebases = @('C:\hg-shared')
-        if ($arm64) {
-            $sharebases = foreach ($name in @("gecko-level-$level-checkouts", "gecko-level-$level-checkouts-sparse", 'relops-level-3-checkouts-sparse')) {
-                @($state.$name).Count | Should -Be 1
-                $state.$name[0].key | Should -BeExactly $name
-                $state.$name[0].location | Should -BeExactly "C:\caches\$name"
-                $state.$name[0].created | Should -Not -BeNullOrEmpty
-                "C:\caches\$name\hg-store"
-            }
-        }
-        foreach ($sharebase in $sharebases) {
-            $stores = @(Get-ChildItem -LiteralPath $sharebase -Directory -ErrorAction Stop)
-            $stores.Count | Should -Be 1
-            $store = $stores[0].FullName
-            $stores[0].Name | Should -Match '^[0-9a-f]{40}$'
-            (Get-Content "$store\.hg\worker-image-seed" -Raw -ErrorAction Stop).Trim() | Should -BeExactly $env:GECKO_HG_SEED_REVISION
-            "$store\.hg\sharedpath" | Should -Not -Exist
-            & $hg -R $store log -r $env:GECKO_HG_SEED_REVISION -T '{node}' | Should -BeExactly $env:GECKO_HG_SEED_REVISION
-            $LASTEXITCODE | Should -Be 0
-            if (-not $arm64) {
-                foreach ($relative in @('.hg\store\00changelog.i', '.hg\worker-image-seed')) {
-                    $acl = Get-Acl -LiteralPath "$store\$relative" -ErrorAction Stop
-                    $acl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value | Should -Be 'S-1-5-18'
-                    @($acl.GetAccessRules($true, $true, [System.Security.Principal.SecurityIdentifier]) | Where-Object {
-                        $_.IdentityReference.Value -eq 'S-1-1-0' -and $_.IsInherited -and
-                        $_.AccessControlType -eq 'Allow' -and
-                        ($_.FileSystemRights -band [System.Security.AccessControl.FileSystemRights]::FullControl) -eq
-                            [System.Security.AccessControl.FileSystemRights]::FullControl
-                    }).Count | Should -BeGreaterThan 0
-                }
-            }
-        }
-    }
-
-    It 'Registers full and shallow Git caches at the selected commit' -Skip:([string]::IsNullOrWhiteSpace($env:GECKO_GIT_SEED_REVISION)) {
+    It 'Registers full and shallow Git caches at the selected commit' {
         foreach ($suffix in @('', '-shallow')) {
             $name = "gecko-level-$level-checkouts-git$suffix"
             @($state.$name).Count | Should -Be 1
@@ -74,8 +35,9 @@ Describe 'Gecko image seed' -Skip:([string]::IsNullOrWhiteSpace($env:GECKO_HG_SE
             $state.$name[0].location | Should -BeExactly "C:\caches\$name"
             $state.$name[0].created | Should -Not -BeNullOrEmpty
             $repo = "C:\caches\$name\src"
-            (Get-Content "$repo\.git\worker-image-seed" -Raw -ErrorAction Stop).Trim() | Should -BeExactly $env:GECKO_GIT_SEED_REVISION
-            & $git -C $repo rev-parse --verify 'HEAD^{commit}' | Should -BeExactly $env:GECKO_GIT_SEED_REVISION
+            $revision = (Get-Content "$repo\.git\worker-image-seed" -Raw -ErrorAction Stop).Trim()
+            $revision | Should -Match '^[0-9a-f]{40}$'
+            & $git -C $repo rev-parse --verify 'HEAD^{commit}' | Should -BeExactly $revision
             $LASTEXITCODE | Should -Be 0
             & $git -C $repo remote get-url origin | Should -BeExactly 'https://github.com/mozilla-firefox/firefox'
             $LASTEXITCODE | Should -Be 0

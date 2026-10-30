@@ -1,7 +1,6 @@
 $ErrorActionPreference = 'Stop'
 . ./bin/WorkerImages/Public/ConvertFrom-Yaml.ps1
 . ./bin/WorkerImages/Public/New-AzSharedWorkerImage.ps1
-. ./bin/WorkerImages/Private/Set-GeckoCacheSeedEnvironment.ps1
 
 $check = @{ calls = @(); directory = ''; fail = '' }
 function packer {

@@ -5,8 +5,6 @@ image:
   workload_identity_provider_project_number: 324168772199
   image_name: gw-fxci-gcp-l1-2404-amd64-gui-googlecompute-alpha
   zone: us-west1-a
-experimental:
-  gecko_cache_seed: true
 vm:
   disk_size: 60
   taskcluster_version: 113.2.0

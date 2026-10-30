@@ -6,8 +6,6 @@ image:
   image_name: gw-fxci-gcp-l3-2404-arm64-headless-googlecompute-alpha
   zone: us-central1-a
   fallback_zones: [us-central1-b, us-central1-f]
-experimental:
-  gecko_cache_seed: true
 vm:
   disk_size: 60
   taskcluster_version: 113.2.0
