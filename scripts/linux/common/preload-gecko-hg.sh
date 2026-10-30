@@ -18,19 +18,7 @@ python3 /usr/local/lib/worker-images/gecko_hg.py build-git \
     --mode "$GECKO_HG_SEED_MODE" --level "$GECKO_HG_SEED_LEVEL" \
     --seed-root /usr/local/share/gecko-git-seed
 
-# Only Docker-style (D2G) builder tasks still check out Gecko with Hg.
-extra_seed=''
-if [[ "$GECKO_HG_SEED_MODE" == linux-d2g ]]; then
-    if [[ -z "${GECKO_HG_SEED_REVISION:-}" ]]; then
-        echo 'D2G seeding requires the paired autoland Hg revision' >&2
-        exit 1
-    fi
-    python3 /usr/local/lib/worker-images/gecko_hg.py build \
-        --revision "$GECKO_HG_SEED_REVISION" --mode "$GECKO_HG_SEED_MODE" \
-        --level "$GECKO_HG_SEED_LEVEL" \
-        --seed-root /usr/local/share/gecko-hg-seed
-    extra_seed='--extra-seed-root /usr/local/share/gecko-hg-seed'
-fi
+# Hg seed removed: slower than a cold clone on pd-balanced boot disks (235 s vs 200 s).
 
 # Move the seeds into the caches directory before the worker starts.
 disk_dependency=''
@@ -46,6 +34,6 @@ RequiresMountsFor=/home
 
 [Service]
 TimeoutStartSec=infinity
-ExecStartPre=/usr/bin/python3 /usr/local/lib/worker-images/gecko_hg.py install --seed-root /usr/local/share/gecko-git-seed ${extra_seed} --destination-root /home/generic-worker/caches --state-file /directory-caches.json
+ExecStartPre=/usr/bin/python3 /usr/local/lib/worker-images/gecko_hg.py install --seed-root /usr/local/share/gecko-git-seed --destination-root /home/generic-worker/caches --state-file /directory-caches.json
 EOF
 systemctl daemon-reload

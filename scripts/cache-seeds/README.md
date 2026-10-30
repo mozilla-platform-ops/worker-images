@@ -124,19 +124,17 @@ older D: pools or change tasksDir, cachesDir, or downloadsDir.
 
 ## Linux images
 
-Every Linux image seeds the Git cache. Only D2G images also seed the Hg
-`gecko-level-<level>-checkouts` cache, because Linux D2G builder tasks still
-check out with Hg. The native GUI image seeds Git only. No checkout option is
-needed. Autoland decision `W2W5EeeBSJu1jaEnKQkzAw` has 3,435 Linux
+Linux images seed the Git cache only. The Hg seed was slower than a cold clone
+on pd-balanced boot disks, so it is not built. No checkout option is needed.
+Autoland decision `W2W5EeeBSJu1jaEnKQkzAw` has 3,435 Linux
 Docker-style Hg task definitions using the full cache and 453 using the sparse
 cache. These are task definitions, not measured task volume or cache-hit rates.
 The Gecko and RelOps sparse caches are not preloaded.
 Other cache names continue to use the normal cold-checkout path.
 
-The image keeps each seed as a plain directory under
-`/usr/local/share/gecko-hg-seed` and `/usr/local/share/gecko-git-seed`
-(mode 0700, outside `/home`). Hg stores and Git packs are already compressed,
-so the image does not archive them again. Before Worker Runner starts, its
+The image keeps the seed as a plain directory under
+`/usr/local/share/gecko-git-seed` (mode 0700, outside `/home`). Git packs are
+already compressed, so the image does not archive them again. Before Worker Runner starts, its
 ExecStartPre hook renames each seed directory into
 `/home/generic-worker/caches` and writes initial state to
 `/directory-caches.json`. The service has no WorkingDirectory and starts in
