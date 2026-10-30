@@ -20,7 +20,7 @@ Describe "Task storage configuration" {
     }
 }
 
-Describe 'Gecko image seed' -Skip:([string]::IsNullOrWhiteSpace($env:GECKO_GIT_SEED_REVISION)) {
+Describe 'Gecko image seed' {
     BeforeAll {
         $git = 'C:\Program Files\Git\cmd\git.exe'
         $level = if ($env:config -like 'trusted-*') { 3 } else { 1 }
@@ -35,8 +35,9 @@ Describe 'Gecko image seed' -Skip:([string]::IsNullOrWhiteSpace($env:GECKO_GIT_S
             $state.$name[0].location | Should -BeExactly "C:\caches\$name"
             $state.$name[0].created | Should -Not -BeNullOrEmpty
             $repo = "C:\caches\$name\src"
-            (Get-Content "$repo\.git\worker-image-seed" -Raw -ErrorAction Stop).Trim() | Should -BeExactly $env:GECKO_GIT_SEED_REVISION
-            & $git -C $repo rev-parse --verify 'HEAD^{commit}' | Should -BeExactly $env:GECKO_GIT_SEED_REVISION
+            $revision = (Get-Content "$repo\.git\worker-image-seed" -Raw -ErrorAction Stop).Trim()
+            $revision | Should -Match '^[0-9a-f]{40}$'
+            & $git -C $repo rev-parse --verify 'HEAD^{commit}' | Should -BeExactly $revision
             $LASTEXITCODE | Should -Be 0
             & $git -C $repo remote get-url origin | Should -BeExactly 'https://github.com/mozilla-firefox/firefox'
             $LASTEXITCODE | Should -Be 0

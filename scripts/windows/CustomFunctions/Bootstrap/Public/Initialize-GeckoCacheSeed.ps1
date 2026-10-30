@@ -1,13 +1,7 @@
 function Initialize-GeckoCacheSeed {
     $ErrorActionPreference = 'Stop'
 
-    if (-not $env:GECKO_GIT_SEED_REVISION) {
-        Write-Host 'Gecko image seed is disabled'
-        return
-    }
-    if ($env:GECKO_GIT_SEED_REVISION -cnotmatch '^[0-9a-f]{40}$' -or
-        $env:GECKO_SEED_DECISION -cnotmatch '^[A-Za-z0-9_-]{22}$' -or
-        $env:GECKO_HG_SEED_LEVEL -notin @('1', '3')) { throw 'Invalid Git revision, decision task ID, or cache level' }
+    if ($env:GECKO_SEED_LEVEL -notin @('1', '3')) { throw 'Invalid cache level' }
     if ([Security.Principal.WindowsIdentity]::GetCurrent().User.Value -ne 'S-1-5-18') {
         throw 'Build image seeds as SYSTEM so new cache files have the correct owner'
     }
@@ -25,12 +19,18 @@ function Initialize-GeckoCacheSeed {
     $temp = Join-Path ([IO.Path]::GetTempPath()) ('.gecko-seed-' + [guid]::NewGuid())
     $null = New-Item -ItemType Directory -Path $temp
     try {
+        $tc = 'https://firefox-ci-tc.services.mozilla.com/api'
+        $null = Invoke-DownloadWithRetry -Url "$tc/index/v1/task/gecko.v2.autoland.latest.taskgraph.decision" -Path "$temp\decision.json"
+        $decision = (Get-Content -Raw "$temp\decision.json" | ConvertFrom-Json).taskId
+        $null = Invoke-DownloadWithRetry -Url "$tc/queue/v1/task/$decision/artifacts/public/parameters.yml" -Path "$temp\parameters.yml"
+        $revision = [regex]::Match((Get-Content -Raw "$temp\parameters.yml"), '(?m)^head_git_rev:\s*([0-9a-f]{40})\s*$').Groups[1].Value
+        if (-not $revision) { throw "No autoland Git revision in decision $decision" }
         $state = @{}
         $created = [DateTime]::UtcNow.ToString('o')
-        $level = $env:GECKO_HG_SEED_LEVEL
+        $level = $env:GECKO_SEED_LEVEL
         $full = Join-Path $temp 'git-full/src'
         $shallow = Join-Path $temp 'git-shallow/src'
-        New-GitSeed $env:GECKO_GIT_SEED_REVISION 'https://github.com/mozilla-firefox/firefox' $full $shallow
+        New-GitSeed $revision 'https://github.com/mozilla-firefox/firefox' $full $shallow
         Add-SeedCache "gecko-level-$level-checkouts-git" (Split-Path -Parent $full) 'C:\caches' $state $created
         Add-SeedCache "gecko-level-$level-checkouts-git-shallow" (Split-Path -Parent $shallow) 'C:\caches' $state $created
         Write-SeedState $state $stateFile
