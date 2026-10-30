@@ -59,17 +59,6 @@ vm:
     managed_by: packer
 ```
 
-`experimental.gecko_cache_seed`: Set this to `true` to seed the Gecko Git cache.
-It is off when absent or `false`:
-
-```
-experimental:
-  gecko_cache_seed: true
-```
-
-The build workflow must provide the Git revision and decision task ID. The build
-fails if the flag is enabled without those values.
-
 `tests`: This is an ordered list of pester tests that will be run on the image at the end of the packer build process
 
 ```

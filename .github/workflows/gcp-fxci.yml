@@ -60,6 +60,10 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Resolve latest autoland Gecko seed
+        shell: bash
+        run: python3 ci/resolve-gecko-hg-seed.py | sed -n 's/^decision=/PKR_VAR_gecko_seed_decision=/p; s/^git_revision=/PKR_VAR_gecko_git_seed_revision=/p' >> "$GITHUB_ENV"
       - uses: 'google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093'
         id: auth
         with:

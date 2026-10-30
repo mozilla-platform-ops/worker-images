@@ -14,7 +14,6 @@ function New-AzSharedWorkerImage {
 
     $DefaultYaml = ConvertFrom-Yaml (Get-Content "config/windows_production_defaults.yaml" -Raw)
     $ImageYaml   = ConvertFrom-Yaml (Get-Content "config/$Key.yaml" -Raw)
-    Set-GeckoCacheSeedEnvironment -ImageConfig $ImageYaml -ImageKey $Key
 
     function Merge-YamlWithDefaults {
         param (
