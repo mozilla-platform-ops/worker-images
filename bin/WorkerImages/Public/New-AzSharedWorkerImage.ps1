@@ -177,7 +177,7 @@ function New-AzSharedWorkerImage {
         Compress-Archive -Path 'tests/win/*' -DestinationPath "$uploadDirectory/tests.zip" -ErrorAction Stop
         $env:PKR_VAR_upload_directory = $uploadDirectory
 
-        packer init azure.pkr.hcl
+        packer init -upgrade azure.pkr.hcl
         if ($LASTEXITCODE -ne 0) { throw "packer init failed with exit code $LASTEXITCODE" }
         if ($PackerForceBuild) {
             packer build --only azure-arm.sig -force azure.pkr.hcl

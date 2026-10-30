@@ -16,7 +16,7 @@ See [README.md](README.md) for architecture, access, and installer details.
 4. Validate the configuration:
 
    ```bash
-   packer init packer/foofrix-azure.pkr.hcl
+   packer init -upgrade packer/foofrix-azure.pkr.hcl
    python3 ci/test-foofrix-config.py
    pre-commit run --files config/foofrix/IMAGE.yaml
    ```

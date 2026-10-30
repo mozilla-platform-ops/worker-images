@@ -74,8 +74,8 @@ function New-GCPWorkerImage {
     }
 
     ## Initialize and build
-    Write-Host "packer init $PackerHCLPath"
-    packer init $PackerHCLPath
+    Write-Host "packer init -upgrade $PackerHCLPath"
+    packer init -upgrade $PackerHCLPath
     if ($key -match "Trusted") {
         $ENV:PKR_VAR_use_keyvault = "true"
     }
