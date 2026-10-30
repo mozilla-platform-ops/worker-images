@@ -64,7 +64,6 @@ jobs:
           }
 
   packer:
-    env:
     needs: [check-access, prepare-matrix]
     name: Build ${{ matrix.config }}
     runs-on: ubuntu-latest
