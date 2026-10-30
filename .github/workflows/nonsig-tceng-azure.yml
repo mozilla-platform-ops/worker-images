@@ -19,7 +19,6 @@ on:
         default: main
 
 permissions:
-  id-token: write
   contents: read
 
 jobs:
@@ -71,7 +70,7 @@ jobs:
     name: "${{ github.event.inputs.config }} - ${{ matrix.LOCATIONS }}"
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       id-token: write
     strategy:
       fail-fast: false

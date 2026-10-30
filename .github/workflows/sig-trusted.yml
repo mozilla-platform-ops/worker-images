@@ -14,7 +14,6 @@ on:
         - trusted-win2025-64-24h2-core
 
 permissions:
-  id-token: write
   contents: read
 
 jobs:
@@ -39,7 +38,7 @@ jobs:
     name: "Build ${{ github.event.inputs.config }}"
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
