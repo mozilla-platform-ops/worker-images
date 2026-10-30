@@ -74,6 +74,7 @@ try {
     $secrets = @(
         (Join-Path $scratch 'ronin/data/secrets/vault.yaml'),
         (Join-Path $scratch 'bake/run-puppet-system.ps1'),
+        (Join-Path $scratch 'wim-bake/password.txt'),
         (Join-Path $env:SystemRoot 'Panther/unattend.xml'),
         (Join-Path $env:SystemRoot 'Panther/UnattendGC/autounattend.xml'),
         (Join-Path $env:SystemRoot 'System32/Sysprep/unattend.xml')

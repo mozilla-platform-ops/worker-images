@@ -37,6 +37,10 @@ jobs:
       shell: pwsh
       run: ./ci/test-wim-build-identity.ps1
 
+    - name: Check WIM finalization
+      shell: pwsh
+      run: ./ci/test-wim-finalization.ps1
+
     - name: Install pre-commit
       run: pip install pre-commit
 

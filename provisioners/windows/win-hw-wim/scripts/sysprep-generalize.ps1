@@ -1,41 +1,18 @@
-<#
-.SYNOPSIS
-  Step 4 (runs INSIDE the build VM via Packer): scrub machine-specific state,
-  then Sysprep /generalize /oobe /shutdown so the disk can be captured clean.
-
-.DESCRIPTION
-  Removes everything that must NOT ship in a generalized golden image:
-    - the placeholder bake vault.yaml (secret hygiene)
-    - the bake registry identity (role/workerType/worker_pool_id) so first boot
-      re-seeds real values; leaves bootstrap_stage = 'setup' so deploy bootstraps
-    - SSH host keys and any generic-worker keys (none baked, defensive)
-    - build-only autologon
-  Then runs Sysprep. The classic Win11 failure here is per-user AppX left behind,
-  so we assert none remain (the bake removed provisioned packages) and surface
-  Panther logs on failure.
-
-  IMPORTANT: capture must happen AFTER this scrub (it does — capture is a
-  post-build step in win-hw-wim.pkr.hcl).
-#>
+# Finalize through PowerShell Direct, then shut down for offline capture.
 [CmdletBinding()]
-param()
+param([bool] $PowerShellDirect = $false)
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+if (-not $PowerShellDirect) { throw 'Finalization must run through the host PowerShell Direct helper.' }
 function Step($m) { Write-Host "== $m ==" }
-
-# Signal the host-side boot watchdog (New-WinHwWim.ps1) to STOP restarting the guest:
-# from here we deliberately Sysprep /shutdown, and that power-off is what Packer waits
-# for to capture the VHDX. Write-Output (not Write-Host) so it reaches Packer's captured
-# stdout stream and lands in packer-build.log where the watchdog greps for it.
-Write-Output 'WIM-WATCHDOG-STOP: sysprep starting; the guest power-off from here is expected (capture).'
 
 # --- Secret + identity scrub ---
 Step 'Scrubbing bake secrets and identity'
-$buildSecretPaths = @("$env:SystemDrive\ronin\data\secrets\vault.yaml", "$env:SystemDrive\bake")
+$buildSecretPaths = @("$env:SystemDrive\ronin\data\secrets\vault.yaml", "$env:SystemDrive\bake", "$env:SystemDrive\wim-bake")
 foreach ($answerRoot in @("$env:SystemRoot\Panther", "$env:SystemRoot\System32\Sysprep")) {
   if (Test-Path -LiteralPath $answerRoot) {
-    $buildSecretPaths += @(Get-ChildItem -LiteralPath $answerRoot -Recurse -File -ErrorAction Stop |
+    $buildSecretPaths += @(Get-ChildItem -LiteralPath $answerRoot -Recurse -File -Force -ErrorAction Stop |
       Where-Object { $_.Name -in @('unattend.xml', 'autounattend.xml') } |
       Select-Object -ExpandProperty FullName)
   }
@@ -151,7 +128,34 @@ $rdbSettings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopI
 Register-ScheduledTask -TaskName 'RunDeployBootstrap' -Action $rdbAction -Trigger $rdbTrigger -Principal $rdbPrincipal -Settings $rdbSettings -Force | Out-Null
 Write-Host '  RunDeployBootstrap SYSTEM startup task registered (fires only on the deployed node).'
 
-# The active WinRM session uses this account.
+Step 'Removing build-time WinRM access'
+$policy = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service'
+if (Test-Path -LiteralPath $policy) {
+  foreach ($name in 'AllowBasic', 'AllowUnencryptedTraffic') {
+    if ((Get-ItemProperty -LiteralPath $policy).PSObject.Properties[$name]) {
+      Remove-ItemProperty -LiteralPath $policy -Name $name -ErrorAction Stop
+    }
+  }
+}
+$tokenPolicy = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+if ((Test-Path -LiteralPath $tokenPolicy) -and
+    (Get-ItemProperty -LiteralPath $tokenPolicy).PSObject.Properties['LocalAccountTokenFilterPolicy']) {
+  Remove-ItemProperty -LiteralPath $tokenPolicy -Name LocalAccountTokenFilterPolicy -ErrorAction Stop
+}
+Set-Item WSMan:\localhost\Service\Auth\Basic -Value $false
+Set-Item WSMan:\localhost\Service\AllowUnencrypted -Value $false
+Get-ChildItem WSMan:\localhost\Listener -ErrorAction Stop | Remove-Item -Recurse -Force -ErrorAction Stop
+if (@(Get-ChildItem WSMan:\localhost\Listener -ErrorAction Stop).Count) { throw 'WinRM listeners remain.' }
+Get-NetFirewallRule -ErrorAction Stop | Where-Object DisplayName -eq 'WinRM-HTTP-In-5985' | Remove-NetFirewallRule -ErrorAction Stop
+if (@(Get-NetFirewallRule -ErrorAction Stop | Where-Object DisplayName -eq 'WinRM-HTTP-In-5985').Count) {
+  throw 'Build WinRM firewall rule remains.'
+}
+Set-Service WinRM -StartupType Disabled
+Stop-Service WinRM -Force -ErrorAction Stop
+$winrm = Get-CimInstance Win32_Service -Filter "Name='WinRM'" -ErrorAction Stop
+if ($winrm.State -ne 'Stopped' -or $winrm.StartMode -ne 'Disabled') { throw 'WinRM is not stopped and disabled.' }
+
+# The existing PowerShell Direct session retains its authenticated token.
 Step 'Disabling build-only packer account'
 $buildAcct = $env:USERNAME   # the account this provisioner runs under IS the build account
 & net.exe user $buildAcct /active:no
@@ -173,13 +177,13 @@ if ('DefaultPassword' -in (Get-ItemProperty -LiteralPath $wl).PSObject.Propertie
   throw 'Build autologon password remains.'
 }
 
-# --- Sysprep generalize + shutdown ---
-Step 'Running Sysprep /generalize /oobe /shutdown'
+Step 'Running Sysprep /generalize /oobe /quit'
 $sp = "$env:SystemRoot\System32\Sysprep"
-& (Join-Path $sp 'Sysprep.exe') /generalize /oobe /shutdown /quiet
-if ($LASTEXITCODE -ne 0) {
-  Write-Warning "Sysprep returned rc=$LASTEXITCODE - dumping Panther errors:"
-  Get-Content (Join-Path $sp 'Panther\setuperr.log') -ErrorAction SilentlyContinue | Select-Object -Last 40
-  throw "Sysprep failed rc=$LASTEXITCODE"
-}
-# On success the VM powers off; Packer finalizes the artifact.
+$process = Start-Process -FilePath (Join-Path $sp 'Sysprep.exe') -ArgumentList '/generalize', '/oobe', '/quit', '/quiet' -PassThru
+if (-not $process.WaitForExit(1800000)) { throw 'Sysprep timed out.' }
+if ($process.ExitCode -ne 0) { throw "Sysprep failed: $($process.ExitCode)" }
+$state = (Get-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Setup\State' -Name ImageState).ImageState
+if ($state -ne 'IMAGE_STATE_GENERALIZE_RESEAL_TO_OOBE') { throw "Unexpected Sysprep image state: $state" }
+& shutdown.exe /s /t 10 /f
+if ($LASTEXITCODE -ne 0) { throw "Shutdown request failed: $LASTEXITCODE" }
+Write-Output 'WIM_FINALIZE_OK'
