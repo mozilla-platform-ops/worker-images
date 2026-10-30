@@ -52,7 +52,11 @@ function az {
     if ($args[0] -eq 'identity') { return '11111111-1111-1111-1111-111111111111' }
     if ($args[0] -eq 'login' -or ($args[0] -eq 'account' -and $args[1] -eq 'set')) { return }
     if ($args[0] -eq 'account') { return '{"user":{"name":"test-client"},"tenantId":"test-tenant","id":"test-subscription"}' }
-    if ($args[0] -eq 'vm') { $global:wimIdentity_remoteScript = Arg $args '--scripts'; return 'KICKOFF_OK' }
+    if ($args[0] -eq 'vm') {
+        $global:wimIdentity_remoteScript = Arg $args '--scripts'
+        if ($global:wimIdentity_badSentinel) { return 'Error text quoting KICKOFF_OK without a success marker.' }
+        return @('Initialized empty Git repository', 'KICKOFF_OK', 'HEAD is now at the selected commit')
+    }
     if ($args[0] -ne 'storage' -or $args[1] -ne 'blob') { throw 'Unexpected Azure call.' }
     $name = Arg $args '--name'
     $file = Arg $args '--file'
@@ -88,6 +92,7 @@ try {
     Push-Location $scratch
     $pushed = $true
     $global:wimIdentity_checkout = $pin
+    $global:wimIdentity_badSentinel = $false
     $env:IMAGE = 'win11-test'; $env:PIPELINE_SHA = $pin; $env:BUILD_ID = 'same-label'
     $env:GITHUB_ENV = Join-Path $scratch 'github-env'
     $env:ACTIONS_ID_TOKEN_REQUEST_URL = 'https://example.invalid/oidc?test=1'
@@ -110,7 +115,10 @@ try {
         $env:PIPELINE_SHA = $bad
         Assert-Fails { & $kickoff }
     }
-    $env:PIPELINE_SHA = $pin; $env:BUILD_ID = '-bad-label'
+    $env:PIPELINE_SHA = $pin; $global:wimIdentity_badSentinel = $true
+    Assert-Fails { & $kickoff }
+    $global:wimIdentity_badSentinel = $false
+    $env:BUILD_ID = '-bad-label'
     Assert-Fails { & $kickoff }
     $env:BUILD_ID = 'same-label'; $env:GITHUB_RUN_ATTEMPT = '../2'
     Assert-Fails { & $kickoff }

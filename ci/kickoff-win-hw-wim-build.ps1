@@ -111,6 +111,7 @@ Write-Output 'KICKOFF_OK'
 $kickoffUtc = (Get-Date).ToUniversalTime()
 Write-Host "== Starting build '$image' (commit '$revision', build '$buildId', status '$statusPrefix') on $vm (kickoff $($kickoffUtc.ToString('o'))) =="
 $out = az vm run-command invoke -g $rg -n $vm --command-id RunPowerShellScript --scripts "$start" --query "join('`n', value[].message)" -o tsv
+$out = $out -join "`n"
 Write-Host $out
 # az vm run-command returns 0 even if the inner script threw — assert the sentinel so a
 # failed checkout/register fails fast instead of polling a build that never started.
