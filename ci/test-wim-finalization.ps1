@@ -159,11 +159,28 @@ function Start-Process {
     $process
 }
 function Get-ItemProperty {
+    $global:wimTest.generalized = $global:wimTest.case -ne 'state'
     [pscustomobject]@{ ImageState = $(if ($global:wimTest.case -eq 'state') { 'IMAGE_STATE_UNDEPLOYABLE' } else { 'IMAGE_STATE_GENERALIZE_RESEAL_TO_OOBE' }) }
 }
 function shutdown.exe {
     $global:wimTest.shutdown++
     $global:LASTEXITCODE = if ($global:wimTest.case -eq 'shutdown') { 5 } else { 0 }
+}
+function Test-Path { return $false }
+function Set-Item {}
+function Get-ChildItem {}
+function Get-NetFirewallRule {}
+function Remove-NetFirewallRule {}
+function Set-Service {
+    Assert ($global:wimTest.generalized) 'WinRM teardown ran before generalization.'
+    $global:wimTest.teardown++
+}
+function Stop-Service {}
+function Get-CimInstance { [pscustomobject]@{ State = 'Stopped'; StartMode = 'Disabled' } }
+function net.exe {
+    Assert ($global:wimTest.generalized) 'Build account disabled before generalization.'
+    $global:wimTest.account++
+    $global:LASTEXITCODE = 0
 }
 $savedRoot = $env:SystemRoot
 $sysprepScratch = Join-Path ([IO.Path]::GetTempPath()) ('wim-sysprep-' + [guid]::NewGuid())
@@ -176,7 +193,7 @@ function Write-Host {
 try {
     $env:SystemRoot = $sysprepScratch
     foreach ($case in 'success', 'exit', 'sysprep-timeout', 'state', 'shutdown') {
-        $global:wimTest = @{ case = $case; shutdown = 0; diagnostics = @() }
+        $global:wimTest = @{ case = $case; shutdown = 0; diagnostics = @(); generalized = $false; teardown = 0; account = 0 }
         switch ($case) {
             'success' { Assert ('WIM_FINALIZE_OK' -in @(& $finish)) 'Missing guest success marker.' }
             'exit' { Expect-Failure $finish 'Sysprep failed: 5' }
@@ -187,11 +204,17 @@ try {
         if ($case -in 'exit', 'sysprep-timeout', 'state') {
             Assert ('test Sysprep diagnostic' -in $global:wimTest.diagnostics) 'Sysprep diagnostics were not streamed on failure.'
         }
+        $expectedTeardown = if ($case -in 'success', 'shutdown') { 1 } else { 0 }
+        Assert ($global:wimTest.teardown -eq $expectedTeardown) 'WinRM access changed after Sysprep failure.'
+        Assert ($global:wimTest.account -eq $expectedTeardown) 'Build account changed after Sysprep failure.'
         Assert ($global:wimTest.shutdown -eq $(if ($case -in 'success', 'shutdown') { 1 } else { 0 })) 'Shutdown requested after a Sysprep failure.'
     }
 }
 finally {
     $env:SystemRoot = $savedRoot
+    foreach ($mock in 'Test-Path', 'Set-Item', 'Get-ChildItem', 'Get-NetFirewallRule', 'Remove-NetFirewallRule', 'Set-Service', 'Stop-Service', 'Get-CimInstance', 'net.exe') {
+        Microsoft.PowerShell.Management\Remove-Item "Function:\$mock"
+    }
     Microsoft.PowerShell.Management\Remove-Item Function:\Write-Host
     Microsoft.PowerShell.Management\Remove-Item -LiteralPath $sysprepScratch -Recurse -Force
 }

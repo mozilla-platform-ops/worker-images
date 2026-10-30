@@ -128,39 +128,6 @@ $rdbSettings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopI
 Register-ScheduledTask -TaskName 'RunDeployBootstrap' -Action $rdbAction -Trigger $rdbTrigger -Principal $rdbPrincipal -Settings $rdbSettings -Force | Out-Null
 Write-Host '  RunDeployBootstrap SYSTEM startup task registered (fires only on the deployed node).'
 
-Step 'Removing build-time WinRM access'
-$policy = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service'
-if (Test-Path -LiteralPath $policy) {
-  foreach ($name in 'AllowBasic', 'AllowUnencryptedTraffic') {
-    if ((Get-ItemProperty -LiteralPath $policy).PSObject.Properties[$name]) {
-      Remove-ItemProperty -LiteralPath $policy -Name $name -ErrorAction Stop
-    }
-  }
-}
-$tokenPolicy = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
-if ((Test-Path -LiteralPath $tokenPolicy) -and
-    (Get-ItemProperty -LiteralPath $tokenPolicy).PSObject.Properties['LocalAccountTokenFilterPolicy']) {
-  Remove-ItemProperty -LiteralPath $tokenPolicy -Name LocalAccountTokenFilterPolicy -ErrorAction Stop
-}
-Set-Item WSMan:\localhost\Service\Auth\Basic -Value $false
-Set-Item WSMan:\localhost\Service\AllowUnencrypted -Value $false
-Get-ChildItem WSMan:\localhost\Listener -ErrorAction Stop | Remove-Item -Recurse -Force -ErrorAction Stop
-if (@(Get-ChildItem WSMan:\localhost\Listener -ErrorAction Stop).Count) { throw 'WinRM listeners remain.' }
-Get-NetFirewallRule -ErrorAction Stop | Where-Object DisplayName -eq 'WinRM-HTTP-In-5985' | Remove-NetFirewallRule -ErrorAction Stop
-if (@(Get-NetFirewallRule -ErrorAction Stop | Where-Object DisplayName -eq 'WinRM-HTTP-In-5985').Count) {
-  throw 'Build WinRM firewall rule remains.'
-}
-Set-Service WinRM -StartupType Disabled
-Stop-Service WinRM -Force -ErrorAction Stop
-$winrm = Get-CimInstance Win32_Service -Filter "Name='WinRM'" -ErrorAction Stop
-if ($winrm.State -ne 'Stopped' -or $winrm.StartMode -ne 'Disabled') { throw 'WinRM is not stopped and disabled.' }
-
-# The existing PowerShell Direct session retains its authenticated token.
-Step 'Disabling build-only packer account'
-$buildAcct = $env:USERNAME   # the account this provisioner runs under IS the build account
-& net.exe user $buildAcct /active:no
-if ($LASTEXITCODE -ne 0) { throw "Disabling build account failed: $LASTEXITCODE" }
-
 # Clear any autologon the bake configured. The build 'packer' account auto-logs in during the bake,
 # leaving AutoAdminLogon/DefaultUserName/DefaultPassword/AutoLogonSID in Winlogon. Left in the golden
 # image these collide with the deploy-time Administrator autologon and generic-worker's task-user
@@ -196,6 +163,40 @@ catch {
   }
   throw
 }
+# Keep build access until Sysprep has completed.
+Step 'Removing build-time WinRM access'
+$policy = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service'
+if (Test-Path -LiteralPath $policy) {
+  foreach ($name in 'AllowBasic', 'AllowUnencryptedTraffic') {
+    if ((Get-ItemProperty -LiteralPath $policy).PSObject.Properties[$name]) {
+      Remove-ItemProperty -LiteralPath $policy -Name $name -ErrorAction Stop
+    }
+  }
+}
+$tokenPolicy = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+if ((Test-Path -LiteralPath $tokenPolicy) -and
+    (Get-ItemProperty -LiteralPath $tokenPolicy).PSObject.Properties['LocalAccountTokenFilterPolicy']) {
+  Remove-ItemProperty -LiteralPath $tokenPolicy -Name LocalAccountTokenFilterPolicy -ErrorAction Stop
+}
+Set-Item WSMan:\localhost\Service\Auth\Basic -Value $false
+Set-Item WSMan:\localhost\Service\AllowUnencrypted -Value $false
+Get-ChildItem WSMan:\localhost\Listener -ErrorAction Stop | Remove-Item -Recurse -Force -ErrorAction Stop
+if (@(Get-ChildItem WSMan:\localhost\Listener -ErrorAction Stop).Count) { throw 'WinRM listeners remain.' }
+Get-NetFirewallRule -ErrorAction Stop | Where-Object DisplayName -eq 'WinRM-HTTP-In-5985' | Remove-NetFirewallRule -ErrorAction Stop
+if (@(Get-NetFirewallRule -ErrorAction Stop | Where-Object DisplayName -eq 'WinRM-HTTP-In-5985').Count) {
+  throw 'Build WinRM firewall rule remains.'
+}
+Set-Service WinRM -StartupType Disabled
+Stop-Service WinRM -Force -ErrorAction Stop
+$winrm = Get-CimInstance Win32_Service -Filter "Name='WinRM'" -ErrorAction Stop
+if ($winrm.State -ne 'Stopped' -or $winrm.StartMode -ne 'Disabled') { throw 'WinRM is not stopped and disabled.' }
+
+# The existing PowerShell Direct session retains its authenticated token.
+Step 'Disabling build-only packer account'
+$buildAcct = $env:USERNAME   # the account this provisioner runs under IS the build account
+& net.exe user $buildAcct /active:no
+if ($LASTEXITCODE -ne 0) { throw "Disabling build account failed: $LASTEXITCODE" }
+
 & shutdown.exe /s /t 10 /f
 if ($LASTEXITCODE -ne 0) { throw "Shutdown request failed: $LASTEXITCODE" }
 Write-Output 'WIM_FINALIZE_OK'
