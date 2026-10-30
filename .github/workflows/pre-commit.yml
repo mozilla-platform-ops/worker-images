@@ -25,6 +25,18 @@ jobs:
       shell: pwsh
       run: ./ci/test-image-dev.ps1
 
+    - name: Check WIM bootstrap handoff
+      shell: pwsh
+      run: ./ci/test-wim-bootstrap-handoff.ps1
+
+    - name: Check WIM credential cleanup
+      shell: pwsh
+      run: ./ci/test-wim-secrets.ps1
+
+    - name: Check WIM build identity
+      shell: pwsh
+      run: ./ci/test-wim-build-identity.ps1
+
     - name: Install pre-commit
       run: pip install pre-commit
 

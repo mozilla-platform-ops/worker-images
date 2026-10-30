@@ -7,16 +7,16 @@ source_vm_name = "win-hw-wim-base" # created by register-base-vm.ps1
 switch_name    = "Default Switch"  # or your external switch with internet
 
 winrm_username = "packer"
-winrm_password = "CHANGE-ME-build-only" # build-scoped; scrubbed before capture
+# Supply the build password through PKR_VAR_winrm_password.
 
 cpus      = 4
 memory_mb = 8192
 
-# ronin bake source — use the FEATURE branch carrying win116424h2hwbake (not main)
+# Match the token-free 24H2 bake revision.
 ronin_org    = "mozilla-platform-ops"
 ronin_repo   = "ronin_puppet"
-ronin_branch = "wim-bake-role"
-ronin_hash   = "" # optional pinned commit
+ronin_branch = "relops-2581-windows-privileged-paths"
+ronin_hash   = "61a1705f"
 bake_role    = "win116424h2hwbake"
 
 # Pinned to worker-images config/windows_production_defaults.yaml (source of truth).

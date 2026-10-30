@@ -30,11 +30,11 @@ on:
           - win11-25h2-iso
           - win11-26h2-a11y
       pipeline_ref:
-        description: "worker-images branch to build from (default: main)"
+        description: "worker-images branch, tag, or commit to build (default: main)"
         type: string
         default: main
       build_id:
-        description: "Optional build id (default: timestamp on the VM)"
+        description: "Optional build label (run ID and attempt are always appended)"
         type: string
         default: ""
 
@@ -46,11 +46,25 @@ jobs:
   check-access:
     name: Verify User Access
     runs-on: ubuntu-latest
+    outputs:
+      pipeline_sha: ${{ steps.pipeline.outputs.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Load Authorized Users and Check Access
         shell: pwsh
         run: ./ci/check-authorized-user.ps1
+
+      - name: Resolve pipeline revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.pipeline_ref }}
+      - name: Record pipeline revision
+        id: pipeline
+        shell: pwsh
+        run: |
+          $sha = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $sha -notmatch '^[0-9a-fA-F]{40}$') { throw 'Invalid pipeline revision.' }
+          "sha=$sha" >> $env:GITHUB_OUTPUT
 
   build:
     name: Build on ephemeral Azure VM
@@ -61,13 +75,13 @@ jobs:
       contents: read
     env:
       RESOURCE_GROUP: rg-central-us-hardware-imaging
-      # Run-scoped VM name so parallel runs don't collide and teardown is exact.
-      VM_NAME: win-hw-wim-build-${{ github.run_id }}
+      # Isolate reruns as well as separate workflow runs.
+      VM_NAME: win-hw-wim-build-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
-      # Check out the requested pipeline ref for the ci/ and provisioner scripts.
+      # Use the revision resolved after the access check.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ inputs.pipeline_ref }}
+          ref: ${{ needs.check-access.outputs.pipeline_sha }}
 
       - name: Azure Login
         uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906
@@ -84,7 +98,7 @@ jobs:
         shell: pwsh
         env:
           IMAGE: ${{ inputs.image }}
-          PIPELINE_REF: ${{ inputs.pipeline_ref }}
+          PIPELINE_SHA: ${{ needs.check-access.outputs.pipeline_sha }}
           BUILD_ID: ${{ inputs.build_id }}
         run: ./ci/kickoff-win-hw-wim-build.ps1
 
