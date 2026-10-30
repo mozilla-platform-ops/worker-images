@@ -34,9 +34,9 @@ pre-commit run --files <changed-files>
 Useful local validation:
 
 ```bash
-packer init azure.pkr.hcl
+packer init -upgrade azure.pkr.hcl
 packer validate azure.pkr.hcl
-packer init gcp.pkr.hcl
+packer init -upgrade gcp.pkr.hcl
 packer validate gcp.pkr.hcl
 cd taskcluster
 pytest test/

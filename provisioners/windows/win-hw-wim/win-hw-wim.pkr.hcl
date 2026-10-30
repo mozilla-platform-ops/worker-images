@@ -14,11 +14,11 @@ packer {
   required_plugins {
     hyperv = {
       source  = "github.com/hashicorp/hyperv"
-      version = ">= 1.1.3"
+      version = ">= 1.1.5"
     }
     windows-update = {
       source  = "github.com/rgl/windows-update"
-      version = ">= 0.16.0"
+      version = ">= 0.18.5"
     }
   }
 }

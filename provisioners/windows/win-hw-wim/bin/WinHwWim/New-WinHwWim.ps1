@@ -540,7 +540,7 @@ sbom_path        = "$($sbomMd -replace '\\','/')"
         $env:PKR_VAR_winrm_password = $WinRMPassword
         # Pass the DIRECTORY (.), not a single file: `packer build foo.pkr.hcl` loads
         # only that file and ignores variables.pkr.hcl, so var.* declarations go missing.
-        & packer init .; if ($LASTEXITCODE) { throw "packer init rc=$LASTEXITCODE" }
+        & packer init -upgrade .; if ($LASTEXITCODE) { throw "packer init rc=$LASTEXITCODE" }
         # Tee Packer's output to $pkrLog so the watchdog can see the sysprep marker.
         # (Tee-Object is a cmdlet, so $LASTEXITCODE still reflects packer's exit code.)
         # -on-error=abort leaves the failed VM + dirs in place so the bake (esp. the

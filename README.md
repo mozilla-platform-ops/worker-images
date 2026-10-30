@@ -185,10 +185,10 @@ Taskcluster taskgraph tests.
 ```bash
 pre-commit run --all-files
 
-packer init azure.pkr.hcl
+packer init -upgrade azure.pkr.hcl
 packer validate azure.pkr.hcl
 
-packer init gcp.pkr.hcl
+packer init -upgrade gcp.pkr.hcl
 packer validate gcp.pkr.hcl
 
 cd taskcluster
