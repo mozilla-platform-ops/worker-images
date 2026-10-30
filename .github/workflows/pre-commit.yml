@@ -3,6 +3,9 @@ name: linting
 on:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   pre-commit:
     runs-on: ubuntu-latest
@@ -42,6 +45,9 @@ jobs:
 
     - name: Install uv
       uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4
+
+    - name: Check workflow permissions
+      run: uv run --with pyyaml ci/test-workflow-permissions.py
 
     - name: Check image cache seeds
       run: |
