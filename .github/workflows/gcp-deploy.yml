@@ -15,7 +15,6 @@ on:
         - trusted-gw-fxci-gcp-l3-2404-arm64-headless-alpha
 
 permissions:
-  id-token: write
   contents: read
 
 jobs:
@@ -56,7 +55,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: prod
     permissions:
-      contents: write
+      contents: read
       id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

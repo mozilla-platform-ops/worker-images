@@ -35,7 +35,6 @@ on:
           - eu-west-1
 
 permissions:
-  id-token: write
   contents: read
 
 env:
@@ -69,7 +68,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: prod
     permissions:
-      contents: write
+      contents: read
       id-token: write
     steps:
       - name: Checkout repository

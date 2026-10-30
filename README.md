@@ -75,6 +75,36 @@ they build.
 | `OS Integration Tests - FXCI` | `os-integration.yml` | Triggers Taskcluster integration tests against a built image. |
 | TC Engineering workflows | `nonsig-tceng-azure.yml`, `gcp-tceng.yml`, `aws-tceng.yml` | Builds images owned by Taskcluster Engineering. |
 
+## Workflow permissions
+
+Build and promotion jobs use `contents: read`. Packer plugin downloads only
+need read access, and artifact uploads use the Actions runtime token. Only
+the SBOM jobs and their reusable `upload-release-notes.yml` publisher have
+`contents: write` and `actions: read` to download notes and commit `sboms/*.md`
+to `main`. The publisher serializes updates and uses ordinary pushes.
+
+OIDC (`id-token: write`) is granted only to individual cloud login jobs.
+Azure, GCP workload identity federation, and AWS role assumption all require
+it. Access checks, matrix preparation, scans, and SBOM publication cannot
+request OIDC tokens. GitHub does not restrict the requested token audience
+by job permission: preventing GCP/AWS jobs from authenticating to Azure also
+requires Azure federated identity claims that distinguish those jobs. That
+cloud trust configuration is not verified by the local permission check.
+See [GitHub's OIDC reference](https://docs.github.com/en/actions/reference/security/oidc).
+
+The `main` branch protection review for RELOPS-2597 (2026-10-30) found a
+GitHub Actions app bypass of required pull requests and force pushes enabled.
+Retaining the bypass supports automated SBOM publication; repository write
+access in these workflows is limited to that path. The app bypass itself is
+not restricted to a workflow or file path by branch protection. Disable
+force pushes: the publisher does not need them. Removing the app bypass
+requires moving SBOM publication to pull requests or separate storage first.
+These repository settings are separate from the workflow changes; see
+[GitHub branch protection](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
+
+Check the permission boundaries locally with
+`uv run --with pyyaml ci/test-workflow-permissions.py`.
+
 ## Windows Image Model
 
 Windows Firefox CI images are Azure Compute Gallery images. Each config under

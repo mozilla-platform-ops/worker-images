@@ -39,7 +39,6 @@ on:
         default: ""
 
 permissions:
-  id-token: write
   contents: read
 
 jobs:
