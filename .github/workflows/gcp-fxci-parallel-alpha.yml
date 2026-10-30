@@ -48,10 +48,12 @@ jobs:
           Write-Host "Generated os-integration matrix: $osIntMatrix"
           "os_integration_matrix=$osIntMatrix" >> $env:GITHUB_OUTPUT
 
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e
+
       - name: Resolve latest autoland Hg and Git revisions
         id: seed
         shell: bash
-        run: python3 ci/resolve-gecko-hg-seed.py | tee -a "$GITHUB_OUTPUT"
+        run: uv run ci/resolve-gecko-hg-seed.py | tee -a "$GITHUB_OUTPUT"
 
   check-access:
     name: Verify User Access

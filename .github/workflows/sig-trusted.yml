@@ -44,9 +44,11 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e
+
       - name: Resolve latest autoland Gecko seed
         shell: bash
-        run: python3 ci/resolve-gecko-hg-seed.py | sed -n 's/^decision=/PKR_VAR_gecko_seed_decision=/p; s/^git_revision=/PKR_VAR_gecko_git_seed_revision=/p' >> "$GITHUB_ENV"
+        run: uv run ci/resolve-gecko-hg-seed.py | sed -n 's/^decision=/PKR_VAR_gecko_seed_decision=/p; s/^git_revision=/PKR_VAR_gecko_git_seed_revision=/p' >> "$GITHUB_ENV"
       - name: Azure Login
         uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906
         with:
