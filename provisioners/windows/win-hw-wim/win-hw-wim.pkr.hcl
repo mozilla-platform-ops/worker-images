@@ -42,7 +42,7 @@ source "hyperv-vmcx" "nuc" {
 
   # WinRM — the HTTP listener + static NAT IP are set up at first logon by
   # scripts/unattend/set-bake-network.ps1 (dropped in by prepare-base-vhdx.ps1).
-  # NTLM provides session security without Basic or AllowUnencrypted.
+  # NTLM authenticates the bake; this plugin still requires AllowUnencrypted.
   communicator   = "winrm"
   winrm_username = var.winrm_username
   winrm_password = var.winrm_password

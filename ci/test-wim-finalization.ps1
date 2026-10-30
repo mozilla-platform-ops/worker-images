@@ -17,6 +17,40 @@ foreach ($file in 'finalize-wim.ps1', 'assert-capture-ready.ps1', 'sysprep-gener
     Read-Ast (Join-Path $scripts $file) | Out-Null
 }
 
+# Preserve compatibility with the shipped client without enabling Basic or broad access.
+$network = Read-Ast (Join-Path $scripts 'unattend/set-bake-network.ps1')
+$transport = [scriptblock]::Create(($network.EndBlock.Statements | Where-Object {
+    ($_.Extent.Text -like '$gw *=*') -or ($_.Extent.Text -like '$winrmPol =*') -or
+    ($_.Extent.Text -like 'New-Item -Path $winrmPol*') -or
+    ($_.Extent.Text -like 'Set-ItemProperty -Path $winrmPol*') -or
+    ($_.Extent.Text -like 'Get-NetFirewallRule -ErrorAction Stop*') -or
+    ($_.Extent.Text -like 'New-NetFirewallRule -DisplayName*')
+}).Extent.Text -join "`n")
+$global:wimTest = @{ policy = @{}; removed = 0; created = 0 }
+function New-Item {}
+function Set-ItemProperty {
+    param($Path, $Name, $Value)
+    $global:wimTest.policy[$Name] = $Value
+}
+function Get-NetFirewallRule { [pscustomobject]@{ DisplayName = 'WinRM-HTTP-In-5985' } }
+function Remove-NetFirewallRule {
+    param([Parameter(ValueFromPipeline)] $InputObject)
+    process { $global:wimTest.removed++ }
+}
+function New-NetFirewallRule {
+    param($DisplayName, $Direction, $Action, $Protocol, $LocalPort, $RemoteAddress)
+    Assert ($global:wimTest.removed -eq 1) 'Existing broad build rule was not removed.'
+    Assert ($RemoteAddress -eq '192.168.234.1' -and $LocalPort -eq 5985) 'Build WinRM access is not restricted to the NAT host.'
+    $global:wimTest.created++
+}
+& $transport
+Assert ($global:wimTest.policy.AllowBasic -eq 0) 'Build Basic authentication must remain disabled.'
+Assert ($global:wimTest.policy.AllowUnencryptedTraffic -eq 1) 'Shipped client requires unencrypted HTTP during the bake.'
+Assert ($global:wimTest.created -eq 1) 'Build firewall rule was not created.'
+foreach ($mock in 'New-Item', 'Set-ItemProperty', 'Get-NetFirewallRule', 'Remove-NetFirewallRule', 'New-NetFirewallRule') {
+    Microsoft.PowerShell.Management\Remove-Item "Function:\$mock"
+}
+
 # Exercise the host helper without Hyper-V or guest access.
 function Get-VM {
     $global:wimTest.vmCalls++

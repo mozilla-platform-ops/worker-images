@@ -83,11 +83,11 @@ for ($j = 0; $j -lt 30; $j++) {
 }
 Write-BakeLog ("network profile(s): " + ((Get-NetConnectionProfile -ErrorAction SilentlyContinue | ForEach-Object { $_.Name + '=' + $_.NetworkCategory }) -join ', '))
 
-# Packer uses NTLM session security; Basic and unencrypted traffic are unnecessary.
+# The shipped WinRM client authenticates with NTLM but requires unencrypted HTTP.
 $winrmPol = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service'
 New-Item -Path $winrmPol -Force -ErrorAction Stop | Out-Null
 Set-ItemProperty -Path $winrmPol -Name AllowBasic -Value 0 -Type DWord -Force -ErrorAction Stop
-Set-ItemProperty -Path $winrmPol -Name AllowUnencryptedTraffic -Value 0 -Type DWord -Force -ErrorAction Stop
+Set-ItemProperty -Path $winrmPol -Name AllowUnencryptedTraffic -Value 1 -Type DWord -Force -ErrorAction Stop
 
 # Bring up the WinRM HTTP listener. Explicit `winrm create Listener` (unlike
 # Enable-PSRemoting / winrm quickconfig) does NOT check the network-connection profile,
