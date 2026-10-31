@@ -70,6 +70,11 @@
 					<Order>1</Order>
 					<Path>reg.exe add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE" /v BypassNRO /t REG_DWORD /d 1 /f</Path>
 				</RunSynchronousCommand>
+				<RunSynchronousCommand wcm:action="add">
+					<Order>2</Order>
+					<Path>powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%WINDIR%\Setup\Scripts\Remove-BuildAccess.ps1" -ForWindowsSetup</Path>
+					<WillReboot>OnRequest</WillReboot>
+				</RunSynchronousCommand>
 			</RunSynchronous>
 		</component>
 	</settings>

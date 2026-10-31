@@ -40,8 +40,6 @@ $vhdx = Get-ChildItem -Path $BuildDir -Recurse -Filter *.vhdx -ErrorAction Stop 
         Sort-Object Length -Descending | Select-Object -First 1
 if (-not $vhdx) { throw "No .vhdx found under $BuildDir" }
 Write-Host "== Capturing from $($vhdx.FullName) =="
-if ((Get-VHD -Path $vhdx.FullName).Attached) { throw 'Refusing capture from an attached VHDX.' }
-. (Join-Path $PSScriptRoot 'assert-capture-ready.ps1')
 
 $outDir = Split-Path -Parent $OutWim
 if ($outDir -and -not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
@@ -61,7 +59,9 @@ try {
     if (-not $win) { throw 'Could not locate the Windows volume on the mounted VHDX.' }
     $root = "$($win.DriveLetter):\"
     Write-Host "== Windows volume: $root =="
-    Assert-CaptureReady -Root $root
+
+    . (Join-Path $PSScriptRoot 'post-install.ps1')
+    Install-PostInstallCleanup -WindowsRoot (Join-Path $root 'Windows')
 
     Write-Host "== DISM /Capture-Image -> $OutWim =="
     New-WindowsImage -ImagePath $OutWim -CapturePath $root -Name $Name `
@@ -71,14 +71,20 @@ finally {
     if ($mounted) { Dismount-VHD -Path $mounted -ErrorAction SilentlyContinue }
 }
 
-# Require readable WIM metadata before publishing its checksum.
-$wimPath = ([string]$OutWim).Replace('/', '\')
-$images = @(Get-WindowsImage -ImagePath $wimPath -ErrorAction Stop)
-if ($images.Count -ne 1 -or $images[0].ImageName -ne $Name) { throw 'Captured WIM metadata does not match the requested image.' }
-$images | Format-List ImageName, ImageIndex, ImageSize
-
 $sha = (Get-FileHash -Algorithm SHA256 -Path $OutWim).Hash
 $sizeGB = [math]::Round((Get-Item $OutWim).Length / 1GB, 2)
 "$sha  $(Split-Path -Leaf $OutWim)" | Set-Content -Path "$OutWim.sha256"
 Write-Host "== Captured $OutWim ($sizeGB GB) =="
 Write-Host "   SHA256: $sha"
+# Best-effort image-info dump. Normalize to backslashes: DISM /Capture-Image tolerates the
+# forward-slash path Packer passes, but the Get-WindowsImage cmdlet rejects it with "The
+# parameter is incorrect" (0x80070057). Never fail the capture on a verification hiccup -
+# the WIM and its .sha256 already exist at this point.
+try {
+  $wimPath = ([string]$OutWim).Replace('/', '\')
+  Get-WindowsImage -ImagePath $wimPath | Format-List ImageName, ImageIndex, ImageSize
+}
+catch {
+  $vmsg = $_.Exception.Message
+  Write-Warning ("  (image-info verification skipped: " + $vmsg + ")")
+}

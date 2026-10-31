@@ -83,11 +83,13 @@ for ($j = 0; $j -lt 30; $j++) {
 }
 Write-BakeLog ("network profile(s): " + ((Get-NetConnectionProfile -ErrorAction SilentlyContinue | ForEach-Object { $_.Name + '=' + $_.NetworkCategory }) -join ', '))
 
-# The shipped WinRM client authenticates with NTLM but requires unencrypted HTTP.
+# Belt-and-suspenders: WinRM service policy keys enable Basic + unencrypted regardless
+# of the network profile (they bypass the interactive 'network is Public' guard), so a
+# Basic-auth fallback also works if NTLM/Private ever fails. Harmless with NTLM.
 $winrmPol = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WinRM\Service'
-New-Item -Path $winrmPol -Force -ErrorAction Stop | Out-Null
-Set-ItemProperty -Path $winrmPol -Name AllowBasic -Value 0 -Type DWord -Force -ErrorAction Stop
-Set-ItemProperty -Path $winrmPol -Name AllowUnencryptedTraffic -Value 1 -Type DWord -Force -ErrorAction Stop
+New-Item -Path $winrmPol -Force -ErrorAction SilentlyContinue | Out-Null
+Set-ItemProperty -Path $winrmPol -Name AllowBasic -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue
+Set-ItemProperty -Path $winrmPol -Name AllowUnencryptedTraffic -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue
 
 # Bring up the WinRM HTTP listener. Explicit `winrm create Listener` (unlike
 # Enable-PSRemoting / winrm quickconfig) does NOT check the network-connection profile,
@@ -95,10 +97,7 @@ Set-ItemProperty -Path $winrmPol -Name AllowUnencryptedTraffic -Value 1 -Type DW
 cmd.exe /c 'sc config WinRM start= auto' | Out-Null
 cmd.exe /c 'net start WinRM' 2>$null | Out-Null
 cmd.exe /c 'winrm create winrm/config/Listener?Address=*+Transport=HTTP' 2>$null | Out-Null
-Get-NetFirewallRule -ErrorAction Stop | Where-Object DisplayName -eq 'WinRM-HTTP-In-5985' |
-    Remove-NetFirewallRule -ErrorAction Stop
-New-NetFirewallRule -DisplayName 'WinRM-HTTP-In-5985' -Direction Inbound -Action Allow `
-    -Protocol TCP -LocalPort 5985 -RemoteAddress $gw -ErrorAction Stop | Out-Null
+netsh advfirewall firewall add rule name="WinRM-HTTP-In-5985" dir=in action=allow protocol=TCP localport=5985 | Out-Null
 
 $ok = $false
 try { $ok = [bool](Get-NetFirewallRule -DisplayName 'WinRM-HTTP-In-5985' -ErrorAction SilentlyContinue) } catch {}

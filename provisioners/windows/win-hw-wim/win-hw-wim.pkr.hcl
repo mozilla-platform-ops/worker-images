@@ -2,7 +2,7 @@
 # win-hw-wim.pkr.hcl  —  Standalone Hyper-V bake for a golden Windows HW install.wim
 #
 # Flow: clone a pristine VM (built from your BYO base VHDX) -> WinRM in ->
-#       run the ronin BAKE role -> PowerShell Direct finalization + shutdown ->
+#       run the ronin BAKE role -> Sysprep /generalize /shutdown ->
 #       (post-build) capture the generalized VHDX to install.wim.
 #
 # NOT related to worker-images/azure.pkr.hcl. No azure-arm source, no gallery.
@@ -42,15 +42,17 @@ source "hyperv-vmcx" "nuc" {
 
   # WinRM — the HTTP listener + static NAT IP are set up at first logon by
   # scripts/unattend/set-bake-network.ps1 (dropped in by prepare-base-vhdx.ps1).
-  # NTLM authenticates the bake; this plugin still requires AllowUnencrypted.
+  # Use NTLM (message-encrypted), NOT Basic-over-HTTP: the NAT link is classified
+  # a 'Public' network, and WinRM refuses to enable AllowUnencrypted there (the
+  # firewall-exception guard blocks it), so Basic/plaintext auth can't be turned
+  # on. NTLM needs no AllowUnencrypted and works with the local build account.
   communicator   = "winrm"
   winrm_username = var.winrm_username
   winrm_password = var.winrm_password
   winrm_use_ntlm = true
   winrm_timeout  = "60m"
 
-  # The host finalizer verifies shutdown before Packer exports the VM.
-  disable_shutdown = true
+  # Sysprep in the last provisioner shuts the VM down; let Packer treat that as done.
   shutdown_timeout = "30m"
 }
 
@@ -155,11 +157,12 @@ build {
     max_retries = 3
   }
 
-  # Finalize over VMBus so removing WinRM cannot interrupt Sysprep.
-  provisioner "shell-local" {
-    inline = [
-      "powershell -NoProfile -ExecutionPolicy Bypass -File \"${path.root}/scripts/finalize-wim.ps1\" -VmName packer-nuc -Username \"${var.winrm_username}\""
-    ]
+  # ---- 4. Scrub machine-specific state + Sysprep /generalize /shutdown ----
+  #        (this powers the VM off; Packer then finalizes the artifact)
+  provisioner "powershell" {
+    elevated_user     = var.winrm_username
+    elevated_password = var.winrm_password
+    scripts           = ["${path.root}/scripts/sysprep-generalize.ps1"]
   }
 
   # ---- 5. Capture the generalized VHDX -> golden WIM (runs on the host) ----
