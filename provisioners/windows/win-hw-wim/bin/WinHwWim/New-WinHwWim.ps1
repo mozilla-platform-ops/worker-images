@@ -298,6 +298,7 @@ if ($Stages -contains 'plain') {
     $extractArgs = @('-SourceIso', $localSrcIso, '-OutWim', $goldenWim, '-Edition', $edition)
     if ($drvInject) { $extractArgs += @('-DriverCabUrls', ($drvCabUrls -join '|')) }
     & $ps 'extract-wim-from-iso.ps1' $extractArgs
+    & $ps 'add-post-install-to-wim.ps1' @('-Wim', $goldenWim)
     # Use the existing release-notes handoff; plain exports have source provenance,
     # without a Ronin software inventory.
     @("# $Image", '', "Source ISO: $baseIso", "Edition: $edition", "Build: $BuildId",

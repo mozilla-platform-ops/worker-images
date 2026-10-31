@@ -37,6 +37,10 @@ jobs:
       shell: pwsh
       run: ./ci/test-wim-build-identity.ps1
 
+    - name: Check Windows post-install cleanup
+      shell: pwsh
+      run: ./ci/test-post-install-cleanup.ps1
+
     - name: Install pre-commit
       run: pip install pre-commit
 

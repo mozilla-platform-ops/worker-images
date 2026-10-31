@@ -60,6 +60,9 @@ try {
     $root = "$($win.DriveLetter):\"
     Write-Host "== Windows volume: $root =="
 
+    . (Join-Path $PSScriptRoot 'post-install.ps1')
+    Install-PostInstallCleanup -WindowsRoot (Join-Path $root 'Windows')
+
     Write-Host "== DISM /Capture-Image -> $OutWim =="
     New-WindowsImage -ImagePath $OutWim -CapturePath $root -Name $Name `
         -Description "Baked Windows HW CI image (ronin bake role)" -CompressionType Max -Verify | Out-Null
