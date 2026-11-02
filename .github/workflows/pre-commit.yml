@@ -41,6 +41,10 @@ jobs:
       shell: pwsh
       run: ./ci/test-post-install-cleanup.ps1
 
+    - name: Check offline Windows access cleanup
+      shell: pwsh
+      run: ./ci/test-offline-build-access.ps1
+
     - name: Install pre-commit
       run: pip install pre-commit
 

@@ -1106,10 +1106,8 @@ else {
     bcdboot.exe "$winVol\Windows" /s $efiVol /f UEFI
     if ($LASTEXITCODE -ne 0) { throw "bcdboot failed rc=$LASTEXITCODE" }
 
-    ## Reuse the unattend the resync block already fetched + edited (ComputerName,
-    ## admin password). A generalized image runs specialize + oobeSystem from
-    ## \Windows\Panther\unattend.xml on first boot; the windowsPE/ImageInstall pass in
-    ## it is simply ignored (the image is already applied).
+    # Stage the answer file for images that process Setup on first boot.
+    # Offline cleanup also covers older WIMs that skip those Setup passes.
     $panther = Join-Path "$winVol\" "Windows\Panther"
     New-Item -ItemType Directory -Path $panther -Force | Out-Null
     Copy-Item -Path $unattend -Destination (Join-Path $panther "unattend.xml") -Force
@@ -1117,6 +1115,9 @@ else {
     $cleanupDestination = Join-Path "$winVol\" 'Windows/Setup/Scripts'
     New-Item -ItemType Directory -Path $cleanupDestination -Force | Out-Null
     Copy-Item -LiteralPath $cleanupScript -Destination $cleanupDestination -Force
+    # Older WIMs can boot through their startup task without rerunning Setup.
+    & (Join-Path $PSHOME 'powershell.exe') -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $cleanupScript -OfflineWindowsRoot "$winVol\Windows"
+    if ($LASTEXITCODE -ne 0) { throw "Offline build access cleanup failed: $LASTEXITCODE" }
 
     ## --- Re-assert the node name AFTER specialize (RELOPS-2487) ---
     ## The offline rename above is necessary but NOT sufficient: it runs in WinPE, and the

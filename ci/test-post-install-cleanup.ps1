@@ -43,6 +43,12 @@ try {
     [xml]$after = Get-Content $answer -Raw
     Assert ($after.SelectNodes("//*[local-name()='Path']").Count -eq ($beforeCount + 1)) 'Existing deployment commands were changed or duplicated.'
     Assert ($after.SelectNodes("//*[local-name()='FirstLogonCommands']").Count -eq 1) 'Ronin first-logon configuration was removed.'
+    $savedRoot = $env:SystemRoot
+    try {
+        $env:SystemRoot = $scratch
+        Expect-Failure { & (Join-Path $scripts 'post-install/Remove-BuildAccess.ps1') -OfflineWindowsRoot $scratch } 'Offline target cannot be the running Windows installation'
+    }
+    finally { $env:SystemRoot = $savedRoot }
 }
 finally { Remove-Item -LiteralPath $scratch -Recurse -Force }
 
@@ -92,6 +98,9 @@ finally {
 }
 
 # Run the actual cleanup with Windows APIs mocked; no real access settings change.
+$savedRoot = $env:SystemRoot
+$env:SystemRoot = [IO.Path]::GetTempPath()
+function New-Item {}
 function Start-Transcript {}
 function Stop-Transcript { $global:cleanupTest.closed++ }
 function Get-ScheduledTask { if ($global:cleanupTest.task) { [pscustomobject]@{ TaskName = 'BakeNetwork' } } }
@@ -148,5 +157,5 @@ try {
     Assert ($LASTEXITCODE -eq 3) 'Setup failure must return 3, not reboot request codes 1 or 2.'
     $global:LASTEXITCODE = 0
 }
-finally { Remove-Variable cleanupTest -Scope Global }
+finally { Remove-Variable cleanupTest -Scope Global; $env:SystemRoot = $savedRoot }
 Write-Host 'Post-install cleanup checks passed.'
