@@ -463,8 +463,11 @@ build {
     elevated_user     = "SYSTEM"
     environment_vars = [
       "GECKO_SEED_LEVEL=${startswith(var.config, "trusted-") ? "3" : "1"}",
+      # Keep the untested Gecko seed out of production images until alpha validates it.
+      "GECKO_SEED_ENABLED=${length(regexall("-alpha$", var.config)) > 0 ? "1" : "0"}",
     ]
     inline = [
+      "if ($env:GECKO_SEED_ENABLED -ne '1') { Write-Host 'Skipping Gecko cache seed for non-alpha config'; exit 0 }",
       "Import-Module BootStrap -Force;",
       "Initialize-GeckoCacheSeed"
     ]
