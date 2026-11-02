@@ -8,7 +8,7 @@
 import json
 import os
 
-MODEL = "claude-opus-5"
+MODEL = "claude-opus-5-5"
 MAX_TOKENS = 4000
 API_TIMEOUT_SECONDS = 180
 

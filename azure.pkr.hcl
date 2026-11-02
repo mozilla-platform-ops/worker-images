@@ -462,6 +462,18 @@ build {
     elevated_password = ""
     elevated_user     = "SYSTEM"
     environment_vars = [
+      "GECKO_SEED_LEVEL=${startswith(var.config, "trusted-") ? "3" : "1"}",
+    ]
+    inline = [
+      "Import-Module BootStrap -Force;",
+      "Initialize-GeckoCacheSeed"
+    ]
+  }
+
+  provisioner "powershell" {
+    elevated_password = ""
+    elevated_user     = "SYSTEM"
+    environment_vars = [
       "worker_pool_id=${var.worker_pool_id}",
       "base_image=${var.base_image}",
       "src_organisation=${var.source_organization}",

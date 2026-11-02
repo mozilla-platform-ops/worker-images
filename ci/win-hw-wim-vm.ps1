@@ -15,7 +15,7 @@
     Idempotent and best-effort so teardown never leaves the job stuck; safe to run
     even if create only partially succeeded.
 
-  The VM name is run-scoped (e.g. win-hw-wim-build-<run_id>) so parallel runs don't
+  The VM name is run-scoped (e.g. win-hw-wim-build-<run_id>-<attempt>) so parallel runs don't
   collide and teardown targets exactly this run's VM.
 #>
 [CmdletBinding()]
@@ -117,13 +117,12 @@ else {
     foreach ($nic in ($nicIds -split "`n" | Where-Object { $_ })) { Write-Host "  deleting nic $nic"; AzTry network nic delete --ids $nic }
     foreach ($d in (@($diskId) + ($dataDisks -split "`n") | Where-Object { $_ })) { Write-Host "  deleting disk $d"; AzTry disk delete --ids $d --yes }
 
-    # Sweep by name prefix — catches resources az created before a FAILED 'vm create'
-    # (the VM never existed, so 'az vm show' above found nothing). az's default NIC is
-    # <VmName>VMNic; disks are <VmName>_*.
-    foreach ($n in ((& $azExe network nic list -g $ResourceGroup --query "[?starts_with(name,'$VmName')].name" -o tsv 2>$null) -split "`n" | Where-Object { $_ })) {
+    # Sweep only this VM's default resource names after a failed create.
+    # Default names are <VmName>VMNic and <VmName>_*.
+    foreach ($n in ((& $azExe network nic list -g $ResourceGroup --query "[?name=='${VmName}VMNic'].name" -o tsv 2>$null) -split "`n" | Where-Object { $_ })) {
         Write-Host "  deleting leaked nic $n"; AzTry network nic delete -g $ResourceGroup -n $n
     }
-    foreach ($d in ((& $azExe disk list -g $ResourceGroup --query "[?starts_with(name,'$VmName')].name" -o tsv 2>$null) -split "`n" | Where-Object { $_ })) {
+    foreach ($d in ((& $azExe disk list -g $ResourceGroup --query "[?starts_with(name,'${VmName}_')].name" -o tsv 2>$null) -split "`n" | Where-Object { $_ })) {
         Write-Host "  deleting leaked disk $d"; AzTry disk delete -g $ResourceGroup -n $d --yes
     }
     Write-Host "== Teardown complete for $VmName =="

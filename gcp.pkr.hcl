@@ -74,11 +74,13 @@ variable "access_token" {
   sensitive = true
 }
 
+# The Gecko seed makes the image take longer than the 5m default to register.
 source "googlecompute" "gw-fxci-gcp-l1-2404-gui-alpha" {
   disk_size           = var.disk_size
   image_licenses      = ["projects/vm-options/global/licenses/enable-vmx"]
   image_name          = var.image_name
   machine_type        = null
+  state_timeout       = "30m"
   project_id          = var.project_id
   source_image_family = var.source_image_family
   ssh_username        = "ubuntu"
@@ -92,6 +94,7 @@ source "googlecompute" "trusted-gw-fxci-gcp-l3-2404-headless-alpha" {
   image_licenses          = ["projects/vm-options/global/licenses/enable-vmx"]
   image_name              = var.image_name
   machine_type            = null
+  state_timeout           = "30m"
   project_id              = var.project_id
   source_image_family     = var.source_image_family
   ssh_username            = "ubuntu"
@@ -106,6 +109,7 @@ source "googlecompute" "gw-fxci-gcp-l1-2404-headless-alpha" {
   image_licenses          = ["projects/vm-options/global/licenses/enable-vmx"]
   image_name              = var.image_name
   machine_type            = null
+  state_timeout           = "30m"
   project_id              = var.project_id
   source_image_family     = var.source_image_family
   ssh_username            = "ubuntu"
@@ -119,6 +123,7 @@ source "googlecompute" "gw-fxci-gcp-l1-2404-arm64-headless-alpha" {
   image_licenses          = ["projects/vm-options/global/licenses/enable-vmx"]
   image_name              = var.image_name
   machine_type            = "t2a-standard-4"
+  state_timeout           = "30m"
   project_id              = var.project_id
   source_image_family     = var.source_image_family
   ssh_username            = "ubuntu"
@@ -132,6 +137,7 @@ source "googlecompute" "trusted-gw-fxci-gcp-l3-2404-arm64-headless-alpha" {
   image_licenses          = ["projects/vm-options/global/licenses/enable-vmx"]
   image_name              = var.image_name
   machine_type            = "t2a-standard-4"
+  state_timeout           = "30m"
   project_id              = var.project_id
   source_image_family     = var.source_image_family
   ssh_username            = "ubuntu"
@@ -398,6 +404,21 @@ build {
     direction   = "download"
     max_retries = 3
     source      = "/etc/worker-images/SBOM.md"
+  }
+
+  # Add the seed after the last build-time reboot. Install it on the first boot.
+  provisioner "file" {
+    source      = "${path.cwd}/scripts/linux/common/gecko_seed.py"
+    destination = "/tmp/gecko_seed.py"
+  }
+
+  provisioner "shell" {
+    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    environment_vars = [
+      "GECKO_SEED_MODE=${source.name == "gw-fxci-gcp-l1-2404-gui-alpha" ? "linux-native" : "linux-d2g"}",
+      "GECKO_SEED_LEVEL=${startswith(source.name, "trusted-") ? "3" : "1"}",
+    ]
+    script = "${path.cwd}/scripts/linux/common/preload-gecko-seed.sh"
   }
 
   post-processor "manifest" {

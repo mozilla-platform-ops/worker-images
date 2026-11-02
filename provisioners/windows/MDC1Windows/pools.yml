@@ -21,7 +21,7 @@ pools:
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "master"
-    hash: "7d437627aa90f6beac1e47e623f70450c292a129"
+    hash: "2ed103138ddb3408b3511444a52316e823d6eadf"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -42,12 +42,12 @@ pools:
     openvox_version: "8.31.1"
     git_version: "2.56.0.2"
     Description: "NUC12 Hardware Reference Staging/Testing Pool"
-    # Reuse the validated WIM to test ronin_puppet#1481.
+    # Reuse the validated WIM to test Defender hardening in ronin_puppet#1483.
     image: "win11-24h2-hw-test-20260930-201046"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "windows-emsign-ca-fix"
-    hash: "634e9cb6d68be4e0a7d08361dd0c6eb18be21f69"
+    src_Branch: "RELOPS-2433-defender-hardening-only"
+    hash: "f13cf4c9809e2d98107bf1c8267a3b85c367674e"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -128,15 +128,12 @@ pools:
     openvox_version: "8.19.2"
     git_version: "2.50.0"
     Description: "NUC12 Hardware Performance Staging/Testing Pool"
-    # RELOPS-2487 canary: run this pool's deploy from the feature branch. OS-deploy.ps1 on that
-    # branch refreshes pools.yml from it, so the baked-WIM + DISM /Apply-Image config
-    # (image/src_Branch/hash) lives on the branch; main only needs this `dev:` trigger.
-    dev: "nuc-wim-pipeline"
-    image: "win11-24H2-NUC-01-16-2025"
+    # RELOPS-2575: test direct Google Chrome updates on the existing baked-WIM canary.
+    image: "win11-24h2-hw-20260908-172915"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "RELOPS-2467-xperf-dynamic-trace"
-    hash: "a22e7ac"
+    src_Branch: "relops-2575-chrome-without-chocolatey"
+    hash: "0c8c60c0"
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -155,12 +152,12 @@ pools:
     openvox_version: "8.31.1"
     git_version: "2.56.0.2"
     Description: "NUC12 Hardware Performance Staging/Testing Pool"
-    # Reuse the validated WIM to test ronin_puppet#1481.
+    # Reuse the validated WIM to test Defender hardening in ronin_puppet#1483.
     image: "win11-24h2-hw-test-20260930-201046"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "windows-emsign-ca-fix"
-    hash: "634e9cb6d68be4e0a7d08361dd0c6eb18be21f69"
+    src_Branch: "RELOPS-2433-defender-hardening-only"
+    hash: "f13cf4c9809e2d98107bf1c8267a3b85c367674e"
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -179,7 +176,7 @@ pools:
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "master"
-    hash: "7d437627aa90f6beac1e47e623f70450c292a129"
+    hash: "2ed103138ddb3408b3511444a52316e823d6eadf"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:

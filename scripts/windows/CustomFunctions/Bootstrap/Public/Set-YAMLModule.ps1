@@ -17,12 +17,13 @@ function Set-YAMLModule {
     }
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-    ## Bootstrap for powershell modules
-    Get-PackageProvider -Name Nuget -ForceBootstrap | Out-Null
-    Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-
-    ## install Pester
-    Install-Module -Name "Powershell-YAML" -Force
+    # Install from our mirror of the PSGallery package; PSGallery downloads fail in builds.
+    $version = "0.4.12"
+    $dest = "$env:ProgramFiles\WindowsPowerShell\Modules\powershell-yaml\$version"
+    if (-not (Test-Path "$dest\powershell-yaml.psd1")) {
+        $zip = Invoke-DownloadWithRetry -Url "https://roninpuppetassets.blob.core.windows.net/binaries/prerequisites/powershell-yaml.$version.nupkg" -Path "$env:TEMP\powershell-yaml.$version.zip"
+        Expand-Archive -Path $zip -DestinationPath $dest -Force -ErrorAction Stop
+    }
     Write-Log -message  ('{0} :: Installed Powershell-YAML' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
 
     $stopwatch.Stop()

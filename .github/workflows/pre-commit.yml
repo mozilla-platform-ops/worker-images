@@ -2,8 +2,6 @@ name: linting
 
 on:
   pull_request:
-  push:
-    branches: [ main ]
 
 jobs:
   pre-commit:
@@ -15,7 +13,7 @@ jobs:
         fetch-depth: 0
 
     - name: Set up Python
-      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
       with:
         python-version: '3.11'
 
@@ -27,8 +25,27 @@ jobs:
       shell: pwsh
       run: ./ci/test-image-dev.ps1
 
+    - name: Check WIM bootstrap handoff
+      shell: pwsh
+      run: ./ci/test-wim-bootstrap-handoff.ps1
+
+    - name: Check WIM credential cleanup
+      shell: pwsh
+      run: ./ci/test-wim-secrets.ps1
+
+    - name: Check WIM build identity
+      shell: pwsh
+      run: ./ci/test-wim-build-identity.ps1
+
     - name: Install pre-commit
       run: pip install pre-commit
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4
+
+    - name: Check OS integration trigger
+      run: |
+        uv run taskcluster/test/test_run_os_integration.py
 
     - name: Cache pre-commit environments
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

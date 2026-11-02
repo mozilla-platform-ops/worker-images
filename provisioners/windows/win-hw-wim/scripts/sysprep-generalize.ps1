@@ -32,12 +32,20 @@ Write-Output 'WIM-WATCHDOG-STOP: sysprep starting; the guest power-off from here
 
 # --- Secret + identity scrub ---
 Step 'Scrubbing bake secrets and identity'
-Remove-Item 'C:\ronin\data\secrets\vault.yaml' -Force -ErrorAction SilentlyContinue
-# Remove the whole bake work dir. It holds the SYSTEM puppet-apply helper
-# (C:\bake\run-puppet-system.ps1) which EMBEDS the build-scoped GitHub token
-# (custom_win_github_pat) when one is supplied, plus prereq installers and puppet logs.
-# None of it belongs in the golden WIM — drop it before capture.
-Remove-Item 'C:\bake' -Recurse -Force -ErrorAction SilentlyContinue
+$buildSecretPaths = @("$env:SystemDrive\ronin\data\secrets\vault.yaml", "$env:SystemDrive\bake")
+foreach ($answerRoot in @("$env:SystemRoot\Panther", "$env:SystemRoot\System32\Sysprep")) {
+  if (Test-Path -LiteralPath $answerRoot) {
+    $buildSecretPaths += @(Get-ChildItem -LiteralPath $answerRoot -Recurse -File -ErrorAction Stop |
+      Where-Object { $_.Name -in @('unattend.xml', 'autounattend.xml') } |
+      Select-Object -ExpandProperty FullName)
+  }
+}
+foreach ($secretPath in $buildSecretPaths) {
+  if (Test-Path -LiteralPath $secretPath) {
+    Remove-Item -LiteralPath $secretPath -Recurse -Force -ErrorAction Stop
+    if (Test-Path -LiteralPath $secretPath) { throw "Build secret cleanup failed: $secretPath" }
+  }
+}
 $ron = 'HKLM:\SOFTWARE\Mozilla\ronin_puppet'
 if (Test-Path $ron) {
   foreach ($v in 'role','workerType','worker_pool_id','GITHASH','secret_date') {
@@ -93,44 +101,45 @@ Unregister-ScheduledTask -TaskName 'BakeNetwork' -Confirm:$false -ErrorAction Si
 # Sysprep blocker is ever suspected, check it inside bake-bootstrap.ps1 (right after
 # puppet apply) where AppXSvc is still running.
 
-# --- Bake the first-boot bootstrap runner (SYSTEM startup task) ---
-# Registered HERE, as the last thing before Sysprep, so it CANNOT run during the bake:
-# the bake VM only ever shuts down from this point (no more boots before capture). On the
-# DEPLOYED node's first boot it reproduces the shape the unattend FirstLogonCommands would
-# have (seed C:\bootstrap + vault.yaml, disable sleep) and launches Get-Bootstrap.ps1
-# (which OS-deploy.ps1 stages on D:\ with the pool params already substituted). One-shot:
-# it flags + unregisters itself once it has launched Get-Bootstrap, so it does not re-run
-# on later ronin reboots (matches the production one-shot FirstLogonCommands launcher).
+# Keep the startup task until provisioning completes.
 Step 'Baking first-boot bootstrap runner (RunDeployBootstrap startup task)'
 $deployDir = 'C:\deploy'
 New-Item -ItemType Directory -Path $deployDir -Force | Out-Null
 $runner = @'
-$ErrorActionPreference = 'Continue'
+$ErrorActionPreference = 'Stop'
 $log = 'C:\deploy\run-bootstrap.log'
 function L($m) { ('{0} {1}' -f (Get-Date -Format o), $m) | Tee-Object -FilePath $log -Append | Out-Null }
-$flag = 'C:\deploy\.bootstrap-launched'
-if (Test-Path $flag) {
-    L 'bootstrap already launched on a prior boot; unregistering task and exiting'
-    Unregister-ScheduledTask -TaskName 'RunDeployBootstrap' -Confirm:$false -ErrorAction SilentlyContinue
-    return
+try {
+    $stage = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Mozilla\ronin_puppet' -ErrorAction SilentlyContinue
+    if ($stage.bootstrap_stage -eq 'complete') {
+        L 'bootstrap complete; removing startup task'
+        Unregister-ScheduledTask -TaskName 'RunDeployBootstrap' -Confirm:$false
+        return
+    }
+    $running = Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe'" | Where-Object {
+        $_.CommandLine -match '(?i)(?:^|\s)-file\s+"?(?:C:\\bootstrap\\bootstrap|D:\\scripts\\Get-Bootstrap)\.ps1"?(?:\s|$)'
+    }
+    if ($running) { L 'bootstrap already running; leaving startup task registered'; return }
+    $gb = 'D:\scripts\Get-Bootstrap.ps1'
+    for ($i = 0; $i -lt 60 -and -not (Test-Path $gb); $i++) { Start-Sleep -Seconds 10 }
+    if (-not (Test-Path $gb)) { throw "$gb not found" }
+    New-Item -ItemType Directory -Path 'C:\bootstrap' -Force | Out-Null
+    if (Test-Path 'D:\secrets\vault.yaml') { Copy-Item 'D:\secrets\vault.yaml' 'C:\bootstrap\' -Force }
+    powercfg -x -standby-timeout-ac 0
+    powercfg -x -monitor-timeout-ac 0
+    L 'launching Get-Bootstrap.ps1'
+    $launcher = Start-Process -FilePath 'powershell.exe' -Wait -PassThru -NoNewWindow -ArgumentList @(
+        '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $gb
+    )
+    if ($launcher.ExitCode -ne 0) { throw "Get-Bootstrap failed: $($launcher.ExitCode)" }
+    $stage = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Mozilla\ronin_puppet' -ErrorAction SilentlyContinue
+    if ($stage.bootstrap_stage -ne 'complete') { throw 'bootstrap did not complete' }
+    Unregister-ScheduledTask -TaskName 'RunDeployBootstrap' -Confirm:$false
 }
-L 'run-bootstrap: start'
-# OS-deploy.ps1 stages Get-Bootstrap.ps1 (templated with the pool params) to D:\scripts in
-# WinPE before this boot; wait for D: to mount and the script to appear.
-$gb = 'D:\scripts\Get-Bootstrap.ps1'
-for ($i = 0; $i -lt 60 -and -not (Test-Path $gb); $i++) { Start-Sleep -Seconds 10 }
-if (-not (Test-Path $gb)) { L "ERROR: $gb not found; leaving task registered to retry next boot"; return }
-# FirstLogonCommands-equivalent prerequisites (base-autounattend.xml oobeSystem pass):
-if (-not (Test-Path 'C:\bootstrap')) { New-Item -ItemType Directory -Path 'C:\bootstrap' -Force | Out-Null }
-if (Test-Path 'D:\secrets\vault.yaml') { Copy-Item 'D:\secrets\vault.yaml' 'C:\bootstrap\' -Force }
-powercfg -x -standby-timeout-ac 0 2>$null
-powercfg -x -monitor-timeout-ac 0 2>$null
-L 'run-bootstrap: launching Get-Bootstrap.ps1'
-& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $gb *>&1 | Tee-Object -FilePath $log -Append
-L ('run-bootstrap: Get-Bootstrap returned rc=' + $LASTEXITCODE)
-# Mark launched + one-shot self-remove; bootstrap.ps1 continues via ronin's own task.
-New-Item -Path $flag -ItemType File -Force | Out-Null
-Unregister-ScheduledTask -TaskName 'RunDeployBootstrap' -Confirm:$false -ErrorAction SilentlyContinue
+catch {
+    L ("bootstrap failed; retrying next boot: " + $_.Exception.Message)
+    exit 1
+}
 '@
 $utf8NoBomRunner = New-Object System.Text.UTF8Encoding($false)
 [System.IO.File]::WriteAllText((Join-Path $deployDir 'run-bootstrap.ps1'), $runner, $utf8NoBomRunner)
@@ -142,18 +151,11 @@ $rdbSettings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopI
 Register-ScheduledTask -TaskName 'RunDeployBootstrap' -Action $rdbAction -Trigger $rdbTrigger -Principal $rdbPrincipal -Settings $rdbSettings -Force | Out-Null
 Write-Host '  RunDeployBootstrap SYSTEM startup task registered (fires only on the deployed node).'
 
-# --- Bake hygiene: neutralize the build-only 'packer' admin account ([[bake-hygiene-todo]]) ---
-# The build unattend created an Administrators-group account (@@WINRM_USER@@, i.e. 'packer')
-# for Packer/WinRM. It must not remain a usable admin in the golden WIM. We DISABLE it rather
-# than delete it: this script runs AS that account (over WinRM), and you cannot delete the
-# account you are currently logged in as. Disabling fully neutralizes it - a disabled account
-# cannot log in locally, over WinRM, or via SSH - which is the security goal. (Deletion, if
-# ever wanted, must happen as SYSTEM on the deployed node where packer isn't logged in.)
-# This is the LAST WinRM-affecting step before Sysprep /shutdown; no provisioner runs after it.
+# The active WinRM session uses this account.
 Step 'Disabling build-only packer account'
 $buildAcct = $env:USERNAME   # the account this provisioner runs under IS the build account
 & net.exe user $buildAcct /active:no
-if ($LASTEXITCODE -ne 0) { Write-Warning "net user $buildAcct /active:no returned $LASTEXITCODE" }
+if ($LASTEXITCODE -ne 0) { throw "Disabling build account failed: $LASTEXITCODE" }
 
 # Clear any autologon the bake configured. The build 'packer' account auto-logs in during the bake,
 # leaving AutoAdminLogon/DefaultUserName/DefaultPassword/AutoLogonSID in Winlogon. Left in the golden
@@ -167,10 +169,13 @@ foreach ($v in 'DefaultUserName', 'DefaultPassword', 'DefaultDomainName', 'AutoL
   Remove-ItemProperty -Path $wl -Name $v -ErrorAction SilentlyContinue
 }
 
+if ('DefaultPassword' -in (Get-ItemProperty -LiteralPath $wl).PSObject.Properties.Name) {
+  throw 'Build autologon password remains.'
+}
+
 # --- Sysprep generalize + shutdown ---
 Step 'Running Sysprep /generalize /oobe /shutdown'
 $sp = "$env:SystemRoot\System32\Sysprep"
-Remove-Item (Join-Path $sp 'unattend.xml') -Force -ErrorAction SilentlyContinue
 & (Join-Path $sp 'Sysprep.exe') /generalize /oobe /shutdown /quiet
 if ($LASTEXITCODE -ne 0) {
   Write-Warning "Sysprep returned rc=$LASTEXITCODE - dumping Panther errors:"

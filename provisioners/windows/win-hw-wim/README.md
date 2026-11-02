@@ -16,6 +16,12 @@ Lives in worker-images at `provisioners/windows/win-hw-wim/`.
 > `win116424h2hwbake` role) is authored on a feature branch in the `ronin_puppet`
 > checkout.
 
+Workflow builds resolve `pipeline_ref` to one commit and verify it on the runner
+and builder. Build IDs include the workflow run ID and attempt, after any custom
+label. Logs, completion markers, release notes, and `provenance.json` are stored
+under `captured/_status/<image>/<run-id>/<attempt>/`. The provenance receipt records
+the build ID and pipeline commit; a failed receipt upload makes the build fail.
+
 ## Pipeline
 
 ```

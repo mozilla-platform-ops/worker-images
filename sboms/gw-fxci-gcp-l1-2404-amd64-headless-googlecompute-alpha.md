@@ -3,7 +3,7 @@
 ## Build provenance
 
 - Image name: gw-fxci-gcp-l1-2404-amd64-headless-googlecompute-alpha
-- Taskcluster version: 113.1.3
+- Taskcluster version: 113.2.0
 - Taskcluster ref: unknown
 - Architecture: AMD64
 - Source image family: ubuntu-2404-lts-amd64
@@ -20,10 +20,10 @@
 
 | Name | Version |
 | --- | --- |
-| generic-worker | generic-worker (multiuser engine) 113.1.3 [ revision: https://github.com/taskcluster/taskcluster/commits/03d177cc5e349284de359bd0db68e8ca11fbc935 ] |
-| start-worker | start-worker 113.1.3 |
-| livelog | livelog 113.1.3 |
-| taskcluster-proxy | Taskcluster proxy 113.1.3 (git revision 03d177cc5e349284de359bd0db68e8ca11fbc935) |
+| generic-worker | generic-worker (multiuser engine) 113.2.0 [ revision: https://github.com/taskcluster/taskcluster/commits/efb71e91e3502152e6eb1a82bbf98c3d4d99f75e ] |
+| start-worker | start-worker 113.2.0 |
+| livelog | livelog 113.2.0 |
+| taskcluster-proxy | Taskcluster proxy 113.2.0 (git revision efb71e91e3502152e6eb1a82bbf98c3d4d99f75e) |
 
 ## Python packages
 
@@ -156,7 +156,7 @@
 | catatonit | 0.1.7-1 | amd64 |
 | chrony | 4.5-1ubuntu4.2 | amd64 |
 | cloud-guest-utils | 0.33-1 | all |
-| cloud-init | 26.2-0ubuntu1~24.04.1 | all |
+| cloud-init | 26.2-0ubuntu1~24.04.2 | all |
 | cloud-initramfs-copymods | 0.49~24.04.1 | all |
 | cloud-initramfs-dyn-netconf | 0.49~24.04.1 | all |
 | command-not-found | 23.04.0 | all |
@@ -345,7 +345,7 @@
 | libboost-thread1.83.0:amd64 | 1.83.0-2.1ubuntu3.2 | amd64 |
 | libbpf1:amd64 | 1:1.3.0-2build2 | amd64 |
 | libbpfcc:amd64 | 0.29.1+ds-1ubuntu7 | amd64 |
-| libbrotli1:amd64 | 1.1.0-2build2 | amd64 |
+| libbrotli1:amd64 | 1.1.0-2ubuntu0.1 | amd64 |
 | libbsd0:amd64 | 0.12.1-1build1.1 | amd64 |
 | libbz2-1.0:amd64 | 1.0.8-5.1ubuntu0.1 | amd64 |
 | libc-bin | 2.39-0ubuntu8.9 | amd64 |
@@ -821,7 +821,7 @@
 | polkitd | 124-2ubuntu1.24.04.4 | amd64 |
 | pollinate | 4.33-3.1ubuntu1.3 | all |
 | powermgmt-base | 1.37ubuntu0.1 | all |
-| powershell | 7.6.7-1.deb | amd64 |
+| powershell | 7.6.9-1.deb | amd64 |
 | procps | 2:4.0.4-4ubuntu3.3 | amd64 |
 | psmisc | 23.7-1build1 | amd64 |
 | publicsuffix | 20231001.0357-0.1 | all |
@@ -1009,6 +1009,6 @@
 | xxd | 2:9.1.0016-1ubuntu7.20 | amd64 |
 | xz-utils | 5.6.1+really5.4.5-1ubuntu0.4 | amd64 |
 | zerofree | 1.1.1-1build5 | amd64 |
-| zlib1g-dev:amd64 | 1:1.3.dfsg-3.1ubuntu2.2 | amd64 |
-| zlib1g:amd64 | 1:1.3.dfsg-3.1ubuntu2.2 | amd64 |
+| zlib1g-dev:amd64 | 1:1.3.dfsg-3.1ubuntu2.3 | amd64 |
+| zlib1g:amd64 | 1:1.3.dfsg-3.1ubuntu2.3 | amd64 |
 | zstd | 1.5.5+dfsg2-2build1.1 | amd64 |

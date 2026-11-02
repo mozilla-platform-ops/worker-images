@@ -27,7 +27,7 @@ import os
 
 import requests
 
-MODEL = "claude-opus-5"
+MODEL = "claude-opus-5-5"
 MAX_TOKENS = 16000
 # Classification against evidence that is already in front of it -- the reading
 # is the work, not the reasoning. Medium keeps a red run's summary prompt.

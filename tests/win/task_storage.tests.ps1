@@ -19,3 +19,31 @@ Describe "Task storage configuration" {
         @($paging | Where-Object { $_ -like 'D:*' }).Count | Should -Be 0
     }
 }
+
+Describe 'Gecko image seed' {
+    BeforeAll {
+        $git = 'C:\Program Files\Git\cmd\git.exe'
+        $level = if ($env:config -like 'trusted-*') { 3 } else { 1 }
+        $state = Get-Content 'C:\worker-runner\directory-caches.json' -Raw -ErrorAction Stop | ConvertFrom-Json
+    }
+
+    It 'Registers full and shallow Git caches at the selected commit' {
+        foreach ($suffix in @('', '-shallow')) {
+            $name = "gecko-level-$level-checkouts-git$suffix"
+            @($state.$name).Count | Should -Be 1
+            $state.$name[0].key | Should -BeExactly $name
+            $state.$name[0].location | Should -BeExactly "C:\caches\$name"
+            $state.$name[0].created | Should -Not -BeNullOrEmpty
+            $repo = "C:\caches\$name\src"
+            $revision = (Get-Content "$repo\.git\worker-image-seed" -Raw -ErrorAction Stop).Trim()
+            $revision | Should -Match '^[0-9a-f]{40}$'
+            & $git -C $repo rev-parse --verify 'HEAD^{commit}' | Should -BeExactly $revision
+            $LASTEXITCODE | Should -Be 0
+            & $git -C $repo remote get-url origin | Should -BeExactly 'https://github.com/mozilla-firefox/firefox'
+            $LASTEXITCODE | Should -Be 0
+            (Test-Path "$repo\.git\shallow") | Should -Be ($suffix -eq '-shallow')
+            "$repo\.git\objects\info\alternates" | Should -Not -Exist
+            @(Get-ChildItem -LiteralPath $repo -Force | Where-Object Name -ne '.git').Count | Should -Be 0
+        }
+    }
+}

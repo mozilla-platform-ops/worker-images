@@ -17,5 +17,5 @@ vm:
   providerType: "azure"
   vm_size: Standard_NV12ads_A10_v5
   bootstrapscript: "generic-worker-win2022"
-  taskcluster_version: 113.1.3
+  taskcluster_version: 114.0.0
   tags: {}
