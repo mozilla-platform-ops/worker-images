@@ -99,6 +99,10 @@ foreach ($n in $names) {
     & $s -MediaDir $work
 }
 
+# Setup copies this payload for every selected edition, including non-Ronin installs.
+. (Join-Path $PSScriptRoot 'post-install.ps1')
+Install-PostInstallCleanup -WindowsRoot (Join-Path $work 'sources/$OEM$/$$') -UnattendPath (Join-Path $work 'autounattend.xml')
+
 # --- Offline driver injection into the media WIMs (optional) ---------------------------
 # Adds drivers so the installer sees storage/NIC (boot.wim = Windows Setup) and the
 # installed OS has them (install.wim, every edition). DISM /Add-Driver /Recurse.

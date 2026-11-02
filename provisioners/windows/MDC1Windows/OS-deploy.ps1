@@ -960,6 +960,9 @@ $splat = @{
     PAT  = Get-Content $PATsecret_file
 }
 Invoke-DownloadWithRetryGithub @splat
+$cleanupScript = Join-Path $local_scripts 'Remove-BuildAccess.ps1'
+Invoke-DownloadWithRetryGithub -Url "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$workerImagesRevision/provisioners/windows/win-hw-wim/scripts/post-install/Remove-BuildAccess.ps1" -Path $cleanupScript -PAT (Get-Content $PATsecret_file)
+if (-not (Test-Path -LiteralPath $cleanupScript -PathType Leaf)) { throw 'Post-install cleanup script is missing.' }
 
 $secret_YAML = Convertfrom-Yaml (Get-Content $secret_file -raw)
 $DiskNumber = (Get-Partition -DriveLetter C).DiskNumber
@@ -997,6 +1000,9 @@ Write-Host "Initializing OS installation."
 
 if (Test-Path $setup) {
     ## Standard path: Windows Setup applies sources\install.wim per the unattend.
+    $cleanupDestination = Join-Path $OS_files 'sources/$OEM$/$$/Setup/Scripts'
+    New-Item -ItemType Directory -Path $cleanupDestination -Force | Out-Null
+    Copy-Item -LiteralPath $cleanupScript -Destination $cleanupDestination -Force
     Write-Host Running: Start-Process -FilePath $setup -ArgumentList "/unattend:$unattend"
     Write-Host (Get-DeploySendoff)
     Start-Process -FilePath $setup -ArgumentList "/unattend:$unattend"
@@ -1100,14 +1106,18 @@ else {
     bcdboot.exe "$winVol\Windows" /s $efiVol /f UEFI
     if ($LASTEXITCODE -ne 0) { throw "bcdboot failed rc=$LASTEXITCODE" }
 
-    ## Reuse the unattend the resync block already fetched + edited (ComputerName,
-    ## admin password). A generalized image runs specialize + oobeSystem from
-    ## \Windows\Panther\unattend.xml on first boot; the windowsPE/ImageInstall pass in
-    ## it is simply ignored (the image is already applied).
+    # Stage the answer file for images that process Setup on first boot.
+    # Offline cleanup also covers older WIMs that skip those Setup passes.
     $panther = Join-Path "$winVol\" "Windows\Panther"
     New-Item -ItemType Directory -Path $panther -Force | Out-Null
     Copy-Item -Path $unattend -Destination (Join-Path $panther "unattend.xml") -Force
     Write-Host "== Placed unattend at $panther\unattend.xml =="
+    $cleanupDestination = Join-Path "$winVol\" 'Windows/Setup/Scripts'
+    New-Item -ItemType Directory -Path $cleanupDestination -Force | Out-Null
+    Copy-Item -LiteralPath $cleanupScript -Destination $cleanupDestination -Force
+    # Older WIMs can boot through their startup task without rerunning Setup.
+    & (Join-Path $PSHOME 'powershell.exe') -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $cleanupScript -OfflineWindowsRoot "$winVol\Windows"
+    if ($LASTEXITCODE -ne 0) { throw "Offline build access cleanup failed: $LASTEXITCODE" }
 
     ## --- Re-assert the node name AFTER specialize (RELOPS-2487) ---
     ## The offline rename above is necessary but NOT sufficient: it runs in WinPE, and the
