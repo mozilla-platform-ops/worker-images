@@ -4,7 +4,7 @@ This directory contains the configuration file used within packer. Additionally,
 
 ## Software Bill of Materials
 
-The software bill of materials are dyanmically generated markdown files stored within this repository, such as [windows 11 24h2](win11-64-24h2-alpha.md)
+Software bills of materials are generated Markdown files in [`sboms/`](../sboms/), such as [Windows 11 25H2](../sboms/win11-64-25h2-alpha-1.0.0.md).
 
 ## YAML Definition
 

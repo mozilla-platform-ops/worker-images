@@ -29,7 +29,7 @@ try {
     git config user.name Test
     git config user.email test@example.invalid
     '["relops-test"]' | Set-Content .github/relsre.json
-    Copy-Item "$repo/config/win11-64-24h2-alpha.yaml", "$repo/config/windows_production_defaults.yaml", "$repo/config/gw-fxci-gcp-l1-2404-headless-alpha.yaml" config
+    Copy-Item "$repo/config/win11-64-25h2-alpha.yaml", "$repo/config/windows_production_defaults.yaml", "$repo/config/gw-fxci-gcp-l1-2404-headless-alpha.yaml" config
     Commit
     git checkout -q -b dev/test
     $gcpKey = 'gw-fxci-gcp-l1-2404-headless-alpha'
@@ -48,9 +48,9 @@ try {
     if ($outputs.revision -ne $pin -or $outputs.notes -ne 'sboms/selected-branch-alpha.md') { throw 'Wrong revision or selected config.' }
     if ((git rev-parse --abbrev-ref HEAD) -ne 'main' -or @(git worktree list).Count -ne 1) { throw 'Preparation changed the checkout or created a worktree.' }
     Clear-Content $env:GITHUB_OUTPUT
-    & $prepare -Branch dev/test -Key win11-64-24h2-alpha -Provider Azure
+    & $prepare -Branch dev/test -Key win11-64-25h2-alpha -Provider Azure
     $outputs = Get-Content $env:GITHUB_OUTPUT -Raw | ConvertFrom-StringData
-    if ($outputs.notes -notmatch '^win11-64-24h2-alpha-\d+\.\d+\.\d+\.md$') { throw 'Wrong Azure notes path.' }
+    if ($outputs.notes -notmatch '^win11-64-25h2-alpha-\d+\.\d+\.\d+\.md$') { throw 'Wrong Azure notes path.' }
     $env:GITHUB_ACTOR = 'attacker'
     Reject { & $prepare -Branch 'bad branch' -Key $gcpKey -Provider GCP } 'Not authorized'
     $env:GITHUB_ACTOR = 'relops-test'; $env:GITHUB_TRIGGERING_ACTOR = 'attacker'
@@ -65,12 +65,12 @@ try {
         git checkout -q -B "bad/$mutation" $pin
         if ($mutation -eq 'l3') { Set-YamlValue "config/$gcpKey.yaml" project_id fxci-production-level3-workers }
         if ($mutation -eq 'production') { Set-YamlValue "config/$gcpKey.yaml" image_name production }
-        if ($mutation -eq 'azure') { Set-YamlValue config/win11-64-24h2-alpha.yaml gallery_name production }
+        if ($mutation -eq 'azure') { Set-YamlValue config/win11-64-25h2-alpha.yaml gallery_name production }
         if ($mutation -eq 'link') { $null = New-Item -ItemType SymbolicLink escape -Target /tmp }
         Commit
         Pop-Location
         if ($mutation -eq 'azure') {
-            Reject { & $prepare -Branch "bad/$mutation" -Key win11-64-24h2-alpha -Provider Azure } 'alpha Azure'
+            Reject { & $prepare -Branch "bad/$mutation" -Key win11-64-25h2-alpha -Provider Azure } 'alpha Azure'
         } else {
             Reject { & $prepare -Branch "bad/$mutation" -Key $gcpKey -Provider GCP } $(if ($mutation -eq 'link') { 'symbolic links' } else { 'non-trusted' })
         }
