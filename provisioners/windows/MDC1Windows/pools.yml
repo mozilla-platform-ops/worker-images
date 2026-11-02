@@ -149,15 +149,16 @@ pools:
     - nuc13-115
   - name: "win11-64-24h2-hw-alpha"
     puppet_version: "8.10.0"
-    openvox_version: "8.31.1"
-    git_version: "2.56.0.2"
+    openvox_version: "8.19.2"
+    git_version: "2.50.0"
+    # RELOPS-2585: test synchronous post-install access cleanup.
+    dev: "relops-2585-winrm-finalization"
     Description: "NUC12 Hardware Performance Staging/Testing Pool"
-    # Reuse the validated WIM to test Defender hardening in ronin_puppet#1483.
     image: "win11-24h2-hw-test-20260930-201046"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "RELOPS-2433-defender-hardening-only"
-    hash: "f13cf4c9809e2d98107bf1c8267a3b85c367674e"
+    src_Branch: "master"
+    hash: "baf151bc"
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
