@@ -159,7 +159,7 @@ pools:
     src_Repository: "ronin_puppet"
     src_Branch: "master"
     hash: "baf151bc"
-    secret_date: "02-24-2026"
+    secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
     # Three nodes pulled from win11-64-24h2-hw at random 2026-09-09 to keep a working
