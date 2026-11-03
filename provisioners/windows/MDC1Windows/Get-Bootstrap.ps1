@@ -259,46 +259,6 @@ function Set-WinRM {
     return $false
 }
 
-function Install-Choco {
-    if (-not $env:TEMP) { $env:TEMP = Join-Path $env:SystemDrive -ChildPath 'temp' }
-    $chocoTempDir = Join-Path $env:TEMP -ChildPath "chocolatey"
-    $tempDir = Join-Path $chocoTempDir -ChildPath "chocoInstall"
-    if (-not (Test-Path $tempDir -PathType Container)) { $null = New-Item -Path $tempDir -ItemType Directory }
-
-    $file = Join-Path $tempDir "chocolatey.zip"
-    $ChocolateyDownloadUrl = "https://ronin-puppet-package-repo.s3.us-west-2.amazonaws.com/Windows/chocolatey.zip"
-    Write-Log -message ('{0} :: Getting Chocolatey from {1}.' -f $MyInvocation.MyCommand.Name, $ChocolateyDownloadUrl) -severity 'DEBUG'
-    Invoke-DownloadWithRetry -Url $ChocolateyDownloadUrl -Path $file
-
-    Write-Log -message ('{0} :: Extracting {1} to {2}.' -f $MyInvocation.MyCommand.Name, $file, $tempDir) -severity 'DEBUG'
-    Expand-Archive -Path $file -DestinationPath $tempDir -Force
-
-    Write-Log -message ('{0} :: Installing Chocolatey.' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'
-    $toolsFolder = Join-Path $tempDir -ChildPath "tools"
-    $chocoInstallPS1 = Join-Path $toolsFolder -ChildPath "chocolateyInstall.ps1"
-    & $chocoInstallPS1
-
-    Write-Log -message ('{0} :: Ensuring Chocolatey commands are on the path.' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'
-    $chocoInstallVariableName = "ChocolateyInstall"
-    $chocoPath = [Environment]::GetEnvironmentVariable($chocoInstallVariableName)
-    if (-not $chocoPath) { $chocoPath = "$env:ALLUSERSPROFILE\Chocolatey" }
-    if (-not (Test-Path ($chocoPath))) { $chocoPath = "$env:PROGRAMDATA\chocolatey" }
-    $chocoExePath = Join-Path $chocoPath -ChildPath 'bin'
-    if ($env:Path -notlike "*$chocoExePath*") {
-        $env:Path = [Environment]::GetEnvironmentVariable('Path', [System.EnvironmentVariableTarget]::Machine);
-    }
-
-    Write-Log -message ('{0} :: Ensuring chocolatey.nupkg is in the lib folder.' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'
-    $chocoPkgDir = Join-Path $chocoPath -ChildPath 'lib\chocolatey'
-    $nupkg = Join-Path $chocoPkgDir -ChildPath 'chocolatey.nupkg'
-    if (-not (Test-Path $chocoPkgDir -PathType Container)) { $null = New-Item -ItemType Directory -Path $chocoPkgDir }
-    Copy-Item -Path $file -Destination $nupkg -Force -ErrorAction SilentlyContinue
-
-    if (-Not (Test-Path "C:\ProgramData\Chocolatey\bin\choco.exe")) {
-        throw "Chocolatey installation failed."
-    }
-}
-
 function Set-PXEWin10 {
     begin { Write-Log -message ('{0} :: begin - {1:o}' -f $MyInvocation.MyCommand.Name, (Get-Date).ToUniversalTime()) -severity 'DEBUG' }
     process {
@@ -392,9 +352,6 @@ try {
 
     Write-Log -message ('{0} :: configuring SSH.' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'
     Set-SSH
-
-    Write-Log -message ('{0} :: installing Chocolatey.' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'
-    Install-Choco
 
     Write-Log -message ('{0} :: downloading bootstrap.ps1.' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'
     $local_bootstrap = "C:\bootstrap\bootstrap.ps1"
