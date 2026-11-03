@@ -57,6 +57,9 @@ jobs:
     - name: Check workflow permissions
       run: uv run --with pyyaml ci/test-workflow-permissions.py
 
+    - name: Check SBOM PR validation
+      run: python3 ci/test_sbom_pr.py
+
     - name: Check OS integration trigger
       run: |
         uv run taskcluster/test/test_run_os_integration.py

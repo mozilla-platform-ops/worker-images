@@ -1,0 +1,91 @@
+name: Merge SBOM PR
+
+on:
+  workflow_run:
+    workflows:
+      - FXCI - Azure Prod Parallel Images
+      - FXCI - Azure Alpha Parallel Images
+      - FXCI - Azure
+      - FXCI - Azure - Trusted
+      - FXCI - GCP Alpha Parallel Images
+      - FXCI - GCP Prod Parallel Images
+      - FXCI - GCP
+      - FXCI - GCP Production
+      - Windows HW WIM Build
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  open:
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    environment: sbom-merge
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+    outputs:
+      pr: ${{ steps.candidate.outputs.pr }}
+      sha: ${{ steps.candidate.outputs.sha }}
+      app: ${{ steps.publisher.outputs.app-slug }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SOURCE_RUN_ID: ${{ github.event.workflow_run.id }}
+      SOURCE_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+    steps:
+      # Never check out or execute the proposed branch in this privileged workflow.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Validate branch with read-only credentials
+        id: branch
+        run: python3 ci/sbom_pr.py prepare
+      - name: Create PR-only App token
+        if: steps.branch.outputs.sha != ''
+        id: publisher
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2
+        with:
+          app-id: ${{ vars.SBOM_PR_APP_ID }}
+          private-key: ${{ secrets.SBOM_PR_APP_PRIVATE_KEY }}
+          permission-contents: read
+          permission-pull-requests: write
+      - name: Open and validate the SBOM PR
+        if: steps.branch.outputs.sha != ''
+        id: candidate
+        env:
+          BRANCH_SHA: ${{ steps.branch.outputs.sha }}
+          SBOM_PR_APP_SLUG: ${{ steps.publisher.outputs.app-slug }}
+          SBOM_PR_TOKEN: ${{ steps.publisher.outputs.token }}
+        run: python3 ci/sbom_pr.py open
+
+  merge:
+    needs: open
+    if: github.ref == 'refs/heads/main' && needs.open.outputs.pr != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: sbom-merge
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Revalidate, approve and squash the exact commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ github.event.workflow_run.id }}
+          SOURCE_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          PR_NUMBER: ${{ needs.open.outputs.pr }}
+          PR_SHA: ${{ needs.open.outputs.sha }}
+          SBOM_PR_APP_SLUG: ${{ needs.open.outputs.app }}
+        run: python3 ci/sbom_pr.py merge

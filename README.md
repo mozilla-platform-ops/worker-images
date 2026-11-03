@@ -78,10 +78,65 @@ they build.
 ## Workflow permissions
 
 Build and promotion jobs use `contents: read`. Packer plugin downloads only
-need read access, and artifact uploads use the Actions runtime token. Only
-the SBOM jobs and their reusable `upload-release-notes.yml` publisher have
-`contents: write` and `actions: read` to download notes and commit `sboms/*.md`
-to `main`. The publisher serializes updates and uses ordinary pushes.
+need read access, and artifact uploads use the Actions runtime token.
+
+The reusable `upload-release-notes.yml` publisher has `contents: write` and
+`actions: read`, but no PR approval permission. It runs only for a dispatch
+from `main`, reads release-note artifacts without extracting/executing them,
+and creates `sbom/<run-id>-<attempt>`. It never updates the `main` ref. Only
+regular Markdown files with flat filenames are accepted: UTF-8 or BOM-marked
+UTF-16, preserving the original bytes. Empty/expired artifacts, symlinks,
+conflicting filenames, and notes exceeding 20 MiB fail closed. Artifacts
+from successful jobs in earlier attempts of the same run remain usable on
+reruns. If the notes already match `main`, no branch or PR is needed.
+
+After the supported build workflow succeeds, `merge-sbom.yml` uses trusted
+code from `main` in two separate jobs:
+
+- **Open:** a read-only job verifies the source repository/workflow/attempt
+  and the entire proposed branch diff against artifacts from that build.
+  Then a dedicated GitHub App with **Contents: read** and **Pull requests:
+  write** opens the PR. This token cannot push repository contents or merge.
+- **Merge:** a separate job with `contents: write` and `pull-requests: write`
+  revalidates the App's PR, every page of its diff, file modes and artifact
+  blob hashes. It rejects changes outside `sboms/*.md`, deletions, renames,
+  symlinks, and changed heads. GitHub Actions approves the App's PR and
+  requests a squash merge of the exact validated SHA. It retries unmet
+  merge requirements for up to 20 minutes, retaining the SHA guard on every
+  request. It never enables auto-merge for a potentially changed future head.
+
+Neither job checks out or executes the proposed branch or its Markdown.
+Failed builds leave the prepared branch for manual inspection, including
+partial parallel builds. Missing credentials, conflicts, changed commits,
+or unmet protections prevent merging. Fix the blocker and rerun the merge
+workflow while artifacts remain available (currently one day), or publish
+and review the prepared branch manually.
+
+Before enabling automatic publication:
+
+1. Allow GitHub Actions to create and approve PRs in Actions settings. Only
+   the trusted merger receives PR-write permission; the branch publisher
+   cannot approve other authors' PRs.
+2. Install a dedicated SBOM PR GitHub App on this repository only, with
+   **Contents: read** and **Pull requests: write**. Give it no branch/ruleset
+   bypass, contents-write, workflow-write, administration, or cloud access.
+   It must have a different identity from `github-actions[bot]`.
+3. Create a `sbom-merge` environment with selected deployment branches limited
+   to **`main`**. Store `SBOM_PR_APP_ID` as an environment variable and
+   `SBOM_PR_APP_PRIVATE_KEY` as an environment secret, not a repository secret.
+   The installation token is limited to this repository and revoked when the
+   opening job ends. Protect changes to this environment and trusted workflows.
+4. Coordinate landing the branch publisher with removing the **GitHub Actions
+   app PR bypass** and disabling **force pushes** on `main`, before the next
+   build. Retain required reviews/checks; the merger does not bypass them.
+   The 2026-10-30 review found the Actions bypass and force pushes enabled.
+   These settings are not changed by this PR.
+
+GitHub's bot cannot approve its own PR, hence the App creates the PR and the
+trusted merger approves it. The App-created PR triggers normal PR checks;
+`workflow_run` starts publication when the build completes. Extra human or
+code-owner review requirements remain in force. See [GitHub token behavior](https://docs.github.com/en/actions/concepts/security/github_token)
+and [branch protection](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
 
 OIDC (`id-token: write`) is granted only to individual cloud login jobs.
 Azure, GCP workload identity federation, and AWS role assumption all require
@@ -92,18 +147,11 @@ requires Azure federated identity claims that distinguish those jobs. That
 cloud trust configuration is not verified by the local permission check.
 See [GitHub's OIDC reference](https://docs.github.com/en/actions/reference/security/oidc).
 
-The `main` branch protection review for RELOPS-2597 (2026-10-30) found a
-GitHub Actions app bypass of required pull requests and force pushes enabled.
-Retaining the bypass supports automated SBOM publication; repository write
-access in these workflows is limited to that path. The app bypass itself is
-not restricted to a workflow or file path by branch protection. Disable
-force pushes: the publisher does not need them. Removing the app bypass
-requires moving SBOM publication to pull requests or separate storage first.
-These repository settings are separate from the workflow changes; see
-[GitHub branch protection](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
-
-Check the permission boundaries locally with
-`uv run --with pyyaml ci/test-workflow-permissions.py`.
+Check locally with `uv run --with pyyaml ci/test-workflow-permissions.py` and
+`python3 ci/test_sbom_pr.py`. The boundary is the files that automation may
+merge; matching a build artifact does not establish the accuracy of its
+software inventory. The trusted merger still has a repository-wide write token, so protecting
+that job and its environment remains essential.
 
 ## Windows Image Model
 

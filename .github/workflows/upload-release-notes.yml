@@ -10,38 +10,27 @@ on:
         type: string
         default: Update release notes
 
+permissions:
+  contents: read
+
 jobs:
   sbom:
-    name: Upload release notes
+    name: Prepare release-note branch
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       actions: read
       contents: write
-    concurrency:
-      group: release-notes-main
-      cancel-in-progress: false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
-          path: sboms
-          pattern: ${{ inputs.artifact_pattern }}
-          merge-multiple: true
-      - name: Validate downloaded release notes
-        shell: bash
-        run: |
-          if ls sboms/*.md >/dev/null 2>&1; then
-            echo "Downloaded release notes:"
-            ls -1 sboms/*.md
-          else
-            echo "No release notes were downloaded from successful packer jobs."
-            exit 1
-          fi
-      - name: Pull latest main
-        run: git pull --rebase --autostash origin main
-      - name: Commit release notes to main
-        uses: stefanzweifel/git-auto-commit-action@d0b01107b5db882071f96de5dd4b54961ea93f4c
-        with:
-          branch: main
-          commit_message: ${{ inputs.commit_message }}
-          file_pattern: sboms/*.md
+          ref: main
+          persist-credentials: false
+      - name: Publish validated artifacts to an SBOM branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ github.run_id }}
+          SOURCE_RUN_ATTEMPT: ${{ github.run_attempt }}
+          ARTIFACT_PATTERN: ${{ inputs.artifact_pattern }}
+          COMMIT_MESSAGE: ${{ inputs.commit_message }}
+        run: python3 ci/sbom_pr.py publish
