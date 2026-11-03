@@ -7,27 +7,27 @@ image:
 sharedimage:
   gallery_name: "win2025_64_24h2_alpha"
   image_name: "win2025_64_24h2_alpha"
-  image_version: 1.0.0
+  image_version: "1.0.0"
 azure:
-  managed_image_resource_group_name: rg-packer-worker-images
-  managed_image_storage_account_type: Standard_LRS
+  managed_image_resource_group_name: "default"
+  managed_image_storage_account_type: "default"
   build_location: eastus2
   locations:
     - eastus2
 vm:
   spot: true
-  puppet_version: 8.10.0
+  puppet_version: "default"
   git_version: "default"
   openvox_version: "default"
   size: Standard_D32ads_v7
   tags:
     base_image: win20256424h2azure
     worker_pool_id: win2025-64-24h2-alpha
-    sourceOrganization: mozilla-platform-ops
-    sourceRepository: ronin_puppet
+    sourceOrganization: "default"
+    sourceRepository: "default"
     sourceBranch: "default"
     deploymentId: "default"
-    managed_by: packer
+    managed_by: "default"
 tests:
   - microsoft_binscope.tests.ps1
   - microsoft_vcc.tests.ps1
