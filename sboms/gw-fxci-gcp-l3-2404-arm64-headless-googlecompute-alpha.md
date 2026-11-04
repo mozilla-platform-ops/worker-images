@@ -8,7 +8,7 @@
 - Architecture: ARM64
 - Source image family: ubuntu-2404-lts-arm64
 - GCP project: fxci-production-level3-workers
-- GCP zone: us-central1-b
+- GCP zone: us-central1-a
 
 ## Operating system
 
