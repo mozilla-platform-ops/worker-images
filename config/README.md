@@ -16,10 +16,13 @@ image:
   offer: Windows-11
   sku: win11-22h2-avd
   version: latest
+sharedimage:
   gallery_name: "ronin_t_windows11_64_2009_prod"
   image_name: "win11-64-2009"
-  image_version: 1.0.0
 ```
+
+Omit `sharedimage.image_version` to use the UTC build date (`yyyy.MM.dd`).
+Set it only when a gallery version must stay fixed, as in alpha configs.
 
 `azure`: This contains information specific to azure required by packer
 

@@ -65,7 +65,8 @@ uv run ci/run-os-integration.py <image-name> --no-wait
 
 - Windows production image content is usually pinned by
   `vm.tags.deploymentId` in `config/windows_production_defaults.yaml`.
-- Windows Azure gallery versions are per config in `sharedimage.image_version`.
+- Windows production gallery versions use the UTC build date (`yyyy.MM.dd`);
+  `sharedimage.image_version` pins alpha or other fixed versions.
 - Do not run one-off trusted Windows builds in addition to the Windows prod
   parallel workflow for a full rollout.
 - Firefox CI production rollouts finish in `mozilla-releng/fxci-config`, not

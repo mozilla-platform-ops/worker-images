@@ -108,6 +108,9 @@ function New-AzSharedWorkerImage {
     $ENV:PKR_VAR_gallery_name = $Y.sharedimage["gallery_name"]
     $ENV:PKR_VAR_image_name = $Y.sharedimage["image_name"]
     $ENV:PKR_VAR_sharedimage_version = $Y.sharedimage["image_version"]
+    if ([string]::IsNullOrWhiteSpace($ENV:PKR_VAR_sharedimage_version)) {
+        $ENV:PKR_VAR_sharedimage_version = (Get-Date).ToUniversalTime().ToString('yyyy.MM.dd')
+    }
     $ENV:PKR_VAR_puppet_version = $Y.vm["puppet_version"]
     $ENV:PKR_VAR_git_version = $Y.vm["git_version"]
     #$ENV:PKR_VAR_clone_mozilla_unified = $Y.vm["clone_mozilla_unified"]
