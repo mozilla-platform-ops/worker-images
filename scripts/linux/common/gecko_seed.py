@@ -2,15 +2,15 @@
 """Build the Gecko Git seed into a Linux image and register it at boot."""
 
 import argparse
-from datetime import datetime, timezone
 import hashlib
 import json
 import os
-from pathlib import Path
 import re
 import runpy
 import subprocess
 import tempfile
+from datetime import UTC, datetime
+from pathlib import Path
 from types import SimpleNamespace
 from urllib.request import urlopen
 
@@ -26,12 +26,22 @@ def fetch(url):
 
 
 def git(*args):
-    subprocess.run(["git", *map(str, args)], check=True,
-                   env=dict(os.environ, GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.devnull, GIT_TERMINAL_PROMPT="0"))
+    subprocess.run(
+        ["git", *map(str, args)],
+        check=True,
+        env=dict(
+            os.environ,
+            GIT_CONFIG_NOSYSTEM="1",
+            GIT_CONFIG_GLOBAL=os.devnull,
+            GIT_TERMINAL_PROMPT="0",
+        ),
+    )
 
 
 def build(mode, level, seed_root):
-    decision = json.loads(fetch(f"{TC}/index/v1/task/gecko.v2.autoland.latest.taskgraph.decision"))["taskId"]
+    decision = json.loads(
+        fetch(f"{TC}/index/v1/task/gecko.v2.autoland.latest.taskgraph.decision")
+    )["taskId"]
     artifacts = f"{TC}/queue/v1/task/{decision}/artifacts/public"
     params = yaml.safe_load(fetch(f"{artifacts}/parameters.yml"))
     revision = params["head_git_rev"]
@@ -46,24 +56,35 @@ def build(mode, level, seed_root):
     if mode == "linux-d2g":
         # D2G cache names carry a hash of the decision's VCS helper, as Gecko computes it.
         run_task_git = fetch(f"{artifacts}/run-task-git")
-        helper = fetch(f"{artifacts}/run-task-hg") if params["repository_type"] == "hg" else run_task_git
+        helper = (
+            fetch(f"{artifacts}/run-task-hg")
+            if params["repository_type"] == "hg"
+            else run_task_git
+        )
         name += "-v3-" + hashlib.sha256(helper).hexdigest()[:20]
         wrapper = temp / "run-task-git"
         wrapper.write_bytes(run_task_git)
         runpy.run_path(str(wrapper))["configure_cache_posix"](
-            str(cache), SimpleNamespace(pw_uid=1000, pw_name="worker"),
-            SimpleNamespace(gr_gid=1000, gr_name="worker"), False, True)
+            str(cache),
+            SimpleNamespace(pw_uid=1000, pw_name="worker"),
+            SimpleNamespace(gr_gid=1000, gr_name="worker"),
+            False,
+            True,
+        )
         wrapper.unlink()
     git("init", repo)
     git("-C", repo, "remote", "add", "origin", GIT_SOURCE)
-    # Depth 1 and no checked-out files: a full clone or a checkout made the first task slower.
     git("-C", repo, "fetch", "--progress", "--no-tags", "--depth=1", "origin", revision)
-    git("-C", repo, "update-ref", "HEAD", revision)
+    git("-C", repo, "checkout", "--detach", revision)
     (repo / ".git/worker-image-seed").write_text(revision + "\n")
     if mode == "linux-d2g":
         subprocess.run(["chown", "-R", "1000:1000", str(cache)], check=True)
-    (temp / "manifest.json").write_text(json.dumps(
-        {"cache_name": name, "created": datetime.now(timezone.utc).isoformat()}) + "\n")
+        git("-c", f"safe.directory={repo}", "-C", repo, "update-index", "--refresh")
+        os.chown(repo / ".git/index", 1000, 1000)
+    (temp / "manifest.json").write_text(
+        json.dumps({"cache_name": name, "created": datetime.now(UTC).isoformat()})
+        + "\n"
+    )
     temp.chmod(0o700)
     temp.rename(seed_root)
     print(f"Gecko Git seed {name} at {revision} (decision {decision})", flush=True)
@@ -78,12 +99,16 @@ def install(seed_root, caches, state_file):
     caches.mkdir(parents=True, exist_ok=True)
     caches.chmod(0o700)  # Idle caches must not be readable without a task mount.
     if seed_root.stat().st_dev != caches.stat().st_dev:
-        print(f"Seed is not on the {caches} disk; tasks will clone normally", flush=True)
+        print(
+            f"Seed is not on the {caches} disk; tasks will clone normally", flush=True
+        )
         return
     destination = caches / name
     if not destination.exists():  # Exists only after an interrupted earlier install.
         (seed_root / "shallow").rename(destination)
-    state = {name: [{"key": name, "location": str(destination), "created": spec["created"]}]}
+    state = {
+        name: [{"key": name, "location": str(destination), "created": spec["created"]}]
+    }
     pending = state_file.with_name(state_file.name + ".tmp")
     pending.write_text(json.dumps(state) + "\n")
     pending.chmod(0o600)
