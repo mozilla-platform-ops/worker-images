@@ -57,7 +57,6 @@ def build(mode, level, seed_root):
     git("init", repo)
     git("-C", repo, "remote", "add", "origin", GIT_SOURCE)
     git("-C", repo, "fetch", "--progress", "--no-tags", "--depth=1", "origin", revision)
-    # Write the working tree into the image so the first task only needs to update it.
     git("-C", repo, "checkout", "--detach", revision)
     (repo / ".git/worker-image-seed").write_text(revision + "\n")
     if mode == "linux-d2g":
