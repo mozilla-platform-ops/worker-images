@@ -70,7 +70,7 @@ def build(mode, level, seed_root):
     git("init", repo)
     git("-C", repo, "remote", "add", "origin", GIT_SOURCE)
     git("-C", repo, "fetch", "--progress", "--no-tags", "--depth=1", "origin", revision)
-    git("-C", repo, "checkout", "--detach", revision)
+    git("-C", repo, "checkout", "-B", "autoland", revision)
     (repo / ".git/worker-image-seed").write_text(revision + "\n")
     if mode == "linux-d2g":
         subprocess.run(["chown", "-R", "1000:1000", str(cache)], check=True)

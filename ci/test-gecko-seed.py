@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import os
 import subprocess
 import tempfile
 from pathlib import Path
@@ -68,7 +69,10 @@ def check(level):
         (source / "changed").write_text("new task revision\n")
         git(source, "commit", "-qam", "task revision")
         target = git(source, "rev-parse", "HEAD")
-        git(repo, "fetch", "--depth=1", "origin", target)
+        trace = root / "fetch.trace"
+        with patch.dict(os.environ, GIT_TRACE_PACKET=str(trace)):
+            git(repo, "fetch", "--depth=1", "origin", target)
+        assert f"fetch> have {revision}" in trace.read_text()
         git(repo, "checkout", "-f", "-B", "autoland", target)
         assert (repo / "changed").read_text() == "new task revision\n"
         assert (repo / "stable").stat().st_mtime_ns == unchanged_time
