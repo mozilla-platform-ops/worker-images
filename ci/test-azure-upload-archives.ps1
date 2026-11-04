@@ -47,6 +47,7 @@ foreach ($case in @(
     $check.fail = $case[1]
     $env:PKR_VAR_upload_directory = 'previous-value'
     $failure = $null
+    $before = (Get-Date).ToUniversalTime().ToString('yyyy.MM.dd')
     try {
         New-AzSharedWorkerImage -Key $case[0] 6>$null
     } catch { $failure = $_ }
@@ -55,6 +56,11 @@ foreach ($case in @(
             throw "Expected the native Packer failure, got: $failure"
         }
     } elseif ($failure) { throw $failure }
+    if ($case[0] -like '*alpha*') {
+        if ($env:PKR_VAR_sharedimage_version -ne '1.0.0') { throw 'Alpha image version changed.' }
+    } elseif ($env:PKR_VAR_sharedimage_version -notin @($before, (Get-Date).ToUniversalTime().ToString('yyyy.MM.dd'))) {
+        throw "Expected a UTC build-date gallery version, got $env:PKR_VAR_sharedimage_version"
+    }
     $expectedCalls = if ($case[1] -eq 'init') { 'init' } else { 'init,build' }
     if (($check.calls -join ',') -ne $expectedCalls) { throw 'Wrong Packer call sequence.' }
     if (Test-Path $check.directory) { throw 'Upload archives were not removed.' }

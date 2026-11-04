@@ -89,8 +89,11 @@ name, gallery version, VM size, ronin_puppet role, and Pester tests.
 - The production and alpha config lists used by the parallel Azure workflows.
 
 Most production configs inherit the default ronin_puppet pin by setting
-`vm.tags.deploymentId: "default"`. The gallery version is per config in
-`sharedimage.image_version`; bump the configs you actually intend to rebuild.
+`vm.tags.deploymentId: "default"`. Production Windows gallery versions are
+generated from the UTC build date as `yyyy.MM.dd` (for example
+`2026.11.04`). Set `sharedimage.image_version` only to pin a version; alpha
+configs keep their explicit versions. A second build of the same image on the
+same day needs a different version.
 
 During the build, the Windows Bootstrap module installs prerequisites, clones
 ronin_puppet at the configured branch and commit, applies Puppet, runs the
@@ -165,13 +168,14 @@ The short version for Firefox CI production rollouts:
 1. Land any image content changes first. Windows content usually comes from
    `ronin_puppet`; Linux content usually comes from this repository's Linux
    scripts and config.
-2. Bump the image config in this repo. For Windows, update the relevant
-   `sharedimage.image_version` values and the default `deploymentId` if the
-   ronin_puppet pin changed.
+2. Bump the image config in this repo. For Windows, update the default
+   `deploymentId` if the ronin_puppet pin changed. Gallery versions are set
+   automatically from the UTC build date.
 3. Run the appropriate parallel build workflow.
 4. Verify the published images, release notes, and integration results.
 5. Open an `fxci-config` PR that points worker pools at the new versions or
-   GCP image paths.
+   GCP image paths. Read each Windows version from the new
+   `sboms/<config>-<version>.md` file.
 6. Trigger `/taskcluster integration` on that PR.
 7. After merge, watch fresh worker-manager events and pool health to confirm
    new workers boot the expected image.

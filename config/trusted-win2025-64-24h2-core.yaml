@@ -7,7 +7,6 @@ image:
 sharedimage:
   gallery_name: "trusted_win2025_64_24h2_core"
   image_name: "trusted_win2025_64_24h2_core"
-  image_version: "1.0.0"
 azure:
   managed_image_resource_group_name: "default"
   managed_image_storage_account_type: "default"
