@@ -79,8 +79,6 @@ def build(mode, level, seed_root):
     (repo / ".git/worker-image-seed").write_text(revision + "\n")
     if mode == "linux-d2g":
         subprocess.run(["chown", "-R", "1000:1000", str(cache)], check=True)
-        git("-c", f"safe.directory={repo}", "-C", repo, "update-index", "--refresh")
-        os.chown(repo / ".git/index", 1000, 1000)
     (temp / "manifest.json").write_text(
         json.dumps({"cache_name": name, "created": datetime.now(UTC).isoformat()})
         + "\n"
@@ -106,6 +104,10 @@ def install(seed_root, caches, state_file):
     destination = caches / name
     if not destination.exists():  # Exists only after an interrupted earlier install.
         (seed_root / "shallow").rename(destination)
+    repo = destination / "gecko"
+    owner = repo.stat()
+    git("-c", f"safe.directory={repo}", "-C", repo, "update-index", "--refresh")
+    os.chown(repo / ".git/index", owner.st_uid, owner.st_gid)
     state = {
         name: [{"key": name, "location": str(destination), "created": spec["created"]}]
     }
