@@ -29,7 +29,7 @@ your base install.wim
   1. prepare-base-vhdx.ps1   apply WIM -> bootable VHDX (DISM /Apply-Image + bcdboot)
   2. packer build win-hw-wim    Hyper-V boots VHDX
   3.   bake-bootstrap.ps1    install puppet/git, clone ronin, AppX (provisioned) removal,
-                             WU/choco, puppet apply of the BAKE role
+                             Windows Update, puppet apply of the BAKE role
   4.   sysprep-generalize    scrub machine state + Sysprep /generalize /shutdown
   5.   capture-wim.ps1       mount generalized VHDX -> DISM /Capture-Image -> install.wim + SHA256
   6. publish                 copy install.wim to the MDT/WDS deployment share
@@ -231,3 +231,12 @@ before running — these touch disks and Sysprep.
   only, drop the `Wait-AppxIdle`/`Invoke-WithTimeout` loop) — also speeds the
   deploy-time reconciliation run.
 - Optionally bake Puppet/Git into the *base* WIM to shave the ~12-min early bootstrap.
+
+### Build-host tooling
+
+The build host installs Packer 1.16.2, AzCopy 10.34.1, Git 2.56.0.2, and
+Azure CLI 2.92.0 directly from vendor releases when missing. Versioned URLs are
+maintained in `scripts/bootstrap-build-host.ps1`; update them there when upgrading.
+Chocolatey is not installed by hardware bootstrap or the WIM build host.
+Deploy the Ronin RELOPS-2586 profile cleanup before using this bootstrap with
+hardware roles; older Ronin revisions still require Chocolatey for feature settings.

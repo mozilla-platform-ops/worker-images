@@ -96,7 +96,6 @@ if ($flow.Count -ne 1) { throw 'Bootstrap execution flow not found.' }
 $flowScript = [scriptblock]::Create($flow.Extent.Text)
 function Test-ConnectionUntilOnline { $script:prerequisites++; if ($script:prerequisiteFails) { throw 'network failed' } }
 function Set-SSH { }
-function Install-Choco { }
 function Invoke-DownloadWithRetryGithub { }
 function Get-Content { return 'test credential' }
 function New-ItemProperty { }

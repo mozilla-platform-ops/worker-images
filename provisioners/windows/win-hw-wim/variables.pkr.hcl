@@ -8,7 +8,7 @@ variable "source_vm_name" {
 
 variable "switch_name" {
   type        = string
-  description = "Hyper-V virtual switch the build VM attaches to (must reach the internet for Puppet/choco)."
+  description = "Hyper-V virtual switch the build VM attaches to (must reach the internet for Puppet/Windows Update)."
 }
 
 variable "winrm_username" {

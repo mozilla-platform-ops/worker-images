@@ -32,7 +32,7 @@ $done = Join-Path $base 'build.done'
 Remove-Item $log, $done -ErrorAction SilentlyContinue
 
 # Refresh PATH from the machine env so packer/az/azcopy/git resolve under the
-# scheduled task (choco updated the machine PATH after the guest agent started).
+# scheduled task (the installers updated the machine PATH after the guest agent started).
 $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
 
 # --- Live log streaming -------------------------------------------------------

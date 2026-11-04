@@ -38,7 +38,7 @@ if (-not (Get-WindowsFeature -Name Hyper-V).Installed) {
 
 # Nested-VM network: an INTERNAL switch + NAT. Windows Server has no client
 # "Default Switch", and an Azure host can't bridge a nested VM onto the vnet, so
-# the bake VM gets outbound internet (ronin/git/choco/Windows Update) and a
+# the bake VM gets outbound internet (Ronin/Git/Windows Update) and a
 # host-reachable IP for Packer WinRM through NAT. The guest gets a matching STATIC
 # IP via the injected unattend (scripts/unattend/unattend.xml.template) because a
 # NAT switch has no DHCP. Keep these in sync with that template.
@@ -67,23 +67,64 @@ if ($raw) {
         Format-Volume -FileSystem NTFS -NewFileSystemLabel 'build' -Confirm:$false | Out-Null
 }
 
-# Chocolatey.
-if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
-    Write-Host '== Installing Chocolatey =='
-    Set-ExecutionPolicy Bypass -Scope Process -Force
+function Install-BuildHostTools {
+    $bin = Join-Path $env:ProgramFiles 'WimBuildTools\bin'
+    $stage = Join-Path $env:ProgramFiles ("WimBuildTools\stage-" + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $bin, $stage -Force | Out-Null
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-    Invoke-Expression ((New-Object Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-    $env:Path += ";$env:ProgramData\chocolatey\bin"
-    if (-not (Get-Command choco -ErrorAction SilentlyContinue)) { throw 'Chocolatey install failed.' }
+
+    function Get-BuildTool($Url, $Name) {
+        $destination = Join-Path $stage $Name
+        for ($attempt = 1; $attempt -le 3; $attempt++) {
+            try {
+                Write-Host "== Downloading $Name (attempt $attempt) =="
+                Invoke-WebRequest -Uri $Url -OutFile $destination -UseBasicParsing -TimeoutSec 300
+                return $destination
+            } catch {
+                if ($attempt -eq 3) { throw }
+                Start-Sleep -Seconds 10
+            }
+        }
+    }
+
+    function Invoke-BuildInstaller($Path, $Arguments) {
+        Write-Host "== Installing $Path =="
+        $process = Start-Process -FilePath $Path -ArgumentList $Arguments -Wait -PassThru
+        if ($process.ExitCode -notin 0, 3010) { throw "Installer $Path failed rc=$($process.ExitCode)" }
+    }
+
+    try {
+        if (-not (Get-Command packer -ErrorAction SilentlyContinue)) {
+            $zip = Get-BuildTool 'https://releases.hashicorp.com/packer/1.16.2/packer_1.16.2_windows_amd64.zip' 'packer.zip'
+            Expand-Archive -Path $zip -DestinationPath "$stage\packer" -Force
+            Copy-Item -Path "$stage\packer\packer.exe" -Destination $bin -Force
+        }
+        if (-not (Get-Command azcopy -ErrorAction SilentlyContinue)) {
+            $zip = Get-BuildTool 'https://github.com/Azure/azure-storage-azcopy/releases/download/v10.34.1/azcopy_windows_amd64_10.34.1.zip' 'azcopy.zip'
+            Expand-Archive -Path $zip -DestinationPath "$stage\azcopy" -Force
+            $exe = Get-ChildItem -Path "$stage\azcopy" -Filter azcopy.exe -Recurse | Select-Object -First 1
+            if (-not $exe) { throw 'AzCopy archive did not contain azcopy.exe.' }
+            Copy-Item -Path $exe.FullName -Destination $bin -Force
+        }
+        if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+            $installer = Get-BuildTool 'https://github.com/git-for-windows/git/releases/download/v2.56.0.windows.2/Git-2.56.0.2-64-bit.exe' 'git.exe'
+            Invoke-BuildInstaller $installer '/VERYSILENT /NORESTART /SUPPRESSMSGBOXES /SP- /o:PathOption=Cmd'
+        }
+        if (-not (Get-Command az -ErrorAction SilentlyContinue)) {
+            $installer = Get-BuildTool 'https://github.com/Azure/azure-cli/releases/download/azure-cli-2.92.0/azure-cli-2.92.0-x64.msi' 'azure-cli.msi'
+            Invoke-BuildInstaller 'msiexec.exe' "/i `"$installer`" /qn /norestart"
+        }
+        $machinePath = [Environment]::GetEnvironmentVariable('Path', 'Machine')
+        if (($machinePath -split ';') -notcontains $bin) {
+            [Environment]::SetEnvironmentVariable('Path', "$machinePath;$bin", 'Machine')
+        }
+    } finally {
+        Remove-Item -LiteralPath $stage -Recurse -Force
+    }
 }
 
-# DISM is built into Windows (System32) — no ADK package needed for the WIM
-# apply/capture cmdlets (Expand-WindowsImage / New-WindowsImage) the pipeline uses.
-foreach ($pkg in 'packer', 'azcopy10', 'git', 'azure-cli') {
-    Write-Host "== choco install $pkg =="
-    & choco install $pkg -y --no-progress --limit-output
-    if ($LASTEXITCODE -notin 0, 3010) { throw "choco install $pkg failed rc=$LASTEXITCODE" }
-}
+# DISM is built into Windows; the other tools come directly from vendor releases.
+Install-BuildHostTools
 
 Write-Host '== Installing powershell-yaml module =='
 if (-not (Get-Module -ListAvailable powershell-yaml)) {
