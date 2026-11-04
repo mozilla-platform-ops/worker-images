@@ -8,7 +8,7 @@
 - Architecture: ARM64
 - Source image family: ubuntu-2404-lts-arm64
 - GCP project: fxci-production-level3-workers
-- GCP zone: us-central1-a
+- GCP zone: us-central1-b
 
 ## Operating system
 
@@ -120,18 +120,18 @@
 | apport-core-dump-handler | 2.28.3-0ubuntu0.1 | all |
 | apport-symptoms | 0.25 | all |
 | appstream | 1.0.2-1build6 | arm64 |
-| apt | 2.8.3 | arm64 |
-| apt-transport-https | 2.8.3 | all |
-| apt-utils | 2.8.3 | arm64 |
+| apt | 2.8.4ubuntu0.1 | arm64 |
+| apt-transport-https | 2.8.4ubuntu0.1 | all |
+| apt-utils | 2.8.4ubuntu0.1 | arm64 |
 | base-files | 13ubuntu10.5 | arm64 |
 | base-passwd | 3.6.3build1 | arm64 |
 | bash | 5.2.21-2ubuntu4 | arm64 |
 | bash-completion | 1:2.11-8 | all |
 | bc | 1.07.1-3ubuntu4 | arm64 |
 | bcache-tools | 1.0.8-5build1 | arm64 |
-| bind9-dnsutils | 1:9.18.39-0ubuntu0.24.04.8 | arm64 |
-| bind9-host | 1:9.18.39-0ubuntu0.24.04.8 | arm64 |
-| bind9-libs:arm64 | 1:9.18.39-0ubuntu0.24.04.8 | arm64 |
+| bind9-dnsutils | 1:9.18.39-0ubuntu0.24.04.9 | arm64 |
+| bind9-host | 1:9.18.39-0ubuntu0.24.04.9 | arm64 |
+| bind9-libs:arm64 | 1:9.18.39-0ubuntu0.24.04.9 | arm64 |
 | binutils | 2.42-4ubuntu2.10 | arm64 |
 | binutils-aarch64-linux-gnu | 2.42-4ubuntu2.10 | arm64 |
 | binutils-common:arm64 | 2.42-4ubuntu2.10 | arm64 |
@@ -190,8 +190,8 @@
 | docker-buildx-plugin | 0.38.1-1~ubuntu.24.04~noble | arm64 |
 | docker-ce | 5:29.5.3-1~ubuntu.24.04~noble | arm64 |
 | docker-ce-cli | 5:29.5.3-1~ubuntu.24.04~noble | arm64 |
-| docker-ce-rootless-extras | 5:29.9.2-1~ubuntu.24.04~noble | arm64 |
-| docker-compose-plugin | 5.6.1-1~ubuntu.24.04~noble | arm64 |
+| docker-ce-rootless-extras | 5:29.9.3-1~ubuntu.24.04~noble | arm64 |
+| docker-compose-plugin | 5.7.0-1~ubuntu.24.04~noble | arm64 |
 | dosfstools | 4.2-1.1build1 | arm64 |
 | dpkg | 1.22.6ubuntu6.6 | arm64 |
 | dpkg-dev | 1.22.6ubuntu6.6 | all |
@@ -296,7 +296,7 @@
 | libaom3:arm64 | 3.8.2-2ubuntu0.2 | arm64 |
 | libapparmor1:arm64 | 4.0.1really4.0.1-0ubuntu0.24.04.9 | arm64 |
 | libappstream5:arm64 | 1.0.2-1build6 | arm64 |
-| libapt-pkg6.0t64:arm64 | 2.8.3 | arm64 |
+| libapt-pkg6.0t64:arm64 | 2.8.4ubuntu0.1 | arm64 |
 | libargon2-1:arm64 | 0~20190702+dfsg-4build1 | arm64 |
 | libasan8:arm64 | 14.2.0-4ubuntu2~24.04.1 | arm64 |
 | libassuan0:arm64 | 2.5.6-1build1 | arm64 |
@@ -450,7 +450,7 @@
 | libmount1:arm64 | 2.39.3-9ubuntu6.6 | arm64 |
 | libmpc3:arm64 | 1.3.1-1build1.1 | arm64 |
 | libmpfr6:arm64 | 4.2.1-1build1.1 | arm64 |
-| libmspack0t64:arm64 | 0.11-1.1build1 | arm64 |
+| libmspack0t64:arm64 | 0.11-1.1ubuntu0.24.04.1 | arm64 |
 | libnbd0 | 1.20.0-1 | arm64 |
 | libncurses6:arm64 | 6.4+20240113-1ubuntu2.2 | arm64 |
 | libncursesw6:arm64 | 6.4+20240113-1ubuntu2.2 | arm64 |
@@ -484,7 +484,7 @@
 | libparted2t64:arm64 | 3.6-4build1 | arm64 |
 | libpcap0.8t64:arm64 | 1.10.4-4.1ubuntu3.1 | arm64 |
 | libpci3:arm64 | 1:3.10.0-2build1 | arm64 |
-| libpcre2-8-0:arm64 | 10.42-4ubuntu2.1 | arm64 |
+| libpcre2-8-0:arm64 | 10.42-4ubuntu2.2 | arm64 |
 | libperl5.38t64:arm64 | 5.38.2-3.2ubuntu0.6 | arm64 |
 | libpipeline1:arm64 | 1.5.7-2 | arm64 |
 | libplymouth5:arm64 | 24.004.60-1ubuntu7.2 | arm64 |
@@ -744,7 +744,7 @@
 | python3-six | 1.16.0-4 | all |
 | python3-software-properties | 0.99.49.4 | all |
 | python3-systemd | 235-1build4 | arm64 |
-| python3-twisted | 24.3.0-1ubuntu0.2 | all |
+| python3-twisted | 24.3.0-1ubuntu0.3 | all |
 | python3-typing-extensions | 4.10.0-1 | all |
 | python3-tz | 2024.1-2 | all |
 | python3-update-manager | 1:24.04.12 | all |
