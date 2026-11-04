@@ -421,6 +421,15 @@ build {
     script = "${path.cwd}/scripts/linux/common/preload-gecko-seed.sh"
   }
 
+  # After the last reboot and SBOM, so the image layers stay in /mnt/var/lib/docker.
+  provisioner "shell" {
+    only = [
+      "googlecompute.gw-fxci-gcp-l1-2404-headless-alpha"
+    ]
+    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    script          = "${path.cwd}/scripts/linux/common/preload-docker-image.sh"
+  }
+
   post-processor "manifest" {
     output     = "packer-artifacts.json"
     strip_path = true
