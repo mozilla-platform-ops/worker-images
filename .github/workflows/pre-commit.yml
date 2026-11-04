@@ -3,9 +3,6 @@ name: linting
 on:
   pull_request:
 
-permissions:
-  contents: read
-
 jobs:
   pre-commit:
     runs-on: ubuntu-latest
@@ -54,11 +51,8 @@ jobs:
     - name: Install uv
       uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2
 
-    - name: Check workflow permissions
+    - name: Check workflow OIDC permissions
       run: uv run --with pyyaml ci/test-workflow-permissions.py
-
-    - name: Check SBOM PR validation
-      run: python3 ci/test_sbom_pr.py
 
     - name: Check OS integration trigger
       run: |

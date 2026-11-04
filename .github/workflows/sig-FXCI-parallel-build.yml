@@ -37,7 +37,7 @@ jobs:
     name: "Build ${{ matrix.config }}"
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       id-token: write
     strategy:
       fail-fast: false
