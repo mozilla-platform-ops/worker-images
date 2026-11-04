@@ -56,12 +56,7 @@ def build(mode, level, seed_root):
     if mode == "linux-d2g":
         # D2G cache names carry a hash of the decision's VCS helper, as Gecko computes it.
         run_task_git = fetch(f"{artifacts}/run-task-git")
-        helper = (
-            fetch(f"{artifacts}/run-task-hg")
-            if params["repository_type"] == "hg"
-            else run_task_git
-        )
-        name += "-v3-" + hashlib.sha256(helper).hexdigest()[:20]
+        name += "-v3-" + hashlib.sha256(run_task_git).hexdigest()[:20]
         wrapper = temp / "run-task-git"
         wrapper.write_bytes(run_task_git)
         runpy.run_path(str(wrapper))["configure_cache_posix"](
