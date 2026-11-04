@@ -56,12 +56,7 @@ def build(mode, level, seed_root):
     if mode == "linux-d2g":
         # D2G cache names carry a hash of the decision's VCS helper, as Gecko computes it.
         run_task_git = fetch(f"{artifacts}/run-task-git")
-        helper = (
-            fetch(f"{artifacts}/run-task-hg")
-            if params["repository_type"] == "hg"
-            else run_task_git
-        )
-        name += "-v3-" + hashlib.sha256(helper).hexdigest()[:20]
+        name += "-v3-" + hashlib.sha256(run_task_git).hexdigest()[:20]
         wrapper = temp / "run-task-git"
         wrapper.write_bytes(run_task_git)
         runpy.run_path(str(wrapper))["configure_cache_posix"](
@@ -79,10 +74,15 @@ def build(mode, level, seed_root):
     (repo / ".git/worker-image-seed").write_text(revision + "\n")
     if mode == "linux-d2g":
         subprocess.run(["chown", "-R", "1000:1000", str(cache)], check=True)
-        git("-c", f"safe.directory={repo}", "-C", repo, "update-index", "--refresh")
-        os.chown(repo / ".git/index", 1000, 1000)
+    cache.rename(temp / name)
+    names = [name]
+    if level == 1:
+        names.append(name.replace("level-1", "level-3", 1))
+        subprocess.run(
+            ["cp", "-a", str(temp / name), str(temp / names[-1])], check=True
+        )
     (temp / "manifest.json").write_text(
-        json.dumps({"cache_name": name, "created": datetime.now(UTC).isoformat()})
+        json.dumps({"cache_names": names, "created": datetime.now(UTC).isoformat()})
         + "\n"
     )
     temp.chmod(0o700)
@@ -95,7 +95,6 @@ def install(seed_root, caches, state_file):
     if state_file.exists():
         return
     spec = json.loads((seed_root / "manifest.json").read_text())
-    name = spec["cache_name"]
     caches.mkdir(parents=True, exist_ok=True)
     caches.chmod(0o700)  # Idle caches must not be readable without a task mount.
     if seed_root.stat().st_dev != caches.stat().st_dev:
@@ -103,17 +102,23 @@ def install(seed_root, caches, state_file):
             f"Seed is not on the {caches} disk; tasks will clone normally", flush=True
         )
         return
-    destination = caches / name
-    if not destination.exists():  # Exists only after an interrupted earlier install.
-        (seed_root / "shallow").rename(destination)
-    state = {
-        name: [{"key": name, "location": str(destination), "created": spec["created"]}]
-    }
+    state = {}
+    for name in spec["cache_names"]:
+        destination = caches / name
+        if not destination.exists():
+            (seed_root / name).rename(destination)
+        repo = destination / "gecko"
+        owner = repo.stat()
+        git("-c", f"safe.directory={repo}", "-C", repo, "update-index", "--refresh")
+        os.chown(repo / ".git/index", owner.st_uid, owner.st_gid)
+        state[name] = [
+            {"key": name, "location": str(destination), "created": spec["created"]}
+        ]
     pending = state_file.with_name(state_file.name + ".tmp")
     pending.write_text(json.dumps(state) + "\n")
     pending.chmod(0o600)
     pending.rename(state_file)
-    print(f"Registered checkout cache: {name}", flush=True)
+    print(f"Registered checkout caches: {', '.join(state)}", flush=True)
 
 
 def main():
