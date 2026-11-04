@@ -56,9 +56,9 @@ def build(mode, level, seed_root):
         wrapper.unlink()
     git("init", repo)
     git("-C", repo, "remote", "add", "origin", GIT_SOURCE)
-    # Depth 1 and no checked-out files: a full clone or a checkout made the first task slower.
     git("-C", repo, "fetch", "--progress", "--no-tags", "--depth=1", "origin", revision)
-    git("-C", repo, "update-ref", "HEAD", revision)
+    # Write the working tree into the image so the first task only needs to update it.
+    git("-C", repo, "checkout", "--detach", revision)
     (repo / ".git/worker-image-seed").write_text(revision + "\n")
     if mode == "linux-d2g":
         subprocess.run(["chown", "-R", "1000:1000", str(cache)], check=True)
