@@ -52,6 +52,11 @@ function New-GCPWorkerImage {
     }
 
     ## Other configuration
+    if ($PackerHCLPath -eq "gcp.pkr.hcl") {
+        $preloadCaches = $YAML.vm["preloadCaches"] ?? $false
+        if ($preloadCaches -isnot [bool]) { throw "vm.preloadCaches must be true or false." }
+        $ENV:PKR_VAR_preloadCaches = $preloadCaches.ToString().ToLowerInvariant()
+    }
     if ($YAML.vm["disk_size"])             { $ENV:PKR_VAR_disk_size            = $YAML.vm["disk_size"] }
     if ($YAML.image["project_id"])         { $ENV:PKR_VAR_project_id           = $YAML.image["project_id"] }
     if ($YAML.vm["taskcluster_version"])   { $ENV:PKR_VAR_taskcluster_version  = $YAML.vm["taskcluster_version"] }
