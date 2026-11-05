@@ -9,6 +9,10 @@ cat << EOF > "${disk_setup_script}"
 
 set -e
 
+if [ -f /opt/gecko-home.ext4 ]; then
+    exec /usr/local/lib/worker-images/gecko-seed-disks.sh
+fi
+
 makedirs () {
     echo "Creating directories for generic-worker"
     # cachesDir
@@ -91,7 +95,7 @@ chmod +x "${disk_setup_script}"
 cat << EOF > /etc/systemd/system/generic-worker-disk-setup.service
 [Unit]
 Description=Taskcluster generic worker ephemeral disk setup
-Before=worker.service docker.service
+Before=worker.service docker.service display-manager.service
 
 [Service]
 Type=oneshot

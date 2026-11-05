@@ -33,6 +33,12 @@ variable "use_keyvault" {
   description = "Whether to fetch secrets from Google Secrets Manager"
 }
 
+variable "preloadCaches" {
+  type        = bool
+  default     = false
+  description = "Preload Gecko and Docker caches into the image"
+}
+
 variable "disk_size" {
   type    = number
   default = 100
@@ -406,28 +412,27 @@ build {
     source      = "/etc/worker-images/SBOM.md"
   }
 
-  # Add the seed after the last build-time reboot. Install it on the first boot.
   provisioner "file" {
-    source      = "${path.cwd}/scripts/linux/common/gecko_seed.py"
-    destination = "/tmp/gecko_seed.py"
+    sources = [
+      "${path.cwd}/scripts/linux/common/docker-config.sh",
+      "${path.cwd}/scripts/linux/common/ephemeral-disks.sh",
+      "${path.cwd}/scripts/linux/common/gecko_seed.py",
+      "${path.cwd}/scripts/linux/common/gecko-seed-disks.sh",
+      "${path.cwd}/scripts/linux/common/gecko-seed-hydrate.sh",
+    ]
+    destination = "/tmp/"
   }
 
+  # Cache Docker layers and Gecko files after the last build-time reboot.
   provisioner "shell" {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     environment_vars = [
       "GECKO_SEED_MODE=${source.name == "gw-fxci-gcp-l1-2404-gui-alpha" ? "linux-native" : "linux-d2g"}",
       "GECKO_SEED_LEVEL=${startswith(source.name, "trusted-") ? "3" : "1"}",
+      "PRELOAD_IMAGE_LABEL=${var.tc_arch == "ARM64" ? "ubuntu2404-arm64-test-base" : "ubuntu2404-test-base"}",
     ]
-    script = "${path.cwd}/scripts/linux/common/preload-gecko-seed.sh"
-  }
-
-  # After the last reboot and SBOM, so the image layers stay in /mnt/var/lib/docker.
-  provisioner "shell" {
-    only = [
-      "googlecompute.gw-fxci-gcp-l1-2404-headless-alpha"
-    ]
-    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-    script          = "${path.cwd}/scripts/linux/common/preload-docker-image.sh"
+    scripts = var.preloadCaches ? ["${path.cwd}/scripts/linux/common/preload-caches.sh"] : null
+    inline  = var.preloadCaches ? null : ["echo 'Cache preload disabled'"]
   }
 
   post-processor "manifest" {

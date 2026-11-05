@@ -114,6 +114,13 @@ Level-1 images live in the `taskcluster-imaging` project. Trusted level-3
 images live in `fxci-production-level3-workers`. Production rollouts update
 the matching image paths in `fxci-config`.
 
+Set `vm.preloadCaches: true` in a Firefox CI Linux image config to preload
+Gecko and the Docker test base for its architecture. This works with all five
+Linux image types, including GUI and ARM64. It defaults to `false`, so builds
+skip cache preparation unless enabled. All five Linux alpha configs enable it.
+Direct Packer builds can use
+`-var 'preloadCaches=true'`.
+
 ## Development image builds (RelSRE only)
 
 Run **Image generation dev - Azure** (`image-dev-azure.yml`) or
