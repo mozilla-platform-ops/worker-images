@@ -59,22 +59,15 @@ else
     # data recovery.
     mkfs.ext4 -E lazy_journal_init=1 /dev/instance_storage/lv_instance_storage
 
-    # Unmount the current /home and /mnt if mounted
-    umount /home || :
     umount /mnt || :
 
     # Mount the new logical volume to /mnt
     mount -o 'rw,relatime,errors=panic,data=writeback,nobarrier,commit=60' /dev/instance_storage/lv_instance_storage /mnt
 
-    # Bind-mount to /home (generic-worker's tasksDir)
-    cp -a /home /mnt/
-    mount -o bind /mnt/home /home
-
     # Add the mounts to /etc/fstab for persistence
     if ! cat /etc/fstab | grep "/mnt "; then
         cat >> /etc/fstab <<END
 /dev/instance_storage/lv_instance_storage /mnt  ext4 rw,relatime,errors=panic,data=writeback,nobarrier,commit=60
-/mnt/home                                 /home none bind
 END
     fi
 
