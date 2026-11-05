@@ -27,7 +27,7 @@ if (( ${#disks[@]} )); then
     device=/dev/mapper/gecko_seed_ssd
     mount -o rw,relatime,errors=panic,data=writeback,nobarrier,commit=60 "$device" /mnt
     resize2fs "$device"
-    systemd-run --unit gecko-seed-hydrate --on-active=60s \
+    systemd-run --unit gecko-seed-hydrate \
         /usr/local/lib/worker-images/gecko-seed-hydrate.sh
 else
     # Budget physical space, leaving room for OS writes. Never shrink on reboot.
