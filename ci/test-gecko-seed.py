@@ -19,7 +19,7 @@ def git(repo, *args):
     return subprocess.check_output(["git", "-C", str(repo), *args], text=True).strip()
 
 
-def check(level):
+def check(level, copied):
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
         source = root / "source"
@@ -54,11 +54,17 @@ def check(level):
         ]
         assert names == expected
 
-        copied_seed = root / "copied-seed"
-        subprocess.run(["cp", "-a", str(image_seed), str(copied_seed)], check=True)
+        installed_seed = image_seed
+        if copied:
+            installed_seed = root / "copied-seed"
+            subprocess.run(
+                ["cp", "-a", str(image_seed), str(installed_seed)], check=True
+            )
         caches = root / "caches"
         state = root / "directory-caches.json"
-        seed.install(copied_seed, caches, state)
+        with patch.object(seed, "git", wraps=seed.git) as commands:
+            seed.install(installed_seed, caches, state)
+        assert commands.call_count == (len(names) if copied else 0)
         assert set(json.loads(state.read_text())) == set(names)
         repo = caches / names[-1] / "gecko"
         assert git(repo, "rev-parse", "HEAD") == revision
@@ -83,12 +89,13 @@ def check(level):
             assert (other / "stable").read_text() == "unchanged\n"
             assert git(other, "rev-parse", "HEAD") == revision
         original_state = state.read_bytes()
-        seed.install(copied_seed, caches, state)
+        seed.install(installed_seed, caches, state)
         assert state.read_bytes() == original_state
         assert git(repo, "rev-parse", "HEAD") == target
 
 
 if __name__ == "__main__":
     for image_level in (1, 3):
-        check(image_level)
+        for copied_to_disk in (False, True):
+            check(image_level, copied_to_disk)
     print("Gecko seed checks passed")

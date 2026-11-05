@@ -38,6 +38,12 @@ def git(*args):
     )
 
 
+def refresh_index(repo):
+    owner = repo.stat()
+    git("-c", f"safe.directory={repo}", "-C", repo, "update-index", "--refresh")
+    os.chown(repo / ".git/index", owner.st_uid, owner.st_gid)
+
+
 def build(mode, level, seed_root):
     decision = json.loads(
         fetch(f"{TC}/index/v1/task/gecko.v2.autoland.latest.taskgraph.decision")
@@ -81,8 +87,19 @@ def build(mode, level, seed_root):
         subprocess.run(
             ["cp", "-a", str(temp / name), str(temp / names[-1])], check=True
         )
+    index_ctimes = {}
+    for cache_name in names:
+        repo = temp / cache_name / "gecko"
+        refresh_index(repo)
+        index_ctimes[cache_name] = (repo / ".git/index").stat().st_ctime_ns
     (temp / "manifest.json").write_text(
-        json.dumps({"cache_names": names, "created": datetime.now(UTC).isoformat()})
+        json.dumps(
+            {
+                "cache_names": names,
+                "created": datetime.now(UTC).isoformat(),
+                "index_ctimes": index_ctimes,
+            }
+        )
         + "\n"
     )
     temp.chmod(0o700)
@@ -108,9 +125,10 @@ def install(seed_root, caches, state_file):
         if not destination.exists():
             (seed_root / name).rename(destination)
         repo = destination / "gecko"
-        owner = repo.stat()
-        git("-c", f"safe.directory={repo}", "-C", repo, "update-index", "--refresh")
-        os.chown(repo / ".git/index", owner.st_uid, owner.st_gid)
+        if (repo / ".git/index").stat().st_ctime_ns != spec.get("index_ctimes", {}).get(
+            name
+        ):
+            refresh_index(repo)
         state[name] = [
             {"key": name, "location": str(destination), "created": spec["created"]}
         ]
