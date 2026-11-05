@@ -39,6 +39,12 @@ variable "preloadCaches" {
   description = "Preload Gecko and Docker caches into the image"
 }
 
+variable "preloadCacheManifest" {
+  type        = string
+  default     = ""
+  description = "Path to cache inputs resolved before Packer starts"
+}
+
 variable "disk_size" {
   type    = number
   default = 100
@@ -423,13 +429,17 @@ build {
     destination = "/tmp/"
   }
 
+  provisioner "file" {
+    content     = var.preloadCaches ? file(var.preloadCacheManifest) : "{}"
+    destination = "/tmp/preload-caches.json"
+  }
+
   # Cache Docker layers and Gecko files after the last build-time reboot.
   provisioner "shell" {
     execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     environment_vars = [
       "GECKO_SEED_MODE=${source.name == "gw-fxci-gcp-l1-2404-gui-alpha" ? "linux-native" : "linux-d2g"}",
       "GECKO_SEED_LEVEL=${startswith(source.name, "trusted-") ? "3" : "1"}",
-      "PRELOAD_IMAGE_LABEL=${var.tc_arch == "ARM64" ? "ubuntu2404-arm64-test-base" : "ubuntu2404-test-base"}",
     ]
     scripts = var.preloadCaches ? ["${path.cwd}/scripts/linux/common/preload-caches.sh"] : null
     inline  = var.preloadCaches ? null : ["echo 'Cache preload disabled'"]

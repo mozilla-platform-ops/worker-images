@@ -14,8 +14,6 @@ from pathlib import Path
 from types import SimpleNamespace
 from urllib.request import urlopen
 
-import yaml
-
 TC = "https://firefox-ci-tc.services.mozilla.com/api"
 GIT_SOURCE = "https://github.com/mozilla-firefox/firefox"
 
@@ -44,13 +42,10 @@ def refresh_index(repo):
     os.chown(repo / ".git/index", owner.st_uid, owner.st_gid)
 
 
-def build(mode, level, seed_root):
-    decision = json.loads(
-        fetch(f"{TC}/index/v1/task/gecko.v2.autoland.latest.taskgraph.decision")
-    )["taskId"]
+def build(mode, level, seed_root, inputs):
+    decision = inputs["decision"]
     artifacts = f"{TC}/queue/v1/task/{decision}/artifacts/public"
-    params = yaml.safe_load(fetch(f"{artifacts}/parameters.yml"))
-    revision = params["head_git_rev"]
+    revision = inputs["gecko_revision"]
     if not re.fullmatch(r"[0-9a-f]{40}", revision):
         raise ValueError(f"Bad autoland Git revision in decision {decision}")
     # A failed build discards the VM, so a partial temp directory never reaches an image.
@@ -62,7 +57,10 @@ def build(mode, level, seed_root):
     if mode == "linux-d2g":
         # D2G cache names carry a hash of the decision's VCS helper, as Gecko computes it.
         run_task_git = fetch(f"{artifacts}/run-task-git")
-        name += "-v3-" + hashlib.sha256(run_task_git).hexdigest()[:20]
+        helper_hash = hashlib.sha256(run_task_git).hexdigest()
+        if helper_hash != inputs["run_task_git_sha256"]:
+            raise ValueError(f"run-task-git checksum changed in decision {decision}")
+        name += "-v3-" + helper_hash[:20]
         wrapper = temp / "run-task-git"
         wrapper.write_bytes(run_task_git)
         runpy.run_path(str(wrapper))["configure_cache_posix"](
@@ -146,13 +144,16 @@ def main():
     bake.add_argument("--mode", choices=("linux-native", "linux-d2g"), required=True)
     bake.add_argument("--level", type=int, choices=(1, 3), required=True)
     bake.add_argument("--seed-root", type=Path, required=True)
+    bake.add_argument("--inputs", type=Path, required=True)
     boot = commands.add_parser("install")
     boot.add_argument("--seed-root", type=Path, required=True)
     boot.add_argument("--destination-root", type=Path, required=True)
     boot.add_argument("--state-file", type=Path, required=True)
     args = parser.parse_args()
     if args.command == "build":
-        build(args.mode, args.level, args.seed_root)
+        build(
+            args.mode, args.level, args.seed_root, json.loads(args.inputs.read_text())
+        )
     else:
         install(args.seed_root, args.destination_root, args.state_file)
 
