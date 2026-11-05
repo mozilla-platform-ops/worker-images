@@ -197,7 +197,7 @@
 | busybox-static | 1:1.36.1-6ubuntu3.1 | amd64 |
 | byobu | 6.11-0ubuntu1.1 | all |
 | bzip2 | 1.0.8-5.1ubuntu0.1 | amd64 |
-| ca-certificates | 20260816ubuntu0.24.04.1 | all |
+| ca-certificates | 20260816ubuntu0.24.04.2 | all |
 | cabextract | 1.11-2 | amd64 |
 | catatonit | 0.1.7-1 | amd64 |
 | chrony | 4.5-1ubuntu4.2 | amd64 |
@@ -1333,7 +1333,7 @@
 | libspeexdsp1:amd64 | 1.2.1-1ubuntu3 | amd64 |
 | libsphinxbase3t64:amd64 | 0.8+5prealpha+1-17build2 | amd64 |
 | libspice-server1:amd64 | 0.15.1-1build2 | amd64 |
-| libsqlite3-0:amd64 | 3.45.1-1ubuntu2.8 | amd64 |
+| libsqlite3-0:amd64 | 3.45.1-1ubuntu2.9 | amd64 |
 | libsratom-0-0:amd64 | 0.6.16-1build1 | amd64 |
 | libsrt1.5-gnutls:amd64 | 1.5.3-1build2 | amd64 |
 | libss2:amd64 | 1.47.0-2.4~exp1ubuntu4.1 | amd64 |

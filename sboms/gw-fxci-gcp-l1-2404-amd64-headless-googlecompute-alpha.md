@@ -152,7 +152,7 @@
 | busybox-static | 1:1.36.1-6ubuntu3.1 | amd64 |
 | byobu | 6.11-0ubuntu1.1 | all |
 | bzip2 | 1.0.8-5.1ubuntu0.1 | amd64 |
-| ca-certificates | 20260816ubuntu0.24.04.1 | all |
+| ca-certificates | 20260816ubuntu0.24.04.2 | all |
 | catatonit | 0.1.7-1 | amd64 |
 | chrony | 4.5-1ubuntu4.2 | amd64 |
 | cloud-guest-utils | 0.33-1 | all |
@@ -623,7 +623,7 @@
 | libsmartcols1:amd64 | 2.39.3-9ubuntu6.6 | amd64 |
 | libsodium23:amd64 | 1.0.18-1ubuntu0.24.04.1 | amd64 |
 | libsort-naturally-perl | 1.03-4 | all |
-| libsqlite3-0:amd64 | 3.45.1-1ubuntu2.8 | amd64 |
+| libsqlite3-0:amd64 | 3.45.1-1ubuntu2.9 | amd64 |
 | libss2:amd64 | 1.47.0-2.4~exp1ubuntu4.1 | amd64 |
 | libssh-4:amd64 | 0.10.6-2ubuntu0.5 | amd64 |
 | libssl3t64:amd64 | 3.0.13-0ubuntu3.16 | amd64 |

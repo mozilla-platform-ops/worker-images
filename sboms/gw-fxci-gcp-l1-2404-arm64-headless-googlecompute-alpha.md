@@ -145,7 +145,7 @@
 | busybox-static | 1:1.36.1-6ubuntu3.1 | arm64 |
 | byobu | 6.11-0ubuntu1.1 | all |
 | bzip2 | 1.0.8-5.1ubuntu0.1 | arm64 |
-| ca-certificates | 20260816ubuntu0.24.04.1 | all |
+| ca-certificates | 20260816ubuntu0.24.04.2 | all |
 | chrony | 4.5-1ubuntu4.2 | arm64 |
 | cloud-guest-utils | 0.33-1 | all |
 | cloud-init | 26.2-0ubuntu1~24.04.2 | all |
