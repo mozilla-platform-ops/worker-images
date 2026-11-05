@@ -118,8 +118,11 @@ Set `vm.preloadCaches: true` in a Firefox CI Linux image config to preload
 Gecko and the Docker test base for its architecture. This works with all five
 Linux image types, including GUI and ARM64. It defaults to `false`, so builds
 skip cache preparation unless enabled. All five Linux alpha configs enable it.
-Direct Packer builds can use
-`-var 'preloadCaches=true'`.
+`New-GCPWorkerImage` checks cache dependencies before starting Packer and pins
+the Docker task, Gecko revision, and helper checksum in one manifest.
+Existing FXCI GCP workflows and local builds use this preflight. Direct Packer
+builds also need
+`-var 'preloadCacheManifest=/path/to/inputs.json'` with `preloadCaches=true`.
 
 ## Development image builds (RelSRE only)
 

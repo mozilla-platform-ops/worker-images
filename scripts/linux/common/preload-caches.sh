@@ -3,21 +3,20 @@ set -Eeuo pipefail
 trap 'printf "Cache preload failed: exit=%s line=%s command=%s\n" "$?" "$LINENO" "$BASH_COMMAND" >&2' ERR
 
 echo 'Preparing Docker storage'
-apt-get install -y git python3-yaml lvm2
+apt-get install -y git lvm2
 systemctl stop docker.service docker.socket
 bash /tmp/docker-config.sh
 bash /tmp/ephemeral-disks.sh
 systemctl daemon-reload
 
 root_url=https://firefox-ci-tc.services.mozilla.com
-label="docker-image-${PRELOAD_IMAGE_LABEL}"
-echo "Resolving autoland decision for $label"
-decision=$(curl -fsSL --retry 5 "$root_url/api/index/v1/task/gecko.v2.autoland.latest.taskgraph.decision" | jq -er .taskId)
+inputs=/tmp/preload-caches.json
+decision=$(jq -er .decision "$inputs")
+label=$(jq -er .docker_label "$inputs")
+image_index=$(jq -er .docker_index "$inputs")
+task_id=$(jq -er .docker_task_id "$inputs")
 echo "Docker preload: decision=$decision label=$label"
-# DONTBUILD clears the label map, but the full graph still has image cache keys.
-image_index=$(curl -fsSL --retry 5 "$root_url/api/queue/v1/task/$decision/artifacts/public/full-task-graph.json" | jq --stream -er --arg l "$label" 'select(.[0] == [$l, "optimization", "index-search", 0]) | .[1] // empty')
-echo "Resolving Docker image index=$image_index"
-task_id=$(curl -fsSL --retry 5 "$root_url/api/index/v1/task/$image_index" | jq -er .taskId)
+echo "Docker preload: index=$image_index task=$task_id"
 echo "Downloading Docker image: task=$task_id label=$label"
 systemctl start docker
 curl -fsSL --retry 5 -o /tmp/preload-image.tar.zst "$root_url/api/queue/v1/task/$task_id/artifacts/public/image.tar.zst"
@@ -48,7 +47,7 @@ trap 'umount "$staging"; rmdir "$staging"' EXIT
 cp -a /home "$staging/"
 cp -a /mnt/. "$staging/"
 python3 /usr/local/lib/worker-images/gecko_seed.py build \
-    --mode "$GECKO_SEED_MODE" --level "$GECKO_SEED_LEVEL" --seed-root "$staging/home/gecko-git-seed"
+    --mode "$GECKO_SEED_MODE" --level "$GECKO_SEED_LEVEL" --seed-root "$staging/home/gecko-git-seed" --inputs "$inputs"
 fstrim "$staging"
 umount "$staging"
 e2fsck -fn "$image"

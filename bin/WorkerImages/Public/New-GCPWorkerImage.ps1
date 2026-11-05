@@ -56,6 +56,11 @@ function New-GCPWorkerImage {
         $preloadCaches = $YAML.vm["preloadCaches"] ?? $false
         if ($preloadCaches -isnot [bool]) { throw "vm.preloadCaches must be true or false." }
         $ENV:PKR_VAR_preloadCaches = $preloadCaches.ToString().ToLowerInvariant()
+        $ENV:PKR_VAR_preloadCacheManifest = ''
+        if ($preloadCaches) {
+            Write-Host 'Resolving cache inputs before Packer starts'
+            $ENV:PKR_VAR_preloadCacheManifest = Resolve-GCPWorkerImageCaches -Architecture $YAML.vm['tc_arch']
+        }
     }
     if ($YAML.vm["disk_size"])             { $ENV:PKR_VAR_disk_size            = $YAML.vm["disk_size"] }
     if ($YAML.image["project_id"])         { $ENV:PKR_VAR_project_id           = $YAML.image["project_id"] }

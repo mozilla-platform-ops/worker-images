@@ -36,18 +36,17 @@ def check(level, copied):
         git(source, "commit", "-qam", "seed revision")
         revision = git(source, "rev-parse", "HEAD")
 
-        def fetch(url):
-            if url.endswith("/parameters.yml"):
-                return json.dumps({"head_git_rev": revision}).encode()
-            assert "/index/" in url
-            return b'{"taskId":"local-seed-test"}'
-
         image_seed = root / "image-seed"
         with (
-            patch.object(seed, "fetch", fetch),
+            patch.object(seed, "fetch", side_effect=AssertionError("Unpinned lookup")),
             patch.object(seed, "GIT_SOURCE", source.as_uri()),
         ):
-            seed.build("linux-native", level, image_seed)
+            seed.build(
+                "linux-native",
+                level,
+                image_seed,
+                {"decision": "local-seed-test", "gecko_revision": revision},
+            )
         names = json.loads((image_seed / "manifest.json").read_text())["cache_names"]
         expected = [
             f"gecko-level-{n}-checkouts-git-shallow" for n in sorted({level, 3})
@@ -95,6 +94,25 @@ def check(level, copied):
 
 
 if __name__ == "__main__":
+    with (
+        tempfile.TemporaryDirectory() as directory,
+        patch.object(seed, "fetch", return_value=b"changed helper"),
+    ):
+        try:
+            seed.build(
+                "linux-d2g",
+                3,
+                Path(directory) / "seed",
+                {
+                    "decision": "local-seed-test",
+                    "gecko_revision": "a" * 40,
+                    "run_task_git_sha256": "0" * 64,
+                },
+            )
+        except ValueError as error:
+            assert "checksum changed" in str(error)
+        else:
+            raise AssertionError("Changed helper was accepted")
     for image_level in (1, 3):
         for copied_to_disk in (False, True):
             check(image_level, copied_to_disk)
