@@ -14,7 +14,10 @@ label="docker-image-${PRELOAD_IMAGE_LABEL}"
 echo "Resolving autoland decision for $label"
 decision=$(curl -fsSL --retry 5 "$root_url/api/index/v1/task/gecko.v2.autoland.latest.taskgraph.decision" | jq -er .taskId)
 echo "Docker preload: decision=$decision label=$label"
-task_id=$(curl -fsSL --retry 5 "$root_url/api/queue/v1/task/$decision/artifacts/public/label-to-taskid.json" | jq -er --arg l "$label" '.[$l] // error("Docker image label not found: \($l)")')
+# DONTBUILD clears the label map, but the full graph still has image cache keys.
+image_index=$(curl -fsSL --retry 5 "$root_url/api/queue/v1/task/$decision/artifacts/public/full-task-graph.json" | jq --stream -er --arg l "$label" 'select(.[0] == [$l, "optimization", "index-search", 0]) | .[1] // empty')
+echo "Resolving Docker image index=$image_index"
+task_id=$(curl -fsSL --retry 5 "$root_url/api/index/v1/task/$image_index" | jq -er .taskId)
 echo "Downloading Docker image: task=$task_id label=$label"
 systemctl start docker
 curl -fsSL --retry 5 -o /tmp/preload-image.tar.zst "$root_url/api/queue/v1/task/$task_id/artifacts/public/image.tar.zst"
@@ -22,7 +25,7 @@ echo "Loading Docker image $label"
 docker load -i /tmp/preload-image.tar.zst
 rm -f /tmp/preload-image.tar.zst
 mkdir -p /etc/worker-images
-echo "$label $task_id decision=$decision $(date -u +%FT%TZ)" >> /etc/worker-images/preloaded-docker-images.txt
+echo "$label $task_id decision=$decision index=$image_index $(date -u +%FT%TZ)" >> /etc/worker-images/preloaded-docker-images.txt
 docker images --digests
 
 echo 'Preparing Gecko seed filesystem'
