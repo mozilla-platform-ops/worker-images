@@ -1,8 +1,6 @@
 #!/bin/bash
 # Load the Docker image that the latest autoland push uses for PRELOAD_IMAGE_LABEL.
 # Docker then skips its layers when a task loads a child image (ubuntu2404-test).
-# Only useful when /mnt/var/lib/docker is on the boot disk (noscratch pools); local-SSD
-# pools format /mnt at boot.
 set -euo pipefail
 
 root_url=https://firefox-ci-tc.services.mozilla.com

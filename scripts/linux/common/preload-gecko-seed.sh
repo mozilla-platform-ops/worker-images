@@ -3,8 +3,13 @@ set -euo pipefail
 
 apt-get install -y git python3-yaml
 install -D -m 0755 /tmp/gecko_seed.py /usr/local/lib/worker-images/gecko_seed.py
-python3 /usr/local/lib/worker-images/gecko_seed.py build \
-    --mode "$GECKO_SEED_MODE" --level "$GECKO_SEED_LEVEL" --seed-root /home/gecko-git-seed
+if [[ "$GECKO_SEED_MODE" == linux-d2g ]]; then
+    install -m 0755 /tmp/gecko-seed-disks.sh /tmp/gecko-seed-hydrate.sh /usr/local/lib/worker-images/
+    bash /tmp/prepare-gecko-seed-disk.sh
+else
+    python3 /usr/local/lib/worker-images/gecko_seed.py build \
+        --mode "$GECKO_SEED_MODE" --level "$GECKO_SEED_LEVEL" --seed-root /home/gecko-git-seed
+fi
 
 # Move the seed into the caches directory before the worker starts.
 disk_dependency=''

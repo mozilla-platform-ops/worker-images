@@ -406,10 +406,27 @@ build {
     source      = "/etc/worker-images/SBOM.md"
   }
 
-  # Add the seed after the last build-time reboot. Install it on the first boot.
+  provisioner "shell" {
+    only = [
+      "googlecompute.gw-fxci-gcp-l1-2404-headless-alpha"
+    ]
+    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    script          = "${path.cwd}/scripts/linux/common/preload-docker-image.sh"
+  }
+
+  # Package the seed and Docker layers after the last build-time reboot.
   provisioner "file" {
     source      = "${path.cwd}/scripts/linux/common/gecko_seed.py"
     destination = "/tmp/gecko_seed.py"
+  }
+
+  provisioner "file" {
+    sources = [
+      "${path.cwd}/scripts/linux/common/prepare-gecko-seed-disk.sh",
+      "${path.cwd}/scripts/linux/common/gecko-seed-disks.sh",
+      "${path.cwd}/scripts/linux/common/gecko-seed-hydrate.sh",
+    ]
+    destination = "/tmp/"
   }
 
   provisioner "shell" {
@@ -419,15 +436,6 @@ build {
       "GECKO_SEED_LEVEL=${startswith(source.name, "trusted-") ? "3" : "1"}",
     ]
     script = "${path.cwd}/scripts/linux/common/preload-gecko-seed.sh"
-  }
-
-  # After the last reboot and SBOM, so the image layers stay in /mnt/var/lib/docker.
-  provisioner "shell" {
-    only = [
-      "googlecompute.gw-fxci-gcp-l1-2404-headless-alpha"
-    ]
-    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-    script          = "${path.cwd}/scripts/linux/common/preload-docker-image.sh"
   }
 
   post-processor "manifest" {
