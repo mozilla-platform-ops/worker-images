@@ -122,12 +122,12 @@ measured. The list defaults to empty.
 
 `New-GCPWorkerImage` resolves the current Autoland image task IDs before
 Packer starts. The image build stores each archive in Generic Worker’s download
-cache and loads its Docker layers. A startup hook checks the archive size and
-image, then writes Generic Worker’s file and D2G cache state. The file cache
-uses the exact artifact task ID; the D2G cache uses the archive SHA256. A newer
-artifact therefore misses safely and follows the normal download or image-load
-path. Duplicate task IDs in one image list are downloaded once. The seed build
-fails if it leaves less than 1 GiB free in its 32 GiB filesystem.
+cache, loads its Docker layers, and writes Generic Worker’s file and D2G cache
+state into the image. The file cache uses the exact artifact task ID; the D2G
+cache uses the archive SHA256. A newer artifact misses safely and follows the
+normal download or image-load path. Duplicate task IDs in one image list are
+downloaded once. The seed build fails if it leaves less than 1 GiB free in its
+32 GiB filesystem.
 
 All five Linux alpha configs enable `preloadCaches`. Direct Packer builds also
 need `-var 'preloadCacheManifest=/path/to/inputs.json'` with

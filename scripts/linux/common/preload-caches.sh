@@ -10,7 +10,6 @@ bash /tmp/ephemeral-disks.sh
 systemctl daemon-reload
 
 inputs=/tmp/preload-caches.json
-mkdir -p /etc/worker-images
 downloads=/home/generic-worker/downloads
 mkdir -p "$downloads"
 chmod 0700 "$downloads"
@@ -54,14 +53,15 @@ if (( image_count > 0 )); then
         echo "Loaded Docker image: name=$image_name id=$image_id sha256=$sha256"
     done < <(jq -c '.docker_images[]' "$inputs")
     docker images --digests
+    cache_manifest=$(mktemp /tmp/preloaded-docker-cache.XXXXXX)
+    jq -n --argjson images "$images" '{images:$images}' > "$cache_manifest"
+    python3 /tmp/docker_cache_seed.py --manifest "$cache_manifest" --downloads-dir "$downloads"
+    rm -f "$cache_manifest"
 fi
-jq -n --argjson images "$images" '{images:$images}' > /etc/worker-images/preloaded-docker-cache.json
-chmod 0600 /etc/worker-images/preloaded-docker-cache.json
 
 echo 'Preparing Gecko seed filesystem'
 install -D -m 0755 /tmp/gecko_seed.py /usr/local/lib/worker-images/gecko_seed.py
 install -m 0755 /tmp/gecko-seed-disks.sh /tmp/gecko-seed-hydrate.sh /usr/local/lib/worker-images/
-install -m 0755 /tmp/docker_cache_seed.py /usr/local/lib/worker-images/
 modprobe dm-clone
 systemctl stop docker.service docker.socket
 if mountpoint -q /home || mountpoint -q /mnt; then
@@ -123,6 +123,5 @@ RequiresMountsFor=/home
 [Service]
 TimeoutStartSec=infinity
 ExecStartPre=/usr/bin/python3 /usr/local/lib/worker-images/gecko_seed.py install --seed-root /home/gecko-git-seed --destination-root /home/generic-worker/caches --state-file /directory-caches.json
-ExecStartPre=-/usr/bin/python3 /usr/local/lib/worker-images/docker_cache_seed.py install --manifest /etc/worker-images/preloaded-docker-cache.json --downloads-dir /home/generic-worker/downloads
 EOF
 systemctl daemon-reload
