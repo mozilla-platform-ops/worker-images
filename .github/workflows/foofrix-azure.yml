@@ -63,7 +63,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          packer init packer/foofrix-azure.pkr.hcl
+          packer init -upgrade packer/foofrix-azure.pkr.hcl
           python3 ci/test-foofrix-config.py
           packer validate packer/foofrix-azure.pkr.hcl
       - name: Azure login with FooFrix image-build identity

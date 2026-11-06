@@ -29,7 +29,7 @@ if (-not $varFileWrite -or $varFileWrite.Extent.Text -match '(?i)password|token|
 }
 $packerTry = $orchestrator.Find({ param($node)
     $node -is [System.Management.Automation.Language.TryStatementAst] -and
-    $node.Body.Extent.Text.Contains('& packer init .')
+    $node.Body.Extent.Text.Contains('& packer init -upgrade .')
 }, $true)
 if (-not $packerTry) { throw 'Packer execution block not found.' }
 $packerScript = [scriptblock]::Create($packerTry.Extent.Text)

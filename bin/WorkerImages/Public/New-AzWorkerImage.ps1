@@ -116,7 +116,7 @@ function New-AzWorkerImage {
     Write-Host "Temp RG name: $env:PKR_VAR_temp_resource_group_name"
     Write-Host "Using HCL: $PackerHCLPath"
 
-    packer init $PackerHCLPath
+    packer init -upgrade $PackerHCLPath
     if ($PackerDebug) {
         packer build -debug --only azure-arm.nonsig -force $PackerHCLPath
     }
