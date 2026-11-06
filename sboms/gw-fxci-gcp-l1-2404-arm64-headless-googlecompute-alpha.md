@@ -13,7 +13,7 @@
 ## Operating system
 
 - OS: Ubuntu 24.04.5 LTS (Noble Numbat)
-- Kernel: Linux 7.0.0-1014-gcp aarch64 GNU/Linux
+- Kernel: Linux 7.0.0-1017-gcp aarch64 GNU/Linux
 - Machine architecture: aarch64
 
 ## Taskcluster tools
@@ -582,20 +582,20 @@
 | libyaml-0-2:arm64 | 0.2.5-1build1 | arm64 |
 | libzstd1:arm64 | 1.5.5+dfsg2-2build1.1 | arm64 |
 | linux-base | 4.5ubuntu9+24.04.2 | all |
-| linux-gcp | 7.0.0-1014.14~24.04.1 | arm64 |
-| linux-gcp-7.0-headers-7.0.0-1014 | 7.0.0-1014.14~24.04.1 | arm64 |
-| linux-gcp-7.0-tools-7.0.0-1014 | 7.0.0-1014.14~24.04.1 | arm64 |
-| linux-headers-7.0.0-1014-gcp | 7.0.0-1014.14~24.04.1 | arm64 |
-| linux-headers-gcp | 7.0.0-1014.14~24.04.1 | arm64 |
-| linux-image-7.0.0-1014-gcp | 7.0.0-1014.14~24.04.1 | arm64 |
-| linux-image-gcp | 7.0.0-1014.14~24.04.1 | arm64 |
-| linux-libc-dev:arm64 | 6.8.0-147.147 | arm64 |
+| linux-gcp | 7.0.0-1017.19~24.04.1 | arm64 |
+| linux-gcp-7.0-headers-7.0.0-1017 | 7.0.0-1017.19~24.04.1 | arm64 |
+| linux-gcp-7.0-tools-7.0.0-1017 | 7.0.0-1017.19~24.04.1 | arm64 |
+| linux-headers-7.0.0-1017-gcp | 7.0.0-1017.19~24.04.1 | arm64 |
+| linux-headers-gcp | 7.0.0-1017.19~24.04.1 | arm64 |
+| linux-image-7.0.0-1017-gcp | 7.0.0-1017.19~24.04.1 | arm64 |
+| linux-image-gcp | 7.0.0-1017.19~24.04.1 | arm64 |
+| linux-libc-dev:arm64 | 6.8.0-149.149 | arm64 |
 | linux-modules-6.17.0-1022-gcp | 6.17.0-1022.25 | arm64 |
-| linux-modules-7.0.0-1014-gcp | 7.0.0-1014.14~24.04.1 | arm64 |
+| linux-modules-7.0.0-1017-gcp | 7.0.0-1017.19~24.04.1 | arm64 |
 | linux-modules-extra-6.17.0-1022-gcp | 6.17.0-1022.25 | arm64 |
 | linux-modules-extra-gcp | 6.17.0-1022.25 | arm64 |
-| linux-tools-7.0.0-1014-gcp | 7.0.0-1014.14~24.04.1 | arm64 |
-| linux-tools-common | 6.8.0-147.147 | all |
+| linux-tools-7.0.0-1017-gcp | 7.0.0-1017.19~24.04.1 | arm64 |
+| linux-tools-common | 6.8.0-149.149 | all |
 | locales | 2.39-0ubuntu8.9 | all |
 | login | 1:4.13+dfsg1-4ubuntu3.2 | arm64 |
 | logrotate | 3.21.0-2build1 | arm64 |

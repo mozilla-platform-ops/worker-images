@@ -13,7 +13,7 @@
 ## Operating system
 
 - OS: Ubuntu 24.04.5 LTS (Noble Numbat)
-- Kernel: Linux 7.0.0-1014-gcp x86_64 GNU/Linux
+- Kernel: Linux 7.0.0-1017-gcp x86_64 GNU/Linux
 - Machine architecture: x86_64
 
 ## Taskcluster tools
@@ -1573,21 +1573,21 @@
 | libzvbi-common | 0.2.42-2 | all |
 | libzvbi0t64:amd64 | 0.2.42-2 | amd64 |
 | linux-base | 4.5ubuntu9+24.04.2 | all |
-| linux-gcp | 7.0.0-1014.14~24.04.1 | amd64 |
-| linux-gcp-7.0-headers-7.0.0-1014 | 7.0.0-1014.14~24.04.1 | amd64 |
-| linux-gcp-7.0-tools-7.0.0-1014 | 7.0.0-1014.14~24.04.1 | amd64 |
-| linux-headers-7.0.0-1014-gcp | 7.0.0-1014.14~24.04.1 | amd64 |
-| linux-headers-gcp | 7.0.0-1014.14~24.04.1 | amd64 |
-| linux-image-7.0.0-1014-gcp | 7.0.0-1014.14~24.04.1 | amd64 |
-| linux-image-gcp | 7.0.0-1014.14~24.04.1 | amd64 |
-| linux-libc-dev:amd64 | 6.8.0-147.147 | amd64 |
+| linux-gcp | 7.0.0-1017.19~24.04.1 | amd64 |
+| linux-gcp-7.0-headers-7.0.0-1017 | 7.0.0-1017.19~24.04.1 | amd64 |
+| linux-gcp-7.0-tools-7.0.0-1017 | 7.0.0-1017.19~24.04.1 | amd64 |
+| linux-headers-7.0.0-1017-gcp | 7.0.0-1017.19~24.04.1 | amd64 |
+| linux-headers-gcp | 7.0.0-1017.19~24.04.1 | amd64 |
+| linux-image-7.0.0-1017-gcp | 7.0.0-1017.19~24.04.1 | amd64 |
+| linux-image-gcp | 7.0.0-1017.19~24.04.1 | amd64 |
+| linux-libc-dev:amd64 | 6.8.0-149.149 | amd64 |
 | linux-modules-6.17.0-1022-gcp | 6.17.0-1022.25 | amd64 |
-| linux-modules-7.0.0-1014-gcp | 7.0.0-1014.14~24.04.1 | amd64 |
+| linux-modules-7.0.0-1017-gcp | 7.0.0-1017.19~24.04.1 | amd64 |
 | linux-modules-extra-6.17.0-1022-gcp | 6.17.0-1022.25 | amd64 |
 | linux-modules-extra-gcp | 6.17.0-1022.25 | amd64 |
 | linux-sound-base | 1.0.25+dfsg-0ubuntu7 | all |
-| linux-tools-7.0.0-1014-gcp | 7.0.0-1014.14~24.04.1 | amd64 |
-| linux-tools-common | 6.8.0-147.147 | all |
+| linux-tools-7.0.0-1017-gcp | 7.0.0-1017.19~24.04.1 | amd64 |
+| linux-tools-common | 6.8.0-149.149 | all |
 | llvm | 1:18.0-59~exp2 | amd64 |
 | llvm-18 | 1:18.1.3-1ubuntu1 | amd64 |
 | llvm-18-dev | 1:18.1.3-1ubuntu1 | amd64 |
