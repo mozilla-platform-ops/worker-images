@@ -114,15 +114,24 @@ Level-1 images live in the `taskcluster-imaging` project. Trusted level-3
 images live in `fxci-production-level3-workers`. Production rollouts update
 the matching image paths in `fxci-config`.
 
-Set `vm.preloadCaches: true` in a Firefox CI Linux image config to preload
-Gecko and the Docker test base for its architecture. This works with all five
-Linux image types, including GUI and ARM64. It defaults to `false`, so builds
-skip cache preparation unless enabled. All five Linux alpha configs enable it.
-`New-GCPWorkerImage` checks cache dependencies before starting Packer and pins
-the Docker task, Gecko revision, and helper checksum in one manifest.
-Existing FXCI GCP workflows and local builds use this preflight. Direct Packer
-builds also need
-`-var 'preloadCacheManifest=/path/to/inputs.json'` with `preloadCaches=true`.
+Set `vm.preloadCaches: true` to preload the Gecko Git seed. Set
+`vm.preloadDockerImages` to a list of Gecko Docker image names to preload for
+that worker pool. The AMD64 alpha configs select images from sampled pool
+usage; the ARM64 configs preload Gecko only until their Docker image use is
+measured. The list defaults to empty.
+
+`New-GCPWorkerImage` resolves the current Autoland image task IDs before
+Packer starts. The image build stores each archive in Generic Worker’s download
+cache and loads its Docker layers. A startup hook checks the archive size and
+image, then writes Generic Worker’s file and D2G cache state. The file cache
+uses the exact artifact task ID; the D2G cache uses the archive SHA256. A newer
+artifact therefore misses safely and follows the normal download or image-load
+path. Duplicate task IDs in one image list are downloaded once. The seed build
+fails if it leaves less than 1 GiB free in its 32 GiB filesystem.
+
+All five Linux alpha configs enable `preloadCaches`. Direct Packer builds also
+need `-var 'preloadCacheManifest=/path/to/inputs.json'` with
+`preloadCaches=true`.
 
 ## Development image builds (RelSRE only)
 

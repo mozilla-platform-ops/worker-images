@@ -62,6 +62,9 @@ jobs:
     - name: Check Gecko image seed
       run: uv run --with pyyaml ci/test-gecko-seed.py
 
+    - name: Check Docker image cache seed
+      run: uv run ci/test-docker-cache-seed.py
+
     - name: Cache pre-commit environments
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:

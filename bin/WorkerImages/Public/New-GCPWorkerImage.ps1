@@ -59,7 +59,9 @@ function New-GCPWorkerImage {
         $ENV:PKR_VAR_preloadCacheManifest = ''
         if ($preloadCaches) {
             Write-Host 'Resolving cache inputs before Packer starts'
-            $ENV:PKR_VAR_preloadCacheManifest = Resolve-GCPWorkerImageCaches -Architecture $YAML.vm['tc_arch']
+            $dockerImages = @($YAML.vm['preloadDockerImages'] ?? @())
+            $ENV:PKR_VAR_preloadCacheManifest = Resolve-GCPWorkerImageCaches `
+                -DockerImages $dockerImages
         }
     }
     if ($YAML.vm["disk_size"])             { $ENV:PKR_VAR_disk_size            = $YAML.vm["disk_size"] }

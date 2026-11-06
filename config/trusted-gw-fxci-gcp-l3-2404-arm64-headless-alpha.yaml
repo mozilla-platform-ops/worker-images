@@ -8,6 +8,7 @@ image:
   fallback_zones: [us-central1-b, us-central1-f]
 vm:
   preloadCaches: true
+  preloadDockerImages: []
   disk_size: 60
   taskcluster_version: 113.2.0
   tc_arch: ARM64

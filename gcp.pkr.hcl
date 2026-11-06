@@ -422,6 +422,7 @@ build {
     sources = [
       "${path.cwd}/scripts/linux/common/docker-config.sh",
       "${path.cwd}/scripts/linux/common/ephemeral-disks.sh",
+      "${path.cwd}/scripts/linux/common/docker_cache_seed.py",
       "${path.cwd}/scripts/linux/common/gecko_seed.py",
       "${path.cwd}/scripts/linux/common/gecko-seed-disks.sh",
       "${path.cwd}/scripts/linux/common/gecko-seed-hydrate.sh",
