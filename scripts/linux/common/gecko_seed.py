@@ -48,19 +48,19 @@ def build(mode, level, seed_root, inputs):
     revision = inputs["gecko_revision"]
     if not re.fullmatch(r"[0-9a-f]{40}", revision):
         raise ValueError(f"Bad autoland Git revision in decision {decision}")
+    helper_hash = inputs["run_task_git_sha256"]
+    if not re.fullmatch(r"[0-9a-f]{64}", helper_hash):
+        raise ValueError("Bad run-task-git checksum in cache inputs")
+    name = f"gecko-level-{level}-checkouts-git-shallow-v3-{helper_hash[:20]}"
     # A failed build discards the VM, so a partial temp directory never reaches an image.
     temp = Path(tempfile.mkdtemp(dir=seed_root.parent))
-    cache = temp / "shallow"
+    cache = temp / name
     repo = cache / "gecko"
     cache.mkdir()
-    name = f"gecko-level-{level}-checkouts-git-shallow"
     if mode == "linux-d2g":
-        # D2G cache names carry a hash of the decision's VCS helper, as Gecko computes it.
         run_task_git = fetch(f"{artifacts}/run-task-git")
-        helper_hash = hashlib.sha256(run_task_git).hexdigest()
-        if helper_hash != inputs["run_task_git_sha256"]:
+        if hashlib.sha256(run_task_git).hexdigest() != helper_hash:
             raise ValueError(f"run-task-git checksum changed in decision {decision}")
-        name += "-v3-" + helper_hash[:20]
         wrapper = temp / "run-task-git"
         wrapper.write_bytes(run_task_git)
         runpy.run_path(str(wrapper))["configure_cache_posix"](
@@ -78,7 +78,6 @@ def build(mode, level, seed_root, inputs):
     (repo / ".git/worker-image-seed").write_text(revision + "\n")
     if mode == "linux-d2g":
         subprocess.run(["chown", "-R", "1000:1000", str(cache)], check=True)
-    cache.rename(temp / name)
     names = [name]
     if level == 1:
         names.append(name.replace("level-1", "level-3", 1))
