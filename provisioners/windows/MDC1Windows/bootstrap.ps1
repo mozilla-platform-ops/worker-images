@@ -1109,8 +1109,10 @@ function Set-PXE {
             $PSItem
         }
     }
-    ## Remove all contents and start fresh
-    Remove-Item -Path "D:\*" -Recurse -Force -ErrorAction SilentlyContinue
+    # Keep persistent benchmark history when retrying a failed OS deployment.
+    Get-ChildItem -LiteralPath 'D:\' -Force -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -ne 'fleetbench' } |
+        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 
     bcdedit /set "{fwbootmgr}" BOOTSEQUENCE "{$($data.Identifier.Guid)}"
     Restart-Computer -Force
