@@ -22,6 +22,7 @@ def git(repo, *args):
 def check(level, copied):
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
+        helper_hash = "a" * 64
         source = root / "source"
         source.mkdir()
         git(source, "init", "-q", "-b", "autoland")
@@ -45,11 +46,16 @@ def check(level, copied):
                 "linux-native",
                 level,
                 image_seed,
-                {"decision": "local-seed-test", "gecko_revision": revision},
+                {
+                    "decision": "local-seed-test",
+                    "gecko_revision": revision,
+                    "run_task_git_sha256": helper_hash,
+                },
             )
         names = json.loads((image_seed / "manifest.json").read_text())["cache_names"]
         expected = [
-            f"gecko-level-{n}-checkouts-git-shallow" for n in sorted({level, 3})
+            f"gecko-level-{n}-checkouts-git-shallow-v3-{helper_hash[:20]}"
+            for n in sorted({level, 3})
         ]
         assert names == expected
 
