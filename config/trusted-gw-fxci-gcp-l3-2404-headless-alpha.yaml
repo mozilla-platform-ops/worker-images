@@ -7,6 +7,11 @@ image:
   zone: us-west1-a
 vm:
   preloadCaches: true
+  preloadDockerImages:
+    - debian13-amd64-build
+    - android-build
+    - android-components
+    - deb13-toolchain-build
   disk_size: 60
   taskcluster_version: 113.2.0
   tc_arch: AMD64
