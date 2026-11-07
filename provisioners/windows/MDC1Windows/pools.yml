@@ -50,7 +50,7 @@ pools:
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "RELOPS-2668-fleetbench-persistence"
-    hash: "52f0ffe8e589b53ce635212c0139372863fa1dd6"
+    hash: "6a6a651c"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
@@ -160,7 +160,7 @@ pools:
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
     src_Branch: "RELOPS-2668-fleetbench-persistence"
-    hash: "52f0ffe8e589b53ce635212c0139372863fa1dd6"
+    hash: "6a6a651c"
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
