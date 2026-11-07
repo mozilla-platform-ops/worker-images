@@ -175,8 +175,8 @@ pools:
     image: "win11-24h2-hw-20260908-172915"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "master"
-    hash: "baf151bc"
+    src_Branch: "RELOPS-2668-fleetbench-persistence"
+    hash: "6a6a651caaf36a3d2fae087ef8da0ff1a364569e"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
