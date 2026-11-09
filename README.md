@@ -113,8 +113,9 @@ gw-fxci-gcp-l3-2404-amd64-headless-googlecompute-2026-06-23
 
 Level-1 images live in the `taskcluster-imaging` project. Trusted level-3
 images live in `fxci-production-level3-workers`. Production image names use the
-shared UTC deployment date in `yyyy-MM-dd` format. Production rollouts update
-the matching image paths in `fxci-config`.
+shared UTC deployment date in `yyyy-MM-dd` format. Before replacing an existing
+same-day image, the workflow checks `fxci-config/main` and stops if it references
+the image. Production rollouts update the matching image paths in `fxci-config`.
 
 Set `vm.preloadCaches: true` to preload the Gecko Git seed. Set
 `vm.preloadDockerImages` to a list of Gecko Docker image names to preload for
