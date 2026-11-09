@@ -58,13 +58,13 @@ make CI boot a new image are managed in `mozilla-releng/fxci-config`.
 
 ## Common Build Workflows
 
-Builds are normally run with GitHub Actions workflow dispatch. The workflows
-check the actor against `.github/relsre.json` or `.github/tceng.json` before
-they build.
+Builds are normally run with GitHub Actions workflow dispatch. Each workflow
+checks the actor against its allowlist before it builds. Production parallel
+image workflows use `.github/relops.json`.
 
 | Workflow | File | Use |
 | --- | --- | --- |
-| `FXCI - Production Parallel Images` | `fxci-production-parallel.yml` | One production entry point for Windows, Linux, or both. A single UTC build date is shared across selected platforms. |
+| `FXCI - Production Parallel Images` | `fxci-production-parallel.yml` | RelOps-only entry point for Windows, Linux, or both. A single UTC build date is shared across selected platforms. |
 | `FXCI - Azure Prod Parallel Images` | `sig-FXCI-parallel-build.yml` | Full Windows production build. Builds untrusted production configs and trusted Azure configs in one matrix. |
 | `FXCI - Azure Alpha Parallel Images` | `sig-FXCI-nontrusted-parallel-build-alpha.yml` | Windows alpha builds from `images.alpha` in `windows_production_defaults.yaml`. |
 | `FXCI - Azure` | `sig-nontrusted.yml` | One-off untrusted Windows Azure build. |

@@ -1,11 +1,12 @@
 param (
+    [string] $AuthorizedUsersFile = ".github/relsre.json",
     [string] $AdditionalUsersFile
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$authorizedUsers = Get-Content ".github/relsre.json" | ConvertFrom-Json
+$authorizedUsers = Get-Content $AuthorizedUsersFile | ConvertFrom-Json
 if ($AdditionalUsersFile) {
     $authorizedUsers = @($authorizedUsers) + @(Get-Content $AdditionalUsersFile | ConvertFrom-Json)
 }

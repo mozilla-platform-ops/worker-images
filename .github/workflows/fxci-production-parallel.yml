@@ -20,8 +20,18 @@ permissions:
   id-token: write
 
 jobs:
+  check-access:
+    name: Verify RelOps Access
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Check RelOps allowlist
+        shell: pwsh
+        run: ./ci/check-authorized-user.ps1 -AuthorizedUsersFile .github/relops.json
+
   set-build-date:
     name: Set Shared UTC Build Date
+    needs: check-access
     runs-on: ubuntu-latest
     outputs:
       build_date: ${{ steps.date.outputs.build_date }}
