@@ -9,23 +9,55 @@ bash /tmp/docker-config.sh
 bash /tmp/ephemeral-disks.sh
 systemctl daemon-reload
 
-root_url=https://firefox-ci-tc.services.mozilla.com
 inputs=/tmp/preload-caches.json
-decision=$(jq -er .decision "$inputs")
-label=$(jq -er .docker_label "$inputs")
-image_index=$(jq -er .docker_index "$inputs")
-task_id=$(jq -er .docker_task_id "$inputs")
-echo "Docker preload: decision=$decision label=$label"
-echo "Docker preload: index=$image_index task=$task_id"
-echo "Downloading Docker image: task=$task_id label=$label"
-systemctl start docker
-curl -fsSL --retry 5 -o /tmp/preload-image.tar.zst "$root_url/api/queue/v1/task/$task_id/artifacts/public/image.tar.zst"
-echo "Loading Docker image $label"
-docker load -i /tmp/preload-image.tar.zst
-rm -f /tmp/preload-image.tar.zst
-mkdir -p /etc/worker-images
-echo "$label $task_id decision=$decision index=$image_index $(date -u +%FT%TZ)" >> /etc/worker-images/preloaded-docker-images.txt
-docker images --digests
+downloads=/home/generic-worker/downloads
+mkdir -p "$downloads"
+chmod 0700 "$downloads"
+images='[]'
+image_count=$(jq -r '.docker_images | length' "$inputs")
+if (( image_count > 0 )); then
+    systemctl start docker
+    while IFS= read -r input; do
+        labels=$(jq -c '.docker_labels' <<<"$input")
+        task_id=$(jq -er '.docker_task_id' <<<"$input")
+        image_index=$(jq -er '.docker_index' <<<"$input")
+        archive_name="preloaded-$task_id.tar.zst"
+        archive="$downloads/$archive_name"
+        echo "Docker preload: labels=$(jq -r 'join(",")' <<<"$labels") index=$image_index task=$task_id"
+        curl -fsSL --retry 5 -o "$archive" "https://firefox-ci-tc.services.mozilla.com/api/queue/v1/task/$task_id/artifacts/public/image.tar.zst"
+        chmod 0600 "$archive"
+        sha256=$(sha256sum "$archive" | cut -d ' ' -f 1)
+        archive_size=$(stat -c %s "$archive")
+        load_output=$(docker load -i "$archive")
+        image_name=$(sed -n 's/^Loaded image: //p' <<<"$load_output" | head -n 1)
+        if [[ -z "$image_name" ]]; then
+            echo "Docker did not report a loaded image for task $task_id" >&2
+            exit 1
+        fi
+        image_id=$(docker image inspect --format '{{.Id}}' "$image_name")
+        image_id=${image_id#sha256:}
+        if [[ ! "$image_id" =~ ^[a-f0-9]{64}$ ]]; then
+            echo "Docker returned an invalid image ID for $image_name" >&2
+            exit 1
+        fi
+        images=$(jq -c \
+            --argjson labels "$labels" \
+            --arg task_id "$task_id" \
+            --arg archive "$archive_name" \
+            --arg sha256 "$sha256" \
+            --arg archive_size "$archive_size" \
+            --arg image_id "$image_id" \
+            --arg image_name "$image_name" \
+            '. + [{docker_labels:$labels, task_id:$task_id, archive:$archive, sha256:$sha256, archive_size:($archive_size|tonumber), image_id:$image_id, image_name:$image_name}]' \
+            <<<"$images")
+        echo "Loaded Docker image: name=$image_name id=$image_id sha256=$sha256"
+    done < <(jq -c '.docker_images[]' "$inputs")
+    docker images --digests
+    cache_manifest=$(mktemp /tmp/preloaded-docker-cache.XXXXXX)
+    jq -n --argjson images "$images" '{images:$images}' > "$cache_manifest"
+    python3 /tmp/docker_cache_seed.py --manifest "$cache_manifest" --downloads-dir "$downloads"
+    rm -f "$cache_manifest"
+fi
 
 echo 'Preparing Gecko seed filesystem'
 install -D -m 0755 /tmp/gecko_seed.py /usr/local/lib/worker-images/gecko_seed.py
@@ -48,6 +80,12 @@ cp -a /home "$staging/"
 cp -a /mnt/. "$staging/"
 python3 /usr/local/lib/worker-images/gecko_seed.py build \
     --mode "$GECKO_SEED_MODE" --level "$GECKO_SEED_LEVEL" --seed-root "$staging/home/gecko-git-seed" --inputs "$inputs"
+available_bytes=$(df -B1 --output=avail "$staging" | tail -n 1 | tr -d ' ')
+if (( available_bytes < 1073741824 )); then
+    echo "Preloaded caches leave less than 1 GiB free in the 32 GiB seed filesystem: $available_bytes bytes" >&2
+    exit 1
+fi
+echo "Cache seed free space: $available_bytes bytes"
 fstrim "$staging"
 umount "$staging"
 e2fsck -fn "$image"
