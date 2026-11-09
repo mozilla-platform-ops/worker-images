@@ -53,7 +53,7 @@ pools:
     nodes:
     - t-nuc12-002
     - t-nuc12-003
-  # Empty after moving the RELOPS-2541 holdouts to perf-debug for investigation.
+  # Real workers moved to perf-debug for RELOPS-2541 investigation.
   - name: "win11-64-24h2-hw-relops1213"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
@@ -70,7 +70,9 @@ pools:
     hash: "edef633"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
-    nodes: []
+    nodes:
+    # Replace this placeholder with a real hostname before provisioning.
+    - placeholder
   - name: "win11-64-24h2-hw-perf-debug"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
