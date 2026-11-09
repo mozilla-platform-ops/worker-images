@@ -37,15 +37,19 @@ function Start-AzRoninPuppet {
         Write-Log -message ('{0} :: Setting Puppet enviroment.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
         Write-host ('{0} :: Setting Puppet enviroment.' -f $($MyInvocation.MyCommand.Name))
 
-        $env:path = "$env:programfiles\OpenVox\Puppet\bin;$env:programfiles\Puppet Labs\Puppet\bin;$env:path"
-        $env:SSL_CERT_FILE = "$env:programfiles\Puppet Labs\Puppet\puppet\ssl\cert.pem"
-        $env:SSL_CERT_DIR = "$env:programfiles\Puppet Labs\Puppet\puppet\ssl"
-        $env:FACTER_env_windows_installdir = "$env:programfiles\Puppet Labs\Puppet"
+        $agent_dir = "$env:programfiles\Puppet Labs\OpenVox"
+        if (-Not (Test-Path "$agent_dir\bin")) {
+            $agent_dir = "$env:programfiles\Puppet Labs\Puppet"
+        }
+        $env:path = "$agent_dir\bin;$env:path"
+        $env:SSL_CERT_FILE = "$agent_dir\puppet\ssl\cert.pem"
+        $env:SSL_CERT_DIR = "$agent_dir\puppet\ssl"
+        $env:FACTER_env_windows_installdir = $agent_dir
         $env:HOMEPATH = "\Users\Administrator"
         $env:HOMEDRIVE = "C:"
-        $env:PL_BASEDIR = "$env:programfiles\Puppet Labs\Puppet"
-        $env:PUPPET_DIR = "$env:programfiles\Puppet Labs\Puppet"
-        $env:RUBYLIB = "$env:programfiles\Puppet Labs\Puppet\lib"
+        $env:PL_BASEDIR = $agent_dir
+        $env:PUPPET_DIR = $agent_dir
+        $env:RUBYLIB = "$agent_dir\lib"
         $env:USERNAME = "Administrator"
         $env:USERPROFILE = "$env:systemdrive\Users\Administrator"
 
