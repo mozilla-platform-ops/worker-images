@@ -47,9 +47,12 @@ jobs:
           Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
           Set-GCPWorkerImageName -Key '${{ github.event.inputs.config }}'
           Set-GCPWorkerImageProject -Key '${{ github.event.inputs.config }}'
+          $buildDate = [DateTime]::UtcNow.ToString("yyyy-MM-dd")
+          "BUILD_DATE=$buildDate" >> $env:GITHUB_OUTPUT
     outputs:
       IMAGENAME: ${{ steps.set-matrix.outputs.IMAGENAME }}
       PROJECT: ${{ steps.set-matrix.outputs.PROJECT }}
+      BUILD_DATE: ${{ steps.set-matrix.outputs.BUILD_DATE }}
   prodimage:
     needs: setproject
     name: "GCP ${{ github.event.inputs.config }}"
@@ -69,9 +72,10 @@ jobs:
         uses: 'google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db'
       - name: 'Build Production Image'
         shell: pwsh
+        env:
+          BUILD_DATE: ${{ needs.setproject.outputs.BUILD_DATE }}
         run: |
-          $date = Get-Date -Format "yyyy-MM-dd"
-          $ProdImageName = -join(('${{ needs.setproject.outputs.IMAGENAME }}' -Replace "alpha"),$date)
+          $ProdImageName = -join(('${{ needs.setproject.outputs.IMAGENAME }}' -Replace "alpha"),$env:BUILD_DATE)
           $exists = gcloud compute images describe $ProdImageName
           if ($exists) {
             gcloud compute images delete $ProdImageName --quiet
@@ -85,9 +89,10 @@ jobs:
       - id: create-production-sbom
         name: Create Production SBOM Record
         shell: pwsh
+        env:
+          BUILD_DATE: ${{ needs.setproject.outputs.BUILD_DATE }}
         run: |
-          $date = Get-Date -Format "yyyy-MM-dd"
-          $ProdImageName = -join(('${{ needs.setproject.outputs.IMAGENAME }}' -Replace "alpha"),$date)
+          $ProdImageName = -join(('${{ needs.setproject.outputs.IMAGENAME }}' -Replace "alpha"),$env:BUILD_DATE)
           $AlphaImageName = '${{ needs.setproject.outputs.IMAGENAME }}'
           $AlphaSbomPath = "sboms/$AlphaImageName.md"
           $ProductionSbomPath = "sboms/$ProdImageName.md"

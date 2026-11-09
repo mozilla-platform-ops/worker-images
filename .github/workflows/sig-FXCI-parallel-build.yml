@@ -3,6 +3,12 @@ run-name: Azure Production Parallel - ${{ github.sha }}
 
 on:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      build_date:
+        description: UTC production date shared across the deployment
+        required: false
+        type: string
 
 permissions:
   id-token: write
@@ -15,6 +21,7 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
       os_integration_matrix: ${{ steps.set-matrix.outputs.os_integration_matrix }}
+      build_date: ${{ steps.set-matrix.outputs.build_date }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -22,6 +29,8 @@ jobs:
       - id: set-matrix
         name: Extract Azure production configs
         shell: pwsh
+        env:
+          BUILD_DATE: ${{ inputs.build_date }}
         run: ./ci/get-azure-production-parallel-matrix.ps1
 
   check-access:
@@ -59,6 +68,7 @@ jobs:
           CLIENT_ID: ${{ secrets[matrix.client_id_secret] }}
           CONFIG: ${{ matrix.config }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE_BUILD_DATE: ${{ needs.prepare-matrix.outputs.build_date }}
           SUBSCRIPTION_ID: ${{ secrets[matrix.subscription_id_secret] }}
           TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         run: ./ci/build-azure-shared-worker-image.ps1

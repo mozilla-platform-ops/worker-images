@@ -64,6 +64,7 @@ they build.
 
 | Workflow | File | Use |
 | --- | --- | --- |
+| `FXCI - Production Parallel Images` | `fxci-production-parallel.yml` | One production entry point for Windows, Linux, or both. A single UTC build date is shared across selected platforms. |
 | `FXCI - Azure Prod Parallel Images` | `sig-FXCI-parallel-build.yml` | Full Windows production build. Builds untrusted production configs and trusted Azure configs in one matrix. |
 | `FXCI - Azure Alpha Parallel Images` | `sig-FXCI-nontrusted-parallel-build-alpha.yml` | Windows alpha builds from `images.alpha` in `windows_production_defaults.yaml`. |
 | `FXCI - Azure` | `sig-nontrusted.yml` | One-off untrusted Windows Azure build. |
@@ -111,7 +112,8 @@ gw-fxci-gcp-l3-2404-amd64-headless-googlecompute-2026-06-23
 ```
 
 Level-1 images live in the `taskcluster-imaging` project. Trusted level-3
-images live in `fxci-production-level3-workers`. Production rollouts update
+images live in `fxci-production-level3-workers`. Production image names use the
+shared UTC deployment date in `yyyy-MM-dd` format. Production rollouts update
 the matching image paths in `fxci-config`.
 
 Set `vm.preloadCaches: true` to preload the Gecko Git seed. Set
@@ -190,7 +192,9 @@ The short version for Firefox CI production rollouts:
 2. Bump the image config in this repo. For Windows, update the default
    `deploymentId` if the ronin_puppet pin changed. Gallery versions are set
    automatically from the UTC build date.
-3. Run the appropriate parallel build workflow.
+3. Run `FXCI - Production Parallel Images` and select Windows, Linux, or both.
+   The workflow passes one UTC date to both providers: Azure formats gallery
+   versions as `yyyy.MM.dd`; GCP uses `yyyy-MM-dd` in image names.
 4. Verify the published images, release notes, and integration results.
 5. Open an `fxci-config` PR that points worker pools at the new versions or
    GCP image paths. Read each Windows version from the new

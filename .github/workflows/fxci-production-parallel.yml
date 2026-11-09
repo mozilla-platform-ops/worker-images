@@ -1,0 +1,53 @@
+name: FXCI - Production Parallel Images
+run-name: FXCI Production - ${{ inputs.platform }} - ${{ github.sha }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Production image platform to deploy
+        type: choice
+        options:
+          - all
+          - windows
+          - linux
+        default: all
+        required: true
+
+permissions:
+  actions: read
+  contents: write
+  id-token: write
+
+jobs:
+  set-build-date:
+    name: Set Shared UTC Build Date
+    runs-on: ubuntu-latest
+    outputs:
+      build_date: ${{ steps.date.outputs.build_date }}
+    steps:
+      - id: date
+        name: Resolve UTC date
+        shell: pwsh
+        run: |
+          $buildDate = [DateTime]::UtcNow.ToString('yyyy-MM-dd')
+          "build_date=$buildDate" >> $env:GITHUB_OUTPUT
+          Write-Host "Shared production date: $buildDate"
+
+  windows:
+    if: ${{ inputs.platform == 'all' || inputs.platform == 'windows' }}
+    name: Azure Windows Production
+    needs: set-build-date
+    uses: ./.github/workflows/sig-FXCI-parallel-build.yml
+    with:
+      build_date: ${{ needs.set-build-date.outputs.build_date }}
+    secrets: inherit
+
+  linux:
+    if: ${{ inputs.platform == 'all' || inputs.platform == 'linux' }}
+    name: GCP Linux Production
+    needs: set-build-date
+    uses: ./.github/workflows/gcp-deploy-parallel.yml
+    with:
+      build_date: ${{ needs.set-build-date.outputs.build_date }}
+    secrets: inherit

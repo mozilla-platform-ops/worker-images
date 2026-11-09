@@ -18,6 +18,18 @@ function Set-OutputValue {
     Write-Output "$Name=$Value"
 }
 
+$buildDate = $env:BUILD_DATE
+if ([string]::IsNullOrWhiteSpace($buildDate)) {
+    $buildDate = [DateTime]::UtcNow.ToString('yyyy-MM-dd')
+}
+$parsedBuildDate = [DateTime]::ParseExact(
+    $buildDate,
+    'yyyy-MM-dd',
+    [Globalization.CultureInfo]::InvariantCulture
+)
+$buildDate = $parsedBuildDate.ToString('yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture)
+Set-OutputValue -Name "build_date" -Value $buildDate
+
 $yaml = ConvertFrom-Yaml (Get-Content "./config/windows_production_defaults.yaml" -Raw)
 $prodImages = @($yaml.images.production)
 $trustedImages = @(

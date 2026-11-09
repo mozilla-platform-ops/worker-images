@@ -3,6 +3,12 @@ run-name: GCP Production Parallel - ${{ github.sha }}
 
 on:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      build_date:
+        description: UTC production date shared across the deployment
+        required: false
+        type: string
 
 permissions:
   id-token: write
@@ -14,6 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
+      build_date: ${{ steps.set-matrix.outputs.build_date }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -21,7 +28,21 @@ jobs:
       - id: set-matrix
         name: Extract GCP production configs
         shell: pwsh
+        env:
+          BUILD_DATE: ${{ inputs.build_date }}
         run: |
+          $buildDate = $env:BUILD_DATE
+          if ([string]::IsNullOrWhiteSpace($buildDate)) {
+            $buildDate = [DateTime]::UtcNow.ToString("yyyy-MM-dd")
+          }
+          $parsedBuildDate = [DateTime]::ParseExact(
+            $buildDate,
+            "yyyy-MM-dd",
+            [Globalization.CultureInfo]::InvariantCulture
+          )
+          $buildDate = $parsedBuildDate.ToString("yyyy-MM-dd", [Globalization.CultureInfo]::InvariantCulture)
+          "build_date=$buildDate" >> $env:GITHUB_OUTPUT
+
           $configs = Get-ChildItem -Path ./config -File -Filter "*.yaml" |
             ForEach-Object { $_.BaseName } |
             Where-Object { $_ -match '^(trusted-)?gw-fxci-gcp-.*-alpha$' } |
@@ -86,9 +107,10 @@ jobs:
 
       - name: Build Production Image
         shell: pwsh
+        env:
+          BUILD_DATE: ${{ needs.prepare-matrix.outputs.build_date }}
         run: |
-          $date = Get-Date -Format "yyyy-MM-dd"
-          $ProdImageName = -join(('${{ steps.set-gcp-vars.outputs.IMAGENAME }}' -Replace "alpha"),$date)
+          $ProdImageName = -join(('${{ steps.set-gcp-vars.outputs.IMAGENAME }}' -Replace "alpha"),$env:BUILD_DATE)
           $exists = gcloud compute images describe $ProdImageName
           if ($exists) {
             gcloud compute images delete $ProdImageName --quiet
@@ -102,9 +124,10 @@ jobs:
       - id: create-production-sbom
         name: Create Production SBOM Record
         shell: pwsh
+        env:
+          BUILD_DATE: ${{ needs.prepare-matrix.outputs.build_date }}
         run: |
-          $date = Get-Date -Format "yyyy-MM-dd"
-          $ProdImageName = -join(('${{ steps.set-gcp-vars.outputs.IMAGENAME }}' -Replace "alpha"),$date)
+          $ProdImageName = -join(('${{ steps.set-gcp-vars.outputs.IMAGENAME }}' -Replace "alpha"),$env:BUILD_DATE)
           $AlphaImageName = '${{ steps.set-gcp-vars.outputs.IMAGENAME }}'
           $AlphaSbomPath = "sboms/$AlphaImageName.md"
           $ProductionSbomPath = "sboms/$ProdImageName.md"
