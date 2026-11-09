@@ -91,7 +91,7 @@ source "googlecompute" "gw-fxci-gcp-l1-2404-gui-alpha" {
   disk_size           = var.disk_size
   image_licenses      = ["projects/vm-options/global/licenses/enable-vmx"]
   image_name          = var.image_name
-  machine_type        = null
+  machine_type        = "e2-standard-4"
   state_timeout       = "30m"
   project_id          = var.project_id
   source_image_family = var.source_image_family
@@ -105,7 +105,7 @@ source "googlecompute" "trusted-gw-fxci-gcp-l3-2404-headless-alpha" {
   disk_type               = "pd-ssd"
   image_licenses          = ["projects/vm-options/global/licenses/enable-vmx"]
   image_name              = var.image_name
-  machine_type            = null
+  machine_type            = "e2-standard-4"
   state_timeout           = "30m"
   project_id              = var.project_id
   source_image_family     = var.source_image_family
@@ -120,7 +120,7 @@ source "googlecompute" "gw-fxci-gcp-l1-2404-headless-alpha" {
   disk_type               = "pd-ssd"
   image_licenses          = ["projects/vm-options/global/licenses/enable-vmx"]
   image_name              = var.image_name
-  machine_type            = null
+  machine_type            = "e2-standard-4"
   state_timeout           = "30m"
   project_id              = var.project_id
   source_image_family     = var.source_image_family
@@ -134,7 +134,7 @@ source "googlecompute" "gw-fxci-gcp-l1-2404-arm64-headless-alpha" {
   disk_size               = var.disk_size
   image_licenses          = ["projects/vm-options/global/licenses/enable-vmx"]
   image_name              = var.image_name
-  machine_type            = "t2a-standard-4"
+  machine_type            = "t2a-standard-8"
   state_timeout           = "30m"
   project_id              = var.project_id
   source_image_family     = var.source_image_family
@@ -148,7 +148,7 @@ source "googlecompute" "trusted-gw-fxci-gcp-l3-2404-arm64-headless-alpha" {
   disk_size               = var.disk_size
   image_licenses          = ["projects/vm-options/global/licenses/enable-vmx"]
   image_name              = var.image_name
-  machine_type            = "t2a-standard-4"
+  machine_type            = "t2a-standard-8"
   state_timeout           = "30m"
   project_id              = var.project_id
   source_image_family     = var.source_image_family
@@ -422,6 +422,7 @@ build {
     sources = [
       "${path.cwd}/scripts/linux/common/docker-config.sh",
       "${path.cwd}/scripts/linux/common/ephemeral-disks.sh",
+      "${path.cwd}/scripts/linux/common/docker_cache_seed.py",
       "${path.cwd}/scripts/linux/common/gecko_seed.py",
       "${path.cwd}/scripts/linux/common/gecko-seed-disks.sh",
       "${path.cwd}/scripts/linux/common/gecko-seed-hydrate.sh",

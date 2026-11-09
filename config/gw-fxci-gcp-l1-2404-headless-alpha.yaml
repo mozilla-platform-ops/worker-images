@@ -7,6 +7,9 @@ image:
   zone: us-west1-a
 vm:
   preloadCaches: true
+  preloadDockerImages:
+    - lint
+    - static-analysis-build
   disk_size: 60
   taskcluster_version: 113.2.0
   tc_arch: AMD64
