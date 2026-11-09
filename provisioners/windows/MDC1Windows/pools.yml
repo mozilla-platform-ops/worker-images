@@ -72,7 +72,7 @@ pools:
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
     # Replace this placeholder with a real hostname before provisioning.
-    - placeholder
+    - nuc13-999
   - name: "win11-64-24h2-hw-perf-debug"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
