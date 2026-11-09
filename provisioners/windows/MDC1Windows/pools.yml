@@ -53,8 +53,7 @@ pools:
     nodes:
     - t-nuc12-002
     - t-nuc12-003
-  # Down / offline nodes — bad PSU, persistent SSH failures, or awaiting hardware replacement.
-  # These nodes are not expected to run production work. Pool name is a placeholder pending final naming.
+  # Empty after moving the RELOPS-2541 holdouts to perf-debug for investigation.
   - name: "win11-64-24h2-hw-relops1213"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
@@ -71,7 +70,27 @@ pools:
     hash: "edef633"
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
+    nodes: []
+  - name: "win11-64-24h2-hw-perf-debug"
+    puppet_version: "8.10.0"
+    openvox_version: "8.19.2"
+    git_version: "2.50.0"
+    Description: "NUC12 Hardware Performance Staging/Testing Pool"
+    # RELOPS-2575: test direct Google Chrome updates on the existing baked-WIM canary.
+    image: "win11-24h2-hw-20260908-172915"
+    src_Organisation: "mozilla-platform-ops"
+    src_Repository: "ronin_puppet"
+    src_Branch: "relops-2575-chrome-without-chocolatey"
+    hash: "0c8c60c0"
+    secret_date: "02-06-2026"
+    domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
+    # nuc13-158: never successfully validated. It was reachable but with an empty
+    # bootstrap_stage before this re-image, and produced no Speedometer results in any
+    # of the three 2026-08-17 runs (32073991787, 32074035219, 32074056736) while all
+    # 22 of its pool peers scored. Under investigation. Tracked in RELOPS-2514.
+    - nuc13-158
+    # RELOPS-2541: holdouts moved from hw-relops1213 for investigation.
     # Under performing - moved out of win11-64-24h2-hw for investigation. Both have
     # swapped PSUs and passed the RELOPS-2514 validation, so they are not here for a
     # PSU fault. Tracked in RELOPS-2522.
@@ -91,9 +110,8 @@ pools:
     # access is fixed. Unreachable on TCP/22 and not recovered with the rest of the
     # batch. Tracked in RELOPS-2539.
     - nuc13-155
-    # Moved out of win11-64-24h2-hw-alpha 2026-09-09. The rest of that pool validated in
-    # the 2026-08-31 Speedometer x100 runs (33444951345 and 33444971840) and was promoted
-    # to win11-64-24h2-hw; these seven did not and are parked here. Tracked in RELOPS-2539.
+    # These seven left hw-alpha for relops1213 on 2026-09-09 after failing validation.
+    # RELOPS-2541: move them here with the other five holdouts for investigation.
     # nuc13-037: unreachable on TCP/22 across the 2026-08-31 sweep and the follow-up
     #   check. Was never recovered with the rest of the No KVM group. Its KVM port is
     #   cross-wired with nuc13-038, so console-derived status for either is unreliable.
@@ -123,30 +141,6 @@ pools:
     #   bootstrap.ps1 treats exit 6 as a failure and arms Set-PXE, so it should self-
     #   retry; leave it a cycle before intervening.
     - nuc13-150
-  - name: "win11-64-24h2-hw-perf-debug"
-    puppet_version: "8.10.0"
-    openvox_version: "8.19.2"
-    git_version: "2.50.0"
-    Description: "NUC12 Hardware Performance Staging/Testing Pool"
-    # RELOPS-2575: test direct Google Chrome updates on the existing baked-WIM canary.
-    image: "win11-24h2-hw-20260908-172915"
-    src_Organisation: "mozilla-platform-ops"
-    src_Repository: "ronin_puppet"
-    src_Branch: "relops-2575-chrome-without-chocolatey"
-    hash: "0c8c60c0"
-    secret_date: "02-06-2026"
-    domain_suffix: "wintest2.releng.mdc1.mozilla.com"
-    nodes:
-    # nuc13-158: never successfully validated. It was reachable but with an empty
-    # bootstrap_stage before this re-image, and produced no Speedometer results in any
-    # of the three 2026-08-17 runs (32073991787, 32074035219, 32074056736) while all
-    # 22 of its pool peers scored. Under investigation. Tracked in RELOPS-2514.
-    - nuc13-158
-    # Development work - two nodes pulled from win11-64-24h2-hw at random to have a
-    # working pair available in this pool. Both have swapped PSUs and passed
-    # validation, so they are not here for a fault.
-    - nuc13-074
-    - nuc13-115
   - name: "win11-64-24h2-hw-alpha"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
@@ -247,6 +241,7 @@ pools:
     - nuc13-070
     - nuc13-072
     - nuc13-073
+    - nuc13-074
     - nuc13-075
     - nuc13-076
     - nuc13-078
@@ -281,6 +276,7 @@ pools:
     - nuc13-111
     - nuc13-113
     - nuc13-114
+    - nuc13-115
     - nuc13-116
     - nuc13-117
     - nuc13-118
