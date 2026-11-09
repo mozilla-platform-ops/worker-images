@@ -76,13 +76,13 @@ pools:
     openvox_version: "8.19.2"
     git_version: "2.50.0"
     Description: "NUC12 Hardware Performance Staging/Testing Pool"
-    # RELOPS-2575: test direct Google Chrome updates on the existing baked-WIM canary.
+    # RELOPS-2541: use the production HW deployment for holdout investigation.
     image: "win11-24h2-hw-20260908-172915"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
-    src_Branch: "relops-2575-chrome-without-chocolatey"
-    hash: "0c8c60c0"
-    secret_date: "02-06-2026"
+    src_Branch: "master"
+    hash: "baf151bc"
+    secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
     # nuc13-158: never successfully validated. It was reachable but with an empty
