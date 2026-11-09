@@ -32,8 +32,8 @@ jobs:
         shell: pwsh
         run: |
           $TCEngUsers  = Get-Content .github/tceng.json  | ConvertFrom-Json
-          $RelsreUsers = Get-Content .github/relsre.json | ConvertFrom-Json
-          $AUTHORIZED_USERS = $TCEngUsers + $RelsreUsers
+          $RelopsUsers = Get-Content .github/relops.json | ConvertFrom-Json
+          $AUTHORIZED_USERS = $TCEngUsers + $RelopsUsers
 
           if ($AUTHORIZED_USERS -contains "${{ github.actor }}") {
             Write-Host "User ${{ github.actor }} is authorized."

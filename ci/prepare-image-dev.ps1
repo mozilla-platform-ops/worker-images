@@ -8,7 +8,7 @@ $PSNativeCommandUseErrorActionPreference = $true
 
 # Run from the trusted main checkout, before checking out or executing branch code.
 & "$PSScriptRoot/check-authorized-user.ps1"
-if ($LASTEXITCODE -ne 0) { throw 'Not authorized: development builds are restricted to RelSRE.' }
+if ($LASTEXITCODE -ne 0) { throw 'Not authorized: development builds are restricted to RelOps.' }
 if ($Key -notmatch '^[a-zA-Z0-9_-]+-alpha2?$' -or $Key -match 'trusted') {
     throw 'Not authorized: select a non-trusted root-level alpha image config.'
 }

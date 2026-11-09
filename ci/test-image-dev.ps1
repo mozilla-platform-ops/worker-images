@@ -28,13 +28,13 @@ try {
     git init -q -b main
     git config user.name Test
     git config user.email test@example.invalid
-    '["relops-test"]' | Set-Content .github/relsre.json
+    '["relops-test"]' | Set-Content .github/relops.json
     Copy-Item "$repo/config/win11-64-25h2-alpha.yaml", "$repo/config/windows_production_defaults.yaml", "$repo/config/gw-fxci-gcp-l1-2404-headless-alpha.yaml" config
     Commit
     git checkout -q -b dev/test
     $gcpKey = 'gw-fxci-gcp-l1-2404-headless-alpha'
     Set-YamlValue "config/$gcpKey.yaml" image_name selected-branch-alpha
-    '["attacker"]' | Set-Content .github/relsre.json
+    '["attacker"]' | Set-Content .github/relops.json
     Commit
     $pin = git rev-parse HEAD
     Pop-Location

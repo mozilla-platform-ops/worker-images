@@ -56,7 +56,7 @@ uv run ci/run-os-integration.py <image-name> --no-wait
 - Preserve unrelated local changes; this repo is often used during active image
   investigation.
 - Prefer shared scripts in `ci/` over copying inline workflow PowerShell.
-- Prefer `ci/check-authorized-user.ps1` for RelSRE workflow authorization.
+- Prefer `ci/check-authorized-user.ps1` for RelOps workflow authorization.
 - Do not edit generated SBOM files unless the task is specifically about
   release-note artifacts.
 - Keep image config changes scoped to the requested image family.

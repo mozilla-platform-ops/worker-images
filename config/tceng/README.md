@@ -44,7 +44,7 @@ Before executing the workflow, the following file is used to authorize users:
 At the beginning of the `nonsig-tceng-azure.yml` workflow:
 - The actor who triggers the workflow (`github.actor`) is checked against both:
   - `.github/tceng.json`
-  - `.github/relsre.json`
+  - `.github/relops.json`
 - If their username is not present in either file, the job fails early with an "unauthorized" message.
 
 To add or remove access, submit a PR modifying `tceng.json`.
