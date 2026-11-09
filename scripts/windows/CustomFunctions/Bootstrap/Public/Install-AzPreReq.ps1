@@ -101,17 +101,13 @@ node default {
 
         ## Install Puppet
         Start-Process msiexec -ArgumentList @("/qn", "/norestart", "/i", "$env:systemdrive\$puppet") -Wait
-        $puppet_bin = "C:\Program Files\Puppet Labs\OpenVox\bin"
-        if (-Not (Test-Path $puppet_bin)) {
-            $puppet_bin = "C:\Program Files\Puppet Labs\Puppet\bin"
-        }
-        if (-Not (Test-Path $puppet_bin)) {
+        if (-Not (Test-Path "C:\Program Files\Puppet Labs\Puppet\bin")) {
             Write-Host "Did not install puppet"
             exit 1
         }
         Write-Log -message  ('{0} :: Puppet installed :: {1}' -f $($MyInvocation.MyCommand.Name), $puppet) -severity 'DEBUG'
         Write-Host ('{0} :: Puppet installed :: {1}' -f $($MyInvocation.MyCommand.Name), $puppet)
-        $env:PATH += ";$puppet_bin"
+        $env:PATH += ";C:\Program Files\Puppet Labs\Puppet\bin"
     }
 
     end {
