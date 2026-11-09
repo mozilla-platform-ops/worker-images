@@ -43,20 +43,8 @@ function Install-AzPreReq {
             $openvox_version = $defaults.vm.openvox_version
         }
         $puppet = "openvox-agent-$openvox_version-x64.msi"
+        $puppet_url = "$ext_src/$puppet"
 
-        # ## OpenVox Version
-        # $openvox_version = $data.vm.openvox_version
-        # if ($openvox_version) {
-        #     $puppet = "openvox-agent-$openvox_version-x64.msi"
-        # }
-        # else {
-        #     ## Puppet version
-        #     $puppet_version = $data.vm.puppet_version
-        #     if (-not $puppet_version -or $puppet_version -eq "default") {
-        #         $puppet_version = $defaults.vm.puppet_version
-        #     }
-        #     $puppet = "puppet-agent-$puppet_version-x64.msi"
-        # }
         ## Git Version
         $git_version = $data.vm.git_version
         if (-not $git_version -or $git_version -eq "default") {
@@ -88,7 +76,7 @@ function Install-AzPreReq {
         $null = New-Item -Path $local_dir -ItemType Directory -Force
 
         ## Download puppet, git, and manifest
-        Invoke-DownloadWithRetry -Url "$ext_src/$puppet" -Path "$env:systemdrive\$puppet"
+        Invoke-DownloadWithRetry -Url $puppet_url -Path "$env:systemdrive\$puppet"
         Invoke-DownloadWithRetry -Url $git_url -Path "$env:systemdrive\$git"
 
         $manifest_contents = @"
@@ -113,13 +101,17 @@ node default {
 
         ## Install Puppet
         Start-Process msiexec -ArgumentList @("/qn", "/norestart", "/i", "$env:systemdrive\$puppet") -Wait
-        if (-Not (Test-Path "C:\Program Files\Puppet Labs\Puppet\bin")) {
+        $puppet_bin = "C:\Program Files\Puppet Labs\Puppet\bin"
+        if (-Not (Test-Path $puppet_bin)) {
+            $puppet_bin = "C:\Program Files\OpenVox\Puppet\bin"
+        }
+        if (-Not (Test-Path $puppet_bin)) {
             Write-Host "Did not install puppet"
             exit 1
         }
         Write-Log -message  ('{0} :: Puppet installed :: {1}' -f $($MyInvocation.MyCommand.Name), $puppet) -severity 'DEBUG'
         Write-Host ('{0} :: Puppet installed :: {1}' -f $($MyInvocation.MyCommand.Name), $puppet)
-        $env:PATH += ";C:\Program Files\Puppet Labs\Puppet\bin"
+        $env:PATH += ";$puppet_bin"
     }
 
     end {

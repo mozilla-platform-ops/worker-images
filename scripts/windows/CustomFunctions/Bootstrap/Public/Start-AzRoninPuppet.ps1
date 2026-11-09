@@ -37,7 +37,7 @@ function Start-AzRoninPuppet {
         Write-Log -message ('{0} :: Setting Puppet enviroment.' -f $($MyInvocation.MyCommand.Name)) -severity 'DEBUG'
         Write-host ('{0} :: Setting Puppet enviroment.' -f $($MyInvocation.MyCommand.Name))
 
-        $env:path = "$env:programfiles\Puppet Labs\Puppet\bin;$env:path"
+        $env:path = "$env:programfiles\OpenVox\Puppet\bin;$env:programfiles\Puppet Labs\Puppet\bin;$env:path"
         $env:SSL_CERT_FILE = "$env:programfiles\Puppet Labs\Puppet\puppet\ssl\cert.pem"
         $env:SSL_CERT_DIR = "$env:programfiles\Puppet Labs\Puppet\puppet\ssl"
         $env:FACTER_env_windows_installdir = "$env:programfiles\Puppet Labs\Puppet"
