@@ -806,9 +806,9 @@
 | libfprint-2-tod1:amd64 | 1:1.94.7+tod1-0ubuntu5~24.04.9 | amd64 |
 | libfreeaptx0:amd64 | 0.1.1-2build1 | amd64 |
 | libfreehand-0.1-1 | 0.1.2-3build3 | amd64 |
-| libfreerdp-client3-3:amd64 | 3.32.1+dfsg-0ubuntu0.24.04.1 | amd64 |
-| libfreerdp-server3-3:amd64 | 3.32.1+dfsg-0ubuntu0.24.04.1 | amd64 |
-| libfreerdp3-3:amd64 | 3.32.1+dfsg-0ubuntu0.24.04.1 | amd64 |
+| libfreerdp-client3-3:amd64 | 3.32.2+dfsg-0ubuntu0.24.04.1 | amd64 |
+| libfreerdp-server3-3:amd64 | 3.32.2+dfsg-0ubuntu0.24.04.1 | amd64 |
+| libfreerdp3-3:amd64 | 3.32.2+dfsg-0ubuntu0.24.04.1 | amd64 |
 | libfreetype6:amd64 | 2.13.2+dfsg-1ubuntu0.2 | amd64 |
 | libfribidi0:amd64 | 1.0.13-3build1 | amd64 |
 | libftdi1-2:amd64 | 1.5-6build5 | amd64 |
@@ -1102,7 +1102,7 @@
 | libnettle8t64:amd64 | 3.9.1-2.2build1.1 | amd64 |
 | libnewt0.52:amd64 | 0.52.24-2ubuntu2 | amd64 |
 | libnfnetlink0:amd64 | 1.0.2-2build1 | amd64 |
-| libnfs14:amd64 | 5.0.2-1ubuntu0.24.04.1 | amd64 |
+| libnfs14:amd64 | 5.0.2-1ubuntu0.24.04.2 | amd64 |
 | libnfsidmap1:amd64 | 1:2.6.4-3ubuntu5.1 | amd64 |
 | libnftables1:amd64 | 1.0.9-1ubuntu0.1 | amd64 |
 | libnftnl11:amd64 | 1.2.6-2build1 | amd64 |
@@ -1473,7 +1473,7 @@
 | libwebrtc-audio-processing1:amd64 | 0.3.1-0ubuntu6 | amd64 |
 | libwhoopsie-preferences0 | 23build3 | amd64 |
 | libwhoopsie0:amd64 | 0.2.77ubuntu0.1 | amd64 |
-| libwinpr3-3:amd64 | 3.32.1+dfsg-0ubuntu0.24.04.1 | amd64 |
+| libwinpr3-3:amd64 | 3.32.2+dfsg-0ubuntu0.24.04.1 | amd64 |
 | libwireplumber-0.4-0:amd64 | 0.4.17-1ubuntu4.1 | amd64 |
 | libwmf-0.2-7-gtk:amd64 | 0.2.13-1.1build3 | amd64 |
 | libwmf-0.2-7:amd64 | 0.2.13-1.1build3 | amd64 |
