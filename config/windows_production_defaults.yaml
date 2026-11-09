@@ -5,8 +5,8 @@ azure:
 vm:
   spot: false
   puppet_version: 8.10.0
-  git_version: 2.56.0.2
-  openvox_version: 8.31.1
+  git_version: 2.56.0.4
+  openvox_version: 8.32.0
   tags:
     sourceOrganization: mozilla-platform-ops
     sourceRepository: ronin_puppet
