@@ -390,7 +390,7 @@ function New-FxciConfigPullRequest {
             $imageSections.Add('')
         }
         if ($linuxUpdates.Count -gt 0) {
-            $imageSections.Add('### Ubuntu 24.04')
+            $imageSections.Add('### Ubuntu')
             $imageSections.Add('')
             $imageSections.Add('| FXCI image | Level | GCP production image | SBOM |')
             $imageSections.Add('|---|---:|---|---|')
