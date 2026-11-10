@@ -1,0 +1,94 @@
+name: FXCI - Azure Image Build
+run-name: FXCI Azure - ${{ inputs.config }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      config:
+        type: choice
+        description: Choose an image to build
+        options:
+          - win10-64-2009-alpha
+          - win10-64-2009
+          - win11-64-2009
+          - win11-64-25h2-alpha
+          - win11-64-25h2
+          - win11-a64-25h2-tester-alpha
+          - win11-a64-25h2-tester
+          - win11-a64-25h2-builder-alpha
+          - win11-a64-25h2-builder
+          - win2022-64-2009-alpha
+          - win2022-64-2009
+          - win2025-64-24h2-alpha
+          - win2025-64-24h2
+          - win2025-64-24h2-core-alpha
+          - win2025-64-24h2-core
+          - trusted-win11-a64-25h2-builder
+          - trusted-win2022-64-2009
+          - trusted-win2025-64-24h2
+          - trusted-win2025-64-24h2-core
+      run_integration:
+        type: boolean
+        description: Run OS integration tests after publishing (untrusted images only)
+        default: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  check-access:
+    name: Verify User Access
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: ./.github/actions/check-workerimages-user-authorization
+
+  packer:
+    needs: check-access
+    name: Build ${{ inputs.config }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Build image
+        uses: ./.github/actions/build-azure-worker-image
+        with:
+          config: ${{ inputs.config }}
+          client_id: ${{ secrets[startsWith(inputs.config, 'trusted-') && 'AZURE_CLIENT_ID_FXCI_TRUSTED' || 'AZURE_CLIENT_ID_FXCI'] }}
+          subscription_id: ${{ secrets[startsWith(inputs.config, 'trusted-') && 'AZURE_SUBSCRIPTION_ID_TRUSTED' || 'AZURE_SUBSCRIPTION_ID_UNTRUSTED'] }}
+          application_id: ${{ secrets[startsWith(inputs.config, 'trusted-') && 'AZURE_APPLICATION_ID_FXCI_TRUSTED' || 'AZURE_APPLICATION_ID_FXCI'] }}
+          tenant_id: ${{ secrets.AZURE_TENANT_ID }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          max_attempts: '10'
+      - name: Upload Release Notes Artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: release-notes-${{ inputs.config }}
+          path: ${{ inputs.config }}-${{ env.sharedimageversion }}.md
+          overwrite: true
+          retention-days: 1
+          if-no-files-found: error
+
+  sbom:
+    needs: packer
+    permissions:
+      actions: read
+      contents: write
+    uses: ./.github/workflows/upload-release-notes.yml
+    with:
+      artifact_pattern: release-notes-${{ inputs.config }}
+      commit_message: ${{ inputs.config }} - Release Notes
+
+  os-integration:
+    if: ${{ inputs.run_integration && !startsWith(inputs.config, 'trusted-') }}
+    needs: packer
+    name: OS Integration Tests
+    uses: ./.github/workflows/os-integration.yml
+    with:
+      config: ${{ inputs.config }}
+    secrets:
+      TASKCLUSTER_OS_INT_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
+      TASKCLUSTER_OS_INT_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}

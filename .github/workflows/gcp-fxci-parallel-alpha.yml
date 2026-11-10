@@ -1,8 +1,25 @@
-name: FXCI - GCP Alpha Parallel Images
-run-name: GCP Alpha Parallel - ${{ github.sha }}
+name: FXCI - GCP Alpha Images
+run-name: GCP Alpha - ${{ inputs.config }}
 
 on:
   workflow_dispatch:
+    inputs:
+      config:
+        type: choice
+        description: Choose one image to build or all alpha images
+        options:
+          - all
+          - gw-fxci-gcp-l1-2404-gui-alpha
+          - gw-fxci-gcp-l1-2404-headless-alpha
+          - gw-fxci-gcp-l1-2404-arm64-headless-alpha
+          - trusted-gw-fxci-gcp-l3-2404-headless-alpha
+          - trusted-gw-fxci-gcp-l3-2404-arm64-headless-alpha
+        default: all
+        required: true
+      run_os_integration:
+        type: boolean
+        description: For one untrusted image, opt into integration tests; all mode tests successful untrusted builds
+        default: false
 
 permissions:
   id-token: write
@@ -22,25 +39,40 @@ jobs:
       - id: set-matrix
         name: Extract GCP alpha configs
         shell: pwsh
+        env:
+          CONFIG: ${{ inputs.config }}
+          RUN_OS_INTEGRATION: ${{ inputs.run_os_integration }}
         run: |
-          $configs = Get-ChildItem -Path ./config -File -Filter "*.yaml" |
-            ForEach-Object { $_.BaseName } |
-            Where-Object { $_ -match '^(trusted-)?gw-fxci-gcp-.*-alpha$' } |
-            Sort-Object
+          $availableConfigs = @(
+            Get-ChildItem -Path ./config -File -Filter "*.yaml" |
+              ForEach-Object { $_.BaseName } |
+              Where-Object { $_ -match '^(trusted-)?gw-fxci-gcp-.*-alpha$' } |
+              Sort-Object
+          )
+          if ($availableConfigs.Count -eq 0) {
+            throw "No GCP alpha image configs found in ./config."
+          }
 
-          if (-not $configs -or $configs.Count -eq 0) {
-            Write-Host "::error ::No GCP alpha image configs found in ./config"
-            exit 1
+          $selectedConfig = $env:CONFIG
+          if ([string]::IsNullOrWhiteSpace($selectedConfig) -or $selectedConfig -ieq 'all') {
+            $configs = $availableConfigs
+          } elseif ($availableConfigs -cnotcontains $selectedConfig) {
+            throw "Unknown GCP alpha config '$selectedConfig'."
+          } else {
+            $configs = @($selectedConfig)
           }
 
           $matrix = @{ config = @($configs) } | ConvertTo-Json -Compress
           Write-Host "Generated matrix: $matrix"
           "matrix=$matrix" >> $env:GITHUB_OUTPUT
 
-          # Only level-1 (untrusted) alpha configs have matching alpha worker pools
-          # in fxci-config that the os-integration cron can target. Skip trusted-
-          # (level-3) configs.
-          $osIntConfigs = $configs | Where-Object { $_ -notmatch '^trusted-' }
+          # Only level-1 (untrusted) alpha configs have matching alpha worker pools.
+          $osIntConfigs = @()
+          if ($selectedConfig -ieq 'all') {
+            $osIntConfigs = @($configs | Where-Object { $_ -notmatch '^trusted-' })
+          } elseif ($env:RUN_OS_INTEGRATION -eq 'true' -and $selectedConfig -notmatch '^trusted-') {
+            $osIntConfigs = @($configs)
+          }
           $osIntMatrix = @{ config = @($osIntConfigs) } | ConvertTo-Json -Compress
           Write-Host "Generated os-integration matrix: $osIntMatrix"
           "os_integration_matrix=$osIntMatrix" >> $env:GITHUB_OUTPUT
@@ -52,16 +84,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Load Authorized Users and Check Access
-        shell: pwsh
-        run: |
-          $AUTHORIZED_USERS=$(Get-Content .github/relops.json | Convertfrom-Json)
-          if ($authorized_users -contains "${{ github.actor }}") {
-            Write-host "User ${{ github.actor }} is authorized."
-          }
-          else {
-            Write-Host "User ${{ github.actor }} is unauthorized."
-            exit 1
-          }
+        uses: ./.github/actions/check-workerimages-user-authorization
 
   packer:
     needs: [check-access, prepare-matrix]
@@ -114,12 +137,15 @@ jobs:
           if-no-files-found: error
 
   sbom:
-    if: ${{ always() }}
+    if: ${{ always() && needs.prepare-matrix.result == 'success' && (inputs.config == 'all' || needs.packer.result == 'success') }}
     needs: [prepare-matrix, packer]
     permissions:
       actions: read
       contents: write
     uses: ./.github/workflows/upload-release-notes.yml
+    with:
+      artifact_pattern: ${{ inputs.config == 'all' && 'release-notes-*' || format('release-notes-{0}', inputs.config) }}
+      commit_message: ${{ inputs.config == 'all' && 'Update release notes' || format('{0} - Release Notes', inputs.config) }}
 
   find-successful-builds:
     needs: [prepare-matrix, packer]
@@ -130,7 +156,9 @@ jobs:
       actions: read
     outputs:
       wiz_matrix: ${{ steps.filter.outputs.wiz_matrix }}
+      has_wiz: ${{ steps.filter.outputs.has_wiz }}
       os_integration_matrix: ${{ steps.filter.outputs.os_integration_matrix }}
+      has_os_integration: ${{ steps.filter.outputs.has_os_integration }}
     steps:
       - id: filter
         name: Query run jobs API for successful packer entries
@@ -153,18 +181,19 @@ jobs:
           $wizMatrix = @{ config = $wizConfigs } | ConvertTo-Json -Compress
           Write-Host "wiz_matrix=$wizMatrix (count=$($wizConfigs.Count))"
           "wiz_matrix=$wizMatrix" >> $env:GITHUB_OUTPUT
+          "has_wiz=$(if ($wizConfigs.Count -gt 0) { 'true' } else { 'false' })" >> $env:GITHUB_OUTPUT
 
-          # os-integration runs against configs that were both in the original
-          # os_integration_matrix (level-1) AND succeeded in packer.
+          # Keep only original integration targets that succeeded in Packer.
           $original = ConvertFrom-Json $env:ORIGINAL_OS_INT_MATRIX
           $osIntConfigs = @($original.config | Where-Object { $successful -contains $_ })
           $osIntMatrix = @{ config = $osIntConfigs } | ConvertTo-Json -Compress
           Write-Host "os_integration_matrix=$osIntMatrix (count=$($osIntConfigs.Count))"
           "os_integration_matrix=$osIntMatrix" >> $env:GITHUB_OUTPUT
+          "has_os_integration=$(if ($osIntConfigs.Count -gt 0) { 'true' } else { 'false' })" >> $env:GITHUB_OUTPUT
 
   wiz-scan:
     needs: [find-successful-builds]
-    if: ${{ !cancelled() && needs.find-successful-builds.result == 'success' }}
+    if: ${{ !cancelled() && inputs.config == 'all' && needs.find-successful-builds.result == 'success' && needs.find-successful-builds.outputs.has_wiz == 'true' }}
     name: "Wiz Scan - ${{ matrix.config }}"
     runs-on: ubuntu-latest
     strategy:
@@ -181,31 +210,43 @@ jobs:
           Set-GCPWorkerImageName -Key '${{ matrix.config }}'
           Set-GCPWorkerImageProject -Key '${{ matrix.config }}'
 
-      - name: Download Wiz CLI
-        run: curl -o wizcli https://downloads.wiz.io/v1/wizcli/latest/wizcli-linux-amd64 && chmod +x wizcli
+      - uses: ./.github/actions/scan-gcp-image-with-wiz
+        with:
+          image_name: ${{ steps.set-gcp-vars.outputs.IMAGENAME }}
+          project_id: ${{ steps.set-gcp-vars.outputs.PROJECT }}
+          client_id: ${{ secrets.WIZ_CLIENT_ID }}
+          client_secret: ${{ secrets.WIZ_CLIENT_SECRET }}
 
-      - name: Authenticate to Wiz
-        run: ./wizcli auth --id "$WIZ_CLIENT_ID" --secret "$WIZ_CLIENT_SECRET"
-        env:
-          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
-          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
+  wiz-scan-selected:
+    needs: [find-successful-builds]
+    if: ${{ !cancelled() && inputs.config != 'all' && needs.find-successful-builds.result == 'success' && needs.find-successful-builds.outputs.has_wiz == 'true' }}
+    name: "Wiz scan - ${{ matrix.config }}"
+    runs-on: ubuntu-latest
+    environment: prod
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.find-successful-builds.outputs.wiz_matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-      - name: Run wiz-cli scan
+      - id: set-gcp-vars
+        name: Set project and image metadata
+        shell: pwsh
         run: |
-          ./wizcli vm-image scan \
-          --id ${{ steps.set-gcp-vars.outputs.IMAGENAME }} \
-          --region us-west1 \
-          --subscriptionId ${{ steps.set-gcp-vars.outputs.PROJECT }} \
-          --secrets \
-          --show-vulnerability-details \
-          --policy-hits-only
-        env:
-          WIZ_CLIENT_ID: ${{ secrets.WIZ_CLIENT_ID }}
-          WIZ_CLIENT_SECRET: ${{ secrets.WIZ_CLIENT_SECRET }}
+          Import-Module ${{ github.workspace }}\bin\WorkerImages\WorkerImages.psm1
+          Set-GCPWorkerImageName -Key '${{ matrix.config }}'
+          Set-GCPWorkerImageProject -Key '${{ matrix.config }}'
+
+      - uses: ./.github/actions/scan-gcp-image-with-wiz
+        with:
+          image_name: ${{ steps.set-gcp-vars.outputs.IMAGENAME }}
+          project_id: ${{ steps.set-gcp-vars.outputs.PROJECT }}
+          client_id: ${{ secrets.WIZ_CLIENT_ID }}
+          client_secret: ${{ secrets.WIZ_CLIENT_SECRET }}
 
   os-integration:
     needs: [find-successful-builds]
-    if: ${{ !cancelled() && needs.find-successful-builds.result == 'success' }}
+    if: ${{ !cancelled() && needs.find-successful-builds.result == 'success' && needs.find-successful-builds.outputs.has_os_integration == 'true' }}
     name: "OS Integration Tests - ${{ matrix.config }}"
     strategy:
       fail-fast: false

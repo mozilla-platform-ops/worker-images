@@ -13,10 +13,6 @@ on:
           - linux
         default: all
         required: true
-      tracking_issue_url:
-        description: Optional Bugzilla or Jira link for the fxci-config PR
-        type: string
-        required: false
 
 permissions:
   actions: read
@@ -30,12 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Check RelOps allowlist
-        shell: pwsh
-        run: |
-          Import-Module ./bin/WorkerImages/WorkerImages.psm1 -Force
-          if (-not (Test-WorkerImagesUserAuthorization)) {
-            throw 'The triggering user is not authorized by .github/relops.json.'
-          }
+        uses: ./.github/actions/check-workerimages-user-authorization
 
   set-build-date:
     name: Set Shared UTC Build Date
@@ -106,7 +97,6 @@ jobs:
           FXCI_CONFIG_GITHUB_TOKEN: ${{ steps.fxci-config-token.outputs.token }}
           DEPLOY_PLATFORM: ${{ inputs.platform }}
           DEPLOY_RUN_ID: ${{ github.run_id }}
-          TRACKING_ISSUE_URL: ${{ inputs.tracking_issue_url }}
         run: |
           Import-Module ./bin/WorkerImages/WorkerImages.psm1 -Force
           $parameters = @{}
@@ -115,8 +105,5 @@ jobs:
           }
           if ($env:DEPLOY_PLATFORM -in @('all', 'linux')) {
             $parameters.GcpRunId = $env:DEPLOY_RUN_ID
-          }
-          if (-not [string]::IsNullOrWhiteSpace($env:TRACKING_ISSUE_URL)) {
-            $parameters.RelatedIssueUrl = $env:TRACKING_ISSUE_URL
           }
           New-FxciConfigPullRequest @parameters

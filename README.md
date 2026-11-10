@@ -67,12 +67,9 @@ allowlists before it builds.
 | `FXCI - Production Parallel Images` | `fxci-production-parallel.yml` | RelOps-only entry point for Windows, Linux, or both. A single UTC build date is shared across selected platforms. |
 | `FXCI - Azure Prod Parallel Images` | `sig-FXCI-parallel-build.yml` | Full Windows production build. Builds untrusted production configs and trusted Azure configs in one matrix. |
 | `FXCI - Azure Alpha Parallel Images` | `sig-FXCI-nontrusted-parallel-build-alpha.yml` | Windows alpha builds from `images.alpha` in `windows_production_defaults.yaml`. |
-| `FXCI - Azure` | `sig-nontrusted.yml` | One-off untrusted Windows Azure build. |
-| `FXCI - Azure - Trusted` | `sig-trusted.yml` | One-off trusted Windows Azure build. Do not use this in addition to the prod parallel workflow for a full rollout. |
-| `FXCI - GCP Alpha Parallel Images` | `gcp-fxci-parallel-alpha.yml` | Builds all Firefox CI Ubuntu alpha images in GCP. |
-| `FXCI - GCP Prod Parallel Images` | `gcp-deploy-parallel.yml` | Promotes all Firefox CI Ubuntu alpha images into date-stamped production GCP images. |
-| `FXCI - GCP` | `gcp-fxci.yml` | One-off Firefox CI Ubuntu alpha image build. |
-| `FXCI - GCP Production` | `gcp-deploy.yml` | One-off Firefox CI Ubuntu production promotion. |
+| `FXCI - Azure Image Build` | `sig-azure.yml` | One-off trusted or untrusted Windows Azure build. Optional OS integration runs for untrusted images; use the parallel workflow for a full rollout. |
+| `FXCI - GCP Alpha Images` | `gcp-fxci-parallel-alpha.yml` | Builds one or all Firefox CI Ubuntu alpha images; scans successful untrusted builds and runs integration for all-mode or an opted-in single image. |
+| `FXCI - GCP Prod Parallel Images` | `gcp-deploy-parallel.yml` | Promotes all or one selected Firefox CI Ubuntu alpha image into a date-stamped production GCP image. |
 | `OS Integration Tests - FXCI` | `os-integration.yml` | Triggers Taskcluster integration tests against a built image. |
 | TC Engineering workflows | `nonsig-tceng-azure.yml`, `gcp-tceng.yml`, `aws-tceng.yml` | Builds images owned by Taskcluster Engineering. |
 
@@ -138,9 +135,8 @@ need `-var 'preloadCacheManifest=/path/to/inputs.json'` with
 
 ## Development image builds (RelOps only)
 
-Run **Image generation dev - Azure** (`image-dev-azure.yml`) or
-**Image generation dev - GCP** (`image-dev-gcp.yml`) from `main`. Enter the
-worker-images **branch** to test and a
+Run **Image generation dev** (`image-dev.yml`) from `main`. Select the cloud
+**provider**, enter the worker-images **branch** to test, and provide a
 non-trusted root-level alpha **config** name without `.yaml`, for example
 `win11-64-25h2-alpha` or `gw-fxci-gcp-l1-2404-headless-alpha`.
 
@@ -198,8 +194,7 @@ The short version for Firefox CI production rollouts:
    versions as `yyyy.MM.dd`; GCP uses `yyyy-MM-dd` in image names.
 4. Verify the published images, release notes, and integration results.
 5. After all selected builds and promotions succeed, the unified workflow opens
-   an `fxci-config` PR with the exact image references. Set the optional
-   `tracking_issue_url` input to add a Bugzilla or Jira link. The PR includes image
+   an `fxci-config` PR with the exact image references. The PR includes image
    tables, Windows-specific `ronin_puppet` commits, per-image SBOM links, and build
    provenance. It updates Windows 10, Windows 11 25H2, Server 2022, and Ubuntu
    production entries; it leaves Server 2025 and alpha entries unchanged.

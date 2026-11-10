@@ -75,25 +75,36 @@ try {
             Reject { & $prepare -Branch "bad/$mutation" -Key $gcpKey -Provider GCP } $(if ($mutation -eq 'link') { 'symbolic links' } else { 'non-trusted' })
         }
     }
-    # Exercise the workflow's actual retry loop for exceptions, exit codes, and exhaustion.
-    foreach ($provider in @('Azure', 'GCP')) {
-        $workflow = ConvertFrom-Yaml (Get-Content "$repo/.github/workflows/image-dev-$($provider.ToLower()).yml" -Raw)
-        $job = $workflow.jobs.build
-        $steps = @($job.steps)
-        if ($job.if -ne "github.ref == 'refs/heads/main'" -or
-            $steps[0].with.ref -ne 'main' -or $job.permissions.contents -ne 'read' -or
-            $steps[1].name -ne 'Authorize and pin development branch' -or
-            $steps[1].run -notlike "*-Provider $provider*" -or
-            $steps[2].with.ref -ne '${{ steps.source.outputs.revision }}') {
-            throw 'Workflow must authorize from main before checking out the pinned source with a read-only repository token.'
-        }
-        if ($provider -eq 'Azure') { $azureWorkflow = $workflow } else { $gcpWorkflow = $workflow }
+    # Exercise the shared workflow's trusted checkout and Azure retry loop.
+    $workflow = ConvertFrom-Yaml (Get-Content "$repo/.github/workflows/image-dev.yml" -Raw)
+    $job = $workflow.jobs.build
+    $steps = @($job.steps)
+    $providerOptions = @($workflow.on.workflow_dispatch.inputs.provider.options)
+    $azureLogin = $steps | Where-Object name -eq 'Azure login'
+    $gcpLogin = $steps | Where-Object name -eq 'GCP login'
+    $azureBuild = $steps | Where-Object name -eq 'Build selected revision - Azure'
+    $gcpBuild = $steps | Where-Object name -eq 'Build selected revision - GCP'
+    if ($job.if -ne "github.ref == 'refs/heads/main'" -or
+        $job.permissions.contents -ne 'read' -or
+        $steps[0].with.ref -ne 'main' -or
+        $steps[0].with.path -ne 'trusted' -or
+        $steps[1].name -ne 'Authorize and pin development branch' -or
+        $steps[1].env.DEV_PROVIDER -ne '${{ inputs.provider }}' -or
+        $steps[1].run -notlike '*-Provider $env:DEV_PROVIDER*' -or
+        $steps[2].with.ref -ne '${{ steps.source.outputs.revision }}' -or
+        $providerOptions -notcontains 'Azure' -or $providerOptions -notcontains 'GCP') {
+        throw 'Workflow must authorize from main before checking out the pinned source with a read-only repository token.'
     }
-    if (($gcpWorkflow.jobs.build.steps | Where-Object name -eq 'GCP login').with.service_account -ne 'deploy-prod@taskcluster-imaging.iam.gserviceaccount.com' -or
-        ($azureWorkflow.jobs.build.steps | Where-Object name -eq 'Azure login').with.'subscription-id' -ne '${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}') {
-        throw 'Development workflow must use the non-trusted cloud identities.'
+    if ($azureLogin.if -ne "inputs.provider == 'Azure'" -or
+        $azureLogin.with.'subscription-id' -ne '${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}' -or
+        $gcpLogin.if -ne "inputs.provider == 'GCP'" -or
+        $gcpLogin.with.service_account -ne 'deploy-prod@taskcluster-imaging.iam.gserviceaccount.com' -or
+        $azureBuild.if -ne "inputs.provider == 'Azure'" -or
+        $gcpBuild.if -ne "inputs.provider == 'GCP'" -or
+        $gcpBuild.run -notlike '*New-GCPWorkerImage*') {
+        throw 'Development workflow must use provider-matched non-trusted cloud identities and build steps.'
     }
-    $run = ($azureWorkflow.jobs.build.steps | Where-Object name -eq 'Build selected revision').run
+    $run = $azureBuild.run
     $loop = [regex]::Match($run, '(?s)for \(\$attempt.*').Value
     if (-not $loop) { throw 'Retry loop not found.' }
     $retry = [scriptblock]::Create($loop)

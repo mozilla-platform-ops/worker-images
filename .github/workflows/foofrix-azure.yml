@@ -25,12 +25,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Verify FooFrix or RelOps access
-        shell: pwsh
-        run: |
-          Import-Module ./bin/WorkerImages/WorkerImages.psm1 -Force
-          if (-not (Test-WorkerImagesUserAuthorization -AdditionalUsersFile .github/foofrix.json)) {
-            throw 'The triggering user is not authorized by .github/relops.json or .github/foofrix.json.'
-          }
+        uses: ./.github/actions/check-workerimages-user-authorization
+        with:
+          additional_users_file: .github/foofrix.json
 
   build:
     needs: check-access

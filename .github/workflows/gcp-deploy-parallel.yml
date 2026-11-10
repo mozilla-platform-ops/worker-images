@@ -1,12 +1,29 @@
 name: FXCI - GCP Prod Parallel Images
-run-name: GCP Production Parallel - ${{ github.sha }}
+run-name: GCP Production - ${{ inputs.config || 'all' }} - ${{ github.sha }}
 
 on:
   workflow_dispatch:
+    inputs:
+      config:
+        type: choice
+        description: Choose one image to promote or all production images
+        options:
+          - all
+          - gw-fxci-gcp-l1-2404-gui-alpha
+          - gw-fxci-gcp-l1-2404-headless-alpha
+          - gw-fxci-gcp-l1-2404-arm64-headless-alpha
+          - trusted-gw-fxci-gcp-l3-2404-headless-alpha
+          - trusted-gw-fxci-gcp-l3-2404-arm64-headless-alpha
+        default: all
+        required: true
   workflow_call:
     inputs:
       build_date:
         description: UTC production date shared across the deployment
+        required: false
+        type: string
+      config:
+        description: Optional GCP production config; omit or use all for every image
         required: false
         type: string
 
@@ -30,6 +47,7 @@ jobs:
         shell: pwsh
         env:
           BUILD_DATE: ${{ inputs.build_date }}
+          CONFIG: ${{ inputs.config }}
         run: |
           $buildDate = $env:BUILD_DATE
           if ([string]::IsNullOrWhiteSpace($buildDate)) {
@@ -43,14 +61,23 @@ jobs:
           $buildDate = $parsedBuildDate.ToString("yyyy-MM-dd", [Globalization.CultureInfo]::InvariantCulture)
           "build_date=$buildDate" >> $env:GITHUB_OUTPUT
 
-          $configs = Get-ChildItem -Path ./config -File -Filter "*.yaml" |
-            ForEach-Object { $_.BaseName } |
-            Where-Object { $_ -match '^(trusted-)?gw-fxci-gcp-.*-alpha$' } |
-            Sort-Object
+          $availableConfigs = @(
+            Get-ChildItem -Path ./config -File -Filter "*.yaml" |
+              ForEach-Object { $_.BaseName } |
+              Where-Object { $_ -match '^(trusted-)?gw-fxci-gcp-.*-alpha$' } |
+              Sort-Object
+          )
+          if ($availableConfigs.Count -eq 0) {
+            throw "No GCP production configs found in ./config."
+          }
 
-          if (-not $configs -or $configs.Count -eq 0) {
-            Write-Host "::error ::No GCP production configs found in ./config"
-            exit 1
+          $selectedConfig = $env:CONFIG
+          if ([string]::IsNullOrWhiteSpace($selectedConfig) -or $selectedConfig -ieq 'all') {
+            $configs = $availableConfigs
+          } elseif ($availableConfigs -cnotcontains $selectedConfig) {
+            throw "Unknown GCP production config '$selectedConfig'."
+          } else {
+            $configs = @($selectedConfig)
           }
 
           $matrix = @{ config = @($configs) } | ConvertTo-Json -Compress
@@ -63,12 +90,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Load Authorized Users and Check Access
-        shell: pwsh
-        run: |
-          Import-Module ./bin/WorkerImages/WorkerImages.psm1 -Force
-          if (-not (Test-WorkerImagesUserAuthorization)) {
-            throw 'The triggering user is not authorized by .github/relops.json.'
-          }
+        uses: ./.github/actions/check-workerimages-user-authorization
 
   prodimage:
     needs: [check-access, prepare-matrix]

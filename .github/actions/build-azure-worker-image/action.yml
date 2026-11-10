@@ -1,0 +1,68 @@
+name: Build Azure worker image
+description: Authenticate to Azure and build a configured worker image.
+inputs:
+  config:
+    description: Image configuration key.
+    required: true
+  client_id:
+    description: Azure client ID for OIDC authentication.
+    required: true
+  subscription_id:
+    description: Azure subscription ID.
+    required: true
+  application_id:
+    description: Azure application ID passed to Packer.
+    required: true
+  tenant_id:
+    description: Azure tenant ID.
+    required: true
+  github_token:
+    description: GitHub token used by Packer.
+    required: true
+  build_date:
+    description: Optional shared UTC build date in yyyy-MM-dd format.
+    required: false
+    default: ''
+  max_attempts:
+    description: Maximum Packer attempts.
+    required: false
+    default: '1'
+runs:
+  using: composite
+  steps:
+    - name: Azure login
+      uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906
+      with:
+        client-id: ${{ inputs.client_id }}
+        tenant-id: ${{ inputs.tenant_id }}
+        subscription-id: ${{ inputs.subscription_id }}
+        enable-AzPSSession: true
+
+    - name: Run Packer
+      shell: pwsh
+      env:
+        APPLICATION_ID: ${{ inputs.application_id }}
+        CLIENT_ID: ${{ inputs.client_id }}
+        CONFIG: ${{ inputs.config }}
+        GITHUB_TOKEN: ${{ inputs.github_token }}
+        IMAGE_BUILD_DATE: ${{ inputs.build_date }}
+        MAX_ATTEMPTS: ${{ inputs.max_attempts }}
+        SUBSCRIPTION_ID: ${{ inputs.subscription_id }}
+        TENANT_ID: ${{ inputs.tenant_id }}
+      run: |
+        if ($env:MAX_ATTEMPTS -notmatch '^\d+$' -or [int]$env:MAX_ATTEMPTS -lt 1) {
+          throw 'max_attempts must be a positive integer.'
+        }
+
+        $maxAttempts = [int]$env:MAX_ATTEMPTS
+        for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+          Write-Host "Packer attempt $attempt of $maxAttempts"
+          try {
+            ./ci/build-azure-shared-worker-image.ps1
+            break
+          } catch {
+            if ($attempt -eq $maxAttempts) { throw }
+            Write-Warning "Packer failed (attempt $attempt): $_. Retrying in 30 seconds..."
+            Start-Sleep -Seconds 30
+          }
+        }

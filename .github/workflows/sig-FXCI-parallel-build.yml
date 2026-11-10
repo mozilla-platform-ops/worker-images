@@ -44,12 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Load Authorized Users and Check Access
-        shell: pwsh
-        run: |
-          Import-Module ./bin/WorkerImages/WorkerImages.psm1 -Force
-          if (-not (Test-WorkerImagesUserAuthorization)) {
-            throw 'The triggering user is not authorized by .github/relops.json.'
-          }
+        uses: ./.github/actions/check-workerimages-user-authorization
 
   packer:
     needs: [check-access, prepare-matrix]
@@ -63,24 +58,17 @@ jobs:
       matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - name: Azure Login
-        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906
+      - name: Build Azure image
+        uses: ./.github/actions/build-azure-worker-image
         with:
-          client-id: ${{ secrets[matrix.client_id_secret] }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets[matrix.subscription_id_secret] }}
-          enable-AzPSSession: true
-      - name: 'Run Packer'
-        shell: pwsh
-        env:
-          APPLICATION_ID: ${{ secrets[matrix.application_id_secret] }}
-          CLIENT_ID: ${{ secrets[matrix.client_id_secret] }}
-          CONFIG: ${{ matrix.config }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          IMAGE_BUILD_DATE: ${{ needs.prepare-matrix.outputs.build_date }}
-          SUBSCRIPTION_ID: ${{ secrets[matrix.subscription_id_secret] }}
-          TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-        run: ./ci/build-azure-shared-worker-image.ps1
+          config: ${{ matrix.config }}
+          client_id: ${{ secrets[matrix.client_id_secret] }}
+          subscription_id: ${{ secrets[matrix.subscription_id_secret] }}
+          application_id: ${{ secrets[matrix.application_id_secret] }}
+          tenant_id: ${{ secrets.AZURE_TENANT_ID }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          build_date: ${{ needs.prepare-matrix.outputs.build_date }}
+          max_attempts: '1'
       - name: Upload Release Notes Artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:

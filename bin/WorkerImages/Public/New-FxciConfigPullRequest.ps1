@@ -5,10 +5,7 @@ function New-FxciConfigPullRequest {
         [string] $AzureRunId,
 
         [ValidatePattern('^\d+$')]
-        [string] $GcpRunId,
-
-        [ValidatePattern('^https://\S+$')]
-        [string] $RelatedIssueUrl
+        [string] $GcpRunId
     )
 
     Set-StrictMode -Version Latest
@@ -445,22 +442,6 @@ function New-FxciConfigPullRequest {
             $provenance.Add("| GCP | [run $GcpRunId]($($gcpRun.url)) | [$sourceSha]($sourceUrl) | $($linuxUpdates.Count) image promotions succeeded |")
         }
 
-        $relatedIssue = '- Tracking bug URL not supplied. Pass `-RelatedIssueUrl` to include it.'
-        if ($RelatedIssueUrl) {
-            $issueUri = [Uri]$RelatedIssueUrl
-            if (-not $issueUri.IsAbsoluteUri -or $issueUri.Scheme -ne 'https') {
-                throw 'RelatedIssueUrl must be an absolute HTTPS URL.'
-            }
-            $bugMatch = [regex]::Match($issueUri.Query, '[?&]id=(\d+)(?:&|$)')
-            if ($issueUri.Host -eq 'bugzilla.mozilla.org' -and $bugMatch.Success) {
-                $issueLabel = "Bug $($bugMatch.Groups[1].Value)"
-            } else {
-                $issueLabel = [Uri]::UnescapeDataString($issueUri.Segments[-1].Trim('/'))
-                if (-not $issueLabel) { $issueLabel = $issueUri.Host }
-            }
-            $relatedIssue = "- [$issueLabel]($RelatedIssueUrl)"
-        }
-
         $body = @(
             '## Summary'
             ''
@@ -475,10 +456,6 @@ function New-FxciConfigPullRequest {
             ($provenance -join "`n")
             ''
             $puppetChanges
-            ''
-            '## Related'
-            ''
-            $relatedIssue
         ) -join "`n"
         $bodyPath = Join-Path $tempRoot 'pull-request.md'
         [IO.File]::WriteAllText($bodyPath, $body, [Text.UTF8Encoding]::new($false))
