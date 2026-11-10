@@ -194,10 +194,12 @@ The short version for Firefox CI production rollouts:
    versions as `yyyy.MM.dd`; GCP uses `yyyy-MM-dd` in image names.
 4. Verify the published images, release notes, and integration results.
 5. After all selected builds and promotions succeed, the unified workflow opens
-   an `fxci-config` PR with the exact image references. The PR includes image
-   tables, Windows-specific `ronin_puppet` commits, per-image SBOM links, and build
-   provenance. It updates Windows 10, Windows 11 25H2, Server 2022, and Ubuntu
-   production entries; it leaves Server 2025 and alpha entries unchanged.
+   an `fxci-config` PR by default. Set `create_fxci_config_pr` to `false` when
+   dispatching to skip only the PR step; selected image builds, release notes, and
+   integration jobs still run. The PR includes image tables, Windows-specific
+   `ronin_puppet` commits, per-image SBOM links, and build provenance. It updates
+   Windows 10, Windows 11 25H2, Server 2022, and Ubuntu production entries; it
+   leaves Server 2025 and alpha entries unchanged.
 
    For older, separate production runs, use the helper manually:
 

@@ -13,6 +13,11 @@ on:
           - linux
         default: all
         required: true
+      create_fxci_config_pr:
+        description: Open an fxci-config PR after production succeeds
+        type: boolean
+        default: true
+        required: true
 
 permissions:
   actions: read
@@ -67,6 +72,7 @@ jobs:
     if: >-
       ${{
         !cancelled() &&
+        inputs.create_fxci_config_pr &&
         needs.check-access.result == 'success' &&
         needs.set-build-date.result == 'success' &&
         (
