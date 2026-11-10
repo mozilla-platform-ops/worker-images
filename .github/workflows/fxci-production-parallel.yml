@@ -47,7 +47,7 @@ jobs:
     if: ${{ inputs.platform == 'all' || inputs.platform == 'windows' }}
     name: Azure Windows Production
     needs: set-build-date
-    uses: ./.github/workflows/sig-FXCI-parallel-build.yml
+    uses: ./.github/workflows/fxci-azure-production.yml
     with:
       build_date: ${{ needs.set-build-date.outputs.build_date }}
     secrets: inherit
