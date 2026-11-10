@@ -75,7 +75,11 @@ function New-FxciConfigPullRequest {
         if (-not ($expectedWorkflows | Where-Object { $run.workflowName -match [regex]::Escape($_) })) {
             throw "Run $RunId is '$($run.workflowName)', not an $Platform production parallel run."
         }
-        if ($run.status -ne 'completed') {
+        # The final job runs before GitHub marks its parent workflow complete.
+        $isCurrentUnifiedRun = $run.workflowName -eq 'FXCI - Production Parallel Images' -and
+            $RunId -eq $env:GITHUB_RUN_ID
+        if ($run.status -ne 'completed' -and
+            -not ($isCurrentUnifiedRun -and $run.status -eq 'in_progress')) {
             throw "Run $RunId is not complete (status: $($run.status))."
         }
         return $run
