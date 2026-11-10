@@ -58,8 +58,12 @@ function New-FxciConfigPullRequest {
             '--json', 'databaseId,workflowName,status,conclusion,jobs,url,updatedAt,headSha'
         )
         $run = $json | ConvertFrom-Json
-        $expectedWorkflow = if ($Platform -eq 'Azure') { 'Azure Prod Parallel' } else { 'GCP Prod Parallel' }
-        if ($run.workflowName -notmatch [regex]::Escape($expectedWorkflow)) {
+        $expectedWorkflows = if ($Platform -eq 'Azure') {
+            @('Azure Prod Parallel', 'FXCI - Production Parallel Images')
+        } else {
+            @('GCP Prod Parallel', 'FXCI - Production Parallel Images')
+        }
+        if (-not ($expectedWorkflows | Where-Object { $run.workflowName -match [regex]::Escape($_) })) {
             throw "Run $RunId is '$($run.workflowName)', not an $Platform production parallel run."
         }
         if ($run.status -ne 'completed') {
@@ -69,8 +73,13 @@ function New-FxciConfigPullRequest {
     }
 
     function Assert-ImageJobSucceeded {
-        param($Run, [string] $JobName)
-        $jobs = @($Run.jobs | Where-Object { $_.name -eq $JobName })
+        param($Run, [string] $JobName, [string] $WorkflowJobName)
+        $jobNamePattern = '(?:^| / )' + [regex]::Escape($JobName) + '$'
+        $jobs = @($Run.jobs | Where-Object { $_.name -eq $JobName -or $_.name -match $jobNamePattern })
+        if ($jobs.Count -eq 0 -and $Run.workflowName -eq 'FXCI - Production Parallel Images') {
+            $workflowJobPattern = '(?:^| / )' + [regex]::Escape($WorkflowJobName) + '$'
+            $jobs = @($Run.jobs | Where-Object { $_.name -eq $WorkflowJobName -or $_.name -match $workflowJobPattern })
+        }
         if ($jobs.Count -ne 1 -or $jobs[0].conclusion -ne 'success') {
             $result = if ($jobs.Count -eq 1) { $jobs[0].conclusion } else { 'missing or duplicated' }
             throw "Image job '$JobName' in run $($Run.databaseId) did not succeed ($result)."
@@ -209,7 +218,10 @@ function New-FxciConfigPullRequest {
                 'run', 'download', $AzureRunId, '--repo', $workerImagesRepo,
                 '--dir', (Join-Path $tempRoot 'azure-artifacts')
             )
-            $files = @(Get-ChildItem -Path (Join-Path $tempRoot 'azure-artifacts') -Filter '*.md' -File -Recurse)
+            $files = @(
+                Get-ChildItem -Path (Join-Path $tempRoot 'azure-artifacts') -Filter '*.md' -File -Recurse |
+                    Where-Object { $_.Directory.Name -like 'release-notes-*' -and $_.Directory.Name -notlike 'release-notes-production-*' }
+            )
             $found = @{}
             foreach ($file in $files) {
                 $text = [IO.File]::ReadAllText($file.FullName)
@@ -240,7 +252,7 @@ function New-FxciConfigPullRequest {
                 if (-not $windowsArtifactLinks.ContainsKey($artifactName)) {
                     throw "No SBOM artifact '$artifactName' for Windows image '$config' in run $AzureRunId."
                 }
-                Assert-ImageJobSucceeded -Run $windowsRun -JobName "Build $config"
+                Assert-ImageJobSucceeded -Run $windowsRun -JobName "Build $config" -WorkflowJobName 'Azure Windows Production'
                 $mapping = $windowsImages[$config]
                 $updates.Add([pscustomobject]@{
                     platform = 'Windows'; config = $config; image = $mapping.image
@@ -263,7 +275,10 @@ function New-FxciConfigPullRequest {
                 'run', 'download', $GcpRunId, '--repo', $workerImagesRepo,
                 '--dir', (Join-Path $tempRoot 'gcp-artifacts')
             )
-            $files = @(Get-ChildItem -Path (Join-Path $tempRoot 'gcp-artifacts') -Filter '*.md' -File -Recurse)
+            $files = @(
+                Get-ChildItem -Path (Join-Path $tempRoot 'gcp-artifacts') -Filter '*.md' -File -Recurse |
+                    Where-Object { $_.Directory.Name -like 'release-notes-production-*' }
+            )
             $found = @{}
             foreach ($file in $files) {
                 $config = $file.Directory.Name -replace '^release-notes-production-', ''
@@ -288,7 +303,7 @@ function New-FxciConfigPullRequest {
                 $key = "$($mapping.image)/$($mapping.provider)"
                 if ($found.ContainsKey($key)) { throw "Duplicate GCP production artifact for '$key'." }
                 $found[$key] = $true
-                Assert-ImageJobSucceeded -Run $gcpRun -JobName "GCP $config"
+                Assert-ImageJobSucceeded -Run $gcpRun -JobName "GCP $config" -WorkflowJobName 'GCP Linux Production'
                 $date = [regex]::Match($imageName, $mapping.pattern).Groups['date'].Value
                 $null = [DateTime]::ParseExact($date, 'yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture)
                 $updates.Add([pscustomobject]@{

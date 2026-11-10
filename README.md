@@ -209,8 +209,9 @@ The short version for Firefox CI production rollouts:
      -FxciConfigRepo jwmossmoz/fxci-config-deploy-test
    ```
 
-   Pass either run ID to deploy one platform. The PR title and branch use the
-   latest run's UTC completion timestamp. The PR body uses image tables, lists
+   Pass either run ID to deploy one platform. For a combined run from the unified
+   workflow, pass the same run ID to both parameters. The PR title and branch use
+   the latest run's UTC completion timestamp. The PR body uses image tables, lists
    Windows-specific `ronin_puppet` commits since the current deployment, links
    each image's SBOM, and records the build runs and source commits. Pass
    `-RelatedIssueUrl <https-url>` to add a Bugzilla
