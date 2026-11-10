@@ -65,8 +65,8 @@ allowlists before it builds.
 | Workflow | File | Use |
 | --- | --- | --- |
 | `FXCI - Production Parallel Images` | `fxci-production-parallel.yml` | RelOps-only entry point for Windows, Linux, or both. A single UTC build date is shared across selected platforms. |
-| `FXCI - Azure Prod Parallel Images` | `sig-FXCI-parallel-build.yml` | Full Windows production build. Builds untrusted production configs and trusted Azure configs in one matrix. |
-| `FXCI - Azure Alpha Parallel Images` | `sig-FXCI-nontrusted-parallel-build-alpha.yml` | Windows alpha builds from `images.alpha` in `windows_production_defaults.yaml`. |
+| `FXCI - Azure Prod Parallel Images` | `fxci-azure-production.yml` | Full Windows production build. Builds untrusted production configs and trusted Azure configs in one matrix. |
+| `FXCI - Azure Alpha Parallel Images` | `fxci-azure-alpha.yml` | Windows alpha builds from `images.alpha` in `windows_production_defaults.yaml`. |
 | `FXCI - Azure Image Build` | `sig-azure.yml` | One-off trusted or untrusted Windows Azure build. Optional OS integration runs for untrusted images; use the parallel workflow for a full rollout. |
 | `FXCI - GCP Alpha Images` | `gcp-fxci-parallel-alpha.yml` | Builds one or all Firefox CI Ubuntu alpha images; scans successful untrusted builds and runs integration for all-mode or an opted-in single image. |
 | `FXCI - GCP Prod Parallel Images` | `gcp-deploy-parallel.yml` | Promotes all or one selected Firefox CI Ubuntu alpha image into a date-stamped production GCP image. |
