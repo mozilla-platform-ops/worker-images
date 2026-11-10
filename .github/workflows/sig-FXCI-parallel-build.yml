@@ -75,7 +75,7 @@ jobs:
           name: release-notes-${{ matrix.config }}
           path: ${{ matrix.config }}-${{ env.sharedimageversion }}.md
           overwrite: true
-          retention-days: 1
+          retention-days: 90
           if-no-files-found: error
 
   sbom:

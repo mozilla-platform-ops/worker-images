@@ -210,6 +210,9 @@ The short version for Firefox CI production rollouts:
    same ID to both parameters. `-WhatIf -Verbose` previews the change. The helper
    always targets `mozilla-releng/fxci-config`.
 
+   Production run artifacts are retained for 90 days, so manual PR regeneration
+   must happen within that window. PR SBOM links point to durable copies in `sboms/`.
+
    The workflow needs the `PULL_REQUESTOR_APP_ID` and `PULL_REQUESTOR_KEY`
    repository secrets. Install that GitHub App on `mozilla-releng/fxci-config`
    with Contents and Pull requests write access. The workflow uses a short-lived

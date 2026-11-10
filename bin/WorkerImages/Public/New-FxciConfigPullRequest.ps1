@@ -96,21 +96,6 @@ function New-FxciConfigPullRequest {
         }
     }
 
-    function Get-RunArtifactLink {
-        param([string] $RunId)
-        $json = Invoke-CheckedCommand 'gh' @(
-            'api', "repos/$workerImagesRepo/actions/runs/$RunId/artifacts", '--jq', '.artifacts'
-        )
-        foreach ($artifact in ($json | ConvertFrom-Json)) {
-            if (-not $artifact.expired) {
-                [pscustomobject]@{
-                    name = $artifact.name
-                    url = "https://github.com/$workerImagesRepo/actions/runs/$RunId/artifacts/$($artifact.id)"
-                }
-            }
-        }
-    }
-
     function Get-SectionRange {
         param([string[]] $Lines, [string] $ImageKey)
         $header = [regex]::Escape($ImageKey) + ':\s*(?:#.*)?$'
@@ -221,8 +206,6 @@ function New-FxciConfigPullRequest {
 
         if ($AzureRunId) {
             $windowsRun = Get-WorkflowRun -RunId $AzureRunId -Platform Azure
-            $windowsArtifactLinks = @{}
-            foreach ($artifact in (Get-RunArtifactLink -RunId $AzureRunId)) { $windowsArtifactLinks[$artifact.name] = $artifact.url }
             $null = New-Item -ItemType Directory -Path (Join-Path $tempRoot 'azure-artifacts') -Force -WhatIf:$false
             $null = Invoke-CheckedCommand 'gh' @(
                 'run', 'download', $AzureRunId, '--repo', $workerImagesRepo,
@@ -258,16 +241,13 @@ function New-FxciConfigPullRequest {
                 if (-not $deploymentMatch.Success) { throw "No valid DeploymentId in $($file.FullName)." }
                 $deploymentIdFull = $deploymentMatch.Groups[1].Value.ToLowerInvariant()
                 $deploymentId = $deploymentIdFull.Substring(0, 7)
-                $artifactName = "release-notes-$config"
-                if (-not $windowsArtifactLinks.ContainsKey($artifactName)) {
-                    throw "No SBOM artifact '$artifactName' for Windows image '$config' in run $AzureRunId."
-                }
                 Assert-ImageJobSucceeded -Run $windowsRun -JobName "Build $config" -WorkflowJobName 'Azure Windows Production'
                 $mapping = $windowsImages[$config]
                 $updates.Add([pscustomobject]@{
                     platform = 'Windows'; config = $config; image = $mapping.image
                     provider = $mapping.provider; version = $version; deploymentId = $deploymentId
-                    deploymentIdFull = $deploymentIdFull; sbomUrl = $windowsArtifactLinks[$artifactName]
+                    deploymentIdFull = $deploymentIdFull
+                    sbomUrl = "https://github.com/$workerImagesRepo/blob/main/sboms/$($file.Name)"
                 })
             }
             $missing = @($windowsImages.Keys | Where-Object { -not $found.ContainsKey($_) })
@@ -278,8 +258,6 @@ function New-FxciConfigPullRequest {
 
         if ($GcpRunId) {
             $gcpRun = Get-WorkflowRun -RunId $GcpRunId -Platform GCP
-            $gcpArtifactLinks = @{}
-            foreach ($artifact in (Get-RunArtifactLink -RunId $GcpRunId)) { $gcpArtifactLinks[$artifact.name] = $artifact.url }
             $null = New-Item -ItemType Directory -Path (Join-Path $tempRoot 'gcp-artifacts') -Force -WhatIf:$false
             $null = Invoke-CheckedCommand 'gh' @(
                 'run', 'download', $GcpRunId, '--repo', $workerImagesRepo,
@@ -300,10 +278,6 @@ function New-FxciConfigPullRequest {
                     throw "Missing production image name or GCP project in $($file.FullName)."
                 }
                 $imageName = $imageMatch.Groups[1].Value
-                $artifactName = $file.Directory.Name
-                if (-not $gcpArtifactLinks.ContainsKey($artifactName)) {
-                    throw "No SBOM artifact '$artifactName' for GCP image '$imageName' in run $GcpRunId."
-                }
                 $mapping = @($gcpImages | Where-Object { $imageName -match $_.pattern })
                 if ($mapping.Count -ne 1) { throw "No unique fxci-config mapping for GCP image '$imageName'." }
                 $mapping = $mapping[0]
@@ -319,7 +293,7 @@ function New-FxciConfigPullRequest {
                 $updates.Add([pscustomobject]@{
                     platform = 'Linux'; config = $config; image = $mapping.image
                     provider = $mapping.provider; reference = "projects/$($mapping.project)/global/images/$imageName"
-                    sbomUrl = $gcpArtifactLinks[$artifactName]
+                    sbomUrl = "https://github.com/$workerImagesRepo/blob/main/sboms/$($file.Name)"
                 })
             }
             $expected = @($gcpImages | ForEach-Object { "$($_.image)/$($_.provider)" })

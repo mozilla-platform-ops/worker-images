@@ -179,7 +179,7 @@ jobs:
           name: release-notes-production-${{ matrix.config }}
           path: ${{ steps.create-production-sbom.outputs.production_sbom }}
           overwrite: true
-          retention-days: 1
+          retention-days: 90
           if-no-files-found: error
 
   sbom:
