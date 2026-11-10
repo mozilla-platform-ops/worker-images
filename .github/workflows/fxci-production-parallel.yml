@@ -13,6 +13,10 @@ on:
           - linux
         default: all
         required: true
+      tracking_issue_url:
+        description: Optional Bugzilla or Jira link for the fxci-config PR
+        type: string
+        required: false
 
 permissions:
   actions: read
@@ -61,3 +65,54 @@ jobs:
     with:
       build_date: ${{ needs.set-build-date.outputs.build_date }}
     secrets: inherit
+
+  create-fxci-config-pr:
+    name: Create fxci-config PR
+    needs: [check-access, set-build-date, windows, linux]
+    if: >-
+      ${{
+        !cancelled() &&
+        needs.check-access.result == 'success' &&
+        needs.set-build-date.result == 'success' &&
+        (
+          (inputs.platform == 'all' && needs.windows.result == 'success' && needs.linux.result == 'success') ||
+          (inputs.platform == 'windows' && needs.windows.result == 'success') ||
+          (inputs.platform == 'linux' && needs.linux.result == 'success')
+        )
+      }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547
+        id: fxci-config-token
+        with:
+          app-id: ${{ secrets.PULL_REQUESTOR_APP_ID }}
+          private-key: ${{ secrets.PULL_REQUESTOR_KEY }}
+          owner: mozilla-releng
+          repositories: fxci-config
+
+      - name: Create production deployment PR
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FXCI_CONFIG_GITHUB_TOKEN: ${{ steps.fxci-config-token.outputs.token }}
+          DEPLOY_PLATFORM: ${{ inputs.platform }}
+          DEPLOY_RUN_ID: ${{ github.run_id }}
+          TRACKING_ISSUE_URL: ${{ inputs.tracking_issue_url }}
+        run: |
+          Import-Module ./bin/WorkerImages/WorkerImages.psm1 -Force
+          $parameters = @{}
+          if ($env:DEPLOY_PLATFORM -in @('all', 'windows')) {
+            $parameters.AzureRunId = $env:DEPLOY_RUN_ID
+          }
+          if ($env:DEPLOY_PLATFORM -in @('all', 'linux')) {
+            $parameters.GcpRunId = $env:DEPLOY_RUN_ID
+          }
+          if (-not [string]::IsNullOrWhiteSpace($env:TRACKING_ISSUE_URL)) {
+            $parameters.RelatedIssueUrl = $env:TRACKING_ISSUE_URL
+          }
+          New-FxciConfigPullRequest @parameters

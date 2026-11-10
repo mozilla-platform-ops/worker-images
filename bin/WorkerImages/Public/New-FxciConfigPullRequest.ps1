@@ -7,9 +7,6 @@ function New-FxciConfigPullRequest {
         [ValidatePattern('^\d+$')]
         [string] $GcpRunId,
 
-        [ValidatePattern('^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$')]
-        [string] $FxciConfigRepo = 'mozilla-releng/fxci-config',
-
         [ValidatePattern('^https://\S+$')]
         [string] $RelatedIssueUrl
     )
@@ -22,6 +19,8 @@ function New-FxciConfigPullRequest {
     }
 
     $workerImagesRepo = 'mozilla-platform-ops/worker-images'
+    $fxciConfigRepo = 'mozilla-releng/fxci-config'
+    $fxciConfigToken = $env:FXCI_CONFIG_GITHUB_TOKEN
     $roninPuppetRepo = 'mozilla-platform-ops/ronin_puppet'
     $windowsPuppetFilePattern = '(?i)^(data/os/windows\.yaml|data/roles/[^/]*win[^/]*\.ya?ml|modules/win[^/]+/.*|modules/roles_profiles/manifests/roles/[^/]*win[^/]*\.pp|modules/roles_profiles/manifests/profiles/(chocolatey|disable_services|git)\.pp|test/integration/windows/.*|test/windows/.*|test/test_[^/]*windows[^/]*|test/test_windows[^/]*|\.kitchen/provision_windows\.ps1)$'
     $windowsImages = @{
@@ -43,12 +42,22 @@ function New-FxciConfigPullRequest {
     )
 
     function Invoke-CheckedCommand {
-        param([string] $FilePath, [string[]] $Arguments)
-        $output = & $FilePath @Arguments 2>&1
-        if ($LASTEXITCODE -ne 0) {
-            throw "$FilePath $($Arguments -join ' ') failed with exit code $LASTEXITCODE`n$($output -join "`n")"
+        param([string] $FilePath, [string[]] $Arguments, [string] $GitHubToken)
+        $previousGhToken = $env:GH_TOKEN
+        try {
+            if ($GitHubToken) { $env:GH_TOKEN = $GitHubToken }
+            $output = & $FilePath @Arguments 2>&1
+            if ($LASTEXITCODE -ne 0) {
+                throw "$FilePath $($Arguments -join ' ') failed with exit code $LASTEXITCODE`n$($output -join "`n")"
+            }
+            return ($output | ForEach-Object { [string] $_ }) -join "`n"
+        } finally {
+            if ($null -eq $previousGhToken) {
+                Remove-Item Env:GH_TOKEN -ErrorAction SilentlyContinue
+            } else {
+                $env:GH_TOKEN = $previousGhToken
+            }
         }
-        return ($output | ForEach-Object { [string] $_ }) -join "`n"
     }
 
     function Get-WorkflowRun {
@@ -333,7 +342,7 @@ function New-FxciConfigPullRequest {
         $existing = Invoke-CheckedCommand 'gh' @(
             'pr', 'list', '--repo', $fxciConfigRepo, '--state', 'all', '--head', $branch,
             '--json', 'number,url,state,headRefName'
-        ) | ConvertFrom-Json
+        ) -GitHubToken $fxciConfigToken | ConvertFrom-Json
         $existingPr = @($existing | Where-Object { $_.headRefName -eq $branch }) | Select-Object -First 1
         if ($existingPr -and $existingPr.state -ne 'OPEN') {
             Write-Verbose "A deployment PR for this timestamp already exists ($($existingPr.state)): $($existingPr.url)"
@@ -343,7 +352,7 @@ function New-FxciConfigPullRequest {
         $fxciRemote = "https://github.com/$fxciConfigRepo.git"
         $null = Invoke-CheckedCommand 'git' @(
             '-c', 'credential.helper=!gh auth git-credential', 'clone', '--branch', 'main', $fxciRemote, $fxciPath
-        )
+        ) -GitHubToken $fxciConfigToken
         $null = Invoke-CheckedCommand 'git' @('-C', $fxciPath, 'remote', 'set-url', 'origin', $fxciRemote)
         $null = Invoke-CheckedCommand 'git' @('-C', $fxciPath, 'config', '--local', 'credential.helper', '!gh auth git-credential')
         $null = Invoke-CheckedCommand 'git' @('-C', $fxciPath, 'checkout', '--detach', 'origin/main')
@@ -475,7 +484,7 @@ function New-FxciConfigPullRequest {
                 $null = Invoke-CheckedCommand 'gh' @(
                     'pr', 'edit', [string]$existingPr.number, '--repo', $fxciConfigRepo,
                     '--title', $title, '--body-file', $bodyPath
-                )
+                ) -GitHubToken $fxciConfigToken
                 Write-Verbose "Updated deployment PR: $($existingPr.url)"
                 return $existingPr.url
             }
@@ -484,11 +493,11 @@ function New-FxciConfigPullRequest {
             $null = Invoke-CheckedCommand 'git' @('-C', $fxciPath, 'add', '--', 'worker-images.yml')
             $commitMessage = $title
             $null = Invoke-CheckedCommand 'git' @('-C', $fxciPath, '-c', 'user.name=worker-images image deployment', '-c', 'user.email=worker-images@users.noreply.github.com', 'commit', '-m', $commitMessage)
-            $null = Invoke-CheckedCommand 'git' @('-C', $fxciPath, 'push', '--set-upstream', 'origin', $branch)
+            $null = Invoke-CheckedCommand 'git' @('-C', $fxciPath, 'push', '--set-upstream', 'origin', $branch) -GitHubToken $fxciConfigToken
             $url = Invoke-CheckedCommand 'gh' @(
                 'pr', 'create', '--repo', $fxciConfigRepo, '--base', 'main', '--head', $branch,
                 '--title', $title, '--body-file', $bodyPath
-            )
+            ) -GitHubToken $fxciConfigToken
             Write-Verbose "Created deployment PR: $url"
             return $url
         }

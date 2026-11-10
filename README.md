@@ -197,29 +197,29 @@ The short version for Firefox CI production rollouts:
    The workflow passes one UTC date to both providers: Azure formats gallery
    versions as `yyyy.MM.dd`; GCP uses `yyyy-MM-dd` in image names.
 4. Verify the published images, release notes, and integration results.
-5. Open an `fxci-config` PR that points worker pools at the new versions or
-   GCP image paths. `New-FxciConfigPullRequest` downloads the production run
-   artifacts and creates this PR from their exact image versions and names:
+5. After all selected builds and promotions succeed, the unified workflow opens
+   an `fxci-config` PR with the exact image references. Set the optional
+   `tracking_issue_url` input to add a Bugzilla or Jira link. The PR includes image
+   tables, Windows-specific `ronin_puppet` commits, per-image SBOM links, and build
+   provenance. It updates Windows 10, Windows 11 25H2, Server 2022, and Ubuntu
+   production entries; it leaves Server 2025 and alpha entries unchanged.
+
+   For older, separate production runs, use the helper manually:
 
    ```powershell
    Import-Module ./bin/WorkerImages/WorkerImages.psm1
    New-FxciConfigPullRequest -AzureRunId <run-id> -GcpRunId <run-id>
-   # Optional: target a private test copy instead of mozilla-releng/fxci-config
-   New-FxciConfigPullRequest -AzureRunId <run-id> -GcpRunId <run-id> `
-     -FxciConfigRepo jwmossmoz/fxci-config-deploy-test
    ```
 
-   Pass either run ID to deploy one platform. For a combined run from the unified
-   workflow, pass the same run ID to both parameters. The PR title and branch use
-   the latest run's UTC completion timestamp. The PR body uses image tables, lists
-   Windows-specific `ronin_puppet` commits since the current deployment, links
-   each image's SBOM, and records the build runs and source commits. Pass
-   `-RelatedIssueUrl <https-url>` to add a Bugzilla
-   or Jira tracking link. Use `-WhatIf -Verbose` to preview the diff.
-   In CI, `GH_TOKEN` must be able to push branches and create PRs in
-   `mozilla-releng/fxci-config`. The script updates Windows 10, Windows 11 25H2,
-   Server 2022, and Ubuntu 24.04 production entries; it leaves Server 2025 and
-   alpha entries unchanged.
+   Pass one run ID for a single platform. For a combined unified run, pass the
+   same ID to both parameters. `-WhatIf -Verbose` previews the change. The helper
+   always targets `mozilla-releng/fxci-config`.
+
+   The workflow needs the `PULL_REQUESTOR_APP_ID` and `PULL_REQUESTOR_KEY`
+   repository secrets. Install that GitHub App on `mozilla-releng/fxci-config`
+   with Contents and Pull requests write access. The workflow uses a short-lived
+   app token to create the PR and the worker-images `GITHUB_TOKEN` to read run
+   artifacts.
 6. Trigger `/taskcluster integration` on that PR.
 7. After merge, watch fresh worker-manager events and pool health to confirm
    new workers boot the expected image.
