@@ -61,7 +61,7 @@ function New-FxciConfigPullRequest {
         param([string] $RunId, [ValidateSet('Azure', 'GCP')][string] $Platform)
         $json = Invoke-CheckedCommand 'gh' @(
             'run', 'view', $RunId, '--repo', $workerImagesRepo,
-            '--json', 'databaseId,workflowName,status,conclusion,jobs,url,updatedAt,headSha'
+            '--json', 'databaseId,workflowName,status,conclusion,jobs,url,headSha'
         )
         $run = $json | ConvertFrom-Json
         $expectedWorkflows = if ($Platform -eq 'Azure') {
@@ -237,6 +237,7 @@ function New-FxciConfigPullRequest {
                 }
                 $version = $versionMatch.Groups[2].Value
                 $null = [DateTime]::ParseExact($version, 'yyyy.MM.dd', [Globalization.CultureInfo]::InvariantCulture)
+                $buildDate = $version.Replace('.', '-')
                 $deploymentMatch = [regex]::Match($text, '(?m)^-\s+DeploymentId:\s*([a-fA-F0-9]{7,40})\s*$')
                 if (-not $deploymentMatch.Success) { throw "No valid DeploymentId in $($file.FullName)." }
                 $deploymentIdFull = $deploymentMatch.Groups[1].Value.ToLowerInvariant()
@@ -245,8 +246,8 @@ function New-FxciConfigPullRequest {
                 $mapping = $windowsImages[$config]
                 $updates.Add([pscustomobject]@{
                     platform = 'Windows'; config = $config; image = $mapping.image
-                    provider = $mapping.provider; version = $version; deploymentId = $deploymentId
-                    deploymentIdFull = $deploymentIdFull
+                    provider = $mapping.provider; version = $version; buildDate = $buildDate
+                    deploymentId = $deploymentId; deploymentIdFull = $deploymentIdFull
                     sbomUrl = "https://github.com/$workerImagesRepo/blob/main/sboms/$($file.Name)"
                 })
             }
@@ -292,7 +293,8 @@ function New-FxciConfigPullRequest {
                 $null = [DateTime]::ParseExact($date, 'yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture)
                 $updates.Add([pscustomobject]@{
                     platform = 'Linux'; config = $config; image = $mapping.image
-                    provider = $mapping.provider; reference = "projects/$($mapping.project)/global/images/$imageName"
+                    provider = $mapping.provider; buildDate = $date
+                    reference = "projects/$($mapping.project)/global/images/$imageName"
                     sbomUrl = "https://github.com/$workerImagesRepo/blob/main/sboms/$($file.Name)"
                 })
             }
@@ -303,24 +305,21 @@ function New-FxciConfigPullRequest {
             }
         }
 
-        # ConvertFrom-Json already parses the Z timestamp as UTC; reparsing it as text can treat it as local time.
-        $runTimes = @()
-        if ($windowsRun) { $runTimes += ([DateTime]$windowsRun.updatedAt).ToUniversalTime() }
-        if ($gcpRun) { $runTimes += ([DateTime]$gcpRun.updatedAt).ToUniversalTime() }
-        $latestRunTime = $runTimes | Sort-Object | Select-Object -Last 1
-        $deploymentDate = $latestRunTime.ToString('yyyy.MM.dd', [Globalization.CultureInfo]::InvariantCulture)
-        $branchTimestamp = $latestRunTime.ToString("yyyyMMdd-HHmmss'z'", [Globalization.CultureInfo]::InvariantCulture)
+        $imageBuildDates = @($updates | ForEach-Object { $_.buildDate } | Sort-Object -Unique)
+        if ($imageBuildDates.Count -eq 0) { throw 'No image build date was found for deployment PR.' }
+        $deploymentDate = $imageBuildDates[-1].Replace('-', '.')
+        $branchBuildDate = ($imageBuildDates | ForEach-Object { $_ -replace '-', '' }) -join '-'
         $branchPlatforms = @()
         if ($AzureRunId) { $branchPlatforms += 'windows' }
         if ($GcpRunId) { $branchPlatforms += 'linux' }
-        $branch = "deploy-fxci-images-$($branchPlatforms -join '-')-$branchTimestamp"
+        $branch = "deploy-fxci-images-$($branchPlatforms -join '-')-$branchBuildDate"
         $existing = Invoke-CheckedCommand 'gh' @(
             'pr', 'list', '--repo', $fxciConfigRepo, '--state', 'all', '--head', $branch,
             '--json', 'number,url,state,headRefName'
         ) -GitHubToken $fxciConfigToken | ConvertFrom-Json
         $existingPr = @($existing | Where-Object { $_.headRefName -eq $branch }) | Select-Object -First 1
         if ($existingPr -and $existingPr.state -ne 'OPEN') {
-            Write-Verbose "A deployment PR for this timestamp already exists ($($existingPr.state)): $($existingPr.url)"
+            Write-Verbose "A deployment PR for this build date already exists ($($existingPr.state)): $($existingPr.url)"
             return $existingPr.url
         }
 

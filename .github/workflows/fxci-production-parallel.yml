@@ -16,7 +16,7 @@ on:
       create_fxci_config_pr:
         description: Open an fxci-config PR after production succeeds
         type: boolean
-        default: true
+        default: false
         required: true
 
 permissions:
