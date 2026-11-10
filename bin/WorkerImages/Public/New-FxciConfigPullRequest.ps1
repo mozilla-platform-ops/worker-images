@@ -355,7 +355,7 @@ function New-FxciConfigPullRequest {
 
         $platforms = @()
         if ($AzureRunId) { $platforms += 'Windows' }
-        if ($GcpRunId) { $platforms += 'Ubuntu 24.04' }
+        if ($GcpRunId) { $platforms += 'Ubuntu' }
         $title = "chore(images): deploy production images - $deploymentDate"
 
         $windowsUpdates = @($updates | Where-Object { $_.platform -eq 'Windows' })
