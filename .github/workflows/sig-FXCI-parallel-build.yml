@@ -31,7 +31,12 @@ jobs:
         shell: pwsh
         env:
           BUILD_DATE: ${{ inputs.build_date }}
-        run: ./ci/get-azure-production-parallel-matrix.ps1
+        run: |
+          Import-Module ./bin/WorkerImages/WorkerImages.psm1 -Force
+          $matrix = Get-AzureProductionParallelMatrix -BuildDate $env:BUILD_DATE
+          "build_date=$($matrix.BuildDate)" >> $env:GITHUB_OUTPUT
+          "matrix=$($matrix.Matrix)" >> $env:GITHUB_OUTPUT
+          "os_integration_matrix=$($matrix.OsIntegrationMatrix)" >> $env:GITHUB_OUTPUT
 
   check-access:
     name: "Verify User Access"
@@ -40,7 +45,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Load Authorized Users and Check Access
         shell: pwsh
-        run: ./ci/check-authorized-user.ps1
+        run: |
+          Import-Module ./bin/WorkerImages/WorkerImages.psm1 -Force
+          if (-not (Test-WorkerImagesUserAuthorization)) {
+            throw 'The triggering user is not authorized by .github/relops.json.'
+          }
 
   packer:
     needs: [check-access, prepare-matrix]

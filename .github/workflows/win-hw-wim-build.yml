@@ -52,7 +52,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Load Authorized Users and Check Access
         shell: pwsh
-        run: ./ci/check-authorized-user.ps1
+        run: |
+          Import-Module ./bin/WorkerImages/WorkerImages.psm1 -Force
+          if (-not (Test-WorkerImagesUserAuthorization)) {
+            throw 'The triggering user is not authorized by .github/relops.json.'
+          }
 
       - name: Resolve pipeline revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

@@ -64,7 +64,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Load Authorized Users and Check Access
         shell: pwsh
-        run: ./ci/check-authorized-user.ps1
+        run: |
+          Import-Module ./bin/WorkerImages/WorkerImages.psm1 -Force
+          if (-not (Test-WorkerImagesUserAuthorization)) {
+            throw 'The triggering user is not authorized by .github/relops.json.'
+          }
 
   prodimage:
     needs: [check-access, prepare-matrix]
@@ -103,10 +107,13 @@ jobs:
           BUILD_DATE: ${{ needs.prepare-matrix.outputs.build_date }}
           PROJECT_ID: ${{ steps.set-gcp-vars.outputs.PROJECT }}
         run: |
+          Import-Module ./bin/WorkerImages/WorkerImages.psm1 -Force
           $ProdImageName = -join(('${{ steps.set-gcp-vars.outputs.IMAGENAME }}' -Replace "alpha"),$env:BUILD_DATE)
           $exists = gcloud compute images describe $ProdImageName
           if ($exists) {
-            ./ci/check-gcp-image-not-referenced.ps1 -Project $env:PROJECT_ID -ImageName $ProdImageName
+            if (Test-GCPImageReferencedInFxciConfig -Project $env:PROJECT_ID -ImageName $ProdImageName) {
+              throw "Refusing to delete projects/$env:PROJECT_ID/global/images/$ProdImageName: fxci-config/main references this image."
+            }
             gcloud compute images delete $ProdImageName --quiet
           }
           Write-Output "Creating image $ProdImageName"

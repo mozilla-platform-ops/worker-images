@@ -31,7 +31,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Check RelOps allowlist
         shell: pwsh
-        run: ./ci/check-authorized-user.ps1
+        run: |
+          Import-Module ./bin/WorkerImages/WorkerImages.psm1 -Force
+          if (-not (Test-WorkerImagesUserAuthorization)) {
+            throw 'The triggering user is not authorized by .github/relops.json.'
+          }
 
   set-build-date:
     name: Set Shared UTC Build Date
