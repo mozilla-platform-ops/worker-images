@@ -433,8 +433,53 @@ function New-FxciConfigPullRequest {
         $bodyPath = Join-Path $tempRoot 'pull-request.md'
         [IO.File]::WriteAllText($bodyPath, $body, [Text.UTF8Encoding]::new($false))
 
-        if ($existingPr) {
-            if ($PSCmdlet.ShouldProcess($existingPr.url, 'Update deployment pull request title and description')) {
+        $remoteBranchRef = "refs/remotes/origin/$branch"
+        $remoteBranch = Invoke-CheckedCommand 'git' @(
+            '-C', $fxciPath, 'ls-remote', '--heads', 'origin', "refs/heads/$branch"
+        ) -GitHubToken $fxciConfigToken
+        $remoteBranchExists = -not [string]::IsNullOrWhiteSpace($remoteBranch)
+        if ($remoteBranchExists) {
+            $branchRefspec = "refs/heads/${branch}:$remoteBranchRef"
+            $null = Invoke-CheckedCommand 'git' @('-C', $fxciPath, 'fetch', 'origin', $branchRefspec) -GitHubToken $fxciConfigToken
+            $branchFiles = Invoke-CheckedCommand 'git' @(
+                '-C', $fxciPath, 'diff', '--name-only', "origin/main...$remoteBranchRef"
+            )
+            $unexpectedFiles = @($branchFiles -split "\r?\n" | Where-Object { $_ -and $_ -ne 'worker-images.yml' })
+            if ($unexpectedFiles.Count -gt 0) {
+                throw "Deployment branch '$branch' contains unexpected files: $($unexpectedFiles -join ', ')."
+            }
+        }
+
+        $target = if ($existingPr) { $existingPr.url } else { "$fxciConfigRepo/$branch" }
+        $action = if ($existingPr) {
+            'Update deployment branch and pull request'
+        } elseif ($remoteBranchExists) {
+            'Open deployment pull request from existing branch'
+        } else {
+            'Commit, push, and open deployment pull request'
+        }
+        if ($PSCmdlet.ShouldProcess($target, $action)) {
+            if ($remoteBranchExists) {
+                $null = Invoke-CheckedCommand 'git' @('-C', $fxciPath, 'restore', '--', 'worker-images.yml')
+                $null = Invoke-CheckedCommand 'git' @('-C', $fxciPath, 'checkout', '-B', $branch, $remoteBranchRef)
+                [IO.File]::WriteAllText($workerImagesPath, $content, [Text.UTF8Encoding]::new($false))
+                $branchDiff = Invoke-CheckedCommand 'git' @('-C', $fxciPath, 'diff', '--', 'worker-images.yml')
+                if (-not [string]::IsNullOrWhiteSpace($branchDiff)) {
+                    $null = Invoke-CheckedCommand 'git' @('-C', $fxciPath, 'add', '--', 'worker-images.yml')
+                    $null = Invoke-CheckedCommand 'git' @('-C', $fxciPath, '-c', 'user.name=worker-images image deployment', '-c', 'user.email=worker-images@users.noreply.github.com', 'commit', '-m', $title)
+                    $null = Invoke-CheckedCommand 'git' @('-C', $fxciPath, 'push', '--set-upstream', 'origin', $branch) -GitHubToken $fxciConfigToken
+                }
+            } else {
+                $null = Invoke-CheckedCommand 'git' @('-C', $fxciPath, 'checkout', '-b', $branch)
+                $null = Invoke-CheckedCommand 'git' @('-C', $fxciPath, 'add', '--', 'worker-images.yml')
+                $stagedFiles = Invoke-CheckedCommand 'git' @('-C', $fxciPath, 'diff', '--cached', '--name-only')
+                if (-not [string]::IsNullOrWhiteSpace($stagedFiles)) {
+                    $null = Invoke-CheckedCommand 'git' @('-C', $fxciPath, '-c', 'user.name=worker-images image deployment', '-c', 'user.email=worker-images@users.noreply.github.com', 'commit', '-m', $title)
+                }
+                $null = Invoke-CheckedCommand 'git' @('-C', $fxciPath, 'push', '--set-upstream', 'origin', $branch) -GitHubToken $fxciConfigToken
+            }
+
+            if ($existingPr) {
                 $null = Invoke-CheckedCommand 'gh' @(
                     'pr', 'edit', [string]$existingPr.number, '--repo', $fxciConfigRepo,
                     '--title', $title, '--body-file', $bodyPath
@@ -442,12 +487,7 @@ function New-FxciConfigPullRequest {
                 Write-Verbose "Updated deployment PR: $($existingPr.url)"
                 return $existingPr.url
             }
-        } elseif ($PSCmdlet.ShouldProcess("$fxciConfigRepo/$branch", 'Commit, push, and open deployment pull request')) {
-            $null = Invoke-CheckedCommand 'git' @('-C', $fxciPath, 'checkout', '-b', $branch)
-            $null = Invoke-CheckedCommand 'git' @('-C', $fxciPath, 'add', '--', 'worker-images.yml')
-            $commitMessage = $title
-            $null = Invoke-CheckedCommand 'git' @('-C', $fxciPath, '-c', 'user.name=worker-images image deployment', '-c', 'user.email=worker-images@users.noreply.github.com', 'commit', '-m', $commitMessage)
-            $null = Invoke-CheckedCommand 'git' @('-C', $fxciPath, 'push', '--set-upstream', 'origin', $branch) -GitHubToken $fxciConfigToken
+
             $url = Invoke-CheckedCommand 'gh' @(
                 'pr', 'create', '--repo', $fxciConfigRepo, '--base', 'main', '--head', $branch,
                 '--title', $title, '--body-file', $bodyPath
