@@ -13,7 +13,7 @@ vm:
     - android-components
     - deb13-toolchain-build
   disk_size: 60
-  taskcluster_version: 113.2.0
+  taskcluster_version: 116.0.0
   tc_arch: AMD64
   script_paths:
   - "scripts/linux/ubuntu-2404-headless-amd64-headless"
