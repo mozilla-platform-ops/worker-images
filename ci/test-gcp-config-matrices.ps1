@@ -41,6 +41,51 @@ function Assert-Items {
 Push-Location $repo
 try {
     Import-Module ./bin/WorkerImages/WorkerImages.psm1 -Force
+    $productionWorkflow = ConvertFrom-Yaml (Get-Content '.github/workflows/gcp-deploy-parallel.yml' -Raw)
+    $productionSteps = @($productionWorkflow.jobs.prodimage.steps)
+    $expectedProductionSteps = @(
+        'Build Alpha Source Image',
+        'Scan Alpha Source Image with Wiz',
+        'Run Alpha OS Integration Tests',
+        'Upload Alpha Release Notes Artifact',
+        'Build Production Image'
+    )
+    $previousStepIndex = -1
+    foreach ($expectedName in $expectedProductionSteps) {
+        $stepIndex = -1
+        for ($index = 0; $index -lt $productionSteps.Count; $index++) {
+            if ($productionSteps[$index].name -eq $expectedName) {
+                $stepIndex = $index
+                break
+            }
+        }
+        if ($stepIndex -le $previousStepIndex) {
+            throw "GCP production must run '$expectedName' in order before promotion."
+        }
+        $previousStepIndex = $stepIndex
+    }
+    $alphaBuildStep = $productionSteps | Where-Object name -eq 'Build Alpha Source Image'
+    if ($alphaBuildStep.run -notlike '*New-GCPWorkerImage*' -or $alphaBuildStep.run -notlike '*matrix.config*') {
+        throw 'GCP production must build the alpha image from its selected config.'
+    }
+    $tokens = $null
+    $parseErrors = $null
+    [void][System.Management.Automation.Language.Parser]::ParseInput($alphaBuildStep.run, [ref]$tokens, [ref]$parseErrors)
+    if ($parseErrors.Count -gt 0) { throw 'GCP production alpha build script has invalid PowerShell syntax.' }
+
+    $productionBuildStep = $productionSteps | Where-Object name -eq 'Build Production Image'
+    if (-not $productionBuildStep.run.Contains('--source-image ${{ steps.set-gcp-vars.outputs.IMAGENAME }}')) {
+        throw 'GCP production must promote the alpha source image.'
+    }
+    $productionScript = [regex]::Replace($productionBuildStep.run, '\$\{\{.*?\}\}', 'placeholder')
+    $tokens = $null
+    $parseErrors = $null
+    [void][System.Management.Automation.Language.Parser]::ParseInput($productionScript, [ref]$tokens, [ref]$parseErrors)
+    if ($parseErrors.Count -gt 0) { throw 'GCP production promotion script has invalid PowerShell syntax.' }
+    if ($productionWorkflow.jobs.sbom.with.artifact_pattern -ne 'release-notes-*') {
+        throw 'GCP production must persist both alpha and production SBOM records.'
+    }
+
     $availableConfigs = @(
         Get-ChildItem ./config -File -Filter '*.yaml' |
             ForEach-Object { $_.BaseName } |
