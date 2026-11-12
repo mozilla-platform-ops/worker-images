@@ -213,7 +213,7 @@ function New-FxciConfigPullRequest {
             )
             $files = @(
                 Get-ChildItem -Path (Join-Path $tempRoot 'azure-artifacts') -Filter '*.md' -File -Recurse |
-                    Where-Object { $_.Directory.Name -like 'release-notes-*' -and $_.Directory.Name -notlike 'release-notes-production-*' }
+                    Where-Object { $_.Directory.Name -like 'release-notes-*' -and $_.Directory.Name -notlike 'release-notes-production-*' -and $_.Directory.Name -notlike 'release-notes-alpha-*' }
             )
             $found = @{}
             foreach ($file in $files) {
