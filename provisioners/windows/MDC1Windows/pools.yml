@@ -70,21 +70,14 @@ pools:
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    # nnuc drawer POC
+    # nuc drawer POC
     - nuc13-151
     - nuc13-152
     - nuc13-153
     - nuc13-154
-    # No KVM - 2026-08-31. Cannot be re-imaged or inspected remotely until console
-    # access is fixed. Unreachable on TCP/22 and not recovered with the rest of the
-    # batch. Tracked in RELOPS-2539.
     - nuc13-155
     - nuc13-156
     - nuc13-157
-    # nuc13-158: never successfully validated. It was reachable but with an empty
-    # bootstrap_stage before this re-image, and produced no Speedometer results in any
-    # of the three 2026-08-17 runs (32073991787, 32074035219, 32074056736) while all
-    # 22 of its pool peers scored. Under investigation. Tracked in RELOPS-2514.
     - nuc13-158
     - nuc13-159
     - nuc13-160
