@@ -64,6 +64,7 @@ jobs:
     uses: ./.github/workflows/gcp-deploy-parallel.yml
     with:
       build_date: ${{ needs.set-build-date.outputs.build_date }}
+      run_os_integration: ${{ !inputs.create_fxci_config_pr }}
     secrets: inherit
 
   create-fxci-config-pr:

@@ -42,6 +42,17 @@ Push-Location $repo
 try {
     Import-Module ./bin/WorkerImages/WorkerImages.psm1 -Force
     $productionWorkflow = ConvertFrom-Yaml (Get-Content '.github/workflows/gcp-deploy-parallel.yml' -Raw)
+    $dispatchOsIntegration = $productionWorkflow.on.workflow_dispatch.inputs.run_os_integration
+    $callOsIntegration = $productionWorkflow.on.workflow_call.inputs.run_os_integration
+    if ($dispatchOsIntegration.type -ne 'boolean' -or $dispatchOsIntegration.default -ne $true -or
+        $callOsIntegration.type -ne 'boolean' -or $callOsIntegration.default -ne $true) {
+        throw 'Standalone GCP production runs must keep OS integration enabled by default.'
+    }
+    $parentWorkflow = ConvertFrom-Yaml (Get-Content '.github/workflows/fxci-production-parallel.yml' -Raw)
+    if (-not $parentWorkflow.jobs.linux.with.run_os_integration.Contains('!inputs.create_fxci_config_pr')) {
+        throw 'FXCI Production Parallel Images must delegate OS integration only when it opens an fxci-config PR.'
+    }
+
     $productionSteps = @($productionWorkflow.jobs.prodimage.steps)
     $expectedProductionSteps = @(
         'Build Alpha Source Image',
@@ -65,6 +76,10 @@ try {
         $previousStepIndex = $stepIndex
     }
     $alphaBuildStep = $productionSteps | Where-Object name -eq 'Build Alpha Source Image'
+    $osIntegrationStep = $productionSteps | Where-Object name -eq 'Run Alpha OS Integration Tests'
+    if ($osIntegrationStep.if -notlike '*inputs.run_os_integration*' -or $osIntegrationStep.if -notlike '*trusted-*') {
+        throw 'GCP production OS integration must be configurable and limited to untrusted images.'
+    }
     if ($alphaBuildStep.run -notlike '*New-GCPWorkerImage*' -or $alphaBuildStep.run -notlike '*matrix.config*') {
         throw 'GCP production must build the alpha image from its selected config.'
     }
@@ -82,6 +97,10 @@ try {
     $parseErrors = $null
     [void][System.Management.Automation.Language.Parser]::ParseInput($productionScript, [ref]$tokens, [ref]$parseErrors)
     if ($parseErrors.Count -gt 0) { throw 'GCP production promotion script has invalid PowerShell syntax.' }
+    $uvSetupStep = $productionSteps | Where-Object name -eq 'Set up uv for alpha OS integration'
+    if ($uvSetupStep.if -notlike '*inputs.run_os_integration*') {
+        throw 'GCP production must skip OS integration setup when integration is disabled.'
+    }
     if ($productionWorkflow.jobs.sbom.with.artifact_pattern -ne 'release-notes-*') {
         throw 'GCP production must persist both alpha and production SBOM records.'
     }

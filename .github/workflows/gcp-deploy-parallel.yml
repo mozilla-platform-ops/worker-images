@@ -16,6 +16,10 @@ on:
           - trusted-gw-fxci-gcp-l3-2404-arm64-headless-alpha
         default: all
         required: true
+      run_os_integration:
+        type: boolean
+        description: Run OS integration tests for newly built untrusted images
+        default: true
   workflow_call:
     inputs:
       build_date:
@@ -26,6 +30,11 @@ on:
         description: Optional GCP production config; omit or use all for every image
         required: false
         type: string
+      run_os_integration:
+        description: Run OS integration tests for newly built untrusted images
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   id-token: write
@@ -145,11 +154,11 @@ jobs:
           client_secret: ${{ secrets.WIZ_CLIENT_SECRET }}
 
       - name: Set up uv for alpha OS integration
-        if: ${{ !startsWith(matrix.config, 'trusted-') }}
+        if: ${{ inputs.run_os_integration && !startsWith(matrix.config, 'trusted-') }}
         uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2
 
       - name: Run Alpha OS Integration Tests
-        if: ${{ !startsWith(matrix.config, 'trusted-') }}
+        if: ${{ inputs.run_os_integration && !startsWith(matrix.config, 'trusted-') }}
         env:
           IMAGE_NAME: ${{ steps.set-gcp-vars.outputs.IMAGENAME }}
           TASKCLUSTER_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
