@@ -22,6 +22,10 @@ jobs:
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      # Pull before download so notes another job already committed are
+      # overwritten in place instead of blocking the pull as untracked files.
+      - name: Pull latest main
+        run: git pull --rebase --autostash origin main
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           path: sboms
@@ -37,8 +41,6 @@ jobs:
             echo "No release notes were downloaded from successful packer jobs."
             exit 1
           fi
-      - name: Pull latest main
-        run: git pull --rebase --autostash origin main
       - name: Commit release notes to main
         uses: stefanzweifel/git-auto-commit-action@d0b01107b5db882071f96de5dd4b54961ea93f4c
         with:
