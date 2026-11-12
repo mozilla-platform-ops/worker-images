@@ -53,7 +53,6 @@ pools:
     nodes:
     - t-nuc12-002
     - t-nuc12-003
-  # Real workers moved to perf-debug for RELOPS-2541 investigation.
   - name: "win11-64-24h2-hw-relops1213"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
@@ -71,8 +70,24 @@ pools:
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    # Replace this placeholder with a real hostname before provisioning.
-    - nuc13-999
+    # nnuc drawer POC
+    - nuc13-151
+    - nuc13-152
+    - nuc13-153
+    - nuc13-154
+    # No KVM - 2026-08-31. Cannot be re-imaged or inspected remotely until console
+    # access is fixed. Unreachable on TCP/22 and not recovered with the rest of the
+    # batch. Tracked in RELOPS-2539.
+    - nuc13-155
+    - nuc13-156
+    - nuc13-157
+    # nuc13-158: never successfully validated. It was reachable but with an empty
+    # bootstrap_stage before this re-image, and produced no Speedometer results in any
+    # of the three 2026-08-17 runs (32073991787, 32074035219, 32074056736) while all
+    # 22 of its pool peers scored. Under investigation. Tracked in RELOPS-2514.
+    - nuc13-158
+    - nuc13-159
+    - nuc13-160
   - name: "win11-64-24h2-hw-perf-debug"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
@@ -87,11 +102,6 @@ pools:
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    # nuc13-158: never successfully validated. It was reachable but with an empty
-    # bootstrap_stage before this re-image, and produced no Speedometer results in any
-    # of the three 2026-08-17 runs (32073991787, 32074035219, 32074056736) while all
-    # 22 of its pool peers scored. Under investigation. Tracked in RELOPS-2514.
-    - nuc13-158
     # RELOPS-2541: holdouts moved from hw-relops1213 for investigation.
     # Under performing - moved out of win11-64-24h2-hw for investigation. Both have
     # swapped PSUs and passed the RELOPS-2514 validation, so they are not here for a
@@ -108,10 +118,6 @@ pools:
     # rest of the batch and manual recovery did not bring it back. Tracked in
     # RELOPS-2539.
     - nuc13-145
-    # No KVM - 2026-08-31. Cannot be re-imaged or inspected remotely until console
-    # access is fixed. Unreachable on TCP/22 and not recovered with the rest of the
-    # batch. Tracked in RELOPS-2539.
-    - nuc13-155
     # These seven left hw-alpha for relops1213 on 2026-09-09 after failing validation.
     # RELOPS-2541: move them here with the other five holdouts for investigation.
     # nuc13-037: unreachable on TCP/22 across the 2026-08-31 sweep and the follow-up
@@ -309,14 +315,6 @@ pools:
     - nuc13-147
     - nuc13-148
     - nuc13-149
-    - nuc13-151
-    - nuc13-152
-    - nuc13-153
-    - nuc13-154
-    - nuc13-156
-    - nuc13-157
-    - nuc13-159
-    - nuc13-160
 defaults:
   NV_domain: "mdc1.mozilla.com"
 Validate:
