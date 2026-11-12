@@ -1,9 +1,16 @@
-name: Image generation dev - GCP
-run-name: Image generation dev - GCP - ${{ inputs.config }} - ${{ inputs.branch }}
+name: Image generation dev
+run-name: Image generation dev - ${{ inputs.provider }} - ${{ inputs.config }} - ${{ inputs.branch }}
 
 on:
   workflow_dispatch:
     inputs:
+      provider:
+        description: Cloud provider for the development image build
+        required: true
+        type: choice
+        options:
+          - Azure
+          - GCP
       branch:
         description: worker-images branch to test
         required: true
@@ -37,22 +44,71 @@ jobs:
         env:
           DEV_BRANCH: ${{ inputs.branch }}
           DEV_CONFIG: ${{ inputs.config }}
+          DEV_PROVIDER: ${{ inputs.provider }}
         run: |
           Import-Module ./bin/WorkerImages
-          ./ci/prepare-image-dev.ps1 -Branch $env:DEV_BRANCH -Key $env:DEV_CONFIG -Provider GCP
+          ./ci/prepare-image-dev.ps1 -Branch $env:DEV_BRANCH -Key $env:DEV_CONFIG -Provider $env:DEV_PROVIDER
       - name: Check out selected commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ steps.source.outputs.revision }}
           path: source
           persist-credentials: false
+      - name: Azure login
+        if: inputs.provider == 'Azure'
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID_FXCI }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}
+          enable-AzPSSession: true
       - name: GCP login
+        if: inputs.provider == 'GCP'
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
         with:
           workload_identity_provider: projects/324168772199/locations/global/workloadIdentityPools/github-actions/providers/github-actions
           service_account: deploy-prod@taskcluster-imaging.iam.gserviceaccount.com
-      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db
-      - name: Build selected revision
+      - name: Set up Cloud SDK
+        if: inputs.provider == 'GCP'
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db
+      - name: Build selected revision - Azure
+        if: inputs.provider == 'Azure'
+        working-directory: source
+        shell: pwsh
+        env:
+          DEV_CONFIG: ${{ inputs.config }}
+          GH_TOKEN: ${{ github.token }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID_FXCI }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID_UNTRUSTED }}
+          AZURE_APPLICATION_ID: ${{ secrets.AZURE_APPLICATION_ID_FXCI }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          Import-Module ./bin/WorkerImages/WorkerImages.psm1
+          $vars = @{
+            Key = $env:DEV_CONFIG
+            github_token = $env:GH_TOKEN
+            Client_ID = $env:AZURE_CLIENT_ID
+            Tenant_ID = $env:AZURE_TENANT_ID
+            Subscription_ID = $env:AZURE_SUBSCRIPTION_ID
+            Application_ID = $env:AZURE_APPLICATION_ID
+            oidc_request_url = $env:ACTIONS_ID_TOKEN_REQUEST_URL
+            oidc_request_token = $env:ACTIONS_ID_TOKEN_REQUEST_TOKEN
+          }
+          for ($attempt = 1; $attempt -le 10; $attempt++) {
+            try {
+              New-AzSharedWorkerImage @vars
+              if ($LASTEXITCODE -ne 0) { throw "Packer exited with $LASTEXITCODE" }
+              break
+            } catch {
+              if ($attempt -eq 10) { throw }
+              Write-Warning "Attempt $attempt failed: $_. Retrying in 30 seconds."
+              Start-Sleep -Seconds 30
+            }
+          }
+      - name: Build selected revision - GCP
+        if: inputs.provider == 'GCP'
         working-directory: source
         shell: pwsh
         env:

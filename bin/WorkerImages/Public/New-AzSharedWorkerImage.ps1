@@ -109,7 +109,20 @@ function New-AzSharedWorkerImage {
     $ENV:PKR_VAR_image_name = $Y.sharedimage["image_name"]
     $ENV:PKR_VAR_sharedimage_version = $Y.sharedimage["image_version"]
     if ([string]::IsNullOrWhiteSpace($ENV:PKR_VAR_sharedimage_version)) {
-        $ENV:PKR_VAR_sharedimage_version = (Get-Date).ToUniversalTime().ToString('yyyy.MM.dd')
+        $BuildDate = $ENV:IMAGE_BUILD_DATE
+        if ([string]::IsNullOrWhiteSpace($BuildDate)) {
+            $ENV:PKR_VAR_sharedimage_version = (Get-Date).ToUniversalTime().ToString('yyyy.MM.dd')
+        } else {
+            $ParsedBuildDate = [DateTime]::ParseExact(
+                $BuildDate,
+                'yyyy-MM-dd',
+                [Globalization.CultureInfo]::InvariantCulture
+            )
+            $ENV:PKR_VAR_sharedimage_version = $ParsedBuildDate.ToString(
+                'yyyy.MM.dd',
+                [Globalization.CultureInfo]::InvariantCulture
+            )
+        }
     }
     $ENV:PKR_VAR_puppet_version = $Y.vm["puppet_version"]
     $ENV:PKR_VAR_git_version = $Y.vm["git_version"]
@@ -161,7 +174,7 @@ function New-AzSharedWorkerImage {
         }
     }
 
-    Write-Host "Building $($ENV:PKR_VAR_managed_image_name) in $($ENV:PKR_VAR_temp_resource_group_name)"
+    Write-Host "Building Shared Image Gallery image $($ENV:PKR_VAR_gallery_name)/$($ENV:PKR_VAR_image_name)/$($ENV:PKR_VAR_sharedimage_version) in $($ENV:PKR_VAR_temp_resource_group_name)"
     ## Set the github token for packer to use to install plugin from github
     $ENV:PACKER_GITHUB_API_TOKEN = $github_token
     if ($key -match "Trusted") {

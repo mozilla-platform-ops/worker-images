@@ -58,20 +58,18 @@ make CI boot a new image are managed in `mozilla-releng/fxci-config`.
 
 ## Common Build Workflows
 
-Builds are normally run with GitHub Actions workflow dispatch. The workflows
-check the actor against `.github/relsre.json` or `.github/tceng.json` before
-they build.
+Builds are normally run with GitHub Actions workflow dispatch. Each workflow
+checks the actor against `.github/relops.json` and any additional workflow
+allowlists before it builds.
 
 | Workflow | File | Use |
 | --- | --- | --- |
-| `FXCI - Azure Prod Parallel Images` | `sig-FXCI-parallel-build.yml` | Full Windows production build. Builds untrusted production configs and trusted Azure configs in one matrix. |
-| `FXCI - Azure Alpha Parallel Images` | `sig-FXCI-nontrusted-parallel-build-alpha.yml` | Windows alpha builds from `images.alpha` in `windows_production_defaults.yaml`. |
-| `FXCI - Azure` | `sig-nontrusted.yml` | One-off untrusted Windows Azure build. |
-| `FXCI - Azure - Trusted` | `sig-trusted.yml` | One-off trusted Windows Azure build. Do not use this in addition to the prod parallel workflow for a full rollout. |
-| `FXCI - GCP Alpha Parallel Images` | `gcp-fxci-parallel-alpha.yml` | Builds all Firefox CI Ubuntu alpha images in GCP. |
-| `FXCI - GCP Prod Parallel Images` | `gcp-deploy-parallel.yml` | Promotes all Firefox CI Ubuntu alpha images into date-stamped production GCP images. |
-| `FXCI - GCP` | `gcp-fxci.yml` | One-off Firefox CI Ubuntu alpha image build. |
-| `FXCI - GCP Production` | `gcp-deploy.yml` | One-off Firefox CI Ubuntu production promotion. |
+| `FXCI - Production Parallel Images` | `fxci-production-parallel.yml` | RelOps-only entry point for Windows, Linux, or both. A single UTC build date is shared across selected platforms. |
+| `FXCI - Azure Prod Parallel Images` | `fxci-azure-production.yml` | Full Windows production build. Builds untrusted production configs and trusted Azure configs in one matrix. |
+| `FXCI - Azure Alpha Parallel Images` | `fxci-azure-alpha.yml` | Windows alpha builds from `images.alpha` in `windows_production_defaults.yaml`. |
+| `FXCI - Azure Image Build` | `sig-azure.yml` | One-off trusted or untrusted Windows Azure build. Optional OS integration runs for untrusted images; use the parallel workflow for a full rollout. |
+| `FXCI - GCP Alpha Images` | `gcp-fxci-parallel-alpha.yml` | Builds one or all Firefox CI Ubuntu alpha images; scans successful untrusted builds and runs integration for all-mode or an opted-in single image. |
+| `FXCI - GCP Prod Parallel Images` | `gcp-deploy-parallel.yml` | Promotes all or one selected Firefox CI Ubuntu alpha image into a date-stamped production GCP image. |
 | `OS Integration Tests - FXCI` | `os-integration.yml` | Triggers Taskcluster integration tests against a built image. |
 | TC Engineering workflows | `nonsig-tceng-azure.yml`, `gcp-tceng.yml`, `aws-tceng.yml` | Builds images owned by Taskcluster Engineering. |
 
@@ -111,8 +109,10 @@ gw-fxci-gcp-l3-2404-amd64-headless-googlecompute-2026-06-23
 ```
 
 Level-1 images live in the `taskcluster-imaging` project. Trusted level-3
-images live in `fxci-production-level3-workers`. Production rollouts update
-the matching image paths in `fxci-config`.
+images live in `fxci-production-level3-workers`. Production image names use the
+shared UTC deployment date in `yyyy-MM-dd` format. Before replacing an existing
+same-day image, the workflow checks `fxci-config/main` and stops if it references
+the image. Production rollouts update the matching image paths in `fxci-config`.
 
 Set `vm.preloadCaches: true` to preload the Gecko Git seed. Set
 `vm.preloadDockerImages` to a list of Gecko Docker image names to preload for
@@ -133,15 +133,14 @@ All five Linux alpha configs enable `preloadCaches`. Direct Packer builds also
 need `-var 'preloadCacheManifest=/path/to/inputs.json'` with
 `preloadCaches=true`.
 
-## Development image builds (RelSRE only)
+## Development image builds (RelOps only)
 
-Run **Image generation dev - Azure** (`image-dev-azure.yml`) or
-**Image generation dev - GCP** (`image-dev-gcp.yml`) from `main`. Enter the
-worker-images **branch** to test and a
+Run **Image generation dev** (`image-dev.yml`) from `main`. Select the cloud
+**provider**, enter the worker-images **branch** to test, and provide a
 non-trusted root-level alpha **config** name without `.yaml`, for example
 `win11-64-25h2-alpha` or `gw-fxci-gcp-l1-2404-headless-alpha`.
 
-The workflow checks the actor and rerun actor against `.github/relsre.json`
+The workflow checks the actor and rerun actor against `.github/relops.json`
 from `main`, resolves the branch to one commit, validates its config using
 trusted code, and checks out that commit for the entire build. The selected
 revision supplies the helpers, config/defaults, templates, scripts, and tests.
@@ -190,11 +189,38 @@ The short version for Firefox CI production rollouts:
 2. Bump the image config in this repo. For Windows, update the default
    `deploymentId` if the ronin_puppet pin changed. Gallery versions are set
    automatically from the UTC build date.
-3. Run the appropriate parallel build workflow.
+3. Run `FXCI - Production Parallel Images` and select Windows, Linux, or both.
+   The workflow passes one UTC date to both providers: Azure formats gallery
+   versions as `yyyy.MM.dd`; GCP uses `yyyy-MM-dd` in image names.
 4. Verify the published images, release notes, and integration results.
-5. Open an `fxci-config` PR that points worker pools at the new versions or
-   GCP image paths. Read each Windows version from the new
-   `sboms/<config>-<version>.md` file.
+5. After all selected builds and promotions succeed, the unified workflow opens
+   an `fxci-config` PR only when `create_fxci_config_pr` is `true` (default: `false`).
+   Repeated runs with the same platform selection and image build date reuse the
+   same PR. The option skips only the PR step; builds, release notes, and integration
+   jobs still run. The PR includes image tables, Windows-specific `ronin_puppet`
+   commits, per-image SBOM links, and build provenance. It updates Windows 10,
+   Windows 11 25H2, Server 2022, and Ubuntu production entries; it leaves Server
+   2025 and alpha entries unchanged.
+
+   For older, separate production runs, use the helper manually:
+
+   ```powershell
+   Import-Module ./bin/WorkerImages/WorkerImages.psm1
+   New-FxciConfigPullRequest -AzureRunId <run-id> -GcpRunId <run-id>
+   ```
+
+   Pass one run ID for a single platform. For a combined unified run, pass the
+   same ID to both parameters. `-WhatIf -Verbose` previews the change. The helper
+   always targets `mozilla-releng/fxci-config`.
+
+   Production run artifacts are retained for 90 days, so manual PR regeneration
+   must happen within that window. PR SBOM links point to durable copies in `sboms/`.
+
+   The workflow needs the `PULL_REQUESTOR_APP_ID` and `PULL_REQUESTOR_KEY`
+   repository secrets. Install that GitHub App on `mozilla-releng/fxci-config`
+   with Contents and Pull requests write access. The workflow uses a short-lived
+   app token to create the PR and the worker-images `GITHUB_TOKEN` to read run
+   artifacts.
 6. Trigger `/taskcluster integration` on that PR.
 7. After merge, watch fresh worker-manager events and pool health to confirm
    new workers boot the expected image.

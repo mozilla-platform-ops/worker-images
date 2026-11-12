@@ -38,13 +38,15 @@ function packer {
 }
 
 foreach ($case in @(
-    @('win11-64-25h2-alpha', ''),
-    @('trusted-win2025-64-24h2', ''),
-    @('win11-64-25h2-alpha', 'init'),
-    @('win11-64-25h2-alpha', 'build')
+    @('win11-64-25h2-alpha', '', ''),
+    @('trusted-win2025-64-24h2', '', ''),
+    @('trusted-win2025-64-24h2', '', '2026-07-05'),
+    @('win11-64-25h2-alpha', 'init', ''),
+    @('win11-64-25h2-alpha', 'build', '')
 )) {
     $check.calls = @()
     $check.fail = $case[1]
+    $env:IMAGE_BUILD_DATE = $case[2]
     $env:PKR_VAR_upload_directory = 'previous-value'
     $failure = $null
     $before = (Get-Date).ToUniversalTime().ToString('yyyy.MM.dd')
@@ -58,6 +60,10 @@ foreach ($case in @(
     } elseif ($failure) { throw $failure }
     if ($case[0] -like '*alpha*') {
         if ($env:PKR_VAR_sharedimage_version -ne '1.0.0') { throw 'Alpha image version changed.' }
+    } elseif ($case[2]) {
+        if ($env:PKR_VAR_sharedimage_version -ne '2026.07.05') {
+            throw "Expected the supplied build date, got $env:PKR_VAR_sharedimage_version"
+        }
     } elseif ($env:PKR_VAR_sharedimage_version -notin @($before, (Get-Date).ToUniversalTime().ToString('yyyy.MM.dd'))) {
         throw "Expected a UTC build-date gallery version, got $env:PKR_VAR_sharedimage_version"
     }

@@ -1,0 +1,115 @@
+name: FXCI - Production Parallel Images
+run-name: FXCI Production - ${{ inputs.platform }} - ${{ github.sha }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Production image platform to deploy
+        type: choice
+        options:
+          - all
+          - windows
+          - linux
+        default: all
+        required: true
+      create_fxci_config_pr:
+        description: Open an fxci-config PR after production succeeds
+        type: boolean
+        default: false
+        required: true
+
+permissions:
+  actions: read
+  contents: write
+  id-token: write
+
+jobs:
+  check-access:
+    name: Verify RelOps Access
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Check RelOps allowlist
+        uses: ./.github/actions/check-workerimages-user-authorization
+
+  set-build-date:
+    name: Set Shared UTC Build Date
+    needs: check-access
+    runs-on: ubuntu-latest
+    outputs:
+      build_date: ${{ steps.date.outputs.build_date }}
+    steps:
+      - id: date
+        name: Resolve UTC date
+        shell: pwsh
+        run: |
+          $buildDate = [DateTime]::UtcNow.ToString('yyyy-MM-dd')
+          "build_date=$buildDate" >> $env:GITHUB_OUTPUT
+          Write-Host "Shared production date: $buildDate"
+
+  windows:
+    if: ${{ inputs.platform == 'all' || inputs.platform == 'windows' }}
+    name: Azure Windows Production
+    needs: set-build-date
+    uses: ./.github/workflows/fxci-azure-production.yml
+    with:
+      build_date: ${{ needs.set-build-date.outputs.build_date }}
+    secrets: inherit
+
+  linux:
+    if: ${{ inputs.platform == 'all' || inputs.platform == 'linux' }}
+    name: GCP Linux Production
+    needs: set-build-date
+    uses: ./.github/workflows/gcp-deploy-parallel.yml
+    with:
+      build_date: ${{ needs.set-build-date.outputs.build_date }}
+    secrets: inherit
+
+  create-fxci-config-pr:
+    name: Create fxci-config PR
+    needs: [check-access, set-build-date, windows, linux]
+    if: >-
+      ${{
+        !cancelled() &&
+        inputs.create_fxci_config_pr &&
+        needs.check-access.result == 'success' &&
+        needs.set-build-date.result == 'success' &&
+        (
+          (inputs.platform == 'all' && needs.windows.result == 'success' && needs.linux.result == 'success') ||
+          (inputs.platform == 'windows' && needs.windows.result == 'success') ||
+          (inputs.platform == 'linux' && needs.linux.result == 'success')
+        )
+      }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547
+        id: fxci-config-token
+        with:
+          app-id: ${{ secrets.PULL_REQUESTOR_APP_ID }}
+          private-key: ${{ secrets.PULL_REQUESTOR_KEY }}
+          owner: mozilla-releng
+          repositories: fxci-config
+
+      - name: Create production deployment PR
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FXCI_CONFIG_GITHUB_TOKEN: ${{ steps.fxci-config-token.outputs.token }}
+          DEPLOY_PLATFORM: ${{ inputs.platform }}
+          DEPLOY_RUN_ID: ${{ github.run_id }}
+        run: |
+          Import-Module ./bin/WorkerImages/WorkerImages.psm1 -Force
+          $parameters = @{}
+          if ($env:DEPLOY_PLATFORM -in @('all', 'windows')) {
+            $parameters.AzureRunId = $env:DEPLOY_RUN_ID
+          }
+          if ($env:DEPLOY_PLATFORM -in @('all', 'linux')) {
+            $parameters.GcpRunId = $env:DEPLOY_RUN_ID
+          }
+          New-FxciConfigPullRequest @parameters

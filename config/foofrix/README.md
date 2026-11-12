@@ -38,7 +38,7 @@ The build application's federated credential must trust issuer
 and subject `repo:mozilla-platform-ops/worker-images:environment:foofrix-image-build`.
 Restrict the environment's deployment branches to reviewed branches and configure
 its approval rules before enabling builds. The workflow also checks the actor
-against `.github/foofrix.json` and `.github/relsre.json`.
+against `.github/foofrix.json` and `.github/relops.json`.
 
 The build identity needs Contributor on the existing `rg-foofrix-image-build`
 resource group and both galleries, Blob Data Reader on `artifacts`, and

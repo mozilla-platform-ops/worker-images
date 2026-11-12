@@ -41,7 +41,7 @@ function New-GCPWorkerImage {
         Write-Host "tceng image name: $imageName"
         $ENV:PKR_VAR_image_name = $imageName
     } elseif ($Key -notmatch "alpha") {
-        $suffix     = Get-Date -Format "yyyy-MM-dd"
+        $suffix     = [DateTime]::UtcNow.ToString("yyyy-MM-dd")
         $imageName  = -join ($YAML.image["image_name"], "-", $suffix)
         Write-Host "image name: $imageName"
         $ENV:PKR_VAR_image_name = $imageName

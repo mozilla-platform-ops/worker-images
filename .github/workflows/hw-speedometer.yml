@@ -85,8 +85,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Load Authorized Users and Check Access
-        shell: pwsh
-        run: ./ci/check-authorized-user.ps1
+        uses: ./.github/actions/check-workerimages-user-authorization
 
   hw-speedometer:
     name: "Trigger HW Speedometer Runs"

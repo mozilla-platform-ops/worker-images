@@ -1,0 +1,24 @@
+name: Check Worker Images user authorization
+description: Validate the triggering actor against the repository allowlists.
+inputs:
+  additional_users_file:
+    description: Optional JSON file with additional authorized usernames.
+    required: false
+    default: ''
+runs:
+  using: composite
+  steps:
+    - name: Check authorized users
+      shell: pwsh
+      env:
+        ADDITIONAL_USERS_FILE: ${{ inputs.additional_users_file }}
+      run: |
+        Import-Module ./bin/WorkerImages/WorkerImages.psm1 -Force
+        if ([string]::IsNullOrWhiteSpace($env:ADDITIONAL_USERS_FILE)) {
+          $authorized = Test-WorkerImagesUserAuthorization
+        } else {
+          $authorized = Test-WorkerImagesUserAuthorization -AdditionalUsersFile $env:ADDITIONAL_USERS_FILE
+        }
+        if (-not $authorized) {
+          throw 'The triggering user is not authorized.'
+        }

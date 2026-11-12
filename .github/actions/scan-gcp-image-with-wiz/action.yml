@@ -1,0 +1,44 @@
+name: Scan GCP image with Wiz
+description: Scan a GCP image and report policy hits.
+inputs:
+  image_name:
+    description: GCP image name.
+    required: true
+  project_id:
+    description: GCP project that owns the image.
+    required: true
+  client_id:
+    description: Wiz client ID.
+    required: true
+  client_secret:
+    description: Wiz client secret.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Download Wiz CLI
+      shell: bash
+      run: curl -o wizcli https://downloads.wiz.io/v1/wizcli/latest/wizcli-linux-amd64 && chmod +x wizcli
+
+    - name: Authenticate to Wiz
+      shell: bash
+      env:
+        WIZ_CLIENT_ID: ${{ inputs.client_id }}
+        WIZ_CLIENT_SECRET: ${{ inputs.client_secret }}
+      run: ./wizcli auth --id "$WIZ_CLIENT_ID" --secret "$WIZ_CLIENT_SECRET"
+
+    - name: Scan image
+      shell: bash
+      env:
+        IMAGE_NAME: ${{ inputs.image_name }}
+        PROJECT_ID: ${{ inputs.project_id }}
+        WIZ_CLIENT_ID: ${{ inputs.client_id }}
+        WIZ_CLIENT_SECRET: ${{ inputs.client_secret }}
+      run: |
+        ./wizcli vm-image scan \
+          --id "$IMAGE_NAME" \
+          --region us-west1 \
+          --subscriptionId "$PROJECT_ID" \
+          --secrets \
+          --show-vulnerability-details \
+          --policy-hits-only

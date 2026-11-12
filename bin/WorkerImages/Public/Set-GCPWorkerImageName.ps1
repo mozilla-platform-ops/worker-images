@@ -22,7 +22,7 @@ function Set-GCPWorkerImageName {
         }
     } else {
         if ($Key -notmatch "alpha") {
-            $suffix = Get-Date -Format "yyyy-MM-dd"
+            $suffix = [DateTime]::UtcNow.ToString("yyyy-MM-dd")
             $ImageName = -join ($YAML.image["image_name"], "-", $suffix)
         } else {
             $ImageName = $YAML.image["image_name"]

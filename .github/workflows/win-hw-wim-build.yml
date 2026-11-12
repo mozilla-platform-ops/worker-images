@@ -8,7 +8,7 @@ run-name: "Windows HW WIM build - ${{ inputs.image }} @ ${{ inputs.pipeline_ref 
 #
 # Prerequisites:
 #   - Reuses the existing FXCI (nontrusted) image-creation OIDC credentials — the same
-#     SP/secrets as sig-nontrusted.yml: AZURE_CLIENT_ID_FXCI, AZURE_SUBSCRIPTION_ID_UNTRUSTED,
+#     SP/secrets as sig-azure.yml: AZURE_CLIENT_ID_FXCI, AZURE_SUBSCRIPTION_ID_UNTRUSTED,
 #     AZURE_TENANT_ID. That SP must be able to create/delete VMs + run-command in
 #     rg-central-us-hardware-imaging and assign the Storage Blob Data role (Contributor +
 #     Role Based Access Control Administrator/User Access Administrator there).
@@ -51,8 +51,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Load Authorized Users and Check Access
-        shell: pwsh
-        run: ./ci/check-authorized-user.ps1
+        uses: ./.github/actions/check-workerimages-user-authorization
 
       - name: Resolve pipeline revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -102,7 +101,7 @@ jobs:
           BUILD_ID: ${{ inputs.build_id }}
         run: ./ci/kickoff-win-hw-wim-build.ps1
 
-      # Same release-notes handoff the Azure gallery images use (see sig-trusted.yml):
+      # Same release-notes handoff the Azure gallery images use (see sig-azure.yml):
       # the kickoff downloads the markdown the bake generated and exports its name as
       # sbom_file, mirroring how those workflows export sharedimageversion.
       - name: Upload Release Notes Artifact

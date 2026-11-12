@@ -29,18 +29,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - name: Load Authorized Users and Check Access
-        shell: pwsh
-        run: |
-          $TCEngUsers  = Get-Content .github/tceng.json  | ConvertFrom-Json
-          $RelsreUsers = Get-Content .github/relsre.json | ConvertFrom-Json
-          $AUTHORIZED_USERS = $TCEngUsers + $RelsreUsers
-
-          if ($AUTHORIZED_USERS -contains "${{ github.actor }}") {
-            Write-Host "User ${{ github.actor }} is authorized."
-          } else {
-            Write-Host "User ${{ github.actor }} is unauthorized."
-            exit 1
-          }
+        uses: ./.github/actions/check-workerimages-user-authorization
+        with:
+          additional_users_file: .github/tceng.json
 
   setproject:
     needs: check-access

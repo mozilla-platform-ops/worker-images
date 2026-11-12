@@ -3,6 +3,12 @@ run-name: Azure Production Parallel - ${{ github.sha }}
 
 on:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      build_date:
+        description: UTC production date shared across the deployment
+        required: false
+        type: string
 
 permissions:
   id-token: write
@@ -15,6 +21,7 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
       os_integration_matrix: ${{ steps.set-matrix.outputs.os_integration_matrix }}
+      build_date: ${{ steps.set-matrix.outputs.build_date }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -22,7 +29,14 @@ jobs:
       - id: set-matrix
         name: Extract Azure production configs
         shell: pwsh
-        run: ./ci/get-azure-production-parallel-matrix.ps1
+        env:
+          BUILD_DATE: ${{ inputs.build_date }}
+        run: |
+          Import-Module ./bin/WorkerImages/WorkerImages.psm1 -Force
+          $matrix = Get-AzureProductionParallelMatrix -BuildDate $env:BUILD_DATE
+          "build_date=$($matrix.BuildDate)" >> $env:GITHUB_OUTPUT
+          "matrix=$($matrix.Matrix)" >> $env:GITHUB_OUTPUT
+          "os_integration_matrix=$($matrix.OsIntegrationMatrix)" >> $env:GITHUB_OUTPUT
 
   check-access:
     name: "Verify User Access"
@@ -30,8 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Load Authorized Users and Check Access
-        shell: pwsh
-        run: ./ci/check-authorized-user.ps1
+        uses: ./.github/actions/check-workerimages-user-authorization
 
   packer:
     needs: [check-access, prepare-matrix]
@@ -45,30 +58,24 @@ jobs:
       matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - name: Azure Login
-        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906
+      - name: Build Azure image
+        uses: ./.github/actions/build-azure-worker-image
         with:
-          client-id: ${{ secrets[matrix.client_id_secret] }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets[matrix.subscription_id_secret] }}
-          enable-AzPSSession: true
-      - name: 'Run Packer'
-        shell: pwsh
-        env:
-          APPLICATION_ID: ${{ secrets[matrix.application_id_secret] }}
-          CLIENT_ID: ${{ secrets[matrix.client_id_secret] }}
-          CONFIG: ${{ matrix.config }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SUBSCRIPTION_ID: ${{ secrets[matrix.subscription_id_secret] }}
-          TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-        run: ./ci/build-azure-shared-worker-image.ps1
+          config: ${{ matrix.config }}
+          client_id: ${{ secrets[matrix.client_id_secret] }}
+          subscription_id: ${{ secrets[matrix.subscription_id_secret] }}
+          application_id: ${{ secrets[matrix.application_id_secret] }}
+          tenant_id: ${{ secrets.AZURE_TENANT_ID }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          build_date: ${{ needs.prepare-matrix.outputs.build_date }}
+          max_attempts: '1'
       - name: Upload Release Notes Artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: release-notes-${{ matrix.config }}
           path: ${{ matrix.config }}-${{ env.sharedimageversion }}.md
           overwrite: true
-          retention-days: 1
+          retention-days: 90
           if-no-files-found: error
 
   sbom:
