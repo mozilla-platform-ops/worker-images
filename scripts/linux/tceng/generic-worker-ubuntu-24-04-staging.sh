@@ -120,9 +120,12 @@ export GOPATH=~/go
 export GOROOT=/usr/local/go
 export PATH="${GOROOT}/bin:${GOPATH}/bin:${PATH}"
 export CGO_ENABLED=0
-git clone "${TASKCLUSTER_REPO}"
+retry git clone "${TASKCLUSTER_REPO}"
 cd taskcluster
 git checkout "${TASKCLUSTER_REF}"
+# Download the Go modules first, so that a failed download is retried, rather
+# than failing go build
+retry go mod download
 HEAD_REV="$(git rev-parse HEAD)"
 go build -tags multiuser -o "/usr/local/bin/generic-worker" -ldflags "-X main.revision=${HEAD_REV}" ./workers/generic-worker
 go build -o "/usr/local/bin/livelog" ./tools/livelog
