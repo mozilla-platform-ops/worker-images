@@ -46,6 +46,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
+      os_integration_matrix: ${{ steps.set-matrix.outputs.os_integration_matrix }}
+      has_os_integration: ${{ steps.set-matrix.outputs.has_os_integration }}
       build_date: ${{ steps.set-matrix.outputs.build_date }}
     steps:
       - name: Checkout repo
@@ -92,6 +94,13 @@ jobs:
           $matrix = @{ config = @($configs) } | ConvertTo-Json -Compress
           Write-Host "Generated matrix: $matrix"
           "matrix=$matrix" >> $env:GITHUB_OUTPUT
+
+          # Only untrusted configs have matching alpha worker pools.
+          $osIntConfigs = @($configs | Where-Object { $_ -notmatch '^trusted-' })
+          $osIntMatrix = @{ config = @($osIntConfigs) } | ConvertTo-Json -Compress
+          Write-Host "Generated os-integration matrix: $osIntMatrix"
+          "os_integration_matrix=$osIntMatrix" >> $env:GITHUB_OUTPUT
+          "has_os_integration=$(if ($osIntConfigs.Count -gt 0) { 'true' } else { 'false' })" >> $env:GITHUB_OUTPUT
 
   check-access:
     name: Verify User Access
@@ -152,19 +161,6 @@ jobs:
           project_id: ${{ steps.set-gcp-vars.outputs.PROJECT }}
           client_id: ${{ secrets.WIZ_CLIENT_ID }}
           client_secret: ${{ secrets.WIZ_CLIENT_SECRET }}
-
-      - name: Set up uv for alpha OS integration
-        if: ${{ inputs.run_os_integration && !startsWith(matrix.config, 'trusted-') }}
-        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2
-
-      - name: Run Alpha OS Integration Tests
-        if: ${{ inputs.run_os_integration && !startsWith(matrix.config, 'trusted-') }}
-        env:
-          IMAGE_NAME: ${{ steps.set-gcp-vars.outputs.IMAGENAME }}
-          TASKCLUSTER_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
-          TASKCLUSTER_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}
-          PYTHONUNBUFFERED: "1"
-        run: uv run ci/run-os-integration.py "$IMAGE_NAME"
 
       - name: Upload Alpha Release Notes Artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
@@ -243,3 +239,17 @@ jobs:
     with:
       artifact_pattern: release-notes-*
       commit_message: GCP Production Release Notes
+
+  os-integration:
+    needs: [prepare-matrix, sbom]
+    if: ${{ inputs.run_os_integration && needs.prepare-matrix.outputs.has_os_integration == 'true' }}
+    name: "OS Integration Tests - ${{ matrix.config }}"
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare-matrix.outputs.os_integration_matrix) }}
+    uses: ./.github/workflows/os-integration.yml
+    with:
+      config: ${{ matrix.config }}
+    secrets:
+      TASKCLUSTER_OS_INT_CLIENT_ID: ${{ secrets.TASKCLUSTER_OS_INT_CLIENT_ID }}
+      TASKCLUSTER_OS_INT_ACCESS_TOKEN: ${{ secrets.TASKCLUSTER_OS_INT_ACCESS_TOKEN }}
