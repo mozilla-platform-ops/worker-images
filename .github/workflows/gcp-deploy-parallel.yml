@@ -134,7 +134,7 @@ jobs:
           $exists = gcloud compute images describe $ProdImageName
           if ($exists) {
             if (Test-GCPImageReferencedInFxciConfig -Project $env:PROJECT_ID -ImageName $ProdImageName) {
-              throw "Refusing to delete projects/$env:PROJECT_ID/global/images/$ProdImageName: fxci-config/main references this image."
+              throw "Refusing to delete projects/$env:PROJECT_ID/global/images/${ProdImageName}: fxci-config/main references this image."
             }
             gcloud compute images delete $ProdImageName --quiet
           }
