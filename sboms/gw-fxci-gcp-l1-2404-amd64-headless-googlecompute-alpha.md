@@ -3,7 +3,7 @@
 ## Build provenance
 
 - Image name: gw-fxci-gcp-l1-2404-amd64-headless-googlecompute-alpha
-- Taskcluster version: 113.2.0
+- Taskcluster version: 116.0.0
 - Taskcluster ref: unknown
 - Architecture: AMD64
 - Source image family: ubuntu-2404-lts-amd64
@@ -20,10 +20,10 @@
 
 | Name | Version |
 | --- | --- |
-| generic-worker | generic-worker (multiuser engine) 113.2.0 [ revision: https://github.com/taskcluster/taskcluster/commits/efb71e91e3502152e6eb1a82bbf98c3d4d99f75e ] |
-| start-worker | start-worker 113.2.0 |
-| livelog | livelog 113.2.0 |
-| taskcluster-proxy | Taskcluster proxy 113.2.0 (git revision efb71e91e3502152e6eb1a82bbf98c3d4d99f75e) |
+| generic-worker | generic-worker (multiuser engine) 116.0.0 [ revision: https://github.com/taskcluster/taskcluster/commits/6eefed4737bf5d80472213277a9b1f42e972b9b9 ] |
+| start-worker | start-worker 116.0.0 |
+| livelog | livelog 116.0.0 |
+| taskcluster-proxy | Taskcluster proxy 116.0.0 (git revision 6eefed4737bf5d80472213277a9b1f42e972b9b9) |
 
 ## Python packages
 
@@ -163,7 +163,7 @@
 | conmon | 2.1.10+ds1-1build2 | amd64 |
 | console-setup | 1.226ubuntu1.1 | all |
 | console-setup-linux | 1.226ubuntu1.1 | all |
-| containerd.io | 2.4.2-3~ubuntu.24.04~noble | amd64 |
+| containerd.io | 2.4.2-4~ubuntu.24.04~noble | amd64 |
 | containernetworking-plugins | 1.1.1+ds1-3ubuntu0.24.04.3 | amd64 |
 | coreutils | 9.4-3ubuntu6.3 | amd64 |
 | cpio | 2.15+dfsg-1ubuntu2.1 | amd64 |
@@ -205,11 +205,11 @@
 | dmeventd | 2:1.02.185-3ubuntu3.2 | amd64 |
 | dmidecode | 3.5-3ubuntu0.2 | amd64 |
 | dmsetup | 2:1.02.185-3ubuntu3.2 | amd64 |
-| docker-buildx-plugin | 0.38.1-1~ubuntu.24.04~noble | amd64 |
+| docker-buildx-plugin | 0.39.0-1~ubuntu.24.04~noble | amd64 |
 | docker-ce | 5:29.5.3-1~ubuntu.24.04~noble | amd64 |
 | docker-ce-cli | 5:29.5.3-1~ubuntu.24.04~noble | amd64 |
 | docker-ce-rootless-extras | 5:29.9.3-1~ubuntu.24.04~noble | amd64 |
-| docker-compose-plugin | 5.7.0-1~ubuntu.24.04~noble | amd64 |
+| docker-compose-plugin | 5.7.1-1~ubuntu.24.04~noble | amd64 |
 | dosfstools | 4.2-1.1build1 | amd64 |
 | dpkg | 1.22.6ubuntu6.6 | amd64 |
 | dpkg-dev | 1.22.6ubuntu6.6 | all |
@@ -547,8 +547,8 @@
 | libnvidia-cfg1-580:amd64 | 580.178.04-0ubuntu0.24.04.1 | amd64 |
 | libnvidia-common-580 | 580.178.04-0ubuntu0.24.04.1 | all |
 | libnvidia-compute-580:amd64 | 580.178.04-0ubuntu0.24.04.1 | amd64 |
-| libnvidia-container-tools | 1.20.1-1 | amd64 |
-| libnvidia-container1:amd64 | 1.20.1-1 | amd64 |
+| libnvidia-container-tools | 1.20.2-1 | amd64 |
+| libnvidia-container1:amd64 | 1.20.2-1 | amd64 |
 | libnvidia-decode-580:amd64 | 580.178.04-0ubuntu0.24.04.1 | amd64 |
 | libnvidia-egl-wayland1:amd64 | 1:1.1.19-0ubuntu1 | amd64 |
 | libnvidia-encode-580:amd64 | 580.178.04-0ubuntu0.24.04.1 | amd64 |
@@ -574,7 +574,7 @@
 | libpci3:amd64 | 1:3.10.0-2build1 | amd64 |
 | libpciaccess0:amd64 | 0.17-3ubuntu0.24.04.3 | amd64 |
 | libpcre2-8-0:amd64 | 10.42-4ubuntu2.2 | amd64 |
-| libperl5.38t64:amd64 | 5.38.2-3.2ubuntu0.6 | amd64 |
+| libperl5.38t64:amd64 | 5.38.2-3.2ubuntu0.7 | amd64 |
 | libpipeline1:amd64 | 1.5.7-2 | amd64 |
 | libpixman-1-0:amd64 | 0.42.2-1build1 | amd64 |
 | libpkgconf3:amd64 | 1.8.1-2build1 | amd64 |
@@ -773,8 +773,8 @@
 | ntfs-3g | 1:2022.10.3-1.2ubuntu3.2 | amd64 |
 | numactl | 2.0.18-1ubuntu0.24.04.1 | amd64 |
 | nvidia-compute-utils-580 | 580.178.04-0ubuntu0.24.04.1 | amd64 |
-| nvidia-container-toolkit | 1.20.1-1 | amd64 |
-| nvidia-container-toolkit-base | 1.20.1-1 | amd64 |
+| nvidia-container-toolkit | 1.20.2-1 | amd64 |
+| nvidia-container-toolkit-base | 1.20.2-1 | amd64 |
 | nvidia-dkms-580 | 580.178.04-0ubuntu0.24.04.1 | amd64 |
 | nvidia-driver-570 | 570.211.01-0ubuntu1.24.04.1 | amd64 |
 | nvidia-driver-580 | 580.178.04-0ubuntu0.24.04.1 | amd64 |
@@ -806,9 +806,9 @@
 | patch | 2.7.6-7build3 | amd64 |
 | pci.ids | 0.0~2024.03.31-1ubuntu0.1 | all |
 | pciutils | 1:3.10.0-2build1 | amd64 |
-| perl | 5.38.2-3.2ubuntu0.6 | amd64 |
-| perl-base | 5.38.2-3.2ubuntu0.6 | amd64 |
-| perl-modules-5.38 | 5.38.2-3.2ubuntu0.6 | all |
+| perl | 5.38.2-3.2ubuntu0.7 | amd64 |
+| perl-base | 5.38.2-3.2ubuntu0.7 | amd64 |
+| perl-modules-5.38 | 5.38.2-3.2ubuntu0.7 | all |
 | pigz | 2.8-1 | amd64 |
 | pinentry-curses | 1.2.1-3ubuntu5 | amd64 |
 | pkexec | 124-2ubuntu1.24.04.4 | amd64 |
@@ -821,7 +821,7 @@
 | polkitd | 124-2ubuntu1.24.04.4 | amd64 |
 | pollinate | 4.33-3.1ubuntu1.3 | all |
 | powermgmt-base | 1.37ubuntu0.1 | all |
-| powershell | 7.6.9-1.deb | amd64 |
+| powershell | 7.7.0-1.deb | amd64 |
 | procps | 2:4.0.4-4ubuntu3.3 | amd64 |
 | psmisc | 23.7-1build1 | amd64 |
 | publicsuffix | 20231001.0357-0.1 | all |
@@ -890,7 +890,7 @@
 | python3-problem-report | 2.28.3-0ubuntu0.1 | all |
 | python3-psutil | 5.9.8-2build2 | amd64 |
 | python3-ptyprocess | 0.7.0-5 | all |
-| python3-pyasn1 | 0.4.8-4ubuntu0.3 | all |
+| python3-pyasn1 | 0.4.8-4ubuntu0.4 | all |
 | python3-pyasn1-modules | 0.2.8-1 | all |
 | python3-pygments | 2.17.2+dfsg-1 | all |
 | python3-pyparsing | 3.1.1-1 | all |

@@ -3,7 +3,7 @@
 ## Build provenance
 
 - Image name: gw-fxci-gcp-l3-2404-arm64-headless-googlecompute-alpha
-- Taskcluster version: 113.2.0
+- Taskcluster version: 116.0.0
 - Taskcluster ref: unknown
 - Architecture: ARM64
 - Source image family: ubuntu-2404-lts-arm64
@@ -20,10 +20,10 @@
 
 | Name | Version |
 | --- | --- |
-| generic-worker | generic-worker (multiuser engine) 113.2.0 [ revision: https://github.com/taskcluster/taskcluster/commits/efb71e91e3502152e6eb1a82bbf98c3d4d99f75e ] |
-| start-worker | start-worker 113.2.0 |
-| livelog | livelog 113.2.0 |
-| taskcluster-proxy | Taskcluster proxy 113.2.0 (git revision efb71e91e3502152e6eb1a82bbf98c3d4d99f75e) |
+| generic-worker | generic-worker (multiuser engine) 116.0.0 [ revision: https://github.com/taskcluster/taskcluster/commits/6eefed4737bf5d80472213277a9b1f42e972b9b9 ] |
+| start-worker | start-worker 116.0.0 |
+| livelog | livelog 116.0.0 |
+| taskcluster-proxy | Taskcluster proxy 116.0.0 (git revision 6eefed4737bf5d80472213277a9b1f42e972b9b9) |
 
 ## Python packages
 
@@ -48,7 +48,7 @@
 | cryptography | 41.0.7 |
 | dbus-python | 1.3.2 |
 | distro | 1.9.0 |
-| distro-info | 1.7+build1 |
+| distro-info | 1.7+ubuntu0.1 |
 | httplib2 | 0.20.4 |
 | hyperlink | 21.0.0 |
 | idna | 3.6 |
@@ -154,7 +154,7 @@
 | command-not-found | 23.04.0 | all |
 | console-setup | 1.226ubuntu1.1 | all |
 | console-setup-linux | 1.226ubuntu1.1 | all |
-| containerd.io | 2.4.2-3~ubuntu.24.04~noble | arm64 |
+| containerd.io | 2.4.2-4~ubuntu.24.04~noble | arm64 |
 | coreutils | 9.4-3ubuntu6.3 | arm64 |
 | cpio | 2.15+dfsg-1ubuntu2.1 | arm64 |
 | cpp | 4:13.2.0-7ubuntu1 | arm64 |
@@ -181,17 +181,17 @@
 | dictionaries-common | 1.29.7 | all |
 | diffutils | 1:3.10-1ubuntu0.1 | arm64 |
 | dirmngr | 2.4.4-2ubuntu17.6 | arm64 |
-| distro-info | 1.7build1 | arm64 |
+| distro-info | 1.7ubuntu0.1 | arm64 |
 | distro-info-data | 2026.10.12-0ubuntu0.24.04.1 | all |
 | dkms | 3.0.11-1ubuntu13 | all |
 | dmeventd | 2:1.02.185-3ubuntu3.2 | arm64 |
 | dmidecode | 3.5-3ubuntu0.2 | arm64 |
 | dmsetup | 2:1.02.185-3ubuntu3.2 | arm64 |
-| docker-buildx-plugin | 0.38.1-1~ubuntu.24.04~noble | arm64 |
+| docker-buildx-plugin | 0.39.0-1~ubuntu.24.04~noble | arm64 |
 | docker-ce | 5:29.5.3-1~ubuntu.24.04~noble | arm64 |
 | docker-ce-cli | 5:29.5.3-1~ubuntu.24.04~noble | arm64 |
 | docker-ce-rootless-extras | 5:29.9.3-1~ubuntu.24.04~noble | arm64 |
-| docker-compose-plugin | 5.7.0-1~ubuntu.24.04~noble | arm64 |
+| docker-compose-plugin | 5.7.1-1~ubuntu.24.04~noble | arm64 |
 | dosfstools | 4.2-1.1build1 | arm64 |
 | dpkg | 1.22.6ubuntu6.6 | arm64 |
 | dpkg-dev | 1.22.6ubuntu6.6 | all |
@@ -314,11 +314,11 @@
 | libbrotli1:arm64 | 1.1.0-2ubuntu0.1 | arm64 |
 | libbsd0:arm64 | 0.12.1-1build1.1 | arm64 |
 | libbz2-1.0:arm64 | 1.0.8-5.1ubuntu0.1 | arm64 |
-| libc-bin | 2.39-0ubuntu8.9 | arm64 |
-| libc-dev-bin | 2.39-0ubuntu8.9 | arm64 |
-| libc-devtools | 2.39-0ubuntu8.9 | arm64 |
-| libc6-dev:arm64 | 2.39-0ubuntu8.9 | arm64 |
-| libc6:arm64 | 2.39-0ubuntu8.9 | arm64 |
+| libc-bin | 2.39-0ubuntu8.12 | arm64 |
+| libc-dev-bin | 2.39-0ubuntu8.12 | arm64 |
+| libc-devtools | 2.39-0ubuntu8.12 | arm64 |
+| libc6-dev:arm64 | 2.39-0ubuntu8.12 | arm64 |
+| libc6:arm64 | 2.39-0ubuntu8.12 | arm64 |
 | libcap-ng0:arm64 | 0.8.4-2build2 | arm64 |
 | libcap2-bin | 1:2.66-5ubuntu2.4 | arm64 |
 | libcap2:arm64 | 1:2.66-5ubuntu2.4 | arm64 |
@@ -485,7 +485,7 @@
 | libpcap0.8t64:arm64 | 1.10.4-4.1ubuntu3.1 | arm64 |
 | libpci3:arm64 | 1:3.10.0-2build1 | arm64 |
 | libpcre2-8-0:arm64 | 10.42-4ubuntu2.2 | arm64 |
-| libperl5.38t64:arm64 | 5.38.2-3.2ubuntu0.6 | arm64 |
+| libperl5.38t64:arm64 | 5.38.2-3.2ubuntu0.7 | arm64 |
 | libpipeline1:arm64 | 1.5.7-2 | arm64 |
 | libplymouth5:arm64 | 24.004.60-1ubuntu7.2 | arm64 |
 | libpmem1:arm64 | 1.13.1-1.1ubuntu2 | arm64 |
@@ -594,7 +594,7 @@
 | linux-modules-extra-gcp | 6.17.0-1022.25 | arm64 |
 | linux-tools-7.0.0-1017-gcp | 7.0.0-1017.19~24.04.1 | arm64 |
 | linux-tools-common | 6.8.0-149.149 | all |
-| locales | 2.39-0ubuntu8.9 | all |
+| locales | 2.39-0ubuntu8.12 | all |
 | login | 1:4.13+dfsg1-4ubuntu3.2 | arm64 |
 | logrotate | 3.21.0-2build1 | arm64 |
 | logsave | 1.47.0-2.4~exp1ubuntu4.1 | arm64 |
@@ -651,9 +651,9 @@
 | patch | 2.7.6-7build3 | arm64 |
 | pci.ids | 0.0~2024.03.31-1ubuntu0.1 | all |
 | pciutils | 1:3.10.0-2build1 | arm64 |
-| perl | 5.38.2-3.2ubuntu0.6 | arm64 |
-| perl-base | 5.38.2-3.2ubuntu0.6 | arm64 |
-| perl-modules-5.38 | 5.38.2-3.2ubuntu0.6 | all |
+| perl | 5.38.2-3.2ubuntu0.7 | arm64 |
+| perl-base | 5.38.2-3.2ubuntu0.7 | arm64 |
+| perl-modules-5.38 | 5.38.2-3.2ubuntu0.7 | all |
 | pigz | 2.8-1 | arm64 |
 | pinentry-curses | 1.2.1-3ubuntu5 | arm64 |
 | plymouth | 24.004.60-1ubuntu7.2 | arm64 |
@@ -692,7 +692,7 @@
 | python3-debian | 0.1.49ubuntu2 | all |
 | python3-dev | 3.12.3-0ubuntu2.1 | arm64 |
 | python3-distro | 1.9.0-1 | all |
-| python3-distro-info | 1.7build1 | all |
+| python3-distro-info | 1.7ubuntu0.1 | all |
 | python3-distupgrade | 1:24.04.29 | all |
 | python3-gdbm:arm64 | 3.12.3-0ubuntu1 | arm64 |
 | python3-gi | 3.48.2-1 | arm64 |
@@ -729,7 +729,7 @@
 | python3-problem-report | 2.28.3-0ubuntu0.1 | all |
 | python3-psutil | 5.9.8-2build2 | arm64 |
 | python3-ptyprocess | 0.7.0-5 | all |
-| python3-pyasn1 | 0.4.8-4ubuntu0.3 | all |
+| python3-pyasn1 | 0.4.8-4ubuntu0.4 | all |
 | python3-pyasn1-modules | 0.2.8-1 | all |
 | python3-pygments | 2.17.2+dfsg-1 | all |
 | python3-pyparsing | 3.1.1-1 | all |
