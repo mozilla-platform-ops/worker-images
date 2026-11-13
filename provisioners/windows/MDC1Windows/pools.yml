@@ -91,8 +91,6 @@ pools:
     # KVM display fixed; benchmark alongside the drawer POC (RELOPS-2541).
     - nuc13-089
     # NUC drawer POC; moved from relops1213 for benchmarking.
-    - nuc13-151
-    - nuc13-152
     - nuc13-153
     - nuc13-154
     - nuc13-155
@@ -100,6 +98,7 @@ pools:
     - nuc13-157
     - nuc13-158
     - nuc13-159
+    # Expected offline.
     - nuc13-160
   - name: "win11-64-24h2-hw-alpha"
     puppet_version: "8.10.0"
@@ -274,6 +273,8 @@ pools:
     - nuc13-148
     - nuc13-149
     - nuc13-150
+    - nuc13-151
+    - nuc13-152
 defaults:
   NV_domain: "mdc1.mozilla.com"
 Validate:
