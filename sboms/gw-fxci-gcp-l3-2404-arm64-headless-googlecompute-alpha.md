@@ -48,7 +48,7 @@
 | cryptography | 41.0.7 |
 | dbus-python | 1.3.2 |
 | distro | 1.9.0 |
-| distro-info | 1.7+ubuntu0.1 |
+| distro-info | 1.7+build1 |
 | httplib2 | 0.20.4 |
 | hyperlink | 21.0.0 |
 | idna | 3.6 |
@@ -181,7 +181,7 @@
 | dictionaries-common | 1.29.7 | all |
 | diffutils | 1:3.10-1ubuntu0.1 | arm64 |
 | dirmngr | 2.4.4-2ubuntu17.6 | arm64 |
-| distro-info | 1.7ubuntu0.1 | arm64 |
+| distro-info | 1.7build1 | arm64 |
 | distro-info-data | 2026.10.12-0ubuntu0.24.04.1 | all |
 | dkms | 3.0.11-1ubuntu13 | all |
 | dmeventd | 2:1.02.185-3ubuntu3.2 | arm64 |
@@ -692,7 +692,7 @@
 | python3-debian | 0.1.49ubuntu2 | all |
 | python3-dev | 3.12.3-0ubuntu2.1 | arm64 |
 | python3-distro | 1.9.0-1 | all |
-| python3-distro-info | 1.7ubuntu0.1 | all |
+| python3-distro-info | 1.7build1 | all |
 | python3-distupgrade | 1:24.04.29 | all |
 | python3-gdbm:arm64 | 3.12.3-0ubuntu1 | arm64 |
 | python3-gi | 3.48.2-1 | arm64 |

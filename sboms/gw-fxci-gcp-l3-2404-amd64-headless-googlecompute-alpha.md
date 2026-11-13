@@ -316,11 +316,11 @@
 | libbrotli1:amd64 | 1.1.0-2ubuntu0.1 | amd64 |
 | libbsd0:amd64 | 0.12.1-1build1.1 | amd64 |
 | libbz2-1.0:amd64 | 1.0.8-5.1ubuntu0.1 | amd64 |
-| libc-bin | 2.39-0ubuntu8.9 | amd64 |
-| libc-dev-bin | 2.39-0ubuntu8.9 | amd64 |
-| libc-devtools | 2.39-0ubuntu8.9 | amd64 |
-| libc6-dev:amd64 | 2.39-0ubuntu8.9 | amd64 |
-| libc6:amd64 | 2.39-0ubuntu8.9 | amd64 |
+| libc-bin | 2.39-0ubuntu8.12 | amd64 |
+| libc-dev-bin | 2.39-0ubuntu8.12 | amd64 |
+| libc-devtools | 2.39-0ubuntu8.12 | amd64 |
+| libc6-dev:amd64 | 2.39-0ubuntu8.12 | amd64 |
+| libc6:amd64 | 2.39-0ubuntu8.12 | amd64 |
 | libcap-ng0:amd64 | 0.8.4-2build2 | amd64 |
 | libcap2-bin | 1:2.66-5ubuntu2.4 | amd64 |
 | libcap2:amd64 | 1:2.66-5ubuntu2.4 | amd64 |
@@ -600,7 +600,7 @@
 | linux-modules-extra-gcp | 6.17.0-1022.25 | amd64 |
 | linux-tools-7.0.0-1017-gcp | 7.0.0-1017.19~24.04.1 | amd64 |
 | linux-tools-common | 6.8.0-149.149 | all |
-| locales | 2.39-0ubuntu8.9 | all |
+| locales | 2.39-0ubuntu8.12 | all |
 | login | 1:4.13+dfsg1-4ubuntu3.2 | amd64 |
 | logrotate | 3.21.0-2build1 | amd64 |
 | logsave | 1.47.0-2.4~exp1ubuntu4.1 | amd64 |
@@ -783,7 +783,7 @@
 | sgml-base | 1.31 | all |
 | shared-mime-info | 2.4-4 | amd64 |
 | shim-signed | 1.58+15.8-0ubuntu1 | amd64 |
-| snapd | 2.77.1+ubuntu24.04 | amd64 |
+| snapd | 2.78+ubuntu24.04 | amd64 |
 | software-properties-common | 0.99.49.4 | all |
 | sosreport | 4.11.2-0ubuntu0~24.04.1 | amd64 |
 | squashfs-tools | 1:4.6.1-1build1 | amd64 |
