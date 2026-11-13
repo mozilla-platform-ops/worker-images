@@ -57,7 +57,8 @@ uv run ci/run-os-integration.py <image-name> --no-wait
   investigation.
 - Put reusable PowerShell behavior in `bin/WorkerImages/Public`; keep CI-only
   tests and orchestration in `ci/`.
-- Use `Test-WorkerImagesUserAuthorization` for RelOps workflow authorization.
+- Use `.github/actions/check-workerimages-user-authorization` (GitHub team
+  membership) for workflow authorization.
 - Do not edit generated SBOM files unless the task is specifically about
   release-note artifacts.
 - Keep image config changes scoped to the requested image family.

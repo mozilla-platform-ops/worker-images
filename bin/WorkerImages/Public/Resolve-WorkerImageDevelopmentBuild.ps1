@@ -36,9 +36,6 @@ function Resolve-WorkerImageDevelopmentBuild {
     $ErrorActionPreference = 'Stop'
     $PSNativeCommandUseErrorActionPreference = $true
 
-    if (-not (Test-WorkerImagesUserAuthorization)) {
-        throw 'Not authorized: development builds are restricted to RelOps.'
-    }
     if ($Key -notmatch '^[a-zA-Z0-9_-]+-alpha2?$' -or $Key -match 'trusted') {
         throw 'Not authorized: select a non-trusted root-level alpha image config.'
     }

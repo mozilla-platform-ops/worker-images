@@ -52,7 +52,9 @@ jobs:
       - name: Load Authorized Users and Check Access
         uses: ./.github/actions/check-workerimages-user-authorization
         with:
-          additional_users_file: .github/tceng.json
+          teams: relops,tceng
+          app_id: ${{ secrets.WORKER_IMAGES_TEAMS_APP_ID }}
+          private_key: ${{ secrets.WORKER_IMAGES_TEAMS_KEY }}
 
   packer:
     needs: check-access

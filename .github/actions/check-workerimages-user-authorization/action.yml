@@ -1,24 +1,39 @@
 name: Check Worker Images user authorization
-description: Validate the triggering actor against the repository allowlists.
+description: Require the actor and triggering actor to be active members of an allowed mozilla-platform-ops team.
 inputs:
-  additional_users_file:
-    description: Optional JSON file with additional authorized usernames.
+  teams:
+    description: Comma-separated allowed team slugs.
     required: false
-    default: ''
+    default: relops
+  app_id:
+    description: GitHub App ID with organization Members read permission.
+    required: true
+  private_key:
+    description: GitHub App private key.
+    required: true
 runs:
   using: composite
   steps:
-    - name: Check authorized users
-      shell: pwsh
+    - uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547
+      id: token
+      with:
+        app-id: ${{ inputs.app_id }}
+        private-key: ${{ inputs.private_key }}
+        owner: mozilla-platform-ops
+        permission-members: read
+    - name: Check team membership
+      shell: bash
       env:
-        ADDITIONAL_USERS_FILE: ${{ inputs.additional_users_file }}
+        GH_TOKEN: ${{ steps.token.outputs.token }}
+        TEAMS: ${{ inputs.teams }}
       run: |
-        Import-Module ./bin/WorkerImages/WorkerImages.psm1 -Force
-        if ([string]::IsNullOrWhiteSpace($env:ADDITIONAL_USERS_FILE)) {
-          $authorized = Test-WorkerImagesUserAuthorization
-        } else {
-          $authorized = Test-WorkerImagesUserAuthorization -AdditionalUsersFile $env:ADDITIONAL_USERS_FILE
-        }
-        if (-not $authorized) {
-          throw 'The triggering user is not authorized.'
-        }
+        # Any lookup failure counts as "not a member", so the check fails closed.
+        for user in "$GITHUB_ACTOR" "$GITHUB_TRIGGERING_ACTOR"; do
+          [ -n "$user" ] || continue
+          ok=
+          for team in ${TEAMS//,/ }; do
+            state=$(gh api "orgs/mozilla-platform-ops/teams/$team/memberships/$user" --jq .state 2>/dev/null) || continue
+            [ "$state" = active ] && ok=1 && break
+          done
+          [ -n "$ok" ] || { echo "::error::$user is not an active member of: $TEAMS"; exit 1; }
+        done

@@ -52,6 +52,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Load Authorized Users and Check Access
         uses: ./.github/actions/check-workerimages-user-authorization
+        with:
+          app_id: ${{ secrets.WORKER_IMAGES_TEAMS_APP_ID }}
+          private_key: ${{ secrets.WORKER_IMAGES_TEAMS_KEY }}
 
       - name: Resolve pipeline revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

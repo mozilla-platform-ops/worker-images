@@ -34,20 +34,11 @@ To modify shared infrastructure and workflows outside these directories, **a pul
 
 Access to the [TCEng image build workflow](https://github.com/mozilla-platform-ops/worker-images/blob/main/.github/workflows/nonsig-tceng-azure.yml) is **restricted by GitHub Actions**.
 
-Before executing the workflow, the following file is used to authorize users:
+At the start of each TCEng workflow, the actor (`github.actor`) must be an
+active member of the `mozilla-platform-ops/tceng` or `mozilla-platform-ops/relops`
+GitHub team. If not, the job fails early.
 
-- [`tceng.json`](https://github.com/mozilla-platform-ops/worker-images/blob/main/.github/tceng.json)
-  This file contains a list of GitHub usernames permitted to trigger TCEng image builds.
-
-### 🔎 How it works:
-
-At the beginning of the `nonsig-tceng-azure.yml` workflow:
-- The actor who triggers the workflow (`github.actor`) is checked against both:
-  - `.github/tceng.json`
-  - `.github/relops.json`
-- If their username is not present in either file, the job fails early with an "unauthorized" message.
-
-To add or remove access, submit a PR modifying `tceng.json`.
+To add or remove access, change the team membership in GitHub.
 
 ---
 
@@ -58,10 +49,6 @@ The following files and directories are shared infrastructure and require a **PR
 - **GitHub Actions Workflow**
   `.github/workflows/nonsig-tceng-azure.yml`
   Defines how TCEng images are built in CI using GitHub Actions.
-
-- **Access Control List**
-  `.github/tceng.json`
-  Defines which GitHub users are authorized to trigger the workflow.
 
 - **Image Build Script**
   [`New-AzWorkerImage.ps1`](https://github.com/mozilla-platform-ops/worker-images/blob/main/bin/WorkerImages/Public/New-AzWorkerImage.ps1)

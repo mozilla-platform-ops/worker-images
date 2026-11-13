@@ -32,6 +32,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Check RelOps allowlist
         uses: ./.github/actions/check-workerimages-user-authorization
+        with:
+          app_id: ${{ secrets.WORKER_IMAGES_TEAMS_APP_ID }}
+          private_key: ${{ secrets.WORKER_IMAGES_TEAMS_KEY }}
 
   set-build-date:
     name: Set Shared UTC Build Date

@@ -4,7 +4,7 @@ $repo = Split-Path $PSScriptRoot
 Import-Module "$repo/bin/WorkerImages"
 $root = Join-Path ([IO.Path]::GetTempPath()) ('image-dev-test-' + [guid]::NewGuid())
 $saved = @{}
-foreach ($name in @('GITHUB_ACTOR', 'GITHUB_TRIGGERING_ACTOR', 'GITHUB_OUTPUT')) { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
+foreach ($name in @('GITHUB_OUTPUT')) { $saved[$name] = [Environment]::GetEnvironmentVariable($name) }
 function Reject {
     param([scriptblock] $Action, [string] $Message)
     try { & $Action } catch {
@@ -23,25 +23,22 @@ function Commit {
     git commit -qm fixture
 }
 try {
-    $null = New-Item -ItemType Directory -Path "$root/origin/config", "$root/origin/.github" -Force
+    $null = New-Item -ItemType Directory -Path "$root/origin/config" -Force
     Push-Location "$root/origin"
     git init -q -b main
     git config user.name Test
     git config user.email test@example.invalid
-    '["relops-test"]' | Set-Content .github/relops.json
     Copy-Item "$repo/config/win11-64-25h2-alpha.yaml", "$repo/config/windows_production_defaults.yaml", "$repo/config/gw-fxci-gcp-l1-2404-headless-alpha.yaml" config
     Commit
     git checkout -q -b dev/test
     $gcpKey = 'gw-fxci-gcp-l1-2404-headless-alpha'
     Set-YamlValue "config/$gcpKey.yaml" image_name selected-branch-alpha
-    '["attacker"]' | Set-Content .github/relops.json
     Commit
     $pin = git rev-parse HEAD
     Pop-Location
     git clone -q --branch main "$root/origin" "$root/trusted"
     Push-Location "$root/trusted"
     $env:GITHUB_OUTPUT = "$root/outputs"
-    $env:GITHUB_ACTOR = 'relops-test'; $env:GITHUB_TRIGGERING_ACTOR = ''
     $prepare = "$repo/ci/prepare-image-dev.ps1"
     & $prepare -Branch dev/test -Key $gcpKey -Provider GCP
     $outputs = Get-Content $env:GITHUB_OUTPUT -Raw | ConvertFrom-StringData
@@ -51,11 +48,7 @@ try {
     & $prepare -Branch dev/test -Key win11-64-25h2-alpha -Provider Azure
     $outputs = Get-Content $env:GITHUB_OUTPUT -Raw | ConvertFrom-StringData
     if ($outputs.notes -notmatch '^win11-64-25h2-alpha-\d+\.\d+\.\d+\.md$') { throw 'Wrong Azure notes path.' }
-    $env:GITHUB_ACTOR = 'attacker'
-    Reject { & $prepare -Branch 'bad branch' -Key $gcpKey -Provider GCP } 'Not authorized'
-    $env:GITHUB_ACTOR = 'relops-test'; $env:GITHUB_TRIGGERING_ACTOR = 'attacker'
-    Reject { & $prepare -Branch dev/test -Key $gcpKey -Provider GCP } 'Not authorized'
-    $env:GITHUB_TRIGGERING_ACTOR = ''
+    Reject { & $prepare -Branch 'bad branch' -Key $gcpKey -Provider GCP } 'git'
     foreach ($key in @('../other-alpha', 'tceng/other-alpha', 'production', 'trusted-gcp-alpha')) {
         Reject { & $prepare -Branch dev/test -Key $key -Provider GCP } 'Not authorized'
     }
@@ -88,10 +81,11 @@ try {
         $job.permissions.contents -ne 'read' -or
         $steps[0].with.ref -ne 'main' -or
         $steps[0].with.path -ne 'trusted' -or
-        $steps[1].name -ne 'Authorize and pin development branch' -or
-        $steps[1].env.DEV_PROVIDER -ne '${{ inputs.provider }}' -or
-        $steps[1].run -notlike '*-Provider $env:DEV_PROVIDER*' -or
-        $steps[2].with.ref -ne '${{ steps.source.outputs.revision }}' -or
+        $steps[1].uses -ne './trusted/.github/actions/check-workerimages-user-authorization' -or
+        $steps[2].name -ne 'Authorize and pin development branch' -or
+        $steps[2].env.DEV_PROVIDER -ne '${{ inputs.provider }}' -or
+        $steps[2].run -notlike '*-Provider $env:DEV_PROVIDER*' -or
+        $steps[3].with.ref -ne '${{ steps.source.outputs.revision }}' -or
         $providerOptions -notcontains 'Azure' -or $providerOptions -notcontains 'GCP') {
         throw 'Workflow must authorize from main before checking out the pinned source with a read-only repository token.'
     }

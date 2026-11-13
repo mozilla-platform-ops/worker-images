@@ -59,8 +59,8 @@ make CI boot a new image are managed in `mozilla-releng/fxci-config`.
 ## Common Build Workflows
 
 Builds are normally run with GitHub Actions workflow dispatch. Each workflow
-checks the actor against `.github/relops.json` and any additional workflow
-allowlists before it builds.
+checks that the actor is an active member of the `relops` GitHub team (or the
+workflow's extra team, such as `tceng`) before it builds.
 
 | Workflow | File | Use |
 | --- | --- | --- |
@@ -140,7 +140,7 @@ Run **Image generation dev** (`image-dev.yml`) from `main`. Select the cloud
 non-trusted root-level alpha **config** name without `.yaml`, for example
 `win11-64-25h2-alpha` or `gw-fxci-gcp-l1-2404-headless-alpha`.
 
-The workflow checks the actor and rerun actor against `.github/relops.json`
+The workflow checks that the actor and rerun actor are in the `relops` team
 from `main`, resolves the branch to one commit, validates its config using
 trusted code, and checks out that commit for the entire build. The selected
 revision supplies the helpers, config/defaults, templates, scripts, and tests.

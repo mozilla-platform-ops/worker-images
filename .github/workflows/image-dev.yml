@@ -37,6 +37,11 @@ jobs:
           ref: main
           path: trusted
           persist-credentials: false
+      - name: Verify User Access
+        uses: ./trusted/.github/actions/check-workerimages-user-authorization
+        with:
+          app_id: ${{ secrets.WORKER_IMAGES_TEAMS_APP_ID }}
+          private_key: ${{ secrets.WORKER_IMAGES_TEAMS_KEY }}
       - name: Authorize and pin development branch
         id: source
         working-directory: trusted

@@ -37,6 +37,11 @@ on:
         required: true
       TASKCLUSTER_OS_INT_ACCESS_TOKEN:
         required: true
+      # Only read on workflow_dispatch; callers check access themselves.
+      WORKER_IMAGES_TEAMS_APP_ID:
+        required: false
+      WORKER_IMAGES_TEAMS_KEY:
+        required: false
 
 jobs:
   integration-tests:
@@ -49,6 +54,9 @@ jobs:
       - name: Verify User Access
         if: github.event_name == 'workflow_dispatch'
         uses: ./.github/actions/check-workerimages-user-authorization
+        with:
+          app_id: ${{ secrets.WORKER_IMAGES_TEAMS_APP_ID }}
+          private_key: ${{ secrets.WORKER_IMAGES_TEAMS_KEY }}
       - name: Resolve shared image name
         id: resolve-image
         shell: pwsh

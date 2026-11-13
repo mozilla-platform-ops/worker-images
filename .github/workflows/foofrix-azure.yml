@@ -27,7 +27,9 @@ jobs:
       - name: Verify FooFrix or RelOps access
         uses: ./.github/actions/check-workerimages-user-authorization
         with:
-          additional_users_file: .github/foofrix.json
+          teams: relops,foofrix
+          app_id: ${{ secrets.WORKER_IMAGES_TEAMS_APP_ID }}
+          private_key: ${{ secrets.WORKER_IMAGES_TEAMS_KEY }}
 
   build:
     needs: check-access
