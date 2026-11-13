@@ -48,7 +48,7 @@
 | cryptography | 41.0.7 |
 | dbus-python | 1.3.2 |
 | distro | 1.9.0 |
-| distro-info | 1.7+build1 |
+| distro-info | 1.7+ubuntu0.1 |
 | httplib2 | 0.20.4 |
 | hyperlink | 21.0.0 |
 | idna | 3.6 |
@@ -199,7 +199,7 @@
 | dictionaries-common | 1.29.7 | all |
 | diffutils | 1:3.10-1ubuntu0.1 | amd64 |
 | dirmngr | 2.4.4-2ubuntu17.6 | amd64 |
-| distro-info | 1.7build1 | amd64 |
+| distro-info | 1.7ubuntu0.1 | amd64 |
 | distro-info-data | 2026.10.12-0ubuntu0.24.04.1 | all |
 | dkms | 3.0.11-1ubuntu13 | all |
 | dmeventd | 2:1.02.185-3ubuntu3.2 | amd64 |
@@ -348,11 +348,11 @@
 | libbrotli1:amd64 | 1.1.0-2ubuntu0.1 | amd64 |
 | libbsd0:amd64 | 0.12.1-1build1.1 | amd64 |
 | libbz2-1.0:amd64 | 1.0.8-5.1ubuntu0.1 | amd64 |
-| libc-bin | 2.39-0ubuntu8.9 | amd64 |
-| libc-dev-bin | 2.39-0ubuntu8.9 | amd64 |
-| libc-devtools | 2.39-0ubuntu8.9 | amd64 |
-| libc6-dev:amd64 | 2.39-0ubuntu8.9 | amd64 |
-| libc6:amd64 | 2.39-0ubuntu8.9 | amd64 |
+| libc-bin | 2.39-0ubuntu8.12 | amd64 |
+| libc-dev-bin | 2.39-0ubuntu8.12 | amd64 |
+| libc-devtools | 2.39-0ubuntu8.12 | amd64 |
+| libc6-dev:amd64 | 2.39-0ubuntu8.12 | amd64 |
+| libc6:amd64 | 2.39-0ubuntu8.12 | amd64 |
 | libcairo-gobject2:amd64 | 1.18.0-3build1 | amd64 |
 | libcairo2:amd64 | 1.18.0-3build1 | amd64 |
 | libcap-ng0:amd64 | 0.8.4-2build2 | amd64 |
@@ -729,7 +729,7 @@
 | linux-modules-extra-gcp | 6.17.0-1022.25 | amd64 |
 | linux-tools-7.0.0-1017-gcp | 7.0.0-1017.19~24.04.1 | amd64 |
 | linux-tools-common | 6.8.0-149.149 | all |
-| locales | 2.39-0ubuntu8.9 | all |
+| locales | 2.39-0ubuntu8.12 | all |
 | login | 1:4.13+dfsg1-4ubuntu3.2 | amd64 |
 | logrotate | 3.21.0-2build1 | amd64 |
 | logsave | 1.47.0-2.4~exp1ubuntu4.1 | amd64 |
@@ -853,7 +853,7 @@
 | python3-debian | 0.1.49ubuntu2 | all |
 | python3-dev | 3.12.3-0ubuntu2.1 | amd64 |
 | python3-distro | 1.9.0-1 | all |
-| python3-distro-info | 1.7build1 | all |
+| python3-distro-info | 1.7ubuntu0.1 | all |
 | python3-distupgrade | 1:24.04.29 | all |
 | python3-gdbm:amd64 | 3.12.3-0ubuntu1 | amd64 |
 | python3-gi | 3.48.2-1 | amd64 |

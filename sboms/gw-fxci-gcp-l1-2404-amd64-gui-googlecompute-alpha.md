@@ -302,6 +302,7 @@
 | file-roller | 44.3-0ubuntu2 | amd64 |
 | finalrd | 9build1 | all |
 | findutils | 4.9.0-5build1 | amd64 |
+| firefox | 1:1snap1-0ubuntu5 | amd64 |
 | fontconfig | 2.15.0-1.1ubuntu2 | amd64 |
 | fontconfig-config | 2.15.0-1.1ubuntu2 | amd64 |
 | fonts-cantarell | 0.303.1-1 | all |
@@ -644,12 +645,12 @@
 | libbytesize-common | 2.10-1ubuntu2 | all |
 | libbytesize1:amd64 | 2.10-1ubuntu2 | amd64 |
 | libbz2-1.0:amd64 | 1.0.8-5.1ubuntu0.1 | amd64 |
-| libc-bin | 2.39-0ubuntu8.9 | amd64 |
-| libc-dev-bin | 2.39-0ubuntu8.9 | amd64 |
-| libc-devtools | 2.39-0ubuntu8.9 | amd64 |
-| libc6-dbg:amd64 | 2.39-0ubuntu8.9 | amd64 |
-| libc6-dev:amd64 | 2.39-0ubuntu8.9 | amd64 |
-| libc6:amd64 | 2.39-0ubuntu8.9 | amd64 |
+| libc-bin | 2.39-0ubuntu8.12 | amd64 |
+| libc-dev-bin | 2.39-0ubuntu8.12 | amd64 |
+| libc-devtools | 2.39-0ubuntu8.12 | amd64 |
+| libc6-dbg:amd64 | 2.39-0ubuntu8.12 | amd64 |
+| libc6-dev:amd64 | 2.39-0ubuntu8.12 | amd64 |
+| libc6:amd64 | 2.39-0ubuntu8.12 | amd64 |
 | libcaca0:amd64 | 0.99.beta20-4ubuntu0.2 | amd64 |
 | libcacard0:amd64 | 1:2.8.0-3build4 | amd64 |
 | libcairo-gobject-perl | 1.005-4build3 | amd64 |
@@ -1594,7 +1595,7 @@
 | llvm-18-runtime | 1:18.1.3-1ubuntu1 | amd64 |
 | llvm-18-tools | 1:18.1.3-1ubuntu1 | amd64 |
 | llvm-runtime:amd64 | 1:18.0-59~exp2 | amd64 |
-| locales | 2.39-0ubuntu8.9 | all |
+| locales | 2.39-0ubuntu8.12 | all |
 | login | 1:4.13+dfsg1-4ubuntu3.2 | amd64 |
 | logrotate | 3.21.0-2build1 | amd64 |
 | logsave | 1.47.0-2.4~exp1ubuntu4.1 | amd64 |
@@ -1816,7 +1817,7 @@
 | python3-packaging | 24.0-1 | all |
 | python3-paramiko | 2.12.0-2ubuntu4.1 | all |
 | python3-pexpect | 4.9-2 | all |
-| python3-pil:amd64 | 10.2.0-1ubuntu1.4 | amd64 |
+| python3-pil:amd64 | 10.2.0-1ubuntu1.5 | amd64 |
 | python3-pip | 24.0+dfsg-1ubuntu1.3 | all |
 | python3-pip-whl | 24.0+dfsg-1ubuntu1.3 | all |
 | python3-pkg-resources | 68.1.2-2ubuntu1.2 | all |
@@ -1952,6 +1953,7 @@
 | tecla | 46.0-1ubuntu0.1 | amd64 |
 | telnet | 0.17+2.5-3ubuntu4.2 | all |
 | thin-provisioning-tools | 0.9.0-2ubuntu5.1 | amd64 |
+| thunderbird | 2:1snap1-0ubuntu3 | amd64 |
 | time | 1.9-0.2build1 | amd64 |
 | tk8.6-blt2.5 | 2.5.3+dfsg-7build1 | amd64 |
 | tmux | 3.4-1ubuntu0.2 | amd64 |
