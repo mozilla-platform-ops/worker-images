@@ -70,17 +70,8 @@ pools:
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    # nuc drawer POC
-    - nuc13-151
-    - nuc13-152
-    - nuc13-153
-    - nuc13-154
-    - nuc13-155
-    - nuc13-156
-    - nuc13-157
-    - nuc13-158
-    - nuc13-159
-    - nuc13-160
+    # Placeholder; replace with a real hostname before provisioning.
+    - nuc13-999
   - name: "win11-64-24h2-hw-perf-debug"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
@@ -97,8 +88,19 @@ pools:
     nodes:
     # Below performance expectations; held for investigation (RELOPS-2522).
     - nuc13-085
-    # KVM display fixed; awaiting successful Speedometer validation (RELOPS-2541).
+    # KVM display fixed; benchmark alongside the drawer POC (RELOPS-2541).
     - nuc13-089
+    # NUC drawer POC; moved from relops1213 for benchmarking.
+    - nuc13-151
+    - nuc13-152
+    - nuc13-153
+    - nuc13-154
+    - nuc13-155
+    - nuc13-156
+    - nuc13-157
+    - nuc13-158
+    - nuc13-159
+    - nuc13-160
   - name: "win11-64-24h2-hw-alpha"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
