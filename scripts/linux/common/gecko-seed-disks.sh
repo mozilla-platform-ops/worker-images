@@ -43,7 +43,7 @@ capacity = capacity // 4096 * 4096
 if capacity > info.st_size:
     os.truncate(image, capacity)
 PY
-    device=$(losetup --find --show "$image")
+    device=$(losetup --direct-io=on --find --show "$image")
     mount -o discard "$device" /mnt
     resize2fs "$device"
 fi
