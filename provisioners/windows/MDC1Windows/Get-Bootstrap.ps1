@@ -371,6 +371,7 @@ try {
     New-Item -Path 'HKLM:\SOFTWARE\Mozilla' -Force | Out-Null
     New-Item -Path 'HKLM:\SOFTWARE\Mozilla\ronin_puppet' -Force | Out-Null
     New-ItemProperty -Path 'HKLM:\SOFTWARE\Mozilla\ronin_puppet' -Name worker_images_revision -Value $worker_images_revision -PropertyType String -Force | Out-Null
+    New-ItemProperty -Path 'HKLM:\SOFTWARE\Mozilla\ronin_puppet' -Name fleetbench_deployment -Value 'FleetbenchDeploymentPlaceholder' -PropertyType String -Force | Out-Null
     Write-Log -message ('{0} :: starting bootstrap through PsExec.' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'
     $bootstrapProcess = Start-Process -FilePath 'D:\applications\psexec.exe' -Wait -PassThru -NoNewWindow -ArgumentList @(
         '-i', '-s', '-accepteula', 'powershell.exe', '-ExecutionPolicy', 'Bypass', '-File', $local_bootstrap,
