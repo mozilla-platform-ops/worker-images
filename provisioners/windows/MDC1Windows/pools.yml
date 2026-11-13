@@ -95,43 +95,10 @@ pools:
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    # RELOPS-2541: holdouts moved from hw-relops1213 for investigation.
-    # Under performing - moved out of win11-64-24h2-hw for investigation. Both have
-    # swapped PSUs and passed the RELOPS-2514 validation, so they are not here for a
-    # PSU fault. Tracked in RELOPS-2522.
+    # Below performance expectations; held for investigation (RELOPS-2522).
     - nuc13-085
-    - nuc13-103
-    # These seven left hw-alpha for relops1213 on 2026-09-09 after failing validation.
-    # RELOPS-2541: move them here with the other five holdouts for investigation.
-    # nuc13-037: unreachable on TCP/22 across the 2026-08-31 sweep and the follow-up
-    #   check. Was never recovered with the rest of the No KVM group. Its KVM port is
-    #   cross-wired with nuc13-038, so console-derived status for either is unreliable.
-    - nuc13-037
-    # nuc13-064: answers SSH but rejects the audit key, which is the normal window
-    #   while puppet is still installing it. Recovered 2026-08-31; give it a cycle and
-    #   re-check before treating it as stuck.
-    - nuc13-064
-    # nuc13-077: PXE does not take. It accepts the bootsequence change and reboots but
-    #   comes back on its original image, confirmed repeatedly since 2026-08-17, most
-    #   recently in the 2026-08-31 sweep. Needs a recovery route other than a re-PXE.
-    - nuc13-077
-    # nuc13-089: config is correct and bootstrap_stage is complete, but it produced no
-    #   score in any of the four Speedometer runs on 2026-08-27 and 2026-08-31 while
-    #   its pool peers scored. Last imaged 2026-08-28 and not re-imaged since.
-    #   Unexplained - this is not idleness.
+    # KVM display fixed; awaiting successful Speedometer validation (RELOPS-2541).
     - nuc13-089
-    # nuc13-124: no ronin_puppet key at all and OS build 26200 rather than the 26100
-    #   provisioned nodes report - the same state nuc13-086 and nuc13-119 were in, and
-    #   both recovered from it with a single re-PXE. Imaged 2026-08-29, untouched since.
-    - nuc13-124
-    # nuc13-132: answers SSH and reports its hostname, but claims no work and produced
-    #   no score in either 2026-08-31 run. Previously filed as No KVM, which no longer
-    #   fits.
-    - nuc13-132
-    # nuc13-150: bootstrap_stage=inprogress with last_run_exit=6, so puppet is failing.
-    #   bootstrap.ps1 treats exit 6 as a failure and arms Set-PXE, so it should self-
-    #   retry; leave it a cycle before intervening.
-    - nuc13-150
   - name: "win11-64-24h2-hw-alpha"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
@@ -198,6 +165,7 @@ pools:
     - nuc13-034
     - nuc13-035
     - nuc13-036
+    - nuc13-037
     - nuc13-038
     - nuc13-039
     - nuc13-040
@@ -224,6 +192,7 @@ pools:
     - nuc13-061
     - nuc13-062
     - nuc13-063
+    - nuc13-064
     - nuc13-065
     - nuc13-066
     - nuc13-067
@@ -235,6 +204,7 @@ pools:
     - nuc13-074
     - nuc13-075
     - nuc13-076
+    - nuc13-077
     - nuc13-078
     - nuc13-079
     - nuc13-080
@@ -258,6 +228,7 @@ pools:
     - nuc13-100
     - nuc13-101
     - nuc13-102
+    - nuc13-103
     - nuc13-104
     - nuc13-105
     - nuc13-106
@@ -276,6 +247,7 @@ pools:
     - nuc13-121
     - nuc13-122
     - nuc13-123
+    - nuc13-124
     - nuc13-125
     - nuc13-126
     - nuc13-127
@@ -283,6 +255,7 @@ pools:
     - nuc13-129
     - nuc13-130
     - nuc13-131
+    - nuc13-132
     - nuc13-133
     - nuc13-135
     - nuc13-136
@@ -298,6 +271,7 @@ pools:
     - nuc13-147
     - nuc13-148
     - nuc13-149
+    - nuc13-150
 defaults:
   NV_domain: "mdc1.mozilla.com"
 Validate:
