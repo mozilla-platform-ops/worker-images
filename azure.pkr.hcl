@@ -5,9 +5,7 @@
 packer {
   required_plugins {
     azure = {
-      # SECURITY: keep the OIDC-enabled image build on a reviewed plugin version.
-      # TODO(SECURITY): commit .packer.lock.hcl separately to pin the plugin checksum.
-      version = "= 2.6.4"
+      version = ">= 2.6.5"
       source  = "github.com/hashicorp/azure"
     }
   }

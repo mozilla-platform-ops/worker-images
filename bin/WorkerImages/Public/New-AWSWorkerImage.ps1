@@ -90,8 +90,8 @@ function New-AWSWorkerImage {
     }
 
     ## Initialize Packer
-    Write-Host "packer init $PackerHCLPath"
-    packer init $PackerHCLPath
+    Write-Host "packer init -upgrade $PackerHCLPath"
+    packer init -upgrade $PackerHCLPath
 
     ## Build (tceng uses single generic build; no --only flag)
     Write-Host "packer build -force $PackerHCLPath"
