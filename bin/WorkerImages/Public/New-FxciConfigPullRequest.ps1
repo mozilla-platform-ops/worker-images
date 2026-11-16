@@ -28,8 +28,9 @@ function New-FxciConfigPullRequest {
         'win11-a64-25h2-tester' = @{ image = 'win11a6425h2tester'; provider = 'azure2' }
         'win2022-64-2009' = @{ image = 'ronin_b1_windows2022_64_2009'; provider = 'azure2' }
         'trusted-win2022-64-2009' = @{ image = 'ronin_b3_windows2022_64_2009'; provider = 'azure_trusted' }
+        'win2025-64-24h2' = @{ image = 'ronin_b1_windows2025_64_24h2'; provider = 'azure2' }
+        'trusted-win2025-64-24h2' = @{ image = 'ronin_b3_windows2025_64_24h2'; provider = 'azure_trusted' }
     }
-    $ignoredWindowsImages = @('win2025-64-24h2', 'trusted-win2025-64-24h2')
     $gcpImages = @(
         @{ pattern = '^gw-fxci-gcp-l1-2404-amd64-gui-googlecompute-(?<date>\d{4}-\d{2}-\d{2})$'; image = 'ubuntu-2404-wayland'; provider = 'fxci-level1-gcp'; project = 'taskcluster-imaging' }
         @{ pattern = '^gw-fxci-gcp-l1-2404-amd64-headless-googlecompute-(?<date>\d{4}-\d{2}-\d{2})$'; image = 'ubuntu-2404-headless'; provider = 'fxci-level1-gcp'; project = 'taskcluster-imaging' }
@@ -221,10 +222,6 @@ function New-FxciConfigPullRequest {
                 $configMatch = [regex]::Match($text, '(?m)^-\s+Config:\s*(\S+)\s*$')
                 if (-not $configMatch.Success) { throw "No Windows image config in $($file.FullName)." }
                 $config = $configMatch.Groups[1].Value
-                if ($ignoredWindowsImages -contains $config) {
-                    Write-Verbose "Leaving Windows Server 2025 unchanged: $config"
-                    continue
-                }
                 if (-not $windowsImages.ContainsKey($config)) {
                     throw "No fxci-config mapping for Windows image '$config'. Update the explicit deployment map."
                 }
@@ -398,7 +395,7 @@ function New-FxciConfigPullRequest {
             }
             $imageSections.Add('')
         }
-        $imageSections.Add('Windows Server 2025 and alpha image references are not changed by this automation.')
+        $imageSections.Add('Alpha image references are not changed by this automation.')
         $imagesMarkdown = $imageSections -join "`n"
 
         $provenance = [System.Collections.Generic.List[string]]::new()
