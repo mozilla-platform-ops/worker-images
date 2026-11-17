@@ -103,6 +103,13 @@ for name in manifest["cache_names"]:
     assert (repo / ".git/index").stat().st_ctime_ns == manifest["index_ctimes"][name]
 PY
 
+# Record the preloaded caches for the image SBOM.
+install -d -m 0755 /etc/worker-images
+jq -n --slurpfile inputs "$inputs" --slurpfile seed "$staging/home/gecko-git-seed/manifest.json" --argjson images "$images" \
+    '{gecko: {revision: $inputs[0].gecko_revision, cache_names: $seed[0].cache_names},
+      docker_images: [$images[] | {labels: .docker_labels, task_id}]}' > /etc/worker-images/preloaded-caches.json
+chmod 0644 /etc/worker-images/preloaded-caches.json
+
 # Keep Packer's SSH connection usable after removing the duplicated home data.
 ssh_backup=$(mktemp -d /run/gecko-ssh.XXXXXX)
 find /home -mindepth 2 -maxdepth 2 -name .ssh -exec cp -a --parents '{}' "$ssh_backup/" \;

@@ -378,11 +378,6 @@ build {
     start_retry_timeout = "30m"
   }
 
-  provisioner "file" {
-    source      = "${path.cwd}/scripts/linux/common/generate-sbom.sh"
-    destination = "/tmp/generate-linux-sbom.sh"
-  }
-
   # Check again after all package installs, reboots, and package cleanup.
   provisioner "shell" {
     only = [
@@ -392,30 +387,6 @@ build {
     execute_command  = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     environment_vars = ["KERNEL_VERSION=${local.kernel_version}"]
     scripts          = ["${path.cwd}/tests/linux/test_kernel.sh"]
-  }
-
-  provisioner "shell" {
-    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
-    environment_vars = [
-      "IMAGE_NAME=${var.image_name}",
-      "TASKCLUSTER_VERSION=${var.taskcluster_version}",
-      "TASKCLUSTER_REF=${var.taskcluster_ref}",
-      "TC_ARCH=${var.tc_arch}",
-      "SOURCE_IMAGE_FAMILY=${var.source_image_family}",
-      "PROJECT_ID=${var.project_id}",
-      "ZONE=${var.zone}"
-    ]
-    inline = [
-      "bash /tmp/generate-linux-sbom.sh",
-      "rm -f /tmp/generate-linux-sbom.sh"
-    ]
-  }
-
-  provisioner "file" {
-    destination = "${path.cwd}/sboms/${var.image_name}.md"
-    direction   = "download"
-    max_retries = 3
-    source      = "/etc/worker-images/SBOM.md"
   }
 
   provisioner "file" {
@@ -444,6 +415,36 @@ build {
     ]
     scripts = var.preloadCaches ? ["${path.cwd}/scripts/linux/common/preload-caches.sh"] : null
     inline  = var.preloadCaches ? null : ["echo 'Cache preload disabled'"]
+  }
+
+  # Generate the SBOM last so it includes the preloaded caches.
+  provisioner "file" {
+    source      = "${path.cwd}/scripts/linux/common/generate-sbom.sh"
+    destination = "/tmp/generate-linux-sbom.sh"
+  }
+
+  provisioner "shell" {
+    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    environment_vars = [
+      "IMAGE_NAME=${var.image_name}",
+      "TASKCLUSTER_VERSION=${var.taskcluster_version}",
+      "TASKCLUSTER_REF=${var.taskcluster_ref}",
+      "TC_ARCH=${var.tc_arch}",
+      "SOURCE_IMAGE_FAMILY=${var.source_image_family}",
+      "PROJECT_ID=${var.project_id}",
+      "ZONE=${var.zone}"
+    ]
+    inline = [
+      "bash /tmp/generate-linux-sbom.sh",
+      "rm -f /tmp/generate-linux-sbom.sh"
+    ]
+  }
+
+  provisioner "file" {
+    destination = "${path.cwd}/sboms/${var.image_name}.md"
+    direction   = "download"
+    max_retries = 3
+    source      = "/etc/worker-images/SBOM.md"
   }
 
   post-processor "manifest" {
