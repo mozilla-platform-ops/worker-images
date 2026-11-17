@@ -46,7 +46,7 @@ function Get-AzureProductionParallelMatrix {
     $trustedImages = @(
         Get-ChildItem -LiteralPath $configPath -File -Filter 'trusted-*.yaml' |
             ForEach-Object { $_.BaseName } |
-            Where-Object { $_ -match '^trusted-(?!gw-fxci-gcp).*' -and $_ -notmatch 'alpha|core' } |
+            Where-Object { $_ -match '^trusted-(?!gw-fxci-gcp).*' -and $_ -notmatch 'alpha' } |
             Sort-Object
     )
 

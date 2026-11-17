@@ -30,6 +30,8 @@ function New-FxciConfigPullRequest {
         'trusted-win2022-64-2009' = @{ image = 'ronin_b3_windows2022_64_2009'; provider = 'azure_trusted' }
         'win2025-64-24h2' = @{ image = 'ronin_b1_windows2025_64_24h2'; provider = 'azure2' }
         'trusted-win2025-64-24h2' = @{ image = 'ronin_b3_windows2025_64_24h2'; provider = 'azure_trusted' }
+        'win2025-64-24h2-core' = @{ image = 'ronin_b1_windows2025_64_24h2_core'; provider = 'azure2' }
+        'trusted-win2025-64-24h2-core' = @{ image = 'ronin_b3_windows2025_64_24h2_core'; provider = 'azure_trusted' }
     }
     $gcpImages = @(
         @{ pattern = '^gw-fxci-gcp-l1-2404-amd64-gui-googlecompute-(?<date>\d{4}-\d{2}-\d{2})$'; image = 'ubuntu-2404-wayland'; provider = 'fxci-level1-gcp'; project = 'taskcluster-imaging' }
