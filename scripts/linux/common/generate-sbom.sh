@@ -54,7 +54,7 @@ write_preloaded_caches() {
     markdown_table_row "${kind}" "${name}" "${source}"
   done < <(jq -r '
     (.gecko as $g | $g.cache_names[] | ["Gecko Git", ., "mozilla-firefox/firefox@\($g.revision)"]),
-    (.docker_images[] | ["Docker image", (.labels | join(", ")), "task \(.task_id)"])
+    (.docker_images[] | ["Docker image", (.labels | join(", ")), "[\(.task_id)](https://firefox-ci-tc.services.mozilla.com/tasks/\(.task_id))"])
     | @tsv' "${preloaded_caches_path}")
   printf '\n'
 }
