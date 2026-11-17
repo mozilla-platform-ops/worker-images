@@ -19,6 +19,8 @@ $global:FxciTestWindows = @(
     @{ config = 'trusted-win2022-64-2009'; image = 'ronin_b3_windows2022_64_2009'; provider = 'azure_trusted' }
     @{ config = 'win2025-64-24h2'; image = 'ronin_b1_windows2025_64_24h2'; provider = 'azure2' }
     @{ config = 'trusted-win2025-64-24h2'; image = 'ronin_b3_windows2025_64_24h2'; provider = 'azure_trusted' }
+    @{ config = 'win2025-64-24h2-core'; image = 'ronin_b1_windows2025_64_24h2_core'; provider = 'azure2' }
+    @{ config = 'trusted-win2025-64-24h2-core'; image = 'ronin_b3_windows2025_64_24h2_core'; provider = 'azure_trusted' }
 )
 $global:FxciTestPr = $null
 $global:FxciTestPrCreateCalls = 0
