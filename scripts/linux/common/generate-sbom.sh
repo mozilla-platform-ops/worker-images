@@ -5,6 +5,7 @@ set -euo pipefail
 output_path="${SBOM_OUTPUT:-/etc/worker-images/SBOM.md}"
 output_dir="$(dirname "${output_path}")"
 os_release_path="${OS_RELEASE_PATH:-/etc/os-release}"
+preloaded_caches_path="${PRELOADED_CACHES_PATH:-/etc/worker-images/preloaded-caches.json}"
 mkdir -p "${output_dir}"
 temporary_output="$(mktemp "${output_path}.XXXXXX")"
 
@@ -37,6 +38,25 @@ write_taskcluster_tools() {
   if [[ "${found_tool}" == false ]]; then
     markdown_table_row "None" "No Taskcluster tools found in PATH"
   fi
+}
+
+write_preloaded_caches() {
+  local kind name source
+
+  printf '## Preloaded caches\n\n'
+  if [[ ! -s "${preloaded_caches_path}" ]]; then
+    printf 'None\n\n'
+    return
+  fi
+  markdown_table_row 'Type' 'Cache' 'Source'
+  markdown_table_row '---' '---' '---'
+  while IFS=$'\t' read -r kind name source; do
+    markdown_table_row "${kind}" "${name}" "${source}"
+  done < <(jq -r '
+    (.gecko as $g | $g.cache_names[] | ["Gecko Git", ., "mozilla-firefox/firefox@\($g.revision)"]),
+    (.docker_images[] | ["Docker image", (.labels | join(", ")), "[\(.task_id)](https://firefox-ci-tc.services.mozilla.com/tasks/\(.task_id))"])
+    | @tsv' "${preloaded_caches_path}")
+  printf '\n'
 }
 
 os_release_value() {
@@ -82,6 +102,8 @@ os_name_and_version() {
   markdown_table_row '---' '---'
   write_taskcluster_tools
   printf '\n'
+
+  write_preloaded_caches
 
   printf '## Python packages\n\n'
   markdown_table_row 'Name' 'Version'

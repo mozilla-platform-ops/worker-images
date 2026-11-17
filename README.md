@@ -127,7 +127,7 @@ state into the image. The file cache uses the exact artifact task ID; the D2G
 cache uses the archive SHA256. A newer artifact misses safely and follows the
 normal download or image-load path. Duplicate task IDs in one image list are
 downloaded once. The seed build fails if it leaves less than 1 GiB free in its
-32 GiB filesystem.
+32 GiB filesystem. The image SBOM lists each preloaded cache.
 
 All five Linux alpha configs enable `preloadCaches`. Direct Packer builds also
 need `-var 'preloadCacheManifest=/path/to/inputs.json'` with
