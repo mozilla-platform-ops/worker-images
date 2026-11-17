@@ -25,6 +25,15 @@
 | livelog | livelog 116.0.0 |
 | taskcluster-proxy | Taskcluster proxy 116.0.0 (git revision 6eefed4737bf5d80472213277a9b1f42e972b9b9) |
 
+## Preloaded caches
+
+| Type | Cache | Source |
+| --- | --- | --- |
+| Gecko Git | gecko-level-1-checkouts-git-shallow-v3-cadd81afc99c4c16b89e | mozilla-firefox/firefox@775bcb4819101a5113e1cb0b47b8f04b79645ffb |
+| Gecko Git | gecko-level-3-checkouts-git-shallow-v3-cadd81afc99c4c16b89e | mozilla-firefox/firefox@775bcb4819101a5113e1cb0b47b8f04b79645ffb |
+| Docker image | docker-image-static-analysis-build | [Mp1W1ZYsSjGFwN3rzDMY8A](https://firefox-ci-tc.services.mozilla.com/tasks/Mp1W1ZYsSjGFwN3rzDMY8A) |
+| Docker image | docker-image-lint | [ROAKrUiLRF2ikQXYl-8hOA](https://firefox-ci-tc.services.mozilla.com/tasks/ROAKrUiLRF2ikQXYl-8hOA) |
+
 ## Python packages
 
 | Name | Version |
@@ -48,7 +57,7 @@
 | cryptography | 41.0.7 |
 | dbus-python | 1.3.2 |
 | distro | 1.9.0 |
-| distro-info | 1.7+ubuntu0.1 |
+| distro-info | 1.7+build1 |
 | httplib2 | 0.20.4 |
 | hyperlink | 21.0.0 |
 | idna | 3.6 |
@@ -199,7 +208,7 @@
 | dictionaries-common | 1.29.7 | all |
 | diffutils | 1:3.10-1ubuntu0.1 | amd64 |
 | dirmngr | 2.4.4-2ubuntu17.6 | amd64 |
-| distro-info | 1.7ubuntu0.1 | amd64 |
+| distro-info | 1.7build1 | amd64 |
 | distro-info-data | 2026.10.12-0ubuntu0.24.04.1 | all |
 | dkms | 3.0.11-1ubuntu13 | all |
 | dmeventd | 2:1.02.185-3ubuntu3.2 | amd64 |
@@ -208,8 +217,8 @@
 | docker-buildx-plugin | 0.39.0-1~ubuntu.24.04~noble | amd64 |
 | docker-ce | 5:29.5.3-1~ubuntu.24.04~noble | amd64 |
 | docker-ce-cli | 5:29.5.3-1~ubuntu.24.04~noble | amd64 |
-| docker-ce-rootless-extras | 5:29.9.3-1~ubuntu.24.04~noble | amd64 |
-| docker-compose-plugin | 5.7.1-1~ubuntu.24.04~noble | amd64 |
+| docker-ce-rootless-extras | 5:29.10.0-1~ubuntu.24.04~noble | amd64 |
+| docker-compose-plugin | 5.8.0-1~ubuntu.24.04~noble | amd64 |
 | dosfstools | 4.2-1.1build1 | amd64 |
 | dpkg | 1.22.6ubuntu6.6 | amd64 |
 | dpkg-dev | 1.22.6ubuntu6.6 | all |
@@ -399,7 +408,7 @@
 | libedit2:amd64 | 3.1-20230828-1build1 | amd64 |
 | libefiboot1t64:amd64 | 38-3.1build1 | amd64 |
 | libefivar1t64:amd64 | 38-3.1build1 | amd64 |
-| libegl-mesa0:amd64 | 25.2.8-0ubuntu0.24.04.4 | amd64 |
+| libegl-mesa0:amd64 | 25.2.8-0ubuntu0.24.04.5 | amd64 |
 | libegl1:amd64 | 1.7.0-1build1 | amd64 |
 | libelf1t64:amd64 | 0.190-1.1ubuntu0.1 | amd64 |
 | libepoxy0:amd64 | 1.5.10-1build1 | amd64 |
@@ -423,7 +432,7 @@
 | libfuse3-3:amd64 | 3.14.0-5build1 | amd64 |
 | libgail-common:amd64 | 2.24.33-4ubuntu1.1 | amd64 |
 | libgail18t64:amd64 | 2.24.33-4ubuntu1.1 | amd64 |
-| libgbm1:amd64 | 25.2.8-0ubuntu0.24.04.4 | amd64 |
+| libgbm1:amd64 | 25.2.8-0ubuntu0.24.04.5 | amd64 |
 | libgcc-13-dev:amd64 | 13.3.0-6ubuntu2~24.04.1 | amd64 |
 | libgcc-s1:amd64 | 14.2.0-4ubuntu2~24.04.1 | amd64 |
 | libgcrypt20:amd64 | 1.10.3-2ubuntu0.2 | amd64 |
@@ -437,14 +446,14 @@
 | libgfrpc0:amd64 | 11.1-4ubuntu0.1 | amd64 |
 | libgfxdr0:amd64 | 11.1-4ubuntu0.1 | amd64 |
 | libgirepository-1.0-1:amd64 | 1.80.1-1 | amd64 |
-| libgl1-mesa-dri:amd64 | 25.2.8-0ubuntu0.24.04.4 | amd64 |
+| libgl1-mesa-dri:amd64 | 25.2.8-0ubuntu0.24.04.5 | amd64 |
 | libgl1:amd64 | 1.7.0-1build1 | amd64 |
 | libglib2.0-0t64:amd64 | 2.80.0-6ubuntu3.10 | amd64 |
 | libglib2.0-bin | 2.80.0-6ubuntu3.10 | amd64 |
 | libglib2.0-data | 2.80.0-6ubuntu3.10 | all |
 | libglusterfs0:amd64 | 11.1-4ubuntu0.1 | amd64 |
 | libglvnd0:amd64 | 1.7.0-1build1 | amd64 |
-| libglx-mesa0:amd64 | 25.2.8-0ubuntu0.24.04.4 | amd64 |
+| libglx-mesa0:amd64 | 25.2.8-0ubuntu0.24.04.5 | amd64 |
 | libglx0:amd64 | 1.7.0-1build1 | amd64 |
 | libgmp10:amd64 | 2:6.3.0+dfsg-2ubuntu6.1 | amd64 |
 | libgnutls30t64:amd64 | 3.8.3-1.1ubuntu3.6 | amd64 |
@@ -750,9 +759,9 @@
 | media-types | 10.1.0 | all |
 | mercurial | 6.7.2-1ubuntu2.2 | amd64 |
 | mercurial-common | 6.7.2-1ubuntu2.2 | all |
-| mesa-libgallium:amd64 | 25.2.8-0ubuntu0.24.04.4 | amd64 |
-| mesa-vdpau-drivers:amd64 | 25.2.8-0ubuntu0.24.04.4 | amd64 |
-| mesa-vulkan-drivers:amd64 | 25.2.8-0ubuntu0.24.04.4 | amd64 |
+| mesa-libgallium:amd64 | 25.2.8-0ubuntu0.24.04.5 | amd64 |
+| mesa-vdpau-drivers:amd64 | 25.2.8-0ubuntu0.24.04.5 | amd64 |
+| mesa-vulkan-drivers:amd64 | 25.2.8-0ubuntu0.24.04.5 | amd64 |
 | mokutil | 0.6.0-2build3 | amd64 |
 | motd-news-config | 13ubuntu10.5 | all |
 | mount | 2.39.3-9ubuntu6.6 | amd64 |
@@ -853,7 +862,7 @@
 | python3-debian | 0.1.49ubuntu2 | all |
 | python3-dev | 3.12.3-0ubuntu2.1 | amd64 |
 | python3-distro | 1.9.0-1 | all |
-| python3-distro-info | 1.7ubuntu0.1 | all |
+| python3-distro-info | 1.7build1 | all |
 | python3-distupgrade | 1:24.04.29 | all |
 | python3-gdbm:amd64 | 3.12.3-0ubuntu1 | amd64 |
 | python3-gi | 3.48.2-1 | amd64 |
@@ -942,7 +951,7 @@
 | slirp4netns | 1.2.1-1build2 | amd64 |
 | snapd | 2.77.1+ubuntu24.04 | amd64 |
 | software-properties-common | 0.99.49.4 | all |
-| sosreport | 4.11.2-0ubuntu0~24.04.1 | amd64 |
+| sosreport | 4.11.2-0ubuntu0~24.04.2 | amd64 |
 | squashfs-tools | 1:4.6.1-1build1 | amd64 |
 | ssh-import-id | 5.11-0ubuntu2.24.04.1 | all |
 | strace | 6.8-0ubuntu2 | amd64 |
