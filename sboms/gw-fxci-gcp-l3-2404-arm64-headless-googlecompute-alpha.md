@@ -25,6 +25,12 @@
 | livelog | livelog 116.0.0 |
 | taskcluster-proxy | Taskcluster proxy 116.0.0 (git revision 6eefed4737bf5d80472213277a9b1f42e972b9b9) |
 
+## Preloaded caches
+
+| Type | Cache | Source |
+| --- | --- | --- |
+| Gecko Git | gecko-level-3-checkouts-git-shallow-v3-cadd81afc99c4c16b89e | mozilla-firefox/firefox@775bcb4819101a5113e1cb0b47b8f04b79645ffb |
+
 ## Python packages
 
 | Name | Version |
@@ -190,8 +196,8 @@
 | docker-buildx-plugin | 0.39.0-1~ubuntu.24.04~noble | arm64 |
 | docker-ce | 5:29.5.3-1~ubuntu.24.04~noble | arm64 |
 | docker-ce-cli | 5:29.5.3-1~ubuntu.24.04~noble | arm64 |
-| docker-ce-rootless-extras | 5:29.9.3-1~ubuntu.24.04~noble | arm64 |
-| docker-compose-plugin | 5.7.1-1~ubuntu.24.04~noble | arm64 |
+| docker-ce-rootless-extras | 5:29.10.0-1~ubuntu.24.04~noble | arm64 |
+| docker-compose-plugin | 5.8.0-1~ubuntu.24.04~noble | arm64 |
 | dosfstools | 4.2-1.1build1 | arm64 |
 | dpkg | 1.22.6ubuntu6.6 | arm64 |
 | dpkg-dev | 1.22.6ubuntu6.6 | all |
@@ -775,9 +781,9 @@
 | sgml-base | 1.31 | all |
 | shared-mime-info | 2.4-4 | arm64 |
 | shim-signed | 1.58+15.8-0ubuntu1 | arm64 |
-| snapd | 2.77.1+ubuntu24.04 | arm64 |
+| snapd | 2.78+ubuntu24.04 | arm64 |
 | software-properties-common | 0.99.49.4 | all |
-| sosreport | 4.11.2-0ubuntu0~24.04.1 | arm64 |
+| sosreport | 4.11.2-0ubuntu0~24.04.2 | arm64 |
 | squashfs-tools | 1:4.6.1-1build1 | arm64 |
 | ssh-import-id | 5.11-0ubuntu2.24.04.1 | all |
 | strace | 6.8-0ubuntu2 | arm64 |
