@@ -57,6 +57,7 @@ source "googlecompute" "tceng" {
   ssh_username            = "ubuntu"
   disk_size               = local.disk_size_int
   use_iap                 = true
+  state_timeout           = "30m"
 
   # NEW: only apply when provided
   machine_type = var.machine_type != "" ? var.machine_type : null
