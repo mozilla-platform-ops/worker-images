@@ -336,7 +336,7 @@ Run-Executable "nssm" @("set", "worker-runner", "AppDirectory", "C:\worker-runne
 Run-Executable "nssm" @("set", "worker-runner", "AppParameters", "C:\worker-runner\runner.yml")
 Run-Executable "nssm" @("set", "worker-runner", "DisplayName", "Worker Runner")
 Run-Executable "nssm" @("set", "worker-runner", "Description", "Interface between workers and Taskcluster services")
-Run-Executable "nssm" @("set", "worker-runner", "Start", "SERVICE_AUTO_START")
+Run-Executable "nssm" @("set", "worker-runner", "Start", "SERVICE_DEMAND_START")
 Run-Executable "nssm" @("set", "worker-runner", "Type", "SERVICE_WIN32_OWN_PROCESS")
 Run-Executable "nssm" @("set", "worker-runner", "AppNoConsole", "1")
 Run-Executable "nssm" @("set", "worker-runner", "AppAffinity", "All")
@@ -349,6 +349,16 @@ Run-Executable "nssm" @("set", "worker-runner", "AppRotateFiles", "1")
 Run-Executable "nssm" @("set", "worker-runner", "AppRotateOnline", "1")
 Run-Executable "nssm" @("set", "worker-runner", "AppRotateSeconds", "3600")
 Run-Executable "nssm" @("set", "worker-runner", "AppRotateBytes", "0")
+
+# Start worker-runner only after Windows Setup completes. Azure owns
+# Setup\Scripts\SetupComplete.cmd, which calls OEM\SetupComplete2.cmd last.
+# Verified on a live Azure Windows Server 2022 worker, November 2026.
+$setupComplete2 ="$env:SystemRoot\OEM\SetupComplete2.cmd"
+New-Item -ItemType Directory -Path (Split-Path $setupComplete2) -Force | Out-Null
+Add-Content -Path $setupComplete2 -Encoding Ascii -Value @(
+    "sc.exe config worker-runner start= auto",
+    "sc.exe start worker-runner"
+)
 
 # configure worker-runner
 Set-Content -Path C:\worker-runner\runner.yml @"
