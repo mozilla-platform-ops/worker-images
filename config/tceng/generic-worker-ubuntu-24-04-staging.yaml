@@ -1,5 +1,6 @@
 ---
 image:
+  # GCP-specific configuration
   project_id: "taskcluster-imaging"
   zone: "us-central1-a"
   source_image_family: "ubuntu-2404-lts-amd64"
@@ -9,6 +10,7 @@ image:
   ami_name: "generic-worker-ubuntu-24-04-staging-aws"
   source_ami_owner: "099720109477"  # Canonical
   source_ami_filter: "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"
+
 vm:
   disk_size: 60
   tc_arch: "amd64"
@@ -20,7 +22,9 @@ vm:
     maintainer: "Taskcluster Engineering"
     purpose: "tceng ubuntu-24-04-staging"
 
+# AWS-specific settings
 aws:
+  # Optional: replicate to multiple regions for global availability
   ami_regions:
     - "us-west-2"
     - "us-east-1"

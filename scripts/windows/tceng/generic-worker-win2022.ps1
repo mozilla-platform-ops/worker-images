@@ -88,10 +88,32 @@ function Expand-ZIPFile {
     )
 
     # Download the file using Invoke-WebRequest
-    Invoke-WebRequest -Uri $url -OutFile $file
+    Invoke-WithRetry { Invoke-WebRequest -Uri $url -OutFile $file }
 
     # Extract the ZIP file using Expand-Archive
     Expand-Archive -Path $file -DestinationPath $destination -Force
+}
+
+# Runs a script block, trying again (up to 5 attempts in all) if it fails, as
+# downloads, and package feeds such as Chocolatey's community repository, fail
+# intermittently (e.g. with 504 Gateway Timeout)
+function Invoke-WithRetry {
+    param (
+        [scriptblock]$Action
+    )
+    $delays = @(15, 30, 60, 120)
+    for ($attempt = 1; ; $attempt++) {
+        try {
+            return & $Action
+        } catch {
+            if ($attempt -gt $delays.Count) {
+                throw
+            }
+            $delay = $delays[$attempt - 1]
+            Write-Log "Attempt $attempt failed: $($_.Exception.Message). Trying again in $delay seconds..."
+            Start-Sleep -Seconds $delay
+        }
+    }
 }
 
 Write-Log -message "TASKCLUSTER_VERSION: $($ENV:taskcluster_version)"
@@ -226,14 +248,14 @@ foreach ($service in $servicesToDisable) {
 } | Out-Null
 
 # install chocolatey package manager
-Invoke-RestMethod -Uri 'https://community.chocolatey.org/install.ps1' | Invoke-Expression
+Invoke-WithRetry { Invoke-RestMethod -Uri 'https://community.chocolatey.org/install.ps1' } | Invoke-Expression
 
 # disable download progress output, which otherwise emits one log line per
 # percentage update (tens of thousands of lines in packer logs)
 Run-Executable "choco" @("feature", "disable", "--name=showDownloadProgress")
 
 # install nssm
-Run-Executable "choco" @("install", "-y", "nssm", "--version", "2.24.101.20180116")
+Invoke-WithRetry { Run-Executable "choco" @("install", "-y", "nssm", "--version", "2.24.101.20180116") }
 
 # Add taskcluster entry to the hosts file, for (old) tasks not using $TASKCLUSTER_PROXY_URL
 $hostsFileLines = @(
@@ -250,17 +272,14 @@ Add-Content -Path "C:\Windows\System32\drivers\etc\hosts" -Value $hostsFileLines
 New-NetFirewallRule -DisplayName "Allow livelog PUT requests" -Direction Inbound -LocalPort 60022 -Protocol TCP -Action Allow
 New-NetFirewallRule -DisplayName "Allow livelog GET requests" -Direction Inbound -LocalPort 60023 -Protocol TCP -Action Allow
 
-# install go
-Run-Executable "choco" @("install", "-y", "golang", "--version", "1.26.0")
-
 # install git
-Run-Executable "choco" @("install", "-y", "git")
+Invoke-WithRetry { Run-Executable "choco" @("install", "-y", "git") }
 
 # install node
-Run-Executable "choco" @("install", "-y", "nodejs", "--version", "24.13.0")
+Invoke-WithRetry { Run-Executable "choco" @("install", "-y", "nodejs", "--version", "24.13.0") }
 
 # install python
-Run-Executable "choco" @("install", "-y", "python", "--version", "3.13.12")
+Invoke-WithRetry { Run-Executable "choco" @("install", "-y", "python", "--version", "3.13.12") }
 
 # refresh environment variables
 Import-Module $env:ChocolateyInstall\helpers\chocolateyProfile.psm1
@@ -276,10 +295,10 @@ switch ([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture) {
 }
 Write-Log -message "TC_ARCH: $TC_ARCH"
 
-Invoke-WebRequest -Uri ("https://github.com/taskcluster/taskcluster/releases/download/v{0}/generic-worker-multiuser-windows-{1}" -f $TASKCLUSTER_VERSION, $TC_ARCH) -OutFile "C:\generic-worker\generic-worker.exe"
-Invoke-WebRequest -Uri ("https://github.com/taskcluster/taskcluster/releases/download/v{0}/start-worker-windows-{1}" -f $TASKCLUSTER_VERSION, $TC_ARCH) -OutFile "C:\worker-runner\start-worker.exe"
-Invoke-WebRequest -Uri ("https://github.com/taskcluster/taskcluster/releases/download/v{0}/livelog-windows-{1}" -f $TASKCLUSTER_VERSION, $TC_ARCH) -OutFile "C:\generic-worker\livelog.exe"
-Invoke-WebRequest -Uri ("https://github.com/taskcluster/taskcluster/releases/download/v{0}/taskcluster-proxy-windows-{1}" -f $TASKCLUSTER_VERSION, $TC_ARCH) -OutFile "C:\generic-worker\taskcluster-proxy.exe"
+Invoke-WithRetry { Invoke-WebRequest -Uri ("https://github.com/taskcluster/taskcluster/releases/download/v{0}/generic-worker-multiuser-windows-{1}" -f $TASKCLUSTER_VERSION, $TC_ARCH) -OutFile "C:\generic-worker\generic-worker.exe" }
+Invoke-WithRetry { Invoke-WebRequest -Uri ("https://github.com/taskcluster/taskcluster/releases/download/v{0}/start-worker-windows-{1}" -f $TASKCLUSTER_VERSION, $TC_ARCH) -OutFile "C:\worker-runner\start-worker.exe" }
+Invoke-WithRetry { Invoke-WebRequest -Uri ("https://github.com/taskcluster/taskcluster/releases/download/v{0}/livelog-windows-{1}" -f $TASKCLUSTER_VERSION, $TC_ARCH) -OutFile "C:\generic-worker\livelog.exe" }
+Invoke-WithRetry { Invoke-WebRequest -Uri ("https://github.com/taskcluster/taskcluster/releases/download/v{0}/taskcluster-proxy-windows-{1}" -f $TASKCLUSTER_VERSION, $TC_ARCH) -OutFile "C:\generic-worker\taskcluster-proxy.exe" }
 Run-Executable "C:\generic-worker\generic-worker.exe" @("--version")
 Run-Executable "C:\generic-worker\generic-worker.exe" @("new-ed25519-keypair", "--file", "C:\generic-worker\generic-worker-ed25519-signing-key.key")
 
@@ -306,7 +325,7 @@ Run-Executable "nssm" @("set", "worker-runner", "AppDirectory", "C:\worker-runne
 Run-Executable "nssm" @("set", "worker-runner", "AppParameters", "C:\worker-runner\runner.yml")
 Run-Executable "nssm" @("set", "worker-runner", "DisplayName", "Worker Runner")
 Run-Executable "nssm" @("set", "worker-runner", "Description", "Interface between workers and Taskcluster services")
-Run-Executable "nssm" @("set", "worker-runner", "Start", "SERVICE_AUTO_START")
+Run-Executable "nssm" @("set", "worker-runner", "Start", "SERVICE_DEMAND_START")
 Run-Executable "nssm" @("set", "worker-runner", "Type", "SERVICE_WIN32_OWN_PROCESS")
 Run-Executable "nssm" @("set", "worker-runner", "AppNoConsole", "1")
 Run-Executable "nssm" @("set", "worker-runner", "AppAffinity", "All")
@@ -319,6 +338,16 @@ Run-Executable "nssm" @("set", "worker-runner", "AppRotateFiles", "1")
 Run-Executable "nssm" @("set", "worker-runner", "AppRotateOnline", "1")
 Run-Executable "nssm" @("set", "worker-runner", "AppRotateSeconds", "3600")
 Run-Executable "nssm" @("set", "worker-runner", "AppRotateBytes", "0")
+
+# Start worker-runner only after Windows Setup completes. Azure owns
+# Setup\Scripts\SetupComplete.cmd, which calls OEM\SetupComplete2.cmd last.
+# Verified on a live Azure Windows Server 2022 worker, November 2026.
+$setupComplete2 = "$env:SystemRoot\OEM\SetupComplete2.cmd"
+New-Item -ItemType Directory -Path (Split-Path $setupComplete2) -Force | Out-Null
+Add-Content -Path $setupComplete2 -Encoding Ascii -Value @(
+    "sc.exe config worker-runner start= auto",
+    "sc.exe start worker-runner"
+)
 
 # configure worker-runner
 Set-Content -Path C:\worker-runner\runner.yml @"
@@ -345,14 +374,14 @@ md "C:\ProcessMonitor"
 Expand-ZIPFile -File "C:\Downloads\ProcessMonitor.zip" -Destination "C:\ProcessMonitor" -Url "https://download.sysinternals.com/files/ProcessMonitor.zip"
 
 # install Windows 10 SDK
-Run-Executable "choco" @("install", "-y", "windows-sdk-10.0")
+Invoke-WithRetry { Run-Executable "choco" @("install", "-y", "windows-sdk-10.0") }
 
 # install VisualStudio 2019 Community
-Run-Executable "choco" @("install", "-y", "visualstudio2019community", "--version", "16.5.4.0", "--package-parameters", "--add Microsoft.VisualStudio.Workload.MSBuildTools;Microsoft.VisualStudio.Component.VC.160 --passive --locale en-US")
-Run-Executable "choco" @("install", "-y", "visualstudio2019buildtools", "--version", "16.5.4.0", "--package-parameters", "--add Microsoft.VisualStudio.Workload.VCTools;includeRecommended --add Microsoft.VisualStudio.Component.VC.160 --add Microsoft.VisualStudio.Component.NuGet.BuildTools --add Microsoft.VisualStudio.Workload.UniversalBuildTools;includeRecommended --add Microsoft.VisualStudio.Workload.NetCoreBuildTools;includeRecommended --add Microsoft.Net.Component.4.5.TargetingPack --add Microsoft.Net.Component.4.6.TargetingPack --add Microsoft.Net.Component.4.7.TargetingPack --passive --locale en-US")
+Invoke-WithRetry { Run-Executable "choco" @("install", "-y", "visualstudio2019community", "--version", "16.5.4.0", "--package-parameters", "--add Microsoft.VisualStudio.Workload.MSBuildTools;Microsoft.VisualStudio.Component.VC.160 --passive --locale en-US") }
+Invoke-WithRetry { Run-Executable "choco" @("install", "-y", "visualstudio2019buildtools", "--version", "16.5.4.0", "--package-parameters", "--add Microsoft.VisualStudio.Workload.VCTools;includeRecommended --add Microsoft.VisualStudio.Component.VC.160 --add Microsoft.VisualStudio.Component.NuGet.BuildTools --add Microsoft.VisualStudio.Workload.UniversalBuildTools;includeRecommended --add Microsoft.VisualStudio.Workload.NetCoreBuildTools;includeRecommended --add Microsoft.Net.Component.4.5.TargetingPack --add Microsoft.Net.Component.4.6.TargetingPack --add Microsoft.Net.Component.4.7.TargetingPack --passive --locale en-US") }
 
 # install msys2
-Run-Executable "choco" @("install", "-y", "msys2")
+Invoke-WithRetry { Run-Executable "choco" @("install", "-y", "msys2") }
 
 # refresh environment variables
 refreshenv
@@ -362,10 +391,10 @@ $env:PATH = $env:PATH + ";C:\tools\msys64\usr\bin;C:\tools\msys64\mingw64\bin"
 [Environment]::SetEnvironmentVariable("PATH", [Environment]::GetEnvironmentVariable("PATH", "Machine") + ";C:\tools\msys64\usr\bin;C:\tools\msys64\mingw64\bin", "Machine")
 
 # update pacman
-Run-Executable "pacman" @("-Syu", "--noconfirm", "--noprogressbar")
+Invoke-WithRetry { Run-Executable "pacman" @("-Syu", "--noconfirm", "--noprogressbar") }
 
 # install gcc for go race detector
-Run-Executable "pacman" @("-S", "--noconfirm", "--noprogressbar", "mingw-w64-x86_64-gcc")
+Invoke-WithRetry { Run-Executable "pacman" @("-S", "--noconfirm", "--noprogressbar", "mingw-w64-x86_64-gcc") }
 
 # clean package cache
 Run-Executable "pacman" @("-Sc", "--noconfirm", "--noprogressbar")
@@ -375,7 +404,7 @@ Run-Executable "pacman" @("-Sc", "--noconfirm", "--noprogressbar")
 $hasNvidiaGpu = Get-PnpDevice -PresentOnly | Where-Object { $_.InstanceId -match "^PCI\\VEN_10DE" }
 
 if ($hasNvidiaGpu) {
-    Invoke-WebRequest -Uri "https://download.microsoft.com/download/e9a86343-1981-4ac8-883a-49bf5e2c4d18/574.24_grid_win10_win11_server2022_dch_server2025_64bit_international_azure_swl.exe" -OutFile "C:\Downloads\nvidia_driver.exe"
+    Invoke-WithRetry { Invoke-WebRequest -Uri "https://download.microsoft.com/download/e9a86343-1981-4ac8-883a-49bf5e2c4d18/574.24_grid_win10_win11_server2022_dch_server2025_64bit_international_azure_swl.exe" -OutFile "C:\Downloads\nvidia_driver.exe" }
     Run-Executable "C:\Downloads\nvidia_driver.exe" @("-s", "-noreboot")
 
     # Need to fix this CUDA installation in staging...

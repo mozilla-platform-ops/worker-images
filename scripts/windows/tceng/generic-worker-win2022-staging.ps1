@@ -353,7 +353,7 @@ Run-Executable "nssm" @("set", "worker-runner", "AppRotateBytes", "0")
 # Start worker-runner only after Windows Setup completes. Azure owns
 # Setup\Scripts\SetupComplete.cmd, which calls OEM\SetupComplete2.cmd last.
 # Verified on a live Azure Windows Server 2022 worker, November 2026.
-$setupComplete2 ="$env:SystemRoot\OEM\SetupComplete2.cmd"
+$setupComplete2 = "$env:SystemRoot\OEM\SetupComplete2.cmd"
 New-Item -ItemType Directory -Path (Split-Path $setupComplete2) -Force | Out-Null
 Add-Content -Path $setupComplete2 -Encoding Ascii -Value @(
     "sc.exe config worker-runner start= auto",
