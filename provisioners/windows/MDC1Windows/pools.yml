@@ -61,10 +61,7 @@ pools:
     openvox_version: "8.19.2"
     git_version: "2.50.0"
     Description: "NUC12 Hardware Performance Staging/Testing Pool"
-    # RELOPS-2487 canary: run this pool's deploy from the feature branch. OS-deploy.ps1
-    # on that branch refreshes pools.yml from it, so image/src_Branch/hash for the
-    # baked-WIM + DISM /Apply-Image test live on the branch, not here.
-    dev: "nuc-wim-pipeline"
+    dev: "RELOPS-2673-pxe-canary-dev"
     image: "win11-24h2-hw-test-20260730-223108"
     src_Organisation: "mozilla-platform-ops"
     src_Repository: "ronin_puppet"
@@ -73,8 +70,7 @@ pools:
     secret_date: "02-24-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    # Placeholder; replace with a real hostname before provisioning.
-    - nuc13-999
+    - nuc13-134
   - name: "win11-64-24h2-hw-perf-debug"
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
@@ -105,7 +101,7 @@ pools:
     puppet_version: "8.10.0"
     openvox_version: "8.19.2"
     git_version: "2.50.0"
-    dev: "RELOPS-2668-fleetbench-persistence"
+    dev: "RELOPS-2673-pxe-canary-dev"
     Description: "NUC12 Hardware Performance Staging/Testing Pool"
     image: "win11-24h2-hw-test-20260930-201046"
     src_Organisation: "mozilla-platform-ops"
@@ -115,12 +111,8 @@ pools:
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    # Three nodes pulled from win11-64-24h2-hw at random 2026-09-09 to keep a working
-    # set in this pool after the previous membership moved to
-    # win11-64-24h2-hw-relops1213. Not here for a fault.
     - nuc13-018
     - nuc13-071
-    - nuc13-134
   - name: "win11-64-24h2-hw"
     openvox_version: "8.19.2"
     puppet_version: "8.10.0"
