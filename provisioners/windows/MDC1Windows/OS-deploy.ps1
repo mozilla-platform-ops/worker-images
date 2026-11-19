@@ -3,7 +3,8 @@ param(
     [string]$deploymentaccess,
     [string]$branch = "main",
     [string]$worker_images_revision,
-    [switch]$devlopment_script = $false
+    [switch]$devlopment_script = $false,
+    [string]$RecoveryPool
 
 )
 function Deploy-OS-Dev {
@@ -14,7 +15,7 @@ function Deploy-OS-Dev {
     $local_dir = "X:\working"
     Mount-ZDrive
     try {
-        $pat = (Get-Content 'Z:\secrets\pat.txt' -Raw -ErrorAction Stop).Trim()
+        $pat = Get-DeploymentPAT
         $revision = Resolve-WorkerImagesRevision -Ref $branch -PAT $pat
     }
     finally {
@@ -115,20 +116,25 @@ function Mount-ZDrive {
     }
 }
 
+function Get-DeploymentPAT {
+    try { return ([string](Get-Content 'Z:\secrets\pat.txt' -Raw -ErrorAction Stop)).Trim() }
+    catch { return '' }
+}
+
 function Resolve-WorkerImagesRevision {
     param(
         [Parameter(Mandatory)][string] $Ref,
-        [Parameter(Mandatory)][string] $PAT
+        [string] $PAT
     )
 
     $headers = @{
         Accept                 = 'application/vnd.github+json'
-        Authorization          = "Bearer $PAT"
         'X-GitHub-Api-Version' = '2022-11-28'
         'User-Agent'           = 'worker-images-mdc1-deploy'
     }
+    if ($PAT) { $headers.Authorization = "Bearer $PAT" }
     $encodedRef = [uri]::EscapeDataString($Ref)
-    $result = Invoke-RestMethod -Uri "https://api.github.com/repos/mozilla-platform-ops/worker-images/commits/$encodedRef" -Headers $headers
+    $result = Invoke-RestMethod -Uri "https://api.github.com/repos/mozilla-platform-ops/worker-images/commits/$encodedRef" -Headers $headers -ErrorAction Stop
     $revision = [string]$result.sha
     if ($revision -notmatch '^[0-9a-fA-F]{40}$') {
         throw "GitHub returned an invalid worker-images revision for '$Ref'."
@@ -255,10 +261,10 @@ function Update-GetBoot {
     ## Remove existing Get-Bootstrap.ps1 with latest values
 
     if (Test-Path $Get_Bootstrap) {
-        Remove-Item $Get_Bootstrap -Force
+        Remove-Item $Get_Bootstrap -Force -ErrorAction Stop
     }
     if (Test-Path $Template_Get_Bootstrap) {
-        Remove-Item $Template_Get_Bootstrap -Force
+        Remove-Item $Template_Get_Bootstrap -Force -ErrorAction Stop
     }
 
     $bootstrapSplat = @{
@@ -271,7 +277,7 @@ function Update-GetBoot {
     write-host "Invoke-WebRequest @bootstrapSplat"
     write-host $bootstrapSplat.URI
 
-    if (-Not (Test-Path "D:\Secrets\pat.txt")) {
+    if ($bootstrapSkipReason -or -not (Test-Path "D:\Secrets\pat.txt")) {
         $splat = @{
             Url  = $bootstrapSplat.URI
             Path = $bootstrapSplat.OutFile
@@ -306,12 +312,16 @@ function Update-GetBoot {
         @{ OldString = "1git_version"; NewString = $git_version }
         @{ OldString = "WIRevisionPlaceholder"; NewString = $revision }
     )
-    $content = Get-Content -Path $Template_Get_Bootstrap
+    $content = Get-Content -Path $Template_Get_Bootstrap -Raw -ErrorAction Stop
     foreach ($replacement in $replacements) {
         $content = $content -replace $replacement.OldString, $replacement.NewString
     }
 
-    Set-Content -Path $Get_Bootstrap -Value $content
+    if ($bootstrapSkipReason -and -not $content.Contains('BootstrapSkipReasonPlaceholder')) {
+        throw 'The pinned Get-Bootstrap.ps1 does not support recovery deployments.'
+    }
+    $content = $content.Replace('BootstrapSkipReasonPlaceholder', ([string]$bootstrapSkipReason).Replace("'", "''"))
+    Set-Content -Path $Get_Bootstrap -Value $content -ErrorAction Stop
 }
 
 # Function to partition and format a single disk with both C and D
@@ -505,7 +515,7 @@ function Invoke-DownloadWithRetry {
             }
         }
 
-        if ($retries -eq 0) {
+        if ($retries -le 1) {
             $totalSeconds = [math]::Round(($(Get-Date) - $downloadStartTime).TotalSeconds, 2)
             throw "Package download failed after $totalSeconds seconds"
         }
@@ -657,8 +667,53 @@ function Resolve-DeploymentHostname {
     return $names[0]
 }
 
+function Get-DeploymentPool {
+    param($Config, [string]$NodeName, [string]$RecoveryPool, [string]$SkipReason)
+
+    $nodePools = @($Config.pools | Where-Object { $_.nodes -contains $NodeName })
+    $knownBad = $NodeName -and (@($Config['Known-BAD'].Values | ForEach-Object { $_ }) -contains $NodeName)
+
+    $reason = if ($SkipReason) { $SkipReason }
+    elseif ($knownBad) {
+        "$NodeName is listed in Known-BAD. Repair the node and return it to a worker pool before redeploying."
+    }
+    elseif (-not $NodeName) {
+        'No usable deployment hostname. Fix reverse DNS before redeploying.'
+    }
+    elseif ($nodePools.Count -ne 1) {
+        "$NodeName must belong to exactly one worker pool. Correct pools.yml before redeploying."
+    }
+
+    if (-not $reason) {
+        return [pscustomobject]@{ Pool = $nodePools[0]; SkipReason = $reason }
+    }
+
+    $poolName = $RecoveryPool
+    if (-not $poolName -and $NodeName -match '^(.+)-[0-9]+$') {
+        $poolName = $Config.defaults.recovery_pools_by_prefix[$Matches[1]]
+    }
+    if (-not $poolName) { $poolName = $Config.defaults.recovery_pool }
+
+    $fallback = @($Config.pools | Where-Object { $_.name -eq $poolName })
+    if ($fallback.Count -ne 1 -or -not $fallback[0].image) {
+        throw "Recovery pool '$poolName' must identify exactly one pool with an image in pools.yml."
+    }
+    return [pscustomobject]@{ Pool = $fallback[0]; SkipReason = $reason }
+}
+
+function Read-DeploymentSecrets {
+    param([string]$Path)
+    $yaml = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 -ErrorAction Stop
+    $secrets = ConvertFrom-Yaml $yaml -ErrorAction Stop
+    $password = [string]$secrets.win_adminpw
+    if ([string]::IsNullOrWhiteSpace($password)) { throw 'win_adminpw is missing from the deployment secrets.' }
+    return [pscustomobject]@{ Yaml = $yaml; AdminPassword = $password }
+}
+
 ## Get node name
-Set-Location X:\working
+Set-Location X:\working -ErrorAction Stop
+Import-Module "X:\Windows\System32\WindowsPowerShell\v1.0\Modules\DnsClient" -ErrorAction Stop
+Import-Module "X:\Windows\System32\WindowsPowerShell\v1.0\Modules\powershell-yaml" -ErrorAction Stop
 
 Write-Host "Working from branch "$branch"."
 
@@ -674,11 +729,9 @@ try {
 }
 catch {
     $NetshOutput = netsh interface ip show addresses
-    $IPAddress = ($NetshOutput -match "IP Address" | ForEach-Object {
-            if ($_ -notmatch "127.0.0.1") {
-                $_ -replace ".*?:\s*", ""
-            }
-        }).Trim()
+    $IPAddress = @($NetshOutput -match 'IP Address' | ForEach-Object {
+        if ($_ -notmatch '127\.0\.0\.1') { ($_ -replace '.*?:\s*', '').Trim() }
+    })
 }
 
 if ($IPAddress) {
@@ -688,26 +741,22 @@ else {
     Write-Host "No IP Address could be determined." -ForegroundColor Red
 }
 
-$ResolvedName = Resolve-DeploymentHostname -IPAddresses @($IPAddress)
-write-host $ResolvedName
+$shortname = $null
+try {
+    if ($IPAddress) {
+        $resolvedName = Resolve-DeploymentHostname -IPAddresses @($IPAddress)
+        $shortname = ($resolvedName -split '\.', 2)[0]
+        if ($shortname -notmatch '^[a-z0-9](?:[a-z0-9-]{0,13}[a-z0-9])?$' -or $shortname -match '^[0-9]+$') {
+            $shortname = $null
+        }
+    }
+}
+catch { Write-Warning $_.Exception.Message }
 
-$index = $ResolvedName.IndexOf('.')
-$shortname = $ResolvedName.Substring(0, $index)
-
-write-host checking name
-
-$DomainSuffix = $ResolvedName -replace '^[^.]*\.', ''
-
-Write-Host "Host name set to be $ResolvedName"
-
-## Get data
-## Assumes files is in the same dir.
-# Resolve the selected branch once, then use that immutable revision for the whole deploy.
-# Read the GitHub token directly from the deployment share; do not trust a cached D: copy
-# before Protect-ProvisioningDrive has run.
+# Resolve the branch once and use its immutable revision for all deployment assets.
 Mount-ZDrive
 try {
-    $workerImagesPAT = (Get-Content 'Z:\secrets\pat.txt' -Raw -ErrorAction Stop).Trim()
+    $workerImagesPAT = Get-DeploymentPAT
     if ($worker_images_revision) {
         if ($worker_images_revision -notmatch '^[0-9a-fA-F]{40}$') {
             throw 'OS-deploy received an invalid worker-images revision.'
@@ -718,63 +767,51 @@ try {
         $workerImagesRevision = Resolve-WorkerImagesRevision -Ref $branch -PAT $workerImagesPAT
     }
     Write-Host "Pinned worker-images '$branch' to $workerImagesRevision"
-    Invoke-DownloadWithRetryGithub `
-        -Url "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$workerImagesRevision/provisioners/windows/MDC1Windows/pools.yml" `
-        -Path 'pools.yml' -PAT $workerImagesPAT
-}
-finally {
-    Remove-Variable workerImagesPAT -ErrorAction SilentlyContinue
-    Remove-PSDrive -Name Z -Scope Global -Force -ErrorAction SilentlyContinue
-}
-$YAML = Convertfrom-Yaml (Get-Content "pools.yml" -raw)
-
-foreach ($pool in $YAML.pools) {
-    foreach ($node in $pool.nodes) {
-        if ($node -match $shortname) {
-            $neededImage = $pool.image
-            $WorkerPool = $pool.name
-            $role = $WorkerPool -replace "-", ""
-            $src_Organisation = $pool.src_Organisation
-            $src_Repository = $pool.src_Repository
-            $src_Branch = $pool.src_Branch
-            $hash = $pool.hash
-            $secret_date = $pool.secret_date
-            $puppet_version = $pool.puppet_version
-            $openvox_version = $pool.openvox_version
-            $git_version = $pool.git_version
-            Write-Output "The associated image for $shortname is: $neededImage"
-            if ($pool.dev -and (-not $devlopment_script)) {
-                Write-Host "Dev mode is enabled."
-                Deploy-OS-Dev -Password $deploymentaccess -branch $pool.dev
-                exit
-            }
-            $found = $true
-            break
-        }
-        if ($found) {
-            break
+    $deployAssets = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$workerImagesRevision/provisioners/windows/MDC1Windows"
+    Invoke-DownloadWithRetry -Url "$deployAssets/pools.yml" -Path 'X:\working\pools.yml' | Out-Null
+    $YAML = ConvertFrom-Yaml (Get-Content 'pools.yml' -Raw -ErrorAction Stop) -ErrorAction Stop
+    $selection = Get-DeploymentPool -Config $YAML -NodeName $shortname -RecoveryPool $RecoveryPool
+    $pool = $selection.Pool
+    $bootstrapSkipReason = $selection.SkipReason
+    $secret_file_name = "$($pool.name)-$($pool.secret_date).yaml"
+    $source_secrets = "Z:\secrets\$secret_file_name"
+    if (-not $bootstrapSkipReason -and -not ($pool.ronin -eq $false -and $pool.dev -and -not $devlopment_script)) {
+        if (-not $workerImagesPAT) {
+            $bootstrapSkipReason = 'The deployment share is missing a usable pat.txt. Restore it before redeploying.'
         }
         else {
-            $defaultPool = $YAML.pools | Where-Object { $_.name -eq "Default" }
-            $neededImage = $defaultPool.image
-            $WorkerPool = $pool.name
-            $WorkerPool = $pool.name
-            $role = $WorkerPool -replace "-", ""
-            $src_Organisation = $pool.src_Organisation
-            $src_Repository = $pool.src_Repository
-            $src_Branch = $pool.src_Branch
-            $secret_date = $pool.secret_date
-            $openvox_version = "8.19.2"
-            $git_version = "2.50.0"
-            $puppet_version = "6.28.0"
+            try { $deploymentSecrets = Read-DeploymentSecrets -Path $source_secrets }
+            catch { $bootstrapSkipReason = "Deployment secrets '$secret_file_name' are missing or invalid. Restore the file with win_adminpw before redeploying." }
+        }
+        if ($bootstrapSkipReason) {
+            $pool = (Get-DeploymentPool -Config $YAML -NodeName $shortname -RecoveryPool $RecoveryPool -SkipReason $bootstrapSkipReason).Pool
         }
     }
 }
+finally {
+    Remove-PSDrive -Name Z -Scope Global -Force -ErrorAction SilentlyContinue
+}
 
-Write-Host "Preparing local environment."
-Set-Location X:\working
-Import-Module "X:\Windows\System32\WindowsPowerShell\v1.0\Modules\DnsClient"
-Import-Module "X:\Windows\System32\WindowsPowerShell\v1.0\Modules\powershell-yaml"
+if (-not $bootstrapSkipReason -and $pool.dev -and -not $devlopment_script) {
+    Write-Host "Dev mode is enabled."
+    Deploy-OS-Dev -Password $deploymentaccess -branch $pool.dev
+    exit
+}
+
+if (-not $shortname) { $shortname = 'recovery-' + [guid]::NewGuid().ToString('N').Substring(0, 6) }
+$neededImage = $pool.image
+if (-not $neededImage) { throw "Pool '$($pool.name)' has no deployment image." }
+$WorkerPool = $pool.name
+$role = $WorkerPool -replace "-", ""
+$src_Organisation = $pool.src_Organisation
+$src_Repository = $pool.src_Repository
+$src_Branch = $pool.src_Branch
+$hash = $pool.hash
+$secret_date = $pool.secret_date
+$puppet_version = $pool.puppet_version
+$openvox_version = $pool.openvox_version
+$git_version = $pool.git_version
+Write-Host "Deploying image '$neededImage' from pool '$WorkerPool' as '$shortname'."
 
 Write-Host "Detecting available disks..."
 $disks = Get-Disk | Where-Object { $_.OperationalStatus -eq 'Online' }
@@ -881,14 +918,8 @@ Write-host "Source install is $source_install"
 $OS_files = $local_install + $neededImage
 $setup = $OS_files + "\setup.exe"
 $secret_dir = $local_install + "secrets"
-$secret_file_name = $WorkerPool + "-" + $secret_date + ".yaml"
-Write-Host "Secret file name is $secret_file_name"
 $secret_file = $secret_dir + "\" + $secret_file_name
-$source_secrets = $source_dir + "secrets\" + $secret_file_name
 $source_secrets_pat = $source_dir + "secrets\pat.txt"
-Write-host "Source secrets is $source_secrets"
-$source_AZsecrets = $source_dir + "secrets\" + "azcredentials.yaml"
-$AZsecret_file = $secret_dir + "\azcredentials.yaml"
 $PATsecret_file = $secret_dir + "\pat.txt"
 $source_scripts = $source_dir + "scripts\"
 $local_scripts = $local_install + "scripts\"
@@ -910,7 +941,6 @@ $local_app = $local_install + "applications"
 # while preserving fleetbench history.)
 $needWim = Join-Path $OS_files "$neededImage.wim"
 $needWimHash = "$needWim.sha256"
-$shareMounted = $false
 if ((!(Test-Path $setup)) -and ((!(Test-Path $needWim)) -or (!(Test-Path $needWimHash)))) {
     Write-Host "Install files wrong or missing."
     Write-Host "Will resync files."
@@ -922,7 +952,6 @@ if ((!(Test-Path $setup)) -and ((!(Test-Path $needWim)) -or (!(Test-Path $needWi
     }
 
     Mount-ZDrive
-    $shareMounted = $true
 
     Write-Host "Copying needed files"
     Write-Host "Creating $local_app"
@@ -942,35 +971,40 @@ else {
     Write-Host "Local installation image is good. No image resync needed."
 }
 
-# Secrets are small and may rotate independently of the cached image, so refresh them on
-# every deployment. Bootstrap still needs both files until its Puppet run succeeds.
-if (-not $shareMounted) { Mount-ZDrive }
-New-Item -ItemType Directory -Path $secret_dir -Force | Out-Null
-Write-Host "Refreshing $source_secrets -> $secret_file"
-Copy-Item -Path $source_secrets -Destination $secret_file -Force -ErrorAction Stop
-Write-Host "Refreshing $source_secrets_pat -> $PATsecret_file"
-Copy-Item -Path $source_secrets_pat -Destination $PATsecret_file -Force -ErrorAction Stop
-Write-Host "Disconecting Deployment Share."
 Remove-PSDrive -Name Z -Scope Global -Force -ErrorAction SilentlyContinue
 
-if ((-not (Test-Path -LiteralPath $secret_file -PathType Leaf)) -or
-    (-not (Test-Path -LiteralPath $PATsecret_file -PathType Leaf))) {
-    throw 'Required provisioning secrets were not refreshed on D:.'
+# Stage the same verified secrets that selected the image before the media was copied.
+try {
+    if (-not $bootstrapSkipReason) {
+        New-Item -ItemType Directory -Path $secret_dir -Force -ErrorAction Stop | Out-Null
+        [IO.File]::WriteAllText($secret_file, $deploymentSecrets.Yaml)
+        Set-Content -LiteralPath $PATsecret_file -Value $workerImagesPAT -Encoding ASCII -NoNewline -ErrorAction Stop
+        $adminPassword = $deploymentSecrets.AdminPassword
+    }
+}
+finally {
+    Remove-Variable deploymentSecrets, workerImagesPAT -ErrorAction SilentlyContinue
+}
+
+New-Item -ItemType Directory -Path $local_scripts, $local_yaml_dir -Force -ErrorAction Stop | Out-Null
+if ($bootstrapSkipReason) {
+    Write-Warning "Worker bootstrap skipped. $bootstrapSkipReason"
+    if (Test-Path -LiteralPath $secret_dir) {
+        Remove-Item -LiteralPath $secret_dir -Recurse -Force -ErrorAction Stop
+    }
+    Invoke-DownloadWithRetry -Url "$deployAssets/ssh/authorized_keys" -Path (Join-Path $local_scripts 'recovery_authorized_keys') | Out-Null
+    Invoke-DownloadWithRetry -Url "$deployAssets/ssh/sshd_config" -Path (Join-Path $local_scripts 'recovery_sshd_config') | Out-Null
+    Invoke-DownloadWithRetry -Url 'https://github.com/PowerShell/Win32-OpenSSH/releases/download/v9.8.3.0p2-Preview/OpenSSH-Win64-v9.8.3.0.msi' `
+        -Path (Join-Path $local_scripts 'recovery_OpenSSH.msi') | Out-Null
 }
 
 # The populated answer file contains the current node name and Administrator password.
 # Regenerate it every deployment rather than treating it as part of the persistent image cache.
-$splat = @{
-    Url  = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$workerImagesRevision/provisioners/windows/MDC1Windows/base-autounattend.xml"
-    Path = $unattend
-    PAT  = Get-Content $PATsecret_file
-}
-Invoke-DownloadWithRetryGithub @splat
+Invoke-DownloadWithRetry -Url "$deployAssets/base-autounattend.xml" -Path $unattend | Out-Null
 $cleanupScript = Join-Path $local_scripts 'Remove-BuildAccess.ps1'
-Invoke-DownloadWithRetryGithub -Url "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$workerImagesRevision/provisioners/windows/win-hw-wim/scripts/post-install/Remove-BuildAccess.ps1" -Path $cleanupScript -PAT (Get-Content $PATsecret_file)
+Invoke-DownloadWithRetry -Url "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$workerImagesRevision/provisioners/windows/win-hw-wim/scripts/post-install/Remove-BuildAccess.ps1" -Path $cleanupScript | Out-Null
 if (-not (Test-Path -LiteralPath $cleanupScript -PathType Leaf)) { throw 'Post-install cleanup script is missing.' }
 
-$secret_YAML = Convertfrom-Yaml (Get-Content $secret_file -raw)
 $DiskNumber = (Get-Partition -DriveLetter C).DiskNumber
 $PartitionNumber = (Get-Partition -DriveLetter C).PartitionNumber
 $content2 = (Get-Content -Path $unattend -Raw).
@@ -978,11 +1012,25 @@ $content2 = (Get-Content -Path $unattend -Raw).
     Replace('<DiskID>0</DiskID>', "<DiskID>$DiskNumber</DiskID>").
     Replace('<PartitionID>3</PartitionID>', "<PartitionID>$PartitionNumber</PartitionID>")
 
-$adminPassword = [string]$secret_YAML.win_adminpw
-if ([string]::IsNullOrWhiteSpace($adminPassword)) { throw 'win_adminpw is missing from the deployment secrets.' }
 $unattendXml = New-Object System.Xml.XmlDocument
 $unattendXml.PreserveWhitespace = $true
 $unattendXml.LoadXml($content2)
+if ($bootstrapSkipReason) {
+    # Register the recovery task in specialize so SSH can start after Setup without an automatic logon.
+    foreach ($name in 'AutoLogon', 'AdministratorPassword', 'FirstLogonCommands') {
+        $node = $unattendXml.SelectSingleNode("//*[local-name()='$name']")
+        [void]$node.ParentNode.RemoveChild($node)
+    }
+    $runSync = $unattendXml.SelectSingleNode("//*[local-name()='settings' and @pass='specialize']//*[local-name()='RunSynchronous']")
+    $recoveryCommand = $runSync.SelectSingleNode("*[local-name()='RunSynchronousCommand'][last()]").CloneNode($true)
+    $recoveryCommand.SelectSingleNode("*[local-name()='Order']").InnerText = '3'
+    $recoveryCommand.SelectSingleNode("*[local-name()='Path']").InnerText =
+        'schtasks.exe /Create /TN ConfigureRecoverySSH /SC ONSTART /RU SYSTEM /DELAY 0001:00 /TR "powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File D:\scripts\Get-Bootstrap.ps1" /F'
+    $recoveryCommand.SelectSingleNode("*[local-name()='WillReboot']").InnerText = 'Always'
+    [void]$runSync.AppendChild($recoveryCommand)
+    # Keep the unattended OOBE account with a unique password nobody needs to know.
+    $adminPassword = [guid]::NewGuid().ToString('N') + 'Aa1!'
+}
 $passwordNodes = $unattendXml.SelectNodes("//*[local-name()='Value' and text()='NotARealPassword']")
 if ($passwordNodes.Count -eq 0) { throw 'No Administrator password placeholders found in the unattend template.' }
 foreach ($node in $passwordNodes) { $node.InnerText = $adminPassword }
@@ -991,24 +1039,23 @@ $xmlSettings.Encoding = New-Object System.Text.UTF8Encoding($false)
 $xmlWriter = [System.Xml.XmlWriter]::Create($unattend, $xmlSettings)
 try { $unattendXml.Save($xmlWriter) } finally { $xmlWriter.Dispose() }
 
-if ((Get-ChildItem -Path C:\ -Force) -ne $null) {
-    write-host "Previous installation detected. Formatting OS disk."
-    Format-Volume -DriveLetter C -FileSystem NTFS -Force -ErrorAction Inquire | Out-Null
-}
-
 Update-GetBoot -revision $workerImagesRevision
 
 ## Update yaml files with recent changes
-Copy-Item -Path pools.yml  $local_yaml -Force
+Copy-Item -Path pools.yml $local_yaml -Force -ErrorAction Stop
 
 Set-Location -Path $OS_files
 Write-Host "Initializing OS installation."
 
 if (Test-Path $setup) {
+    if (Get-ChildItem -Path C:\ -Force) {
+        Write-Host "Previous installation detected. Formatting OS disk."
+        Format-Volume -DriveLetter C -FileSystem NTFS -Force -Confirm:$false -ErrorAction Stop | Out-Null
+    }
     ## Standard path: Windows Setup applies sources\install.wim per the unattend.
     $cleanupDestination = Join-Path $OS_files 'sources/$OEM$/$$/Setup/Scripts'
-    New-Item -ItemType Directory -Path $cleanupDestination -Force | Out-Null
-    Copy-Item -LiteralPath $cleanupScript -Destination $cleanupDestination -Force
+    New-Item -ItemType Directory -Path $cleanupDestination -Force -ErrorAction Stop | Out-Null
+    Copy-Item -LiteralPath $cleanupScript -Destination $cleanupDestination -Force -ErrorAction Stop
     Write-Host Running: Start-Process -FilePath $setup -ArgumentList "/unattend:$unattend"
     Write-Host (Get-DeploySendoff)
     Start-Process -FilePath $setup -ArgumentList "/unattend:$unattend"
@@ -1018,8 +1065,7 @@ else {
     ## setup.exe - just a bare, already-sysprep/generalize'd <name>.wim. Apply it
     ## directly, make the disk bootable with bcdboot, and drop the (already edited)
     ## unattend where a generalized image processes it on first boot
-    ## (\Windows\Panther\unattend.xml -> specialize + oobeSystem -> FirstLogonCommands
-    ## -> D:\scripts\Get-Bootstrap.ps1), i.e. the same first-boot chain as the setup path.
+    ## (\Windows\Panther\unattend.xml), using the same launcher as the setup path.
     $wim = Join-Path $OS_files "$neededImage.wim"
     if (-not (Test-Path $wim)) {
         throw "No setup.exe and no baked WIM at '$wim' - nothing to deploy for image '$neededImage'."
@@ -1116,11 +1162,11 @@ else {
     # Offline cleanup also covers older WIMs that skip those Setup passes.
     $panther = Join-Path "$winVol\" "Windows\Panther"
     New-Item -ItemType Directory -Path $panther -Force | Out-Null
-    Copy-Item -Path $unattend -Destination (Join-Path $panther "unattend.xml") -Force
+    Copy-Item -Path $unattend -Destination (Join-Path $panther "unattend.xml") -Force -ErrorAction Stop
     Write-Host "== Placed unattend at $panther\unattend.xml =="
     $cleanupDestination = Join-Path "$winVol\" 'Windows/Setup/Scripts'
-    New-Item -ItemType Directory -Path $cleanupDestination -Force | Out-Null
-    Copy-Item -LiteralPath $cleanupScript -Destination $cleanupDestination -Force
+    New-Item -ItemType Directory -Path $cleanupDestination -Force -ErrorAction Stop | Out-Null
+    Copy-Item -LiteralPath $cleanupScript -Destination $cleanupDestination -Force -ErrorAction Stop
     # Older WIMs can boot through their startup task without rerunning Setup.
     & (Join-Path $PSHOME 'powershell.exe') -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $cleanupScript -OfflineWindowsRoot "$winVol\Windows"
     if ($LASTEXITCODE -ne 0) { throw "Offline build access cleanup failed: $LASTEXITCODE" }
