@@ -264,6 +264,15 @@ build {
     ]
   }
 
+  # Workers are re-imaged, not patched: no unattended upgrades, APT timers,
+  # snap refreshes, or update notifiers on running workers.
+  provisioner "shell" {
+    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    scripts = [
+      "${path.cwd}/scripts/linux/common/disable-auto-updates.sh"
+    ]
+  }
+
   provisioner "shell" {
     only = [
       "googlecompute.gw-fxci-gcp-l1-2404-headless-alpha"
@@ -387,6 +396,11 @@ build {
     execute_command  = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
     environment_vars = ["KERNEL_VERSION=${local.kernel_version}"]
     scripts          = ["${path.cwd}/tests/linux/test_kernel.sh"]
+  }
+
+  provisioner "shell" {
+    execute_command = "sudo -S bash -c '{{ .Vars }} {{ .Path }}'"
+    scripts         = ["${path.cwd}/tests/linux/test_auto_updates.sh"]
   }
 
   provisioner "file" {
