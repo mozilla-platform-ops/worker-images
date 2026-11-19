@@ -1,3 +1,6 @@
+# Optional per-pool fleetbench_on_deploy: true forces one CPU benchmark after each
+# OS deployment, then the normal 72-hour cadence. Omit the key to reuse recent D: results.
+# Presence enables the override regardless of value.
 ---
 pools:
   # RELOPS-2612: route the accessibility host to the non-Ronin implementation branch.
