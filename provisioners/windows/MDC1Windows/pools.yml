@@ -86,8 +86,6 @@ pools:
     secret_date: "02-06-2026"
     domain_suffix: "wintest2.releng.mdc1.mozilla.com"
     nodes:
-    # Below performance expectations; held for investigation (RELOPS-2522).
-    - nuc13-085
     # KVM display fixed; benchmark alongside the drawer POC (RELOPS-2541).
     - nuc13-089
     # NUC drawer POC; moved from relops1213 for benchmarking.
@@ -286,6 +284,8 @@ Known-BAD:
   nuc13:
     ## Below performance expectations.
     - nuc13-005
+    ## Below performance expectations (RELOPS-2522).
+    - nuc13-085
     ## Below performance expectations.
     - nuc13-145
     ## Dead.
