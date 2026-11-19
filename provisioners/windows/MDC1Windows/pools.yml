@@ -285,7 +285,7 @@ Known-BAD:
     - nuc13-005
     ## Below performance expectations (RELOPS-2522).
     - nuc13-085
-    ## Removed from Taskcluster service (RELOPS-2541).
+    ## Below performance expectations.
     - nuc13-111
     ## Below performance expectations.
     - nuc13-145
