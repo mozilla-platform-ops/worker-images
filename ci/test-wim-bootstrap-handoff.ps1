@@ -51,6 +51,9 @@ $answerFileRecovery = $deploy.Find({
 }, $true)
 $local_scripts = 'D:\scripts\'
 $template = Get-Content (Join-Path $deployRoot 'Get-Bootstrap.ps1') -Raw
+if (($template -split '\r?\n') -notcontains "`$bootstrapSkipReason = ''") {
+    throw 'The launcher must default to normal bootstrap before the deployment renderer runs.'
+}
 $answerFile = Get-Content (Join-Path $deployRoot 'base-autounattend.xml') -Raw
 function Test-DeployMode {
     param([string]$NodeName, [string]$PoolSecrets, [string]$Token, [string]$ExpectedPool, [string]$ExpectedSkipReason)

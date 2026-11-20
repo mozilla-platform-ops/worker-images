@@ -317,10 +317,14 @@ function Update-GetBoot {
         $content = $content -replace $replacement.OldString, $replacement.NewString
     }
 
-    if ($bootstrapSkipReason -and -not $content.Contains('BootstrapSkipReasonPlaceholder')) {
-        throw 'The pinned Get-Bootstrap.ps1 does not support recovery deployments.'
+    if ($bootstrapSkipReason) {
+        $normalMode = "`$bootstrapSkipReason = ''"
+        if (-not $content.Contains($normalMode)) {
+            throw 'The pinned Get-Bootstrap.ps1 does not support recovery deployments.'
+        }
+        $escapedReason = $bootstrapSkipReason.Replace("'", "''")
+        $content = $content.Replace($normalMode, "`$bootstrapSkipReason = '$escapedReason'")
     }
-    $content = $content.Replace('BootstrapSkipReasonPlaceholder', ([string]$bootstrapSkipReason).Replace("'", "''"))
     Set-Content -Path $Get_Bootstrap -Value $content -ErrorAction Stop
 }
 
