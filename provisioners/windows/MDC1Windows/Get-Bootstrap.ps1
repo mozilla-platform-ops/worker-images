@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 $worker_images_revision = 'WIRevisionPlaceholder'
-$bootstrapSkipReason = 'BootstrapSkipReasonPlaceholder'
+$bootstrapSkipReason = ''
 if ($worker_images_revision -notmatch '^[0-9a-fA-F]{40}$') {
     throw 'Get-Bootstrap received an invalid worker-images revision.'
 }
