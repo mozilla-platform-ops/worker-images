@@ -269,6 +269,11 @@ pools:
     - nuc13-152
 defaults:
   NV_domain: "mdc1.mozilla.com"
+  # With no usable hostname, PXE defaults to the production NUC13 image.
+  recovery_pool: "win11-64-24h2-hw"
+  recovery_pools_by_prefix:
+    nuc13: "win11-64-24h2-hw"
+    t-nuc12: "win11-64-24h2-hw-ref"
 Validate:
     hw_class:
         - "t-nuc12"

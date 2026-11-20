@@ -1,5 +1,6 @@
 $ErrorActionPreference = 'Stop'
 $worker_images_revision = 'WIRevisionPlaceholder'
+$bootstrapSkipReason = ''
 if ($worker_images_revision -notmatch '^[0-9a-fA-F]{40}$') {
     throw 'Get-Bootstrap received an invalid worker-images revision.'
 }
@@ -124,49 +125,51 @@ function Invoke-DownloadWithRetry {
 function Get-WinDisplayVersion { (Get-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion').DisplayVersion }
 
 function Set-SSH {
-    [CmdletBinding()]
-    param([Switch]$DownloadKeys)
     $sshdService = Get-Service -Name sshd -ErrorAction SilentlyContinue
-    if ($null -eq $sshdService) {
-        Write-Log -message ('{0} :: Enabling OpenSSH.' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'
-        $sshCapability = Get-WindowsCapability -Online | Where-Object { $_.Name -match "OpenSSH" }
-        foreach ($ssh in $sshCapability) {
-            if ($ssh.State -eq "Present") {
-                Write-Log -message ('{0} :: Uninstalling {1}.' -f $MyInvocation.MyCommand.Name, $ssh.name) -severity 'DEBUG'
-                Remove-WindowsCapability -Online -Name $ssh.name
-            }
+    if (-not $sshdService -or $bootstrapSkipReason) {
+        $sshDirectory = Join-Path $env:ProgramData 'ssh'
+        $config = Join-Path $sshDirectory 'sshd_config'
+        $keys = Join-Path $sshDirectory 'administrators_authorized_keys'
+        New-Item -ItemType Directory -Path $sshDirectory -Force | Out-Null
+
+        if ($bootstrapSkipReason) {
+            Copy-Item -LiteralPath 'D:\scripts\recovery_authorized_keys' -Destination $keys -Force
+            Copy-Item -LiteralPath 'D:\scripts\recovery_sshd_config' -Destination $config -Force
+            $installer = 'D:\scripts\recovery_OpenSSH.msi'
         }
-        Write-Log -message ('{0} :: Enabling OpenSSH.' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'
-        $destinationDirectory = "C:\users\administrator\.ssh"
-        $authorized_keys = $destinationDirectory + "\authorized_keys"
-        New-Item -ItemType Directory -Path $destinationDirectory -Force | Out-Null
-        $win32_openssh = Invoke-DownloadWithRetry "https://github.com/PowerShell/Win32-OpenSSH/releases/download/v9.8.3.0p2-Preview/OpenSSH-Win64-v9.8.3.0.msi"
-        $install = Start-Process -FilePath msiexec.exe -ArgumentList "/i $win32_openssh /quiet /norestart ADDLOCAL=Server" -Wait -PassThru -NoNewWindow
-        Write-Host "win32_openssh install exit code: $($install.ExitCode)"
-        Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$worker_images_revision/provisioners/windows/MDC1Windows/ssh/authorized_keys" -Path $authorized_keys
-        Invoke-DownloadWithRetry "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$worker_images_revision/provisioners/windows/MDC1Windows/ssh/sshd_config" -Path "C:\programdata\ssh\sshd_config"
-        $sshdService = Get-Service -Name ssh* -ErrorAction SilentlyContinue
-        foreach ($s in $sshdService) {
-            Write-Host "sshdService status: $($s.status)"
-            Write-Log -message ('{0} :: sshdService status: {1}' -f $MyInvocation.MyCommand.Name, $s.status) -severity 'DEBUG'
+        else {
+            $sshAssets = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$worker_images_revision/provisioners/windows/MDC1Windows/ssh"
+            Invoke-DownloadWithRetry "$sshAssets/authorized_keys" -Path $keys | Out-Null
+            Invoke-DownloadWithRetry "$sshAssets/sshd_config" -Path $config | Out-Null
+            $installer = Invoke-DownloadWithRetry 'https://github.com/PowerShell/Win32-OpenSSH/releases/download/v9.8.3.0p2-Preview/OpenSSH-Win64-v9.8.3.0.msi'
         }
-        [Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", [System.EnvironmentVariableTarget]::Machine) + ';' + ${Env:ProgramFiles} + '\OpenSSH', [System.EnvironmentVariableTarget]::Machine)
-        $sshfw = @{
-            # SECURITY: port 22 is reachable only through the upstream VPN/firewall;
-            # Profile Any is required because these workgroup NUCs may classify as Public.
-            Name="AllowSSH"; DisplayName="Allow SSH"; Description="Allow SSH traffic on port 22"
-            Profile="Any"; Direction="Inbound"; Action="Allow"; Protocol="TCP"; LocalPort=22
+
+        $acl = [System.Security.AccessControl.FileSecurity]::new()
+        $acl.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)')
+        Set-Acl -LiteralPath $keys -AclObject $acl
+        Add-Content -LiteralPath $config -Encoding ASCII -Value @"
+
+Match Group administrators
+    AuthorizedKeysFile __PROGRAMDATA__/ssh/administrators_authorized_keys
+"@
+
+        if (-not $sshdService) {
+            Get-WindowsCapability -Online | Where-Object { $_.Name -match 'OpenSSH' -and $_.State -eq 'Present' } |
+                ForEach-Object { Remove-WindowsCapability -Online -Name $_.Name | Out-Null }
+            $install = Start-Process -FilePath msiexec.exe -ArgumentList "/i `"$installer`" /quiet /norestart ADDLOCAL=Server" -Wait -PassThru -NoNewWindow
+            if ($install.ExitCode -notin 0, 3010) { throw "OpenSSH installation failed: $($install.ExitCode)." }
+            [Environment]::SetEnvironmentVariable('Path', [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + $env:ProgramFiles + '\OpenSSH', 'Machine')
         }
-        New-NetFirewallRule @sshfw | Out-Null
-    } else {
-        Write-Log -message ('{0} :: SSHd is present.' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'
-        if ($sshdService.Status -ne 'Running') {
-            Start-Service sshd
-            Set-Service -Name sshd -StartupType Automatic
-        } else {
-            Write-Log -message ('{0} :: SSHD service is already running.' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'
+
+        if (-not (Get-NetFirewallRule -Name 'AllowSSH' -ErrorAction SilentlyContinue)) {
+            # Port 22 is restricted by the upstream VPN/firewall. Workgroup nodes can be Public.
+            New-NetFirewallRule -Name 'AllowSSH' -DisplayName 'Allow SSH' -Profile Any -Direction Inbound -Action Allow -Protocol TCP -LocalPort 22 | Out-Null
         }
+        # Reload the policy even if the MSI or baked image already started sshd.
+        Restart-Service -Name sshd
     }
+    Set-Service -Name sshd -StartupType Automatic
+    Start-Service -Name sshd
 }
 
 function Set-WinRM {
@@ -338,6 +341,29 @@ try {
     try { $ownsMutex = $bootstrapMutex.WaitOne(0) }
     catch [System.Threading.AbandonedMutexException] { $ownsMutex = $true }
     if (-not $ownsMutex) { Write-Log -message ('{0} :: launcher already running.' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'; return }
+    if ($bootstrapSkipReason) {
+        Write-Log -message "Worker bootstrap skipped. $bootstrapSkipReason" -severity 'WARN'
+        # A baked startup task can fire before Windows Installer is available.
+        for ($attempt = 0; $attempt -lt 60; $attempt++) {
+            $setup = Get-ItemProperty -Path 'HKLM:\SYSTEM\Setup'
+            if (-not $setup.SystemSetupInProgress -and -not $setup.OOBEInProgress) { break }
+            Start-Sleep -Seconds 10
+        }
+        if ($setup.SystemSetupInProgress -or $setup.OOBEInProgress) { throw 'Windows Setup is still in progress. Recovery SSH will retry on the next boot.' }
+        $admin = Get-LocalUser | Where-Object { $_.SID.Value -match '-500$' }
+        $password = ConvertTo-SecureString ([guid]::NewGuid().ToString('N') + 'Aa1!') -AsPlainText -Force
+        $admin | Set-LocalUser -Password $password
+        $admin | Enable-LocalUser
+        Set-SSH
+        powercfg.exe -x -standby-timeout-ac 0
+        Write-Log -message 'Recovery SSH is configured. Redeploy after correcting the bootstrap prerequisites.'
+        foreach ($name in 'RunDeployBootstrap', 'ConfigureRecoverySSH') {
+            $task = Get-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue
+            if ($task) { Unregister-ScheduledTask -InputObject $task -Confirm:$false }
+        }
+        return
+    }
+
     $stage = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Mozilla\ronin_puppet' -ErrorAction SilentlyContinue
     if ($stage.bootstrap_stage -eq 'complete') { Write-Log -message ('{0} :: provisioning already complete.' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'; return }
     $running = Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe'" | Where-Object {
@@ -353,15 +379,16 @@ try {
     Write-Log -message ('{0} :: configuring SSH.' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'
     Set-SSH
 
+    foreach ($file in 'D:\secrets\WorkerPoolId-1secret_date.yaml', 'D:\secrets\pat.txt') {
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
+            throw "Required bootstrap file '$file' is missing. Restore the deployment secrets and redeploy."
+        }
+    }
+
     Write-Log -message ('{0} :: downloading bootstrap.ps1.' -f $MyInvocation.MyCommand.Name) -severity 'DEBUG'
     $local_bootstrap = "C:\bootstrap\bootstrap.ps1"
-    if (-Not (Test-Path "D:\Secrets\pat.txt")) {
-        $splat = @{ Url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$worker_images_revision/provisioners/windows/MDC1Windows/bootstrap.ps1"; Path = $local_bootstrap }
-        Invoke-DownloadWithRetry @splat
-    } else {
-        $splat = @{ Url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$worker_images_revision/provisioners/windows/MDC1Windows/bootstrap.ps1"; Path = $local_bootstrap; PAT = Get-Content "D:\Secrets\pat.txt" }
-        Invoke-DownloadWithRetryGithub @splat
-    }
+    $splat = @{ Url = "https://raw.githubusercontent.com/mozilla-platform-ops/worker-images/$worker_images_revision/provisioners/windows/MDC1Windows/bootstrap.ps1"; Path = $local_bootstrap; PAT = Get-Content "D:\Secrets\pat.txt" }
+    Invoke-DownloadWithRetryGithub @splat
 
     if (-Not (Test-Path -Path $local_bootstrap)) {
         throw 'Downloaded bootstrap.ps1 is missing; retry on next boot.'
