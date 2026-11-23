@@ -129,7 +129,7 @@ jobs:
           echo "filter=$filter" >> "$GITHUB_OUTPUT"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2
+        uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d
 
       # Fails before any hardware time if a pool is unknown, production, or dead.
       - name: Pre-flight
