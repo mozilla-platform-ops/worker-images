@@ -167,10 +167,7 @@ retry apt-get install -y qemu-kvm bridge-utils
 #  echo 'snd-aloop' >> /etc/modules
 #fi
 
-# Prevent automatic package updates from restarting services during tasks.
-# Disabling unattended-upgrades alone does not stop the APT timers.
-systemctl disable unattended-upgrades
-systemctl mask apt-daily.timer apt-daily-upgrade.timer
+# Automatic updates are disabled by disable-auto-updates.sh.
 
 end_time="$(date '+%s')"
 echo "UserData execution took: $(($end_time - $start_time)) seconds"

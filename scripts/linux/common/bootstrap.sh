@@ -147,9 +147,7 @@ systemctl disable systemd-networkd-wait-online.service
 #  echo 'snd-aloop' >> /etc/modules
 #fi
 
-# avoid unnecessary shutdowns during worker startups
-systemctl disable unattended-upgrades
-systemctl disable apt-daily-upgrade.timer
+# Automatic updates are disabled by disable-auto-updates.sh.
 
 end_time="$(date '+%s')"
 echo "UserData execution took: $(($end_time - $start_time)) seconds"
