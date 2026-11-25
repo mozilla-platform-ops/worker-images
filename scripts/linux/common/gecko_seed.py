@@ -80,10 +80,13 @@ def build(mode, level, seed_root, inputs):
         subprocess.run(["chown", "-R", "1000:1000", str(cache)], check=True)
     names = [name]
     if level == 1:
-        names.append(name.replace("level-1", "level-3", 1))
-        subprocess.run(
-            ["cp", "-a", str(temp / name), str(temp / names[-1])], check=True
-        )
+        # The firefox-dev decision cache name comes from Gecko's .taskcluster.yml.
+        names += [
+            name.replace("level-1", "level-3", 1),
+            "gecko-level-1-firefox-dev-checkouts-git-shallow-v1",
+        ]
+        for copy in names[1:]:
+            subprocess.run(["cp", "-a", str(temp / name), str(temp / copy)], check=True)
     index_ctimes = {}
     for cache_name in names:
         repo = temp / cache_name / "gecko"
