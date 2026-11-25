@@ -57,6 +57,8 @@ def check(level, copied):
             f"gecko-level-{n}-checkouts-git-shallow-v3-{helper_hash[:20]}"
             for n in sorted({level, 3})
         ]
+        if level == 1:
+            expected.append("gecko-level-1-firefox-dev-checkouts-git-shallow-v1")
         assert names == expected
 
         installed_seed = image_seed
