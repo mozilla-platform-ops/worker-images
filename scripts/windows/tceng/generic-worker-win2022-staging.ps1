@@ -284,9 +284,6 @@ Invoke-WithRetry { Run-Executable "choco" @("install", "-y", "golang") }
 # install git
 Invoke-WithRetry { Run-Executable "choco" @("install", "-y", "git") }
 
-# install node
-Invoke-WithRetry { Run-Executable "choco" @("install", "-y", "nodejs", "--version", "24.13.0") }
-
 # install python
 Invoke-WithRetry { Run-Executable "choco" @("install", "-y", "python", "--version", "3.13.12") }
 
@@ -387,9 +384,8 @@ Expand-ZIPFile -File "C:\Downloads\ProcessMonitor.zip" -Destination "C:\ProcessM
 # install Windows 10 SDK
 Invoke-WithRetry { Run-Executable "choco" @("install", "-y", "windows-sdk-10.0") }
 
-# install VisualStudio 2019 Community
-Invoke-WithRetry { Run-Executable "choco" @("install", "-y", "visualstudio2019community", "--version", "16.5.4.0", "--package-parameters", "--add Microsoft.VisualStudio.Workload.MSBuildTools;Microsoft.VisualStudio.Component.VC.160 --passive --locale en-US") }
-Invoke-WithRetry { Run-Executable "choco" @("install", "-y", "visualstudio2019buildtools", "--version", "16.5.4.0", "--package-parameters", "--add Microsoft.VisualStudio.Workload.VCTools;includeRecommended --add Microsoft.VisualStudio.Component.VC.160 --add Microsoft.VisualStudio.Component.NuGet.BuildTools --add Microsoft.VisualStudio.Workload.UniversalBuildTools;includeRecommended --add Microsoft.VisualStudio.Workload.NetCoreBuildTools;includeRecommended --add Microsoft.Net.Component.4.5.TargetingPack --add Microsoft.Net.Component.4.6.TargetingPack --add Microsoft.Net.Component.4.7.TargetingPack --passive --locale en-US") }
+# install Visual Studio 2022 Build Tools (C++ build tools and Windows SDK)
+Invoke-WithRetry { Run-Executable "choco" @("install", "-y", "visualstudio2022buildtools", "--version", "117.14.45", "--package-parameters", "--add Microsoft.VisualStudio.Workload.VCTools;includeRecommended --passive --locale en-US") }
 
 # install msys2
 Invoke-WithRetry { Run-Executable "choco" @("install", "-y", "msys2") }
